@@ -1,13 +1,17 @@
 import { JMARS_CONFIG } from './jmars-config.js';
 import { JMARSWMS } from './jmars-wms.js';
 import { layers as initialLayers, createLeafletLayer } from './layers/index.js';
+import { JMARSVectors } from './jmars-vectors.js';
 
 export class JMARSMap {
   constructor(elementId) {
     this.elementId = elementId;
     this.map = null;
     this.activeLayers = {};
+    this.activeLayers = {};
     this.availableLayers = [...initialLayers]; // Start with hardcoded, append WMS later
+    this.loadingIndicator = document.getElementById('loading-indicator');
+    this.vectors = null;
   }
 
   init() {
@@ -28,6 +32,22 @@ export class JMARSMap {
     // Add default layer
     this.addLayer('mars_viking');
 
+    // Initialize Vectors
+    const vectorGroup = new L.FeatureGroup();
+    this.vectors = new JMARSVectors(this.map, vectorGroup);
+    this.vectors.init();
+
+    // Add vector layer to active layers so it shows up in manager (optional, but good for visibility)
+    // For now, we just keep it on the map.
+
+    // Loading events
+    this.map.on('loading', () => this.setLoading(true));
+    this.map.on('load', () => this.setLoading(false));
+    // Also catch individual tile errors to stop loading spinner if everything else fails
+    this.map.on('tileerror', () => {
+      // Optional: maybe don't hide immediately, but good to know.
+    });
+
     // Discover WMS layers
     this.discoverLayers();
 
@@ -35,7 +55,15 @@ export class JMARSMap {
     this.addControls();
   }
 
+  setLoading(isLoading) {
+    if (this.loadingIndicator) {
+      if (isLoading) this.loadingIndicator.classList.add('visible');
+      else this.loadingIndicator.classList.remove('visible');
+    }
+  }
+
   async discoverLayers() {
+    this.setLoading(true);
     const wmsUrl = JMARS_CONFIG.services.mars_wms;
     console.log(`Fetching capabilities from ${wmsUrl}...`);
 
@@ -63,6 +91,8 @@ export class JMARSMap {
     // Trigger UI update
     const event = new CustomEvent('jmars-layers-updated', { detail: this.availableLayers });
     document.dispatchEvent(event);
+
+    this.setLoading(false);
   }
 
   addLayer(layerId) {
@@ -101,18 +131,18 @@ export class JMARSMap {
     // Coordinate readout
     const coordControl = L.control({ position: 'bottomleft' });
     coordControl.onAdd = (map) => {
-        const div = L.DomUtil.create('div', 'coordinate-control');
-        div.style.background = 'rgba(0,0,0,0.5)';
-        div.style.color = '#fff';
-        div.style.padding = '5px';
-        div.style.fontSize = '12px';
-        div.innerHTML = 'Lat: 0, Lon: 0';
+      const div = L.DomUtil.create('div', 'coordinate-control');
+      div.style.background = 'rgba(0,0,0,0.5)';
+      div.style.color = '#fff';
+      div.style.padding = '5px';
+      div.style.fontSize = '12px';
+      div.innerHTML = 'Lat: 0, Lon: 0';
 
-        map.on('mousemove', (e) => {
-            div.innerHTML = `Lat: ${e.latlng.lat.toFixed(4)}, Lon: ${e.latlng.lng.toFixed(4)}`;
-        });
+      map.on('mousemove', (e) => {
+        div.innerHTML = `Lat: ${e.latlng.lat.toFixed(4)}, Lon: ${e.latlng.lng.toFixed(4)}`;
+      });
 
-        return div;
+      return div;
     };
     coordControl.addTo(this.map);
 
