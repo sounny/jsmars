@@ -26,8 +26,12 @@ export class JMARSMap {
       center: [JMARS_CONFIG.initialView.lat, JMARS_CONFIG.initialView.lng],
       zoom: JMARS_CONFIG.initialView.zoom,
       crs: L.CRS.EPSG4326,
-      attributionControl: true
+      attributionControl: true,
+      zoomControl: false // Disable default zoom control to move it
     });
+
+    // Add Zoom control to top-right
+    L.control.zoom({ position: 'topright' }).addTo(this.map);
 
     // Add default layer
     this.addLayer('mars_viking');
@@ -129,7 +133,7 @@ export class JMARSMap {
 
   addControls() {
     // Coordinate readout
-    const coordControl = L.control({ position: 'bottomleft' });
+    const coordControl = L.control({ position: 'bottomright' });
     coordControl.onAdd = (map) => {
       const div = L.DomUtil.create('div', 'coordinate-control');
       div.style.background = 'rgba(0,0,0,0.5)';
@@ -147,6 +151,6 @@ export class JMARSMap {
     coordControl.addTo(this.map);
 
     // Scale control
-    L.control.scale().addTo(this.map);
+    L.control.scale({ position: 'bottomright' }).addTo(this.map);
   }
 }

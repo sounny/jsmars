@@ -16,6 +16,7 @@ export class JMARSVectors {
 
     // Initialize the draw control and pass it the FeatureGroup of editable layers
     this.drawControl = new L.Control.Draw({
+      position: 'topright',
       draw: {
         polyline: true,
         polygon: true,
