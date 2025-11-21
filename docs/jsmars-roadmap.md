@@ -3,10 +3,10 @@
 A phased plan to grow the JMARS JS port from an empty shell into a featureful web client that mirrors key JMARS workflows.
 
 ## Phase 0: Foundations
-- **Deliverables:** Project skeleton with `/public` entry point, `/src` modules, and documented coding conventions.
+- **Deliverables:** Project skeleton with a root `/index.html` entry point, `/src` modules, and documented coding conventions.
 - **Map base:** Leaflet map centered on Mars with placeholder raster layer.
 - **Config:** `jmars-config.js` holds WMS endpoints, projection info, and default view state.
-- **Outcome:** Contributors can open `public/index.html` and see a working map container.
+- **Outcome:** Contributors can open `index.html` and see a working map container from the repo root.
 
 ## Phase 1: WMS Integration
 - **Capabilities:** Implement `jmars-wms.js` to fetch and cache WMS GetCapabilities.

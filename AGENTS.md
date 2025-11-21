@@ -75,8 +75,7 @@ This is the desired layout. If the repo does not match this layout yet, move tow
 
 ```text
 /AGENTS.md            # This file
-/public/
-  index.html          # Entry HTML page for the web client
+/index.html           # Entry HTML page for the web client (served from repo root)
 /src/
   jmars-config.js     # Config: server URLs, default layer, body info
   jmars-wms.js        # WMS helper: capabilities + GetMap URL builder
@@ -117,7 +116,7 @@ This is the desired layout. If the repo does not match this layout yet, move tow
 
 ## 5. Near‑term milestones
 
-1. Create a minimal `/public/index.html` that loads a base map via Leaflet.
+1. Create a minimal `/index.html` that loads a base map via Leaflet.
 2. Implement `jmars-wms.js` to fetch WMS capabilities and build GetMap requests.
 3. Establish a `layers/index.js` registry with at least one Mars base layer.
 4. Add simple UI controls for layer toggling and coordinate readouts.
