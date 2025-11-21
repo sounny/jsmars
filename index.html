@@ -1,43 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JSMARS - JMARS for the Web</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-    #map { width: 100%; height: 100%; background: #000; }
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
 
     /* Loading Indicator */
     #loading-indicator {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 2000;
-        background: rgba(0, 0, 0, 0.7);
-        color: #fff;
-        padding: 15px 25px;
-        border-radius: 8px;
-        font-family: sans-serif;
-        font-size: 16px;
-        display: none; /* Hidden by default */
-        pointer-events: none;
-        border: 1px solid #555;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      font-size: 16px;
+      display: none;
+      /* Hidden by default */
+      pointer-events: none;
+      border: 1px solid #555;
     }
+
     #loading-indicator.visible {
-        display: block;
+      display: block;
     }
 
     /* Controls Sidebar */
     #controls {
       position: absolute;
       top: 10px;
-      right: 10px;
+      left: 10px;
+      /* Moved to left side */
       z-index: 1000;
       background: rgba(20, 20, 20, 0.95);
       color: #eee;
@@ -48,32 +62,65 @@
       max-height: calc(100% - 20px);
       display: flex;
       flex-direction: column;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
       border: 1px solid #444;
+      transition: transform 0.3s ease;
+    }
+
+    #controls.collapsed {
+      transform: translateX(-310px);
+      /* Hide off-screen */
+    }
+
+    /* Sidebar Toggle Button */
+    #sidebar-toggle {
+      position: absolute;
+      top: 10px;
+      left: 320px;
+      /* Positioned next to the sidebar */
+      z-index: 1001;
+      background: #333;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: left 0.3s ease;
+    }
+
+    #sidebar-toggle.collapsed {
+      left: 10px;
+      /* Move to edge when sidebar is hidden */
     }
 
     .control-header {
-        padding: 12px;
-        background: #333;
-        border-bottom: 1px solid #444;
-        font-weight: bold;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+      padding: 12px;
+      background: #333;
+      border-bottom: 1px solid #444;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     #layer-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 10px;
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
     }
 
     .layer-item-container {
-        border-bottom: 1px solid #333;
-        padding: 6px 0;
+      border-bottom: 1px solid #333;
+      padding: 6px 0;
     }
+
     .layer-item-container:last-child {
-        border-bottom: none;
+      border-bottom: none;
     }
 
     .layer-item {
@@ -85,54 +132,60 @@
     }
 
     .layer-item input {
-        margin-right: 10px;
-        cursor: pointer;
+      margin-right: 10px;
+      cursor: pointer;
     }
 
     .layer-item:hover {
-        color: #fff;
+      color: #fff;
     }
 
     .layer-slider {
-        padding-left: 24px;
-        padding-right: 10px;
+      padding-left: 24px;
+      padding-right: 10px;
     }
 
     .layer-slider input {
-        width: 100%;
-        cursor: pointer;
+      width: 100%;
+      cursor: pointer;
     }
 
     .error-msg {
-        color: #ff6b6b;
-        padding: 10px;
-        font-size: 12px;
+      color: #ff6b6b;
+      padding: 10px;
+      font-size: 12px;
     }
   </style>
 </head>
+
 <body>
+  <button id="sidebar-toggle" title="Collapse Sidebar">&times;</button>
   <div id="controls">
     <div class="control-header">
-        <span>Layer Manager</span>
+      <span>Layer Manager</span>
     </div>
     <div id="layer-list">
       <!-- Layers will be injected here -->
       <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
+    </div>
+    <div style="padding: 10px; text-align: center; border-top: 1px solid #444; font-size: 12px;">
+      <a href="about.html" style="color: #888; text-decoration: none;">About JSMARS</a>
     </div>
   </div>
   <div id="loading-indicator">Loading map data...</div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
   <script type="module">
     import { JMARSMap } from './src/jmars-map.js';
     import { LayerManager } from './src/ui/layer-manager.js';
+    import { Sidebar } from './src/ui/Sidebar.js';
 
     document.addEventListener('DOMContentLoaded', () => {
+      const sidebar = new Sidebar('controls', 'sidebar-toggle');
       const jmars = new JMARSMap('map');
       jmars.init();
       window.jmars = jmars; // Expose for debugging
@@ -141,13 +194,14 @@
       const layerManager = new LayerManager(jmars, 'layer-list');
 
       // Handle errors
-      window.addEventListener('unhandledrejection', function(event) {
+      window.addEventListener('unhandledrejection', function (event) {
         console.error("Unhandled rejection:", event.reason);
         if (layerListContainer.innerText.includes('Loading')) {
-             layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
+          layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
         }
       });
     });
   </script>
 </body>
+
 </html>

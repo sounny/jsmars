@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About JSMARS</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            padding: 40px;
+            text-align: center;
+            background: rgba(20, 20, 20, 0.9);
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(200, 50, 50, 0.2);
+            border: 1px solid #333;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        .links {
+            margin-top: 40px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        a {
+            color: #4dabf7;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 10px 20px;
+            border: 1px solid #4dabf7;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        a:hover {
+            background: #4dabf7;
+            color: #000;
+        }
+
+        .footer {
+            margin-top: 50px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .heart {
+            color: #e03131;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: #888;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <img src="assets/jsmars_banner.png" alt="JSMARS Banner">
+
+        <h1>JSMARS</h1>
+
+        <p>
+            JSMARS is a lightweight, browser-based GIS viewer for planetary data.
+            It is designed to provide quick access to Mars imagery and tools without the need for heavy desktop
+            installations.
+        </p>
+
+        <p>
+            Inspired by the powerful <a href="https://jmars.asu.edu/" target="_blank">JMARS</a> desktop application
+            developed by Arizona State University.
+        </p>
+
+        <div class="links">
+            <a href="https://github.com/sounny/jsmars" target="_blank">View on GitHub</a>
+            <a href="https://sounny.github.io" target="_blank">Sounny's Homepage</a>
+            <a href="https://jmars.asu.edu/" target="_blank">Original JMARS</a>
+        </div>
+
+        <div class="footer">
+            Made with <span class="heart">❤️</span> by <a href="https://sounny.github.io"
+                style="border:none; padding:0; color: #ccc;">Sounny</a>
+        </div>
+
+        <a href="index.html" class="back-link">Back to Map</a>
+    </div>
+</body>
+
+</html>
