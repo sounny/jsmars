@@ -3,48 +3,53 @@
 This plan describes how to adapt core JMARS concepts, data sources, and workflows into a browser-native experience.
 
 ## Guiding Principles
-- **Service parity first:** Reuse the same WMS/WFS/HTTP endpoints where possible to avoid reimplementing data pipelines.
-- **Progressive delivery:** Ship thin vertical slices (data → rendering → interaction) instead of rebuilding whole subsystems at once.
-- **Client-side resilience:** Expect intermittent network conditions; make error handling and retry strategies visible to users.
-- **Modular growth:** Keep services, layers, and tools pluggable so we can swap providers or add new bodies beyond Mars.
+- **Service Parity First**: Reuse existing WMS/XYZ endpoints.
+- **Progressive Enhancement**: Ship vertical slices (data → rendering → interaction).
+- **Client-side Resilience**: Handle network errors gracefully.
+- **Modular Growth**: Keep architecture pluggable (ES modules, no-build).
 
 ## Concept Mapping
-- **MapServer / MapSource:** Represent as configurable service definitions in `jmars-config.js`, each with base URL, supported CRS, and authentication info if needed.
-- **Layers:** Normalize WMS layer metadata into a registry; include title, abstracts, attribution, default styles, and scale hints.
-- **Bodies:** Model planetary bodies as configs with radii, default projections, and default center points.
-- **Regions of Interest (ROIs):** Implement as GeoJSON features with metadata fields that mirror JMARS attributes (name, notes, style, visibility, group).
+
+| JMARS Desktop Concept | JSMARS Web Implementation | Notes |
+|-----------------------|---------------------------|-------|
+| **MapServer / MapSource** | `jmars-config.js` Services | Configurable base URLs, CRS, auth. |
+| **Layer Manager** | `LayerManager` UI Component | Drag-and-drop ordering, opacity sliders, grouping. |
+| **Main / Panner Views** | Main Map / Panner Widget | Linked viewports. Panner toggleable via UI. |
+| **M / P / 3D Toggles** | Overlay Toggles | Checkboxes for Main/Panner visibility per layer. |
+| **Grid Layer** | Leaflet Graticule Plugin | Configurable spacing/color via focus panel. |
+| **Shape Layer** | `JMARSVectors` (Leaflet.Draw) | FeatureGroup for user shapes. Import/Export support. |
+| **ROI (Region of Interest)** | GeoJSON Features | Extended properties (name, style) in feature table. |
+| **Save Session** | JSON Export | Serialize state (layers, view, shapes) to client-side JSON. |
+| **Load Session** | JSON Import | File reader API to restore state. |
 
 ## Technical Steps
-1. **Service configuration**
-   - Define a service descriptor schema (`id`, `type`, `baseUrl`, `version`, `supportedCrs`, `defaultParams`).
-   - Add helpers to fetch capabilities and validate versions (WMS 1.1.1 vs 1.3.0).
-2. **Map rendering layer**
-   - Wrap Leaflet tile layers for WMS GetMap requests; handle pixel ratio and projection differences.
-   - Add a request scheduler to avoid flooding servers when panning/zooming quickly.
-3. **Layer management**
-   - Build a registry that merges capabilities info with local overrides (human-friendly names, default visibility).
-   - Provide consistent layer IDs so UI components can toggle or reorder layers without relying on server titles.
-4. **Vector overlays and ROIs**
-   - Use Leaflet draw (or a minimal custom implementation) to create/edit shapes.
-   - Persist shapes in `localStorage` initially; abstract storage so a future sync endpoint can drop in.
-5. **Interaction model**
-   - Mirror JMARS toolbar ideas with a lightweight control strip: selection, info, measure, and draw.
-   - Provide context panels for layer info and feature inspection; keep the layout responsive.
-6. **Performance and caching**
-   - Enable browser caching headers where supported; add client-side memoization for capabilities.
-   - Debounce coordinate readouts and network calls tied to map movements.
+
+### 1. Service Configuration
+- Define service descriptor schema.
+- Add helpers to fetch capabilities and validate versions.
+
+### 2. Map Rendering
+- Wrap Leaflet tile layers for WMS.
+- Implement request scheduler/debouncing.
+
+### 3. Layer Management
+- **Ordering**: Implement drag-and-drop logic.
+- **Active Layer**: Track which layer receives draw events.
+
+### 4. Vector Overlays & ROIs
+- **Storage**: In-memory `FeatureGroup` initially, then `localStorage`.
+- **IO**: Client-side parsers for Shapefile/CSV.
+
+### 5. Interaction Model
+- **Tools**: Toolbar for Select, Info, Measure, Draw.
+- **Panels**: Context panels for layer settings (Grid config, etc.).
+
+### 6. Multi-body & Coordinates
+- **Projections**: Handle 0-360 vs -180-180 logic (`src/util/geo.js`).
+- **Switching**: Reset map state when body changes.
 
 ## Risk Mitigation
-- **Service instability:** Offer fallback endpoints and surface server errors clearly.
-- **Projection mismatches:** Validate CRS from capabilities and reject unsupported combinations early.
-- **Data volume:** Start with lower-resolution layers and allow users to opt into high-resolution requests.
-- **Licensing:** Track attributions and licensing notes per layer to maintain GPLv3 compatibility.
-
-## Migration Milestones
-- **M1:** Config-driven base map loads from a JMARS WMS endpoint.
-- **M2:** Layer list with toggle/reorder and persisted selections.
-- **M3:** ROI drawing/editing with local storage persistence and export/import.
-- **M4:** Measurement tools and layer info panels matching JMARS expectations.
-- **M5:** Hardened performance, accessibility audits, and documented extension points.
-
-Keep this plan updated as we learn from user feedback and upstream service constraints.
+- **Service Instability**: Fallback endpoints, clear error UI.
+- **Projection Mismatches**: Validate CRS compatibility early.
+- **Performance**: Limit default ROI counts, use simplification for complex polygons.
+- **Data Persistence**: Warn users that `localStorage` is ephemeral; encourage JSON export.

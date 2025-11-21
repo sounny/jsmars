@@ -1,41 +1,65 @@
 # JSMARS Roadmap
 
-A phased plan to grow the JMARS JS port from an empty shell into a featureful web client that mirrors key JMARS workflows.
+This plan outlines how to grow the JSMARS project into a richer browser-based client that stays true to the features of the JMARS desktop program.
 
-## Phase 0: Foundations
-- **Deliverables:** Project skeleton with a root `/index.html` entry point, `/src` modules, and documented coding conventions.
-- **Map base:** Leaflet map centered on Mars with placeholder raster layer.
-- **Config:** `jmars-config.js` holds WMS endpoints, projection info, and default view state.
-- **Outcome:** Contributors can open `index.html` and see a working map container from the repo root.
+## Phase 0: Foundations (Completed)
+- [x] **Project Skeleton**: Root `/index.html`, `/src` modules.
+- [x] **Map Base**: Leaflet map centered on Mars.
+- [x] **Config**: `jmars-config.js` for endpoints and defaults.
 
-## Phase 1: WMS Integration
-- **Capabilities:** Implement `jmars-wms.js` to fetch and cache WMS GetCapabilities.
-- **Layer registry:** Define `layers/index.js` to normalize layer metadata and expose toggles.
-- **Rendering:** Wire GetMap requests into Leaflet tile layers with dynamic parameter updates (bounding box, CRS, resolution).
-- **Outcome:** Users can toggle at least one Mars base layer backed by live WMS responses.
+## Phase 1: WMS Integration (Completed)
+- [x] **Capabilities**: `jmars-wms.js` to fetch/parse GetCapabilities.
+- [x] **Layer Registry**: `layers/index.js` for metadata.
+- [x] **Rendering**: Dynamic WMS tile layers.
 
-## Phase 2: Interaction & UX
-- **Controls:** Pan/zoom, scalebar, attribution, layer list, and opacity sliders.
-- **Status:** Coordinate readout (lat/long), request status indicator, and error messaging for failed WMS calls.
-- **Accessibility:** Keyboard navigation for essential controls and ARIA labels on form elements.
-- **Outcome:** Core viewing experience feels polished and accessible.
+## Phase 2: Interaction & UX (In Progress)
+- [x] **Loading Indicator**: Visual feedback for network requests.
+- [ ] **Layer Ordering & Grouping**:
+    - [ ] Drag-and-drop reordering in the layer list.
+    - [ ] "Active layer" concept for editing.
+    - [ ] Fixed overlay layers (Grid, Scalebar, Nomenclature) with toggles.
+- [ ] **Panner View**:
+    - [ ] Overview map (MiniMap) linked to main viewport.
+    - [ ] Toggle button in control panel.
+- [ ] **Lat/Lon Grid**:
+    - [ ] Graticule overlay (major/minor lines).
+    - [ ] Configuration panel (spacing, colors, labels).
+- [ ] **Scalebar Enhancements**:
+    - [ ] Custom scalebar (Metric/Imperial, adjustable ticks).
+    - [ ] Configuration panel.
 
-## Phase 3: Vector & Annotation Support
-- **Data inputs:** Import GeoJSON/KML where possible; mirror JMARS ROI/shapes semantics.
-- **Editing:** Basic drawing (points, lines, polygons) with style presets matching JMARS defaults.
-- **Persistence:** Temporary local storage for user shapes with hooks for future server sync.
-- **Outcome:** Users can inspect WMS layers alongside lightweight vector overlays.
+## Phase 3: Vector & Annotation Support (Started)
+- [x] **Basic Drawing**: Integrated `Leaflet.Draw` (Polygons, Lines, Markers).
+- [ ] **ROI & Shape Editing**:
+    - [ ] Real-time measurement readouts (distance, perimeter, area).
+    - [ ] Import CSV and GeoJSON (client-side parsing).
+    - [ ] Export to CSV and GeoJSON (configurable coordinate systems).
+    - [ ] Feature table (ID, title, description) with selection syncing.
+- [ ] **Measurements**:
+    - [ ] Independent distance/area tools (Azimuth, Length, Perimeter).
+    - [ ] Copy to clipboard / Export to CSV.
 
-## Phase 4: Analysis & Extensibility
-- **Measurements:** Distance/area tools, elevation sampling once DEM sources are available.
-- **Search:** Layer and place search with saved queries.
-- **Plugins:** Simple plugin interface so new tools can register UI panels and consume map state.
-- **Outcome:** The app supports common JMARS analytical workflows and can grow without rewrites.
+## Phase 4: Analysis & Data Management
+- [ ] **Search & Bookmarks**:
+    - [ ] Geocoder search box (NASA/USGS APIs).
+    - [ ] Bookmarks panel (Save/Load to localStorage, Import/Export JSON).
+- [ ] **Session Management**:
+    - [ ] Save session (Active layers, order, opacity, panner, ROIs, bookmarks).
+    - [ ] Load session (JSON file upload).
+- [ ] **Multi-body Support**:
+    - [ ] Body selector (Mars, Moon, Earth, etc.).
+    - [ ] Configurable endpoints and coordinate systems (0-360 vs -180-180).
 
-## Phase 5: Production Hardening
-- **Performance:** Tile caching strategy, debounced requests, and lazy loading of optional tools.
-- **Testing:** Automated unit tests plus integration smoke tests in CI; performance budgets.
-- **Ops:** Bundle optimization (if/when we adopt a bundler), error logging, and user analytics hooks (opt-in).
-- **Outcome:** Stable, observable application ready for broader use.
+## Phase 5: Advanced Visualization & Production
+- [ ] **Time Awareness**:
+    - [ ] Time slider for temporal WMS layers.
+    - [ ] Animation controls.
+- [ ] **3D Visualization (Stretch)**:
+    - [ ] Investigate CesiumJS or similar (if compatible with no-build).
+- [ ] **Production Hardening**:
+    - [ ] Performance optimization (Tile caching, debouncing).
+    - [ ] Expanded testing (Playwright for UI, Unit tests for utils).
 
-Use this roadmap to prioritize work and checkpoint progress. Update it as new requirements arrive.
+## Documentation & Process
+- [ ] **Release Notes**: Maintain `docs/release-notes.md`.
+- [ ] **User Guide**: Maintain `docs/user-guide.md`.
