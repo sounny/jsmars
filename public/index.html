@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSMARS - JMARS for the Web</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    #map { width: 100%; height: 100%; background: #000; }
+
+    /* Controls Sidebar */
+    #controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(20, 20, 20, 0.95);
+      color: #eee;
+      padding: 0;
+      border-radius: 4px;
+      font-family: sans-serif;
+      width: 300px;
+      max-height: calc(100% - 20px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      border: 1px solid #444;
+    }
+
+    .control-header {
+        padding: 12px;
+        background: #333;
+        border-bottom: 1px solid #444;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    #layer-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+    }
+
+    .layer-item-container {
+        border-bottom: 1px solid #333;
+        padding: 6px 0;
+    }
+    .layer-item-container:last-child {
+        border-bottom: none;
+    }
+
+    .layer-item {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      cursor: pointer;
+      padding-bottom: 4px;
+    }
+
+    .layer-item input {
+        margin-right: 10px;
+        cursor: pointer;
+    }
+
+    .layer-item:hover {
+        color: #fff;
+    }
+
+    .layer-slider {
+        padding-left: 24px;
+        padding-right: 10px;
+    }
+
+    .layer-slider input {
+        width: 100%;
+        cursor: pointer;
+    }
+
+    .error-msg {
+        color: #ff6b6b;
+        padding: 10px;
+        font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div class="control-header">
+        <span>Layer Manager</span>
+    </div>
+    <div id="layer-list">
+      <!-- Layers will be injected here -->
+      <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
+    </div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+  <script type="module">
+    import { JMARSMap } from '../src/jmars-map.js';
+    import { LayerManager } from '../src/ui/layer-manager.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const jmars = new JMARSMap('map');
+      jmars.init();
+      window.jmars = jmars; // Expose for debugging
+
+      const layerListContainer = document.getElementById('layer-list');
+      const layerManager = new LayerManager(jmars, 'layer-list');
+
+      // Handle errors
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error("Unhandled rejection:", event.reason);
+        if (layerListContainer.innerText.includes('Loading')) {
+             layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
