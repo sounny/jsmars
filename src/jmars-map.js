@@ -1,0 +1,122 @@
+import { JMARS_CONFIG } from './jmars-config.js';
+import { JMARSWMS } from './jmars-wms.js';
+import { layers as initialLayers, createLeafletLayer } from './layers/index.js';
+
+export class JMARSMap {
+  constructor(elementId) {
+    this.elementId = elementId;
+    this.map = null;
+    this.activeLayers = {};
+    this.availableLayers = [...initialLayers]; // Start with hardcoded, append WMS later
+  }
+
+  init() {
+    if (!window.L) {
+      console.error('Leaflet (L) is not defined. Make sure to load it in index.html');
+      return;
+    }
+
+    // Initialize Leaflet map
+    // We use EPSG:4326 (Plate Carree) as it's standard for planetary WMS
+    this.map = L.map(this.elementId, {
+      center: [JMARS_CONFIG.initialView.lat, JMARS_CONFIG.initialView.lng],
+      zoom: JMARS_CONFIG.initialView.zoom,
+      crs: L.CRS.EPSG4326,
+      attributionControl: true
+    });
+
+    // Add default layer
+    this.addLayer('mars_viking');
+
+    // Discover WMS layers
+    this.discoverLayers();
+
+    // Add controls
+    this.addControls();
+  }
+
+  async discoverLayers() {
+    const wmsUrl = JMARS_CONFIG.services.mars_wms;
+    console.log(`Fetching capabilities from ${wmsUrl}...`);
+
+    const wmsLayers = await JMARSWMS.fetchCapabilities(wmsUrl);
+    console.log(`Discovered ${wmsLayers.length} layers.`);
+
+    wmsLayers.forEach(l => {
+      // Avoid duplicates if hardcoded layers exist
+      if (this.availableLayers.find(existing => existing.id === l.name)) return;
+
+      this.availableLayers.push({
+        id: l.name,
+        name: l.title,
+        type: 'wms',
+        url: wmsUrl,
+        options: {
+          layers: l.name,
+          format: 'image/png',
+          transparent: true,
+          attribution: 'USGS Astrogeology'
+        }
+      });
+    });
+
+    // Trigger UI update
+    const event = new CustomEvent('jmars-layers-updated', { detail: this.availableLayers });
+    document.dispatchEvent(event);
+  }
+
+  addLayer(layerId) {
+    const layerConfig = this.availableLayers.find(l => l.id === layerId);
+    if (!layerConfig) {
+      console.warn(`Layer not found: ${layerId}`);
+      return;
+    }
+
+    if (this.activeLayers[layerId]) return;
+
+    const leafletLayer = createLeafletLayer(layerConfig);
+    if (leafletLayer) {
+      leafletLayer.addTo(this.map);
+      this.activeLayers[layerId] = leafletLayer;
+      console.log(`Added layer: ${layerId}`);
+    }
+  }
+
+  removeLayer(layerId) {
+    if (this.activeLayers[layerId]) {
+      this.map.removeLayer(this.activeLayers[layerId]);
+      delete this.activeLayers[layerId];
+      console.log(`Removed layer: ${layerId}`);
+    }
+  }
+
+  setLayerOpacity(layerId, opacity) {
+    const layer = this.activeLayers[layerId];
+    if (layer && typeof layer.setOpacity === 'function') {
+      layer.setOpacity(opacity);
+    }
+  }
+
+  addControls() {
+    // Coordinate readout
+    const coordControl = L.control({ position: 'bottomleft' });
+    coordControl.onAdd = (map) => {
+        const div = L.DomUtil.create('div', 'coordinate-control');
+        div.style.background = 'rgba(0,0,0,0.5)';
+        div.style.color = '#fff';
+        div.style.padding = '5px';
+        div.style.fontSize = '12px';
+        div.innerHTML = 'Lat: 0, Lon: 0';
+
+        map.on('mousemove', (e) => {
+            div.innerHTML = `Lat: ${e.latlng.lat.toFixed(4)}, Lon: ${e.latlng.lng.toFixed(4)}`;
+        });
+
+        return div;
+    };
+    coordControl.addTo(this.map);
+
+    // Scale control
+    L.control.scale().addTo(this.map);
+  }
+}
