@@ -24,8 +24,8 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **Map Tools**:
     - [x] **Panner View**: Overview map (MiniMap) linked to main viewport.
     - [x] **Lat/Lon Grid**: Graticule overlay with configurable spacing/colors.
-    - [x] **Scalebar**: Custom metric/imperial scalebar.
-    - [ ] **North Arrow**: Simple directional indicator.
+- [x] **Scalebar**: Custom metric/imperial scalebar.
+    - [x] **North Arrow**: Simple directional indicator.
 
 ## Phase 3: Science Tools (Feature Modules)
 ### 3.1 Crater Counting Tool (Foundation Implemented)

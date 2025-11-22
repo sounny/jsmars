@@ -22,6 +22,7 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 - **Pan:** Click and drag the map.
 - **Zoom:** Use the +/- buttons or your mouse wheel.
 - **Coordinates:** View current Latitude/Longitude in the bottom-left corner.
+- **North Arrow:** Use the sidebar toggle under "Fixed Overlays" to show/hide the compass rose. Click "Reset view" inside the control to recenter on the default JMARS position.
 
 ## Troubleshooting
 - **"Loading map data..." stuck?** The map server might be slow or down. Try refreshing the page.

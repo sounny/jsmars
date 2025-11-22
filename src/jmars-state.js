@@ -6,7 +6,8 @@ export class JMARSState {
       overlays: {
         graticule: false,
         panner: false,
-        scalebar: true
+        scalebar: true,
+        northArrow: true
       },
       view: {
         lat: 0,

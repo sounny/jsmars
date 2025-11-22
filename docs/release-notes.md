@@ -1,5 +1,13 @@
 # JSMARS Release Notes
 
+## v0.2.1 - Navigation Overlay
+**Date:** 2025-11-22
+
+### New Features
+- **North Arrow Control:** Added a compass-inspired control with a one-click "Reset view" action and a sidebar toggle.
+
+---
+
 ## v0.2.0 - Vector Support & UI Polish
 **Date:** 2025-11-21
 
