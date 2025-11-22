@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="22px" height="22px" viewBox="0 0 22 22" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 58 (84663) - https://sketch.com -->
+    <title>Added Layer</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Added-Layer">
+            <circle id="Oval-3" fill="#F9C062" cx="11" cy="11" r="11"></circle>
+            <path d="M14.8333333,10.5 L11.5,10.5 L11.5,7.16666667 C11.5,7.07458333 11.4254167,7 11.3333333,7 L10.6666667,7 C10.5745833,7 10.5,7.07458333 10.5,7.16666667 L10.5,10.5 L7.16666667,10.5 C7.07458333,10.5 7,10.5745833 7,10.6666667 L7,11.3333333 C7,11.4254167 7.07458333,11.5 7.16666667,11.5 L10.5,11.5 L10.5,14.8333333 C10.5,14.9254167 10.5745833,15 10.6666667,15 L11.3333333,15 C11.4254167,15 11.5,14.9254167 11.5,14.8333333 L11.5,11.5 L14.8333333,11.5 C14.9254167,11.5 15,11.4254167 15,11.3333333 L15,10.6666667 C15,10.5745833 14.9254167,10.5 14.8333333,10.5 Z" id="Path" fill="#2E3139" fill-rule="nonzero"></path>
+        </g>
+    </g>
+</svg>

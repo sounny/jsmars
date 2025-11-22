@@ -1,0 +1,4 @@
+color(int r, int g, int b) : Color
+color(int r, int g, int b, int a) : Color
+fromhsb(float h, float s, float i) : Color
+fromrgba(float r, float g, float b, float a) : Color

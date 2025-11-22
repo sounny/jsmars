@@ -1,0 +1,84 @@
+<html>
+<head/>
+<body>
+<div>
+<p>The <b>Formula Editor</b> in JMARS allows you to create <b>custom formulas</b> for performing<br>
+ calculations. To define a formula, you can utilize various features available<br>
+ in the Formula Editor based on your formula's data type:</p>
+
+<ol>
+  <li>Utilize existing columns: You can use already defined columns as a source of data<br>
+   for your new formula.</li>&nbsp;
+   <li>Use decimal, octal, and hexadecimal numbers.
+   	<ul>
+   		<li>decimal numbers, also known as base-10 numbers, have digits 0-9, and can have a decimal point,<br>
+   		 separating the whole number part and the decimal fraction part, for example 2.3, or 15</li>
+   		<li>octal numbers, also known as base-8 numbers, are prefixed with "0" and can have digits 0-7, for example 0456</li>
+   		<li>hexadecimal numbers, also known as base-16 numbers, are prefixed with "0x" and can have digits 0-9 <br>
+   		and letters A-F, for example 0x1B7F</li>
+   	</ul>
+   </li>&nbsp;
+  <li>Use arithmetic operators: Employ arithmetic operators to perform mathematical<br> 
+   operations within your formula. The available operators include:
+    <ul>
+      <li>Addition: <span style="font-weight: bold; color: #800000;">+</span></li>
+      <li>Subtraction: <span style="font-weight: bold; color: #800000;">-</span></li>
+      <li>Multiplication: <span style="font-weight: bold; color: #800000;">*</span></li>
+      <li>Division: <span style="font-weight: bold; color: #800000;">/</span></li>
+      <li>Modulo (remainder): <span style="font-weight: bold; color: #800000;">%</span></li>
+      <li>Bitwise AND: <span style="font-weight: bold; color: #800000;">&amp;</span></li>
+      <li>Bitwise OR: <span style="font-weight: bold; color: #800000;">|</span></li>
+      <li>Bitwise XOR: <span style="font-weight: bold; color: #800000;">^</span></li>
+      <li>Bitwise complement: <span style="font-weight: bold; color: #800000;">~</span></li>
+      <li>Left shift: <span style="font-weight: bold; color: #800000;">&lt;&lt;</span></li>
+      <li>Right signed shift: <span style="font-weight: bold; color: #800000;">&gt;&gt;</span></li>
+      <li>Right unsigned shift: <span style="font-weight: bold; color: #800000;">&gt;&gt;&gt;</span></li>
+    </ul>
+  </li>&nbsp;
+  <li>Comparison operators: Compare values using operators such as:
+    <ul>
+      <li>Equal to: <span style="font-weight: bold; color: #800000;">==</span></li>
+      <li>Not equal to: <span style="font-weight: bold; color: #800000;">!=</span></li>
+      <li>Less than: <span style="font-weight: bold; color: #800000;">&lt;</span></li>
+      <li>Greater than or equal to: <span style="font-weight: bold; color: #800000;">&gt;=</span></li>
+      <li>Greater than: <span style="font-weight: bold; color: #800000;">&gt;</span></li>
+      <li>Less than or equal to: <span style="font-weight: bold; color: #800000;">&lt;=</span></li>
+    </ul>
+  </li>&nbsp;
+  <li>Boolean logical operators: Combine conditions using logical operators:
+    <ul>
+      <li>Logical AND: <span style="font-weight: bold; color: #800000;">&amp;&amp;</span></li>
+      <li>Logical OR: <span style="font-weight: bold; color: #800000;">||</span></li>
+      <li>Logical NOT: <span style="font-weight: bold; color: #800000;">!</span></li>
+    </ul>
+  </li>&nbsp;
+  <li>Conditionals: Utilize conditional statements to assign values based on conditions<br>
+   using the syntax: <strong><span style="font-weight: bold; color: #800000;">(condition ? value_if_true : value_if_false)</span></strong>
+   </li>&nbsp;
+  <li>Support for text and individual characters: Incorporate text and characters directly into your formula.<br>
+  Enclose text in double quotes, for example, "mytext".<br>
+  Enclose a character in single quotes, for example, 'c'.
+   </li>&nbsp;
+  <li>Mathematical functions: Access a range of mathematical functions to perform<br>
+   complex calculations. Some examples include:
+    <ul>
+      <li>Exponentiation: <span style="font-weight: bold; color: #800000;">pow(x,y)</span></li>
+      <li>Square root: <span style="font-weight: bold; color: #800000;">sqrt(x)</span></li>
+      <li>Logarithm: <span style="font-weight: bold; color: #800000;">log(x)</span></li>
+    </ul>
+  </li>&nbsp;
+  <li>Trigonometric functions: Perform trigonometric calculations using functions like:
+    <ul>
+      <li>Cosine: <span style="font-weight: bold; color: #800000;">cos(x)</span></li>
+      <li>Sine: <span style="font-weight: bold; color: #800000;">sin(x)</span></li>
+      <li>Tangent: <span style="font-weight: bold; color: #800000;">tan(x)</span></li>
+    </ul>
+  </li>
+</ol>&nbsp;
+
+<p>By leveraging these features, you can create customized functions in the<br>
+ Formula Editor to perform a wide array of calculations tailored<br>
+ to your specific needs in JMARS.</p>&nbsp;
+</div>
+</body>
+</html>

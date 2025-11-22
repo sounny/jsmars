@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="7px" height="12px" viewBox="0 0 7 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>mouse-pointer</title>
+    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="UI/Standard-UI-(Chart-Tool)" transform="translate(-388.000000, -903.000000)" fill="#FFFFFF" fill-rule="nonzero">
+            <g id="mouse-pointer" transform="translate(388.000000, 903.000000)">
+                <path d="M6.61038297,7.19962153 L4.28979596,7.19962153 L5.51109883,10.1744667 C5.59617069,10.3807041 5.49895821,10.6119446 5.30451137,10.6994446 L4.22902723,11.1681599 C4.0285429,11.2556599 3.80371169,11.1556693 3.71863984,10.9556663 L2.55810571,8.13081788 L0.662331109,10.0807105 C0.409696788,10.3405198 0,10.1402324 0,9.79948569 L0,0.400284728 C0,0.0415349299 0.435771783,-0.133355597 0.662309234,0.119059886 L6.88382041,6.51841254 C7.13477036,6.76295303 6.94959853,7.19962153 6.61038297,7.19962153 L6.61038297,7.19962153 Z" id="Path"></path>
+            </g>
+        </g>
+    </g>
+</svg>

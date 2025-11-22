@@ -1,0 +1,368 @@
+<html>
+<head/>
+<body>
+<div>
+  <h2>Welcome to the Formula Editor</h2>
+   <div>
+      <h4>Table of Content</h4>
+      <ol>
+        <li>Formula Editor</li>
+        <li>How To Search for Columns</li>
+        <li>How To Navigate and Use Search Results</li>
+         <li>How To Use Autocomplete</li>
+        <li>Tips for Naming Columns and the Colons-rule</li>   
+        <li>Keyboard Shortcuts</li>
+      </ol>
+    </div> 
+ <p>To make your editing experience easier, here are some quick tips:</p>
+  <ol>
+   <li>
+        <strong><span style="color: rgb(105, 0, 0);">Formula Editor:</span></strong> The Formula Editor allows you to input and modify your formulas.<br>
+        The Editor is equipped with various helpful visual features making it more convenient<br> and intuitive for your formula input and editing tasks. These features include:<br>
+        <ul>
+          <li><b>Syntax highlighting</b>: Key elements of your formula are visually emphasized<br> 
+          to improve clarity</li>&nbsp;
+          <li><b>Autocomplete</b>: Columns and functions suggestions for completing your formula<br>
+           are provided automatically, saving you time and effort</li>&nbsp;
+          <li><b>Line numbering</b>: Each line in the formula is numbered for easy<br> 
+          reference and navigation</li>&nbsp;
+          <li><b>Bracket matching</b>: Opening and closing brackets are highlighted<br>
+           to assist in maintaining proper syntax</li>&nbsp;
+          <li><b>Matched bracket popup</b>: When the caret is on a closing bracket, and the paired<br>
+           opening bracket is off-screen, a tool tip will show the line containing <br>
+           the matched bracket to provide helpful context about the current code block</li>&nbsp;
+          <li><b>Context menu</b>: Right-clicking in the Editor reveals a menu with various <br>
+           editing functions to streamline your workflow</li>&nbsp;
+          <li><b>Dedicated keyboard shortcuts</b>: Special key combinations are available<br>
+           to perform common editing actions efficiently</li>&nbsp;
+        </ul>        
+  </li>
+   
+    <li>
+      <strong><span style="color: rgb(105, 0, 0);">How To Search for Columns:</span></strong> Use type-ahead Search, labeled with 'INSERT COLUMNS',
+      <br>to quickly find columns in your data source. To search, type a keyword,
+      <br>or just few letters of a keyword, case-insensitive, and the search results will be<br> displayed below Search box.
+      <br>For example, if your data source is 'USGS Mars Dune Database',<br> 
+      then typing 'Dune', or 'duN', or 'du', will find "Dune_Lon', 'Dune_Lat', Dune_ID'.
+      <br>While typing 'lat', or 'Lat', will find 'Dune_Lat' and 'Cr_Lat'.
+      <br> Alternatively, click the <b>'magnifier'</b> icon next to Search to see list
+      <br> of all the columns in the currently active data source.  
+      <br>You can continue typing in the Search box to further filter the results. 
+      <br>&nbsp;
+    </li>
+    <li>
+      <strong><span style="color: rgb(105, 0, 0);">How To Navigate and Use Search Results:</span></strong>
+      Navigate search results with keyboard or a mouse.
+     <br>Use &#8593;,&nbsp;&#8595;&nbsp;keys to navigate the results.
+      Click ENTER key to insert selected column into the formula.
+      <br>If navigating with a mouse, highlight desired column and click.
+      <br>Additionally, to enhance your formula-building process, take advantage of the intuitive drag&nbsp;&amp;&nbsp;drop 
+      <br>functionality that is available with this Search.
+      <br>Simply drag the desired column from the search results list, and drop it into your formula.     
+      <br>&nbsp;
+    </li>  
+  <li>
+      <span style="color: rgb(105, 0, 0);"><strong>How To Use Autocomplete:</span></strong> To assist you in building your formula, 
+       we provide an autocomplete feature.
+      <br>When typing in Formula text area, if you press CTRL-SPACE after typing <b>at least one character</b>
+      <br>a popup will appear with a list of suggestions. You can continue typing
+      <br> to further filter suggestions, or use &#8593;,&nbsp;&#8595;&nbsp; arrow keys to navigate the list.
+      <br>The following keyboard keys are applicable when using autocomplete
+      <ul>
+        <li><strong>ESC:</strong> Cancels autocompletion and hides the popup.</li>
+        <li><strong>SPACE / ENTER:</strong> Inserts the currently selected autocomplete suggestion
+        <br>
+         into the formula.</li>
+        <li><strong>CURSOR UP,&nbsp;&#8593;&nbsp;</strong> Selects the previous autocomplete suggestion.</li>
+        <li><strong>CURSOR DOWN,&nbsp;&#8595;&nbsp;</strong> Selects the next autocomplete suggestion.
+        <br>&nbsp;
+     </li>
+   </ul>
+    </li>
+    
+      <li>
+      <span style="color: rgb(105, 0, 0);"><strong>Tips for Naming Columns and the Colons-rule:</span></strong> Your column names can include 
+      <br>letters, digits, and symbols. Feel free to use any characters that are meaningful to your formula.
+      <br><br><b>Important:</b> for an accurate formula formatting, when <b>manually</b> entering a column
+      <br>in your formula, make sure to surround the column name with <b>colons</b>.
+      <br>For example, type  <b>:</b>My Value1<b>:</b> to refer to the column named 'My Value1', 
+      <br>or <b>:</b>Dune_Lat<b>:</b> to refer to 'Dune_Lat' column. <br>
+      <br>Meanwhile, when you drag&nbsp;&amp;&nbsp;drop columns, or use autocomplete,
+      <br>colons will be added automatically around the column names.
+      <br>&nbsp;
+    </li>
+    
+   <li>
+    <span style="color: rgb(105, 0, 0);"><strong>Keyboard Shortcuts for Windows, Linux and MAC:</span></strong><br>
+    <p>Below is a list of the current keyboard shortcuts on <strong>Windows or Linux:</strong></p>
+     <table style="border-collapse: collapse;">
+  <tr>
+    <th style="padding: 8px; text-align: left;">Shortcut</th>
+    <th style="padding: 8px; text-align: left;">Action&nbsp;&nbsp;&nbsp;</th>
+    <th style="padding: 8px; text-align: left;">Behavior</th>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);"> 
+   <td style="padding: 2px; text-align: left;">CTRL-SPACE</td>
+    <td style="padding: 2px; text-align: left;">Autocomplete</td>
+    <td style="padding: 2px; text-align: left;">The autocomplete is triggered once the user types <br>
+        at least one character or a number</td>
+  </tr>     
+   <tr style="background-color: rgb(186, 185, 181);"> 
+   <td style="padding: 2px; text-align: left;">CTRL&nbsp;+</td>
+    <td style="padding: 2px; text-align: left;">Zoom In</td>
+    <td style="padding: 2px; text-align: left;">Enlarges text inside Formula Editor</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">CTRL&nbsp;-</td>
+    <td style="padding: 2px; text-align: left;">Zoom Out</td>
+    <td style="padding: 2px; text-align: left;">Decreases text inside Formula Editor</td>
+  </tr>    
+    <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Home</td>
+    <td style="padding: 2px; text-align: left;">Start of Line</td>
+    <td style="padding: 2px; text-align: left;">Go to the start of the current line</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Shift + Home</td>
+    <td style="padding: 2px; text-align: left;">Select to Start of Line</td>
+    <td style="padding: 2px; text-align: left;">Go to the start of the current line<br>
+     and select text</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Ctrl + Home</td>
+    <td style="padding: 2px; text-align: left;">Top of Editor</td>
+    <td style="padding: 2px; text-align: left;">Go to the top of the editor</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Ctrl + Shift + Home</td>
+    <td style="padding: 2px; text-align: left;">Select to Top of Editor</td>
+    <td style="padding: 2px; text-align: left;">Go to the top of the editor<br>
+     and select text</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">End</td>
+    <td style="padding: 2px; text-align: left;">End of Line</td>
+    <td style="padding: 2px; text-align: left;">Go to the end of the current line</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Ctrl + End</td>
+    <td style="padding: 2px; text-align: left;">End of Editor</td>
+    <td style="padding: 2px; text-align: left;">Go to the end of the editor</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Ctrl + Shift + End</td>
+    <td style="padding: 2px; text-align: left;">Select to End of Editor</td>
+    <td style="padding: 2px; text-align: left;">Go to the end of the editor<br>
+     and select text</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Alt + Down</td>
+    <td style="padding: 2px; text-align: left;">Move Lines Down</td>
+    <td style="padding: 2px; text-align: left;">Move the selected lines down</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Alt + Up</td>
+    <td style="padding: 2px; text-align: left;">Move Lines Up</td>
+    <td style="padding: 2px; text-align: left;">Move the selected lines up</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Ctrl + X</td>
+    <td style="padding: 2px; text-align: left;">Cut</td>
+    <td style="padding: 2px; text-align: left;">Cuts selected text</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Ctrl + C</td>
+    <td style="padding: 2px; text-align: left;">Copy</td>
+    <td style="padding: 2px; text-align: left;">Copies selected text</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Ctrl + V</td>
+    <td style="padding: 2px; text-align: left;">Paste</td>
+    <td style="padding: 2px; text-align: left;">Pastes selected text</td>
+  </tr>
+   <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Ctrl + D</td>
+    <td style="padding: 2px; text-align: left;">Delete Line</td>
+    <td style="padding: 2px; text-align: left;">Deletes the current or selected lines</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Ctrl + J</td>
+    <td style="padding: 2px; text-align: left;">Join Line</td>
+    <td style="padding: 2px; text-align: left;">Concatenates the current line <br>
+    with the next line</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Ctrl + Enter</td>
+    <td style="padding: 2px; text-align: left;">Complete Word</td>
+    <td style="padding: 2px; text-align: left;">Completes the current word based on<br>
+     prior words in the editor with that prefix.<br>
+      Repeatable for earlier words</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Ctrl + Z</td>
+    <td style="padding: 2px; text-align: left;">Undo</td>
+    <td style="padding: 2px; text-align: left;">Undoes the last action performed</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Ctrl + Y</td>
+    <td style="padding: 2px; text-align: left;">Redo</td>
+    <td style="padding: 2px; text-align: left;">Redoes the last action performed</td>
+  </tr>
+   <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Ctrl + K</td>
+    <td style="padding: 2px; text-align: left;">Next Occurrence</td>
+    <td style="padding: 2px; text-align: left;">Finds the word at the caret position <br>
+    and selects the next occurrence of it</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Ctrl + Shift + K</td>
+    <td style="padding: 2px; text-align: left;">Previous Occurrence</td>
+    <td style="padding: 2px; text-align: left;">Finds the word at the caret position <br>
+    and selects the prior occurrence of it</td>
+  </tr>
+</table> <br>
+
+ <p>Below is a list of the current keyboard shortcuts on <strong>MAC:</strong></p>
+  <table style="border-collapse: collapse;">
+  <tr>
+    <th style="padding: 8px; text-align: left;">Shortcut</th>
+    <th style="padding: 8px; text-align: left;">Action&nbsp;&nbsp;&nbsp;</th>
+    <th style="padding: 8px; text-align: left;">Behavior</th>
+ </tr>
+   <tr style="background-color: rgb(213, 220, 227);"> 
+   <td style="padding: 2px; text-align: left;">CTRL-SPACE</td>
+    <td style="padding: 2px; text-align: left;">Autocomplete</td>
+    <td style="padding: 2px; text-align: left;">The autocomplete is triggered once the user types <br>
+        at least one character or a number</td>
+  </tr>    
+  </tr>
+   <tr style="background-color: rgb(186, 185, 181);"> 
+   <td style="padding: 2px; text-align: left;">CTRL&nbsp;+</td>
+    <td style="padding: 2px; text-align: left;">Zoom In</td>
+    <td style="padding: 2px; text-align: left;">Enlarges text inside Formula Editor</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">CTRL&nbsp;-</td>
+    <td style="padding: 2px; text-align: left;">Zoom Out</td>
+    <td style="padding: 2px; text-align: left;">Decreases text inside Formula Editor</td>
+  </tr>    
+  
+   <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Cmd + Left</td>
+    <td style="padding: 2px; text-align: left;">Start of Line</td>
+    <td style="padding: 2px; text-align: left;">Go to the start of the current line</td>
+  </tr>
+   <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Cmd + Shift + Left</td>
+    <td style="padding: 2px; text-align: left;">Select to Start of Line</td>
+    <td style="padding: 2px; text-align: left;">Go to the start of the current line<br>
+     and select text</td>
+  </tr>      
+   <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Cmd + Right</td>
+    <td style="padding: 2px; text-align: left;">End of Line</td>
+    <td style="padding: 2px; text-align: left;">Go to the end of the current line</td>
+  </tr>
+  
+   <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Cmd + Shift + Right</td>
+    <td style="padding: 2px; text-align: left;">Select to End of Line</td>
+    <td style="padding: 2px; text-align: left;">Go to the end of the current line<br>
+     and select text</td>
+  </tr>    
+    <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Home, Cmd + Home</td>
+    <td style="padding: 2px; text-align: left;">Top of Editor</td>
+    <td style="padding: 2px; text-align: left;">Go to the top of the editor</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Shift + Home,<br>
+             									Cmd + Shift + Home</td>
+    <td style="padding: 2px; text-align: left;">Select to Top of Editor</td>
+    <td style="padding: 2px; text-align: left;">Go to the top of the editor<br>
+     and select text</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">End, Cmd + End</td>
+    <td style="padding: 2px; text-align: left;">End of Editor</td>
+    <td style="padding: 2px; text-align: left;">Go to the end of the editor</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Cmd + Shift + End</td>
+    <td style="padding: 2px; text-align: left;">Select to End of Editor</td>
+    <td style="padding: 2px; text-align: left;">Go to the end of the editor <br>
+    and select text</td>
+  </tr>  
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Alt + Down</td>
+    <td style="padding: 2px; text-align: left;">Move Lines Down</td>
+    <td style="padding: 2px; text-align: left;">Move the selected lines down</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Alt + Up</td>
+    <td style="padding: 2px; text-align: left;">Move Lines Up</td>
+    <td style="padding: 2px; text-align: left;">Move the selected lines up</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Cmd + X</td>
+    <td style="padding: 2px; text-align: left;">Cut</td>
+    <td style="padding: 2px; text-align: left;">Cuts selected text</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Cmd + C</td>
+    <td style="padding: 2px; text-align: left;">Copy</td>
+    <td style="padding: 2px; text-align: left;">Copies selected text</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Cmd + V</td>
+    <td style="padding: 2px; text-align: left;">Paste</td>
+    <td style="padding: 2px; text-align: left;">Pastes selected text</td>
+  </tr>
+   <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Cmd + D</td>
+    <td style="padding: 2px; text-align: left;">Delete Line</td>
+    <td style="padding: 2px; text-align: left;">Deletes the current or selected lines</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Cmd + J</td>
+    <td style="padding: 2px; text-align: left;">Join Line</td>
+    <td style="padding: 2px; text-align: left;">Concatenates the current line <br>
+    with the next line</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Cmd + Enter</td>
+    <td style="padding: 2px; text-align: left;">Complete Word</td>
+    <td style="padding: 2px; text-align: left;">Completes the current word based on<br>
+     prior words in the editor with that prefix.<br>
+      Repeatable for earlier words</td>
+  </tr>
+  <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Cmd + Z</td>
+    <td style="padding: 2px; text-align: left;">Undo</td>
+    <td style="padding: 2px; text-align: left;">Undoes the last action performed</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Cmd + Y</td>
+    <td style="padding: 2px; text-align: left;">Redo</td>
+    <td style="padding: 2px; text-align: left;">Redoes the last action performed</td>
+  </tr>
+   <tr style="background-color: rgb(186, 185, 181);">
+    <td style="padding: 2px; text-align: left;">Cmd + K</td>
+    <td style="padding: 2px; text-align: left;">Next Occurrence</td>
+    <td style="padding: 2px; text-align: left;">Finds the word at the caret position <br>
+    and selects the next occurrence of it</td>
+  </tr>
+  <tr style="background-color: rgb(213, 220, 227);">
+    <td style="padding: 2px; text-align: left;">Cmd + Shift + K</td>
+    <td style="padding: 2px; text-align: left;">Previous Occurrence</td>
+    <td style="padding: 2px; text-align: left;">Finds the word at the caret position <br>
+    and selects the prior occurrence of it</td>
+  </tr>
+</table>    
+ </li>      
+  
+  </ol>
+  <p>We hope these tips enhance your formula editing experience.</p>
+</div>
+</body>
+</html>

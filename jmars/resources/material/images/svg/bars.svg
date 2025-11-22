@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="448px" height="376px" viewBox="0 0 448 376" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>bars</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="bars" fill="#878787" fill-rule="nonzero">
+            <path d="M436,56 L12,56 C5.373,56 0,50.627 0,44 L0,12 C0,5.373 5.373,0 12,0 L436,0 C442.627,0 448,5.373 448,12 L448,44 C448,50.627 442.627,56 436,56 Z M436,216 L12,216 C5.373,216 0,210.627 0,204 L0,172 C0,165.373 5.373,160 12,160 L436,160 C442.627,160 448,165.373 448,172 L448,204 C448,210.627 442.627,216 436,216 Z M436,376 L12,376 C5.373,376 0,370.627 0,364 L0,332 C0,325.373 5.373,320 12,320 L436,320 C442.627,320 448,325.373 448,332 L448,364 C448,370.627 442.627,376 436,376 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>

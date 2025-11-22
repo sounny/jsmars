@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="8px" height="8px" viewBox="0 0 8 8" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>Status Circle</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Splash-Screens" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Splash-loading-screen-Copy-2" transform="translate(-534.000000, -653.000000)" fill="#D8D8D8">
+            <circle id="Status-Circle" cx="538" cy="657" r="4"></circle>
+        </g>
+    </g>
+</svg>

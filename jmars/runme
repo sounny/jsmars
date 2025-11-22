@@ -1,0 +1,124 @@
+#!/usr/bin/perl -w
+
+###############################################################################
+# Starts JMARS with verbatim command-line arguments, but shuffles any
+# "-D" args on the command-line so that those args reach the JVM
+# instead of JMARS. Also prefixes properties with 'jmars.', so that
+# the user doesn't have to.
+#
+# Now also reads most of the JVM runtime parameters from the makefile, giving
+# us a single source for configuration control.
+###############################################################################
+
+# the classpath separator for the current os
+my $S=':';
+
+
+##
+## Process the Makefile to extract some makefile variables
+##
+
+# Hash of makefile variables {edition}{buildvar},
+# i.e. make_vars{jmars}{DEFINES} which is jmars.jar:DEFINES in the
+# makefile.
+%make_vars = ();
+
+# Read the makefile
+open MAKEFILE, "Makefile"
+	or print STDERR "WEIRD: Can't find the Makefile!\n";
+$_ = join '', <MAKEFILE>;
+close MAKEFILE;
+s/\\\s*\n//g; # Join backslash-continued lines into single lines
+s/[ \t]+/ /g; # Replace all tab/space sequences with single spaces
+
+# Populate the make_vars hash
+foreach (split /\n/)
+{
+	$make_vars{$1}{$2} = $3
+	if /^ (\S*jmars)\.jar: \s* (\w+) \s* = \s* (.*) $/x;
+}
+
+
+
+##
+## Read the command-line args, which might specify an edition
+## and/or overrides of the jmars.config file settings.
+##
+
+# The args we'll feed to the JVM
+@args_jvm = ();
+# The args we'll feed to jmars itself
+@args_jmars = ();
+
+# Edition is a reference to the make_vars hash of a particular jmars edition.
+$edition = '';
+$no_ssl = 1; # Do we hack out the SSL libraries for developers?
+
+# Default main is... Main
+$main = 'edu.asu.jmars.Main';
+
+# Run through the command-line
+foreach (@ARGV)
+{
+	# Any -D arguments are overrides for jmars.config parameters
+	if(/^-D(.+)$/)
+	{
+		push @args_jvm, "-Djmars.$1";
+	}
+	# Any -___jmars args specify an edition.
+	elsif(/^-(\S+jmars)$/)
+	{
+		$no_ssl = 0;
+		$edition = $make_vars{$1}
+		or die "\nNot found in the Makefile: $1.jar\n\nTry:\t-" . join("\n\t-", keys %make_vars) . "\n\n";
+	}
+	# capture alternate 'main'
+	elsif(/^-main=(.+)$/)
+	{
+		$main = $1;
+	}
+	# Anything else is fed into jmars' command line
+	else
+	{
+		push @args_jmars, $_;
+	}
+}
+
+##
+## Chew through the command-line args we read, make the right runtime args
+##
+
+# Default edition is the jmars.jar one
+$edition ||= $make_vars{jmars}
+	or die "WEIRD: The Makefile doesn't contain parameters for jmars.jar!";
+
+# Set the libraries according to the edition
+$libs = join($S, ".$S.class-tmp", map("lib/$_",split(/\s+/,$edition->{LIBS})));
+# Hack for developers: take out the SSL for the default runme
+$libs =~ s/-with-ssl/-no-ssl/
+	if $no_ssl;
+
+# Piece together the rest of the jvm args
+push @args_jvm,
+	"-Djmars-config=".join(' ',map("-D$_",split(/\s+/,$edition->{DEFINES})))
+	if $edition->{DEFINES};
+
+
+
+##
+## FINALLY: Run the damn program!
+##
+
+# Construct the command-line
+@args_jvm = map(quotemeta,@args_jvm);
+@args_jmars = map(quotemeta,@args_jmars);
+print STDERR $cmd = "LD_LIBRARY_PATH=\$LD_LIBRARY_PATH$S. ; export LD_LIBRARY_PATH ;
+java -Xmx512M -classpath \"$libs\" @args_jvm $main @args_jmars
+
+";
+
+`chmod +x resources/jmars.config`; # magic happens if the config is executable
+
+exec($cmd); # Never returns
+
+die "UNABLE TO START JAVA!";

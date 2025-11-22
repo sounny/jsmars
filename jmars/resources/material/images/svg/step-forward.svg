@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="14px" height="20px" viewBox="0 0 14 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 62 (91390) - https://sketch.com -->
+    <title>step-forward</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="step-forward" transform="translate(6.875000, 10.000000) scale(-1, 1) translate(-6.875000, -10.000000) " fill="#000000" fill-rule="nonzero">
+            <path d="M0,19.4397512 L0,1.1032175 C0,0.817790327 0.23203125,0.584259001 0.515625,0.584259001 L2.578125,0.584259001 C2.86171875,0.584259001 3.09375,0.817790327 3.09375,1.1032175 L3.09375,8.73190749 L11.4941406,0.904283411 C12.3792969,0.164767545 13.75,0.783193094 13.75,1.96814834 L13.75,18.5748204 C13.75,19.7597757 12.3792969,20.3782012 11.4941406,19.6386853 L3.09375,11.8586325 L3.09375,19.4397512 C3.09375,19.7251784 2.86171875,19.9587097 2.578125,19.9587097 L0.515625,19.9587097 C0.23203125,19.9587097 0,19.7251784 0,19.4397512 Z" id="Path"></path>
+        </g>
+    </g>
+</svg>

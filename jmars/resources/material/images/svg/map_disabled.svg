@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="22px" height="22px" viewBox="0 0 22 22" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>Map Disabled</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Map-Disabled" transform="translate(0.000000, -0.000000)">
+            <polygon id="M-Copy-54" fill="#5E5E5E" points="8.19544846 6 11.0066934 13.6648352 13.811245 6 16 6 16 16 14.313253 16 14.313253 12.7032967 14.480589 8.29395604 11.6024096 16 10.3908969 16 7.51941098 8.30082418 7.68674699 12.7032967 7.68674699 16 6 16 6 6"></polygon>
+            <line x1="4" y1="4" x2="18" y2="18" id="Line-Copy" stroke="#5E5E5E" stroke-width="2" stroke-linecap="square"></line>
+            <circle id="3D-Toggle-Copy-2" stroke="#5E5E5E" fill-rule="nonzero" cx="11" cy="11" r="10.5"></circle>
+        </g>
+    </g>
+</svg>

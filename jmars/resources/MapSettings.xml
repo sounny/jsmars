@@ -1,0 +1,132 @@
+<dialog size="800,600" ctor="var:owner" title="Map Layer Settings" locationrelativeto="null" defaultcloseoperation="HIDE_ON_CLOSE" modal="true">
+	<panel>
+		<borderlayout>
+			<constraint location="Center">
+				<splitpane orientation="HORIZONTAL_SPLIT"
+					oneTouchExpandable="true" continuousLayout="true"
+					ResizeWeight="0.5">
+					<panel setas="leftcomponent">
+						<borderlayout />
+						<splitpane id="MapBrowserTop" orientation="VERTICAL_SPLIT" oneTouchExpandable="true" continuousLayout="true" ResizeWeight="1">
+							<panel setas="leftcomponent">
+								<formlayout rowspec="4dlu, pref, 4dlu, fill:default:grow, 4dlu, pref, 4dlu" columnspec="4dlu, fill:default:grow, 4dlu">
+									<cellconstraints xy="2,2">
+										<label text="Available Maps"/>
+									</cellconstraints>
+									<cellconstraints xy="2,4">
+										<scrollpane>
+											<availtree id="availableMapsTree" rootvisible="false"/>
+										</scrollpane>
+									</cellconstraints>
+									<cellconstraints xy="2,6">
+										<panel>
+											<formlayout columnspec="pref, 4dlu, pref, 4dlu, pref, 4dlu, pref, 4dlu, pref" rowspec="pref">
+												<cellconstraints xy="1,1">
+													<button id="uploadMapPB" label="Upload Map..."/>
+												</cellconstraints>
+												<cellconstraints xy="3,1">
+													<button id="deleteMapPB" label="Delete Map..."/>
+												</cellconstraints>
+												<cellconstraints xy="5,1">
+													<button id="shareMapPB" label="Share Map..."/>
+												</cellconstraints>
+												<cellconstraints xy="7,1">
+													<button id="adminPB" label="Groups..."/>
+												</cellconstraints>
+											</formlayout>
+										</panel>
+									</cellconstraints>
+								</formlayout>
+							</panel>
+							<panel setas="rightcomponent">
+								<formlayout rowspec="4dlu, top:pref, 4dlu" columnspec="4dlu, fill:pref:grow, 4dlu, pref, 4dlu">
+									<cellconstraints xy="2,2">
+										<panel>
+											<formlayout rowspec="fill:pref:grow pref" columnspec="fill:pref:grow">
+												<cellconstraints xy="1,1">
+												<panel>
+													<formlayout rowspec="pref" columnspec="right:pref, 4dlu, left:10dlu:grow">
+														<cellconstraints xy="1,1">
+															<label text="Selected Map"/>
+														</cellconstraints>
+													</formlayout>
+												</panel>
+												</cellconstraints>
+												<cellconstraints xy="1,2">
+													<scrollpane>
+													<textarea id="mapAbstract" text="" rows="6" columns="20" linewrap="true" wrapstyleword="true" editable="false"/>
+													</scrollpane>
+												</cellconstraints>
+											</formlayout>
+										</panel>
+									</cellconstraints>
+									<cellconstraints xy="4,2">
+										<label id="mapPreview" alignmentx="0.5" alignmenty="0.5" preferredsize="100,100">
+											<etchedborder/>
+										</label>
+									</cellconstraints>
+								</formlayout>
+							</panel>
+						</splitpane>
+					</panel>
+					<panel setas="rightcomponent">
+						<borderlayout />
+						<splitpane id="MapProcessorTop"
+							orientation="VERTICAL_SPLIT" oneTouchExpandable="true"
+							continuousLayout="true" ResizeWeight="0.5">
+								<panel setas="leftcomponent">
+									<formlayout
+										rowspec="4dlu, pref, 4dlu, fill:40dlu:grow, 4dlu"
+										columnspec="4dlu, fill:default:grow, 4dlu">
+										<cellconstraints xy="2,2">
+											<label text="Visible Map" />
+										</cellconstraints>
+										<cellconstraints xy="2,4">
+											<scrollpane>
+												<proctree
+													id="mapProcessingTree" rootvisible="false" />
+											</scrollpane>
+										</cellconstraints>
+									</formlayout>
+								</panel>
+							<panel setas="rightcomponent">
+								<formlayout
+									rowspec="4dlu, pref, 4dlu, fill:20dlu:grow, 4dlu, pref, 4dlu"
+									columnspec="4dlu, fill:default:grow, 4dlu">
+									<cellconstraints xy="2,2">
+										<label text="Plots" />
+									</cellconstraints>
+									<cellconstraints xy="2,4">
+										<scrollpane>
+											<list id="plotSourcesLB"></list>
+										</scrollpane>
+									</cellconstraints>
+									<cellconstraints xy="2,6">
+										<panel>
+											<formlayout rowspec="pref"
+												columnspec="pref">
+												<cellconstraints
+													xy="1,1">
+													<button
+														id="removePlotSourcesPB" text="Remove" enabled="false" />
+												</cellconstraints>
+											</formlayout>
+										</panel>
+									</cellconstraints>
+								</formlayout>
+							</panel>
+						</splitpane>
+					</panel>
+				</splitpane>
+			</constraint>
+			<constraint location="South">
+				<panel>
+					<flowlayout />
+					<button id="okPB" text="OK" />
+					<button id="cancelPB" text="Cancel" />
+				</panel>
+			</constraint>
+		</borderlayout>
+	</panel>
+</dialog>
+

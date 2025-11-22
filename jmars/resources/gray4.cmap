@@ -1,0 +1,6 @@
+#cmap256  Colormap file, standard grayscale with 4 tie-points
+
+0	0x0
+85	0x555555
+170	0xAAAAAA
+255	0xFFFFFF

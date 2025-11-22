@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="96px" height="400px" viewBox="0 0 96 400" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>ellipsis-v</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="ellipsis-v" fill="#878787" fill-rule="nonzero">
+            <path d="M48,152 C74.5,152 96,173.5 96,200 C96,226.5 74.5,248 48,248 C21.5,248 0,226.5 0,200 C0,173.5 21.5,152 48,152 Z M0,48 C0,74.5 21.5,96 48,96 C74.5,96 96,74.5 96,48 C96,21.5 74.5,0 48,0 C21.5,0 0,21.5 0,48 Z M0,352 C0,378.5 21.5,400 48,400 C74.5,400 96,378.5 96,352 C96,325.5 74.5,304 48,304 C21.5,304 0,325.5 0,352 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>

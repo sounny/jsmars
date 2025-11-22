@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="12px" height="16px" viewBox="0 0 12 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 62 (91390) - https://sketch.com -->
+    <title>North Icon</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="North-Icon" transform="translate(-4.000000, -1.000000)">
+            <g id="Group" transform="translate(-0.000000, -0.000000)">
+                <g id="location-arrow" transform="translate(10.862984, 11.500000) rotate(-45.000000) translate(-10.862984, -11.500000) translate(3.196317, 3.833333)" fill-rule="nonzero" stroke="#FFFFFF" stroke-width="0.5">
+                    <path d="M12.1881229,0.0965135259 L0.788011004,5.3581458 C-0.527259972,5.9720486 -0.0888363136,7.90122238 1.31417423,7.90122238 L6.13738285,7.90122238 L6.13738285,12.724431 C6.13738285,14.1274415 8.06655663,14.5661394 8.68045942,13.2505942 L13.9420917,1.85048235 C14.3805154,0.797881706 13.2404493,-0.342184319 12.1881229,0.0965135259 Z" id="Path"></path>
+                </g>
+                <polygon id="Path-2" fill="#FFFFFF" points="9.95295736 12.747547 9.95295736 2.10912425 10.69326 2.27363595 15.464099 14.9684548 15.464099 15.955525 14.6415406 16.5587345 13.7915635 16.5587345"></polygon>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,252 @@
+<edu.asu.jmars.layer.shape2.ShapeLayerStyles>
+  <antialias>
+    <name>Antialias</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleGlobalSource">
+      <value class="boolean">true</value>
+    </source>
+  </antialias>
+  <geometry>
+    <name>Geometry</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>path</name>
+        <type>edu.asu.jmars.layer.util.features.FPath</type>
+        <editable>true</editable>
+      </f>
+    </source>
+  </geometry>
+  <showVertices>
+    <name>Show Vertices</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>ShowPoints</name>
+        <type>java.lang.Boolean</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="boolean">false</defaultValue>
+    </source>
+  </showVertices>
+  <vertexSize>
+    <name>Vertex Size</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>VertexSize</name>
+        <type>java.lang.Integer</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="int">3</defaultValue>
+    </source>
+  </vertexSize>
+  <drawOutlines>
+    <name>Show Outlines</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Show Outlines</name>
+        <type>java.lang.Boolean</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="boolean">true</defaultValue>
+    </source>
+  </drawOutlines>
+  <pointSize>
+    <name>Point Size</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Point size</name>
+        <type>java.lang.Integer</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="int">3</defaultValue>
+    </source>
+  </pointSize>
+  <lineWidth>
+    <name>Line Width</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Line Width</name>
+        <type>java.lang.Double</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="int">2</defaultValue>
+    </source>
+  </lineWidth>
+  <lineColor>
+    <name>Line Color</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Line Color</name>
+        <type>java.awt.Color</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="awt-color">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+        <alpha>255</alpha>
+      </defaultValue>
+    </source>
+  </lineColor>
+  <lineDash>
+    <name>Line Style</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Line Type</name>
+        <type>edu.asu.jmars.util.LineType</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="edu.asu.jmars.util.LineType">
+        <patternId>0</patternId>
+      </defaultValue>
+    </source>
+  </lineDash>
+  <fillStyle>
+    <name>Fill Style</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Fill Style</name>
+  	<type>edu.asu.jmars.util.FillStyle</type>
+  	<editable>true</editable>
+      </f>
+      <defaultValue class="edu.asu.jmars.util.FillStyle">
+  	 <paintId>None</paintId>
+      </defaultValue>
+    </source>
+  </fillStyle>
+  <showLineDir>
+    <name>Show Line Direction</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Line Arrow</name>
+        <type>java.lang.Boolean</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="boolean">false</defaultValue>
+    </source>
+  </showLineDir>
+  <fillPolygons>
+    <name>Fill Polygons</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Fill Poly</name>
+        <type>java.lang.Boolean</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="boolean">true</defaultValue>
+    </source>
+  </fillPolygons>
+  <fillColor>
+    <name>Fill Color</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Fill Color</name>
+        <type>java.awt.Color</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="awt-color">
+        <red>255</red>
+        <green>0</green>
+        <blue>0</blue>
+        <alpha>255</alpha>
+      </defaultValue>
+    </source>
+  </fillColor>
+  <showLabels>
+    <name>Show Labels</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Show Labels</name>
+        <type>java.lang.Boolean</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="boolean">true</defaultValue>
+    </source>
+  </showLabels>
+  <labelText>
+    <name>Label Text</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Label</name>
+        <type>java.lang.String</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="string"></defaultValue>
+    </source>
+  </labelText>
+  <labelColor>
+    <name>Label Color</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Label Color</name>
+        <type>java.awt.Color</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="awt-color" reference="../../../lineColor/source/defaultValue"/>
+    </source>
+  </labelColor>
+  <labelBorderColor>
+    <name>Label Border Color</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Label Border Color</name>
+        <type>java.awt.Color</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="awt-color">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+        <alpha>255</alpha>
+      </defaultValue>
+    </source>
+  </labelBorderColor>
+  <labelFont>
+    <name>Label Font</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Label Font</name>
+        <type>java.lang.String</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="string">Dialog</defaultValue>
+    </source>
+  </labelFont>
+  <labelSize>
+    <name>Label Size</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Label Size</name>
+        <type>java.lang.Integer</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="int">14</defaultValue>
+    </source>
+  </labelSize>
+  <labelStyle>
+    <name>Label Style</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleFieldSource">
+      <f>
+        <name>Label Style</name>
+        <type>java.lang.String</type>
+        <editable>true</editable>
+      </f>
+      <defaultValue class="string">Plain</defaultValue>
+    </source>
+  </labelStyle>
+  <selLineColor>
+    <name>Selected Line Color</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleGlobalSource">
+      <value class="awt-color">
+        <red>255</red>
+        <green>255</green>
+        <blue>0</blue>
+        <alpha>255</alpha>
+      </value>
+    </source>
+  </selLineColor>
+  <selLineWidth>
+    <name>Selected Line Width</name>
+    <source class="edu.asu.jmars.layer.util.features.StyleGlobalSource">
+      <value class="int">3</value>
+    </source>
+  </selLineWidth>
+</edu.asu.jmars.layer.shape2.ShapeLayerStyles>

@@ -1,0 +1,37 @@
+===============================================================================
+
+JMARS command-line argument combinations:
+
+	<longitude> <latitude>
+	<Previously saved *.jmars or *.jlf file>
+	<longitude> <latitude> <previously saved *.jlf file>
+
+The longitude is degrees east of the prime meridian and the latitude is
+geocentric degrees north of the equator.
+
+When the JMARS user interface is running, the File menu has two ways to save
+the state for later use:
+
+A .jmars save file may be created with the "Save As" command. It saves all
+layers and the position of the view but cannot handle certain types of state.
+
+A .jlf save file may be created with the "Save Layers" command. It saves only
+layers, but the user can choose to load saved layers from jlf files while JMARS
+is running.
+
+If started with no arguments, longitude and latitude default to zero.
+
+JMARS flags, allowed anywhere on the command-line:
+
+	:
+	:<display>
+	clean
+
+The single-colon invocation prints a list of available displays. The
+colon WITH a display argument specifies a particular alternate display
+for multi-head mode. The clean flag forces a fresh start with regard
+to the saved layers and the map image cache.
+
+Invoke with "-version" for some useful JMARS version info.
+
+===============================================================================

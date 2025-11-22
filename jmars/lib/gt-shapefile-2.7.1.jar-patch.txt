@@ -1,0 +1,173 @@
+Index: modules/plugin/shapefile/src/test/java/org/geotools/data/shapefile/DuplicateColumnNameReaderTest.java
+===================================================================
+--- modules/plugin/shapefile/src/test/java/org/geotools/data/shapefile/DuplicateColumnNameReaderTest.java	(revision 0)
++++ modules/plugin/shapefile/src/test/java/org/geotools/data/shapefile/DuplicateColumnNameReaderTest.java	(revision 0)
+@@ -0,0 +1,85 @@
++package org.geotools.data.shapefile;
++
++import java.io.File;
++import java.io.IOException;
++import java.net.URL;
++import java.util.Collections;
++
++import org.geotools.TestData;
++import org.geotools.data.DataUtilities;
++import org.geotools.data.DefaultQuery;
++import org.geotools.data.Query;
++import org.geotools.data.shapefile.indexed.IndexedShapefileDataStore;
++import org.geotools.data.simple.SimpleFeatureCollection;
++import org.geotools.data.simple.SimpleFeatureIterator;
++import org.geotools.data.simple.SimpleFeatureSource;
++import org.geotools.factory.CommonFactoryFinder;
++import org.opengis.feature.simple.SimpleFeature;
++import org.opengis.filter.Filter;
++import org.opengis.filter.FilterFactory;
++import org.opengis.filter.identity.FeatureId;
++
++public class DuplicateColumnNameReaderTest extends TestCaseSupport {
++
++	public final String SHPFILE = "dup-column/dup_column.shp";
++	
++	// TODO The name "TestColumn1" for the duplicate column "TestColumn" is
++	//      based on the current implementation of ShapefileDataStore.
++	public final String testColumn = "TestColumn1";
++	public final Integer expectedValue = new Integer(20);
++
++	public DuplicateColumnNameReaderTest(String name) throws IOException {
++		super(name);
++	}
++
++	public void testAttributeReader() throws IOException {
++        URL u = TestData.url(TestCaseSupport.class, SHPFILE);
++        File shpFile = DataUtilities.urlToFile(u);
++
++		// open the test shapefile
++		ShapefileDataStore store = new ShapefileDataStore(shpFile.toURI().toURL());
++		SimpleFeatureSource source = store.getFeatureSource();
++		
++		// read the first feature
++		SimpleFeatureIterator iter = source.getFeatures().features();
++		SimpleFeature feature = iter.next();
++		iter.close();
++		
++		// get the value of the duplicate column & compare it against expectation
++		assertEquals(expectedValue, feature.getAttribute(testColumn));
++		
++		// cleanup
++		store.dispose();
++	}
++
++	public void testAttributeReaderIndexed() throws IOException {
++        URL u = TestData.url(TestCaseSupport.class, SHPFILE);
++        File shpFile = DataUtilities.urlToFile(u);
++
++		// open the test shapefile
++		//creates both indexed and regular shapefile data store
++		IndexedShapefileDataStore indexedstore = new IndexedShapefileDataStore(shpFile.toURI().toURL());
++
++		//get a random feature id from one of the stores
++		SimpleFeatureIterator it = indexedstore.getFeatureSource().getFeatures().features();
++		FeatureId fid = it.next().getIdentifier();
++		it.close();
++		
++		//query the datastore
++		FilterFactory ff = CommonFactoryFinder.getFilterFactory(null);
++		Filter idFilter = ff.id(Collections.singleton(fid));
++		final Query query = new DefaultQuery(indexedstore.getSchema().getName().getLocalPart(), idFilter, new String[] {testColumn});
++		final SimpleFeatureCollection indexedfeatures = indexedstore.getFeatureSource().getFeatures(query);
++		
++		// compare the results
++		SimpleFeatureIterator indexIterator = indexedfeatures.features();
++		SimpleFeature indexedFeature = indexIterator.next();
++		indexIterator.close();
++		
++		// get the value of the duplicate column & compare it against expectation
++		assertEquals(expectedValue, indexedFeature.getAttribute(testColumn));
++		
++		// cleanup
++		indexedstore.dispose();
++	}
++}
+Index: modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.prj
+===================================================================
+--- modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.prj	(revision 0)
++++ modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.prj	(revision 0)
+@@ -0,0 +1 @@
++GEOGCS["unknown", DATUM["unknown", SPHEROID["unknown", 57.295779513, 0.0]], PRIMEM["unknown", 0.0], UNIT["degree", 0.017453292519943295], AXIS["Longitude", EAST], AXIS["Latitude", NORTH]]
+\ No newline at end of file
+Index: modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.dbf
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+
+Property changes on: modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.dbf
+___________________________________________________________________
+Added: svn:mime-type
+   + application/octet-stream
+
+Index: modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.shx
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+
+Property changes on: modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.shx
+___________________________________________________________________
+Added: svn:mime-type
+   + application/octet-stream
+
+Index: modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.shp
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+
+Property changes on: modules/plugin/shapefile/src/test/resources/org/geotools/data/shapefile/test-data/dup-column/dup_column.shp
+___________________________________________________________________
+Added: svn:mime-type
+   + application/octet-stream
+
+Index: modules/plugin/shapefile/src/main/java/org/geotools/data/shapefile/ShapefileAttributeReader.java
+===================================================================
+--- modules/plugin/shapefile/src/main/java/org/geotools/data/shapefile/ShapefileAttributeReader.java	(revision 37232)
++++ modules/plugin/shapefile/src/main/java/org/geotools/data/shapefile/ShapefileAttributeReader.java	(working copy)
+@@ -99,8 +99,14 @@
+             DbaseFileHeader head = dbf.getHeader();
+             AT: for (int i = 0; i < atts.length; i++) {
+                 String attName = atts[i].getLocalName();
++                int count = 0;
++                if (atts[i].getUserData().get(ShapefileDataStore.UDKW_ORIGINAL_FIELD_NAME) != null){
++                	attName = (String)atts[i].getUserData().get(ShapefileDataStore.UDKW_ORIGINAL_FIELD_NAME);
++                	count = (Integer)atts[i].getUserData().get(ShapefileDataStore.UDKW_ORIGINAL_FIELD_DUPLICITY_COUNT);
++                }
++
+                 for(int j = 0; j < head.getNumFields(); j++) {
+-                    if(head.getFieldName(j).equals(attName)){
++                    if(head.getFieldName(j).equals(attName) && count-- <= 0){
+                         dbfindexes[i] = j;
+                         continue AT;
+                     }
+Index: modules/plugin/shapefile/src/main/java/org/geotools/data/shapefile/ShapefileDataStore.java
+===================================================================
+--- modules/plugin/shapefile/src/main/java/org/geotools/data/shapefile/ShapefileDataStore.java	(revision 37232)
++++ modules/plugin/shapefile/src/main/java/org/geotools/data/shapefile/ShapefileDataStore.java	(working copy)
+@@ -109,6 +109,12 @@
+     public static final Charset DEFAULT_STRING_CHARSET = Charset
+             .forName("ISO-8859-1");
+     
++    // User-data keyword names for storing the original field name and its
++    // instance number when the field name is replaced with a new name built
++    // using the original+count convention.
++    public static final String UDKW_ORIGINAL_FIELD_NAME = "original";
++    public static final String UDKW_ORIGINAL_FIELD_DUPLICITY_COUNT = "count";
++    
+     /**
+      * When true, the stack trace that got a lock that wasn't released is recorded and then
+      * printed out when warning the user about this.
+@@ -801,6 +807,8 @@
+                             count++;
+                             name = origional + count;
+                         }
++                    	build.addUserData(UDKW_ORIGINAL_FIELD_NAME, origional);
++                    	build.addUserData(UDKW_ORIGINAL_FIELD_DUPLICITY_COUNT, count);
+                     }
+                     usedNames.add(name);
+                     int length = header.getFieldLength(i);

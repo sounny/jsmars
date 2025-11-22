@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="14px" height="14px" viewBox="0 0 14 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>facebook-square</title>
+    <g id="Launch-&amp;-Sign-In" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Sign-In" transform="translate(-780.000000, -723.000000)" fill="#FFFFFF" fill-rule="nonzero">
+            <g id="facebook-square" transform="translate(780.000000, 723.000000)">
+                <path d="M12.5,0 L1.5,0 C0.671572875,0 0,0.671572875 0,1.5 L0,12.5 C0,13.3284271 0.671572875,14 1.5,14 L5.7890625,14 L5.7890625,9.2403125 L3.8203125,9.2403125 L3.8203125,7 L5.7890625,7 L5.7890625,5.2925 C5.7890625,3.3503125 6.9453125,2.2775 8.71625,2.2775 C9.564375,2.2775 10.45125,2.42875 10.45125,2.42875 L10.45125,4.335 L9.4740625,4.335 C8.51125,4.335 8.2109375,4.9325 8.2109375,5.5453125 L8.2109375,7 L10.3603125,7 L10.0165625,9.2403125 L8.2109375,9.2403125 L8.2109375,14 L12.5,14 C13.3284271,14 14,13.3284271 14,12.5 L14,1.5 C14,0.671572875 13.3284271,0 12.5,0 L12.5,0 Z" id="Path"></path>
+            </g>
+        </g>
+    </g>
+</svg>

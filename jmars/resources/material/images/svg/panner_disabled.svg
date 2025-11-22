@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="22px" height="22px" viewBox="0 0 22 22" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>Pan Disabled</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Pan-Disabled" transform="translate(0.000000, -0.000000)">
+            <path d="M9.79501385,16.2857143 L9.79501385,12.3861852 L12.2031394,12.3861852 C13.3899661,12.3861852 14.3194829,12.0953689 14.9916898,11.5137363 C15.6638966,10.9321036 16,10.1585557 16,9.19309262 C16,8.23704867 15.6638966,7.46585557 14.9916898,6.87951334 C14.3194829,6.29317111 13.3899661,6 12.2031394,6 L12.2031394,6 L8,6 L8,16.2857143 L9.79501385,16.2857143 Z M12.2031394,11.0086342 L9.79501385,11.0086342 L9.79501385,7.37755102 L12.2031394,7.37755102 C12.8679594,7.37755102 13.3678055,7.55180534 13.7026777,7.90031397 C14.03755,8.24882261 14.2049861,8.6844584 14.2049861,9.20722135 C14.2049861,9.7299843 14.03755,10.1609105 13.7026777,10.5 C13.3678055,10.8390895 12.8679594,11.0086342 12.2031394,11.0086342 L12.2031394,11.0086342 Z" id="P-Copy-53" fill="#5E5E5E"></path>
+            <line x1="4" y1="4" x2="18" y2="18" id="Line-Copy-2" stroke="#5E5E5E" stroke-width="2" stroke-linecap="square"></line>
+            <circle id="3D-Toggle-Copy-3" stroke="#5E5E5E" fill-rule="nonzero" cx="11" cy="11" r="10.5"></circle>
+        </g>
+    </g>
+</svg>

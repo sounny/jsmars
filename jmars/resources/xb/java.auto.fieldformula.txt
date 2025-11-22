@@ -1,0 +1,6 @@
+convertReturnType(int) : Integer
+convertReturnType(double) : Double
+convertReturnType(String) : String
+convertReturnType(long) : Long
+convertReturnType(float) : Double
+convertReturnType(boolean) : Boolean

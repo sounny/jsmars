@@ -1,0 +1,90 @@
+pi : double constant value 3.141592653589793
+e : double constant value 2.718281828459045
+abs(int) : int
+abs(double) : double
+abs(float) : float
+abs(long) : long
+sin(double) : double
+cos(double) : double
+tan(double) : double 
+atan2(double,double) : double
+sqrt(double) : double
+log(double) : double
+log10(double) : double
+pow(double,double) : double
+exp(double) : double
+min(long,long) : long
+min(double,double) : double
+min(float,float) : float
+min(int,int) : int
+max(double,double) : double
+max(float,float) : float
+max(long,long) : long
+max(int,int) : int
+addExact(long,long) : long
+addExact(int,int) : int
+decrementExact(long) : long
+decrementExact(int) : int
+incrementExact(long) : long
+incrementExact(int) : int
+multiplyExact(int,int) : int
+multiplyExact(long,long) : long
+negateExact(long) : long
+negateExact(int) : int
+subtractExact(int,int) : int
+subtractExact(long,long) : long
+scalb(double,int) : double
+scalb(float,int) : float
+copySign(float,float) : float
+copySign(double,double) : double
+getExponent(double) : int
+getExponent(float) : int
+signum(double) : double
+signum(float) : float
+asin(double) : double
+acos(double) : double
+atan(double) : double
+toRadians(double) : double
+toDegrees(double) : double
+cbrt(double) : double
+IEEEremainder(double,double) : double
+ceil(double) : double
+floor(double) : double
+rint(double) : double
+round(double) : long
+round(float) : int
+random() : double
+toIntExact(long) : int
+floorDiv(int,int) : int
+floorDiv(long,long) : long
+floorMod(int,int) : int
+floorMod(long,long) : long
+ulp(float) : float
+ulp(double) : double
+sinh(double) : double
+cosh(double) : double
+tanh(double) : double
+hypot(double,double) : double
+expm1(double) : double
+log1p(double) : double
+nextAfter(double,double) : double
+nextAfter(float,double) : float
+nextUp(double) : double
+nextUp(float) : float
+nextDown(double) : double
+nextDown(float) : float
+color(int, int, int) : Color
+color(int, int, int, int) : Color
+fromhsb(float, float, float) : Color
+fromrgba(float, float, float, float) : Color
+red(Color c) : int
+green(Color c) : int
+blue(Color c) : int
+alpha(Color c) : int
+hue(Color c) : double			
+saturation(Color c) : double
+intensity(Color c) : double		
+true : Boolean
+false : Boolean
+
+

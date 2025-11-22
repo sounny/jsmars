@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<theme>
+	<background>
+		<main>rgb(45,48,56)</main>
+		<mid_contrast>rgb(62, 67, 78)</mid_contrast>
+		<contrast>rgb(81, 86, 101)</contrast>
+		<highlight>rgb(249, 192, 98)</highlight>
+		<highlight_contrast>rgb(225, 156, 43)</highlight_contrast>
+		<alternate_contrast>rgb(115, 118, 128)</alternate_contrast>
+		<alternate_contrast_bright>rgb(71,74,81)</alternate_contrast_bright>
+		<alternate_contrast_soft>rgb(150, 244, 224)</alternate_contrast_soft>
+		<scrollbar>rgb(155,155,155)</scrollbar>
+		<progressbar>rgb(67,178,175)</progressbar>
+		<border>rgb(59, 62, 69)</border>
+		<secondary_border>rgb(255,255,255)</secondary_border>
+		<snackbar_highlight>rgb(249, 192, 98)</snackbar_highlight>
+		<snackbar_warning>rgb(249, 98, 98)</snackbar_warning>	
+	</background>
+	<action>
+		<main>rgb(0,139,155)</main>
+		<contrast>rgb(0,101,119)</contrast>
+		<default_contrast>rgb(0,101,119)</default_contrast>
+		<alt_contrast>rgb(81, 86, 101)</alt_contrast>
+		<disabled>rgb(94,94,94)</disabled>
+		<foreground>rgb(255,255,255)</foreground>
+		<default_foreground>rgb(255,255,255)</default_foreground>
+		<disabled_foreground>rgb(133,133,133)</disabled_foreground>
+		<border>rgb(119, 119, 119)</border>
+		<image_on>rgb(255,255,255)</image_on>
+		<image_off>rgb(255,255,255)</image_off>
+		<toggle_on>rgb(255,255,255)</toggle_on>
+		<toggle_off>rgb(133,133,133)</toggle_off>
+		<line_active>rgb(249,192,98)</line_active>
+		<line_inactive>rgb(255,255,255)</line_inactive>
+		<chart_indicator>rgb(74,144,226)</chart_indicator>
+		<profile_chart_indicator>rgb(150,244,224)</profile_chart_indicator>
+	</action>
+	<text>
+		<main>rgb(255,255,255)</main>
+		<disabled>rgb(133,133,133)</disabled>
+		<grayed>rgb(169, 172, 183)</grayed>
+		<link>rgb(251,193,91)</link>
+		<highlight>rgb(249, 192, 98)</highlight>
+		<selection_highlight>rgb(0,0,0)</selection_highlight>
+		<null_text>rgb(155,155,155)</null_text>
+		<date_as_link>rgb(150,244,224)</date_as_link>
+	</text>
+	<selection>
+		<main>rgb(151,151,151)</main>
+		<foreground>rgb(255,255,255)</foreground>
+		<foreground_contrast>rgb(0,0,0)</foreground_contrast>
+	</selection>
+	<row>
+	    <background>rgb(45,48,56)</background>
+	    <alternate_back>rgb(59,62,69)</alternate_back>
+	    <alternate>rgb(59,62,69)</alternate>		
+		<border>rgb(151,151,151)</border>
+		<grid_horiz>rgb(119,119,119)</grid_horiz>
+		<grid_vertical>rgb(151,151,151)</grid_vertical> 
+	</row>
+	<image>
+		<fill>rgb(255,255,255)</fill>
+		<fill2>rgb(203,203,203)</fill2>
+		<common_fill>rgb(255,255,255)</common_fill>
+		<selection_fill>rgb(249,192,98)</selection_fill>
+		<layer>rgb(255,255,255)</layer>
+		<link>rgb(0,139,155)</link>
+		<layer_indicator_loaded>rgb(150, 244, 224)</layer_indicator_loaded>		
+		<layer_indicator_loading>rgb(241,125,125)</layer_indicator_loading>
+		<layer_indicator_off>rgb(133,133,133)</layer_indicator_off>
+		<icon_inactive>rgb(21, 53, 71)</icon_inactive>
+	</image>
+	<settings>
+		<button_default_follows_focus>true</button_default_follows_focus>
+		<button_focusable>true</button_focusable>
+		<button_arc_size>0</button_arc_size>
+		<tree_paint_lines>false</tree_paint_lines>
+		<table_focusable>true</table_focusable>
+		<table_alternate_row_color>true</table_alternate_row_color>
+		<combobox_enable_hover>false</combobox_enable_hover>
+		<table_row_height>36</table_row_height>
+		<scrollbar_width>10</scrollbar_width>
+		<progressbar_border_thickness>2</progressbar_border_thickness>
+		<menubar_item_spacing>35</menubar_item_spacing>
+		<menubar_item_padding>9</menubar_item_padding>
+		<filechooser_img_scaled_width>27</filechooser_img_scaled_width>
+		<filechooser_img_scaled_height>16</filechooser_img_scaled_height>
+		<tab_space>20</tab_space>
+		<tab_indent>4</tab_indent>  	
+	</settings>
+</theme>
+

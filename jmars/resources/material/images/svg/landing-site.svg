@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="15px" height="8px" viewBox="0 0 15 8" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 62 (91390) - https://sketch.com -->
+    <title>landing</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Layer-Icons" transform="translate(-186.000000, -193.000000)" fill="#FFFFFF" fill-rule="nonzero">
+            <g id="landing" transform="translate(186.000000, 193.000000)">
+                <path d="M7.5,8 C11.6006208,8 15,6.3062884 15,4 C15,1.6937116 11.6006208,0 7.5,0 C3.39937916,0 0,1.6937116 0,4 C0,6.3062884 3.39937916,8 7.5,8 Z M7.5,7 C5.68507788,7 3.99219714,6.63956438 2.75993024,6.01926353 C1.61410288,5.44247479 1,4.71161347 1,4 C1,3.28838653 1.61410288,2.55752521 2.75993024,1.98073647 C3.99219714,1.36043562 5.68507788,1 7.5,1 C9.31492212,1 11.0078029,1.36043562 12.2400698,1.98073647 C13.3858971,2.55752521 14,3.28838653 14,4 C14,4.71161347 13.3858971,5.44247479 12.2400698,6.01926353 C11.0078029,6.63956438 9.31492212,7 7.5,7 Z" id="Landing-Site---Teal"></path>
+            </g>
+        </g>
+    </g>
+</svg>

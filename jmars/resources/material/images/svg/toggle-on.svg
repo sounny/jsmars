@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="26px" height="17px" viewBox="0 0 26 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>toggle-on</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="toggle-on" fill="#000000" fill-rule="nonzero">
+            <path d="M17.3333333,0 L8.66666667,0 C3.88194444,0 0,3.80729167 0,8.5 C0,13.1927083 3.88194444,17 8.66666667,17 L17.3333333,17 C22.1180556,17 26,13.1927083 26,8.5 C26,3.80729167 22.1180556,0 17.3333333,0 Z M17.3333333,14.1666667 C14.1375,14.1666667 11.5555556,11.6299479 11.5555556,8.5 C11.5555556,5.365625 14.1420139,2.83333333 17.3333333,2.83333333 C20.5291667,2.83333333 23.1111111,5.37005208 23.1111111,8.5 C23.1111111,11.634375 20.5246528,14.1666667 17.3333333,14.1666667 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>

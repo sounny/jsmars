@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="5px" height="8px" viewBox="0 0 5 8" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>caret-right</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Main-UI" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Main-View" transform="translate(-1745.000000, -590.000000)" fill="#FFFFFF" fill-rule="nonzero">
+            <g id="caret-right" transform="translate(1745.653846, 590.346154)">
+                <path d="M0,6.99260888 L0,0.603192559 C0,0.160767367 0.550218131,-0.0607928525 0.872002388,0.252043324 L4.15808906,3.44675149 C4.35756006,3.64067565 4.35756006,3.95512579 4.15808906,4.14904996 L0.872002388,7.34375812 C0.550218131,7.65661913 0,7.43503408 0,6.99260888 Z" id="Path"></path>
+            </g>
+        </g>
+    </g>
+</svg>

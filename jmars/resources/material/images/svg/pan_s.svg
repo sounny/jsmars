@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="15px" height="9px" viewBox="0 0 15 9" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 59.1 (86144) - https://sketch.com -->
+    <title>pan_s</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="pan_s" transform="translate(8.000000, 4.333333) scale(-1, -1) rotate(90.000000) translate(-8.000000, -4.333333) translate(4.000000, -3.000000)" fill="#878787" fill-rule="nonzero">
+            <g id="Pan_w" transform="translate(4.000000, 6.769231) rotate(90.000000) translate(-4.000000, -6.769231) translate(-2.666667, 2.769231)">
+                <path d="M0.89714807,0 L12.4361853,0 C13.2344552,0 13.6335902,1.01986362 13.0685227,1.61755114 L7.30124641,7.7225022 C6.95144273,8.09249927 6.3818906,8.09249927 6.03208689,7.7225022 L0.264810623,1.61755114 C-0.300256881,1.01986362 0.0988781017,0 0.89714807,0 Z" id="Path"></path>
+            </g>
+        </g>
+    </g>
+</svg>

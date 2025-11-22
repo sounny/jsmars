@@ -1,0 +1,68 @@
+GML.java defines methods for reading and writing shapes to and from GML files. 
+
+There are two inner classes:  
+
+GML.Feature defines the shapes that are read from and written to the
+files.  GML.Features represent a tiny subset of the quite complex GML
+specification.  Only points, lines, and polygons are supported.  The
+constructor for a GML.Feature object is:
+
+	new GML.Feature( int type, GeneralPath path, String id, String description)
+
+		
+	"type" of the GMLfeature should be one of:
+
+		public static final int     NONE    =0;
+		public static final int     POINT   =1;
+		public static final int     LINE    =2;
+		public static final int     POLYGON =3;
+
+	"path" should be an java.awt.GeneralPath.  The path of a POINT consists of
+		 a single node.  The path of a LINE should have two or more nodes.  
+		The path for a polygon must have three or more nodes.  
+
+	"id" is the identification string for the feature.  In the JMARS ShapeLayer
+	        "id" would be the label.
+	
+	"description" is a longer description of the feature.  It is not currently used.
+
+
+The data of a GML.Feature is fetched via the following "getter" methods:
+	         	
+	int getType()
+		returns the type of the GML.Feature.
+
+    	GeneralPath getGeneralPath()
+		returns the generalPath of the GML.Feature.
+
+	String getId()
+	        returns the id of the GML.Feature.
+
+	String getDescription()
+	        returns the description of the GML.Feature.
+
+
+the GML.File inner class defines methods for reading and writing GML.Features
+These methods are: 
+
+	static GML.Feature [] read( String file) 
+	 	reads and parses the input GML file.  Whatever points, lines, or polygons 
+		are discovered in the file are returned as an array of GML.Features.
+		If no shapes were found in the file, a 0-length array is returned.
+
+	
+	static int write( GML.Feature [] features, String file)
+		saves an array of GML.Features to the specified file and returns the number 
+		of shapes that were saved.
+
+
+
+There is a utility method outside of the two inner classes. 
+
+       static String javaStgringToHtml( String s)
+	       convers a java-like string which doesn't care about characters like &'s and 
+	       <'s unto an html string, which cares about them a great deal.
+
+
+  
+

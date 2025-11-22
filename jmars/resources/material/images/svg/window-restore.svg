@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512px" height="512px" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>window-restore</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="window-restore" fill="#878787" fill-rule="nonzero">
+            <path d="M512,48 L512,336 C512,362.5 490.5,384 464,384 L416,384 L416,176 C416,131.9 380.1,96 336,96 L128,96 L128,48 C128,21.5 149.5,0 176,0 L464,0 C490.5,0 512,21.5 512,48 Z M384,176 L384,464 C384,490.5 362.5,512 336,512 L48,512 C21.5,512 0,490.5 0,464 L0,176 C0,149.5 21.5,128 48,128 L336,128 C362.5,128 384,149.5 384,176 Z M316,204 C316,197.4 310.6,192 304,192 L76,192 C69.4,192 64,197.4 64,204 L64,256 L316,256 L316,204 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>

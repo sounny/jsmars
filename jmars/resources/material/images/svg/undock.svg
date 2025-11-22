@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="12px" height="12px" viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>Shape</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Dock-Me-&amp;-Info" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Layer-quick-add-options" transform="translate(-316.000000, -366.000000)" fill="#FFFFFF" fill-rule="nonzero">
+            <g id="window-maximize" transform="translate(316.000000, 366.000000)">
+                <path d="M10.875,0.840659341 L1.125,0.840659341 C0.50390625,0.840659341 0,1.36856113 0,2.01923077 L0,10.6620879 C0,11.3127576 0.50390625,11.8406593 1.125,11.8406593 L10.875,11.8406593 C11.4960938,11.8406593 12,11.3127576 12,10.6620879 L12,2.01923077 C12,1.36856113 11.4960938,0.840659341 10.875,0.840659341 Z M10.5,4.76923077 L1.5,4.76923077 L1.5,2.70673077 C1.5,2.5446772 1.6265625,2.41208791 1.78125,2.41208791 L10.21875,2.41208791 C10.3734375,2.41208791 10.5,2.5446772 10.5,2.70673077 L10.5,4.76923077 Z" id="Shape"></path>
+            </g>
+        </g>
+    </g>
+</svg>

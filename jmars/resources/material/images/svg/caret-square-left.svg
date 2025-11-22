@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="448px" height="448px" viewBox="0 0 448 448" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>caret-square-left</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="caret-square-left" fill="#878787" fill-rule="nonzero">
+            <path d="M400,448 L48,448 C21.49,448 0,426.51 0,400 L0,48 C0,21.49 21.49,0 48,0 L400,0 C426.51,0 448,21.49 448,48 L448,400 C448,426.51 426.51,448 400,448 Z M259.515,92.485 L136.485,215.515 C131.799,220.201 131.799,227.799 136.485,232.486 L259.514,355.515 C267.074,363.075 279.999,357.721 279.999,347.03 L279.999,100.971 C279.999,90.28 267.074,84.926 259.515,92.485 L259.515,92.485 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>

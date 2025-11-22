@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="448px" height="448px" viewBox="0 0 448 448" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>check-square</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="check-square" fill="#878787" fill-rule="nonzero">
+            <path d="M400,0 L48,0 C21.49,0 0,21.49 0,48 L0,400 C0,426.51 21.49,448 48,448 L400,448 C426.51,448 448,426.51 448,400 L448,48 C448,21.49 426.51,0 400,0 Z M400,400 L48,400 L48,48 L400,48 L400,400 Z M364.136,158.276 L191.547,329.48 C186.842,334.147 179.244,334.117 174.577,329.412 L83.796,237.896 C79.129,233.191 79.159,225.593 83.865,220.925 L106.584,198.389 C111.289,193.722 118.887,193.752 123.554,198.458 L183.346,258.735 L324.698,118.519 C329.403,113.852 337.001,113.882 341.668,118.587 L364.204,141.305 C368.871,146.011 368.841,153.609 364.136,158.276 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>

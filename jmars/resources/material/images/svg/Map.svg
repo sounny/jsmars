@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="13px" height="11px" viewBox="0 0 13 11" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 62 (91390) - https://sketch.com -->
+    <title>map</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Layer-Icons" transform="translate(-187.000000, -233.000000)" fill="#FFFFFF" fill-rule="nonzero">
+            <g id="map" transform="translate(187.000000, 233.000000)">
+                <path d="M0,1.93329861 L0,9.74954861 C0,10.0050347 0.25796875,10.1797222 0.495173611,10.0849306 L3.61111111,8.66666667 L3.61111111,0 L0.454097222,1.26276042 C0.179893769,1.37243398 6.56719111e-05,1.63797537 0,1.93329861 Z M4.33333333,8.66666667 L8.66666667,10.1111111 L8.66666667,1.44444444 L4.33333333,0 L4.33333333,8.66666667 Z M12.5048264,0.0261805556 L9.38888889,1.44444444 L9.38888889,10.1111111 L12.5459028,8.84835069 C12.8201472,8.73872804 13,8.47315491 13,8.1778125 L13,0.3615625 C13,0.106076389 12.7420313,-0.0686111111 12.5048264,0.0261805556 L12.5048264,0.0261805556 Z" id="Shape"></path>
+            </g>
+        </g>
+    </g>
+</svg>

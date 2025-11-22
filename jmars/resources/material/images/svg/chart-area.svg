@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512px" height="384px" viewBox="0 0 512 384" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>chart-area</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="chart-area" fill="#878787" fill-rule="nonzero">
+            <path d="M500,320 C506.6,320 512,325.4 512,332 L512,372 C512,378.6 506.6,384 500,384 L12,384 C5.4,384 0,378.6 0,372 L0,12 C0,5.4 5.4,0 12,0 L52,0 C58.6,0 64,5.4 64,12 L64,320 L500,320 Z M372.7,95.5 L288,152 L202.7,38.3 C197.6,31.5 187.2,32 182.8,39.3 L96,184 L96,288 L480,288 L390.1,100.2 C386.9,93.7 378.7,91.5 372.7,95.5 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>

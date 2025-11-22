@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="9px" height="16px" viewBox="0 0 9 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>no-collapsed</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="no-collapsed" transform="translate(4.500000, 8.000000) rotate(-90.000000) translate(-4.500000, -8.000000) translate(-3.000000, 4.000000)" fill="#7A7A7A" fill-rule="nonzero">
+            <path d="M14.8818997,0.350877193 L14.6431841,0.116408669 C14.4851611,-0.0388028896 14.2296346,-0.0388028896 14.0716116,0.116408669 L7.50188957,6.57254902 L0.928805376,0.116408669 C0.77078238,-0.0388028896 0.515255833,-0.0388028896 0.357232837,0.116408669 L0.118517247,0.350877193 C-0.039505749,0.506088751 -0.039505749,0.757069143 0.118517247,0.912280702 L7.21274111,7.88359133 C7.37076411,8.03880289 7.62629066,8.03880289 7.78431365,7.88359133 L14.8785375,0.912280702 C15.0399227,0.757069143 15.0399227,0.506088751 14.8818997,0.350877193 Z" id="Path"></path>
+        </g>
+    </g>
+</svg>

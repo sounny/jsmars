@@ -1,0 +1,6 @@
+#cmap256  Colormap file, created by JMARS
+0	0xFF0000
+85	0x00FF00
+170	0x0000FF
+255	0xFF0000
+interpolation lin_rgb

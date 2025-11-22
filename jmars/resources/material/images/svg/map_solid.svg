@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="22px" height="22px" viewBox="0 0 22 22" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 62 (91390) - https://sketch.com -->
+    <title>map_solid</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="map_solid">
+            <circle id="Map-Toggle-Copy" fill="#CBCBCB" cx="11" cy="11" r="11"></circle>
+            <polygon id="M-Copy-53" fill="#2E3139" points="8.19544846 6 11.0066934 13.6648352 13.811245 6 16 6 16 16 14.313253 16 14.313253 12.7032967 14.480589 8.29395604 11.6024096 16 10.3908969 16 7.51941098 8.30082418 7.68674699 12.7032967 7.68674699 16 6 16 6 6"></polygon>
+        </g>
+    </g>
+</svg>

@@ -9,6 +9,14 @@ This file explains the project goals, architecture, and rules for contributors (
 - **Stack:** Vanilla JS (ES Modules), Leaflet, CSS. **No Build Step.**
 - **License:** GPLv3 Compatible.
 
+## 📚 Reference Material
+The original Java-based JMARS application is located in the `jmars/` folder at the root of this repository.
+- **Usage**: Use this to compare features, UI/UX flows, and data visualization styles.
+- **Goal**: We aim for feature parity where possible, but adapted for modern web patterns.
+
+> [!WARNING]
+> **DO NOT MODIFY** the contents of the `jmars/` folder. It is strictly for reference purposes only. Any changes to the reference application will invalidate it as a source of truth.
+
 ## 2. Architecture & Patterns
 
 ### 2.1. Event-Driven Design

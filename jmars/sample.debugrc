@@ -1,0 +1,151 @@
+/////////////////////////////////////////////////////////////////////////
+///// PLEASE DO NOT COMMIT ANY UPDATED VERSIONS OF THIS FILE TO CVS /////
+///// ------------------------------------------------------------- /////
+///// This file is a sample only... to use it, rename it to .deburc /////
+/////////////////////////////////////////////////////////////////////////
+
+-THREADS
+-DEFAULT
++OPTIMIZE
+
+
+
+
+
+
+
+
+
+// The COLORS setting is normally guessed programmatically at runtime
+// (it's disabled on windows), but you can manually override it in
+// either direction with the following keyword:
+//+COLORS
+
+
+
+
+
+
+
+
+
+
+
+
+
+/****************************************************************************
+
+This file contains settings used to determine which DebugLog messages
+make it to the console and which are thrown out. Comments can be made
+using any of the usual styles: double-delimited C, single-line C++, or
+single-line shell.
+
+The format of this file is simple. Use + to enable output, - to
+disable it. Follow the symbol by an identifier: a function, a class,
+or a mask. Some examples should illustrate.
+
+	-Layer.LView.paintComponent
+	This disables output from a specific function, affecting nothing
+	else.
+
+	+Layer.LView
+	This enables output from all member functions of LView. Note that
+	this doesn't affect member functions of classes derived from
+	LView. If a derived LView inherits a base function and doesn't
+	re-implement it, then this WILL affect that function.
+
+	-Layer
+	This disables output from all member functions of Layer. Note that
+	Layer.LView.paintComponent is NOT a member function of Layer, and
+	is thus unaffected.
+
+	+Layer.*
+	This mask enables output from all member functions of Layer, AS
+	WELL AS all inner classes of Layer (and those classes' inner
+	classes, and so on). Note that the dot-star expression is the only
+	type of mask supported... there's no regex going on.
+
+Last but not least, you can also change the "default status." If a
+message is output and its caller doesn't match anything in this file,
+then the default status is resorted to. You can use +DEFAULT to enable
+all messages by default or -DEFAULT to disable them.
+
+The THREADS option enables or disables inclusion of thread-ids at the
+beginning of every output line. Note that thread-ids are always output
+during stack traces, regardless of this setting.
+
+When you supply different specifications that could conflict, the most
+specific one takes precedence. The order of specifications doesn't
+matter. Unless you give a +A and a -A in the file, in which you need
+to be shot... but whichever one you did last is the one that's used.
+
+So the following might be a typical example of this file:
+	-DEFAULT
+	+Layer
+	+Layer.LView.viewChanged
+This would turn off all messages except those generated from members
+of Layer, and from Layer.LView.viewChanged alone. If StampLayer
+subclasses Layer and re-implements its own version of Layer.fooBar,
+StampLayer.fooBar will NOT be enabled by the above. Also, if we
+instantiate an anonymous inner class inside of Layer, the above will
+NOT enable any of that class's members.
+
+If you wanted all the stuff in Layer, INCLUDING its anonymous inner
+classes, you might instead use:
+	-DEFAULT
+	+Layer.*
+	-Layer.LView.*   // LView isn't one of the anonymous inner classes
+	+Layer.LView.viewChanged
+
+The dot-star is useful when you have anonymous inner classes that you
+want to cover. You can explicity refer to particular anonymous inner
+classes with syntax like "Outerclass.1.function", but be
+careful... it's easy to get out of sync with your code this way.
+
+Note that the syntax is fairly loose. The following three series of
+lines have the same effect:
+	+a
+	+b
+	-x
+	-y
+is the same as:
+	+a
+	 b
+	-x
+	 y
+is the same as:
+	+
+	a
+	b
+	-
+	x
+	y
+However, there can be at most one symbol and at most one identifier
+per line. Sorry, deal with it.
+
+Note that whitespace is NOT allowed within the components of a class
+or function name. You must write "Outer.Inner.function" with no spaces
+in between anything.
+
+As should be obvious, it's currently not possible to distinguish
+between functions that have the same name but take different
+arguments; all functions are referred to by name only.
+
+To use DebugLog in your code, simply instantiate an object of it
+somewhere. Call its print() and println() routines like you would
+System.out or any other PrintStream.
+
+You can manually enable or disable all messages sent thru a particular
+DebugLog object by giving it a true or false in its
+constructor. And/or, you can also supply a "hilight" as a string in
+the constructor, which will be output at the end of every message
+printed thru that particular object (useful for quickly hilighting
+certain messages).
+
+Also, you can use aprint() or aprintln() to force a message to ALWAYS
+print. This is generally discouraged... use of this file to control
+what does/doesn't print is much more flexible then hard-coded
+solutions.  The aprint() routines are provided to modularize error
+messages that are important enough to NEVER be supressed.
+
+****************************************************************************/

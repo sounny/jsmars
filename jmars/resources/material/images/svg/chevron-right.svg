@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="254px" height="444px" viewBox="0 0 254 444" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>chevron-right</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="chevron-right" fill="#878787" fill-rule="nonzero">
+            <path d="M23.707,4.101 L3.908,23.899 C-0.778,28.585 -0.778,36.183 3.908,40.87 L184.607,222 L3.908,403.13 C-0.778,407.816 -0.778,415.414 3.908,420.101 L23.707,439.9 C28.393,444.586 35.991,444.586 40.678,439.9 L250.092,230.486 C254.778,225.8 254.778,218.202 250.092,213.515 L40.678,4.101 C35.991,-0.586 28.393,-0.586 23.707,4.101 Z" id="Path"></path>
+        </g>
+    </g>
+</svg>

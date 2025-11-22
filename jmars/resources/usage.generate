@@ -1,0 +1,16 @@
+Usage: Generate <Start ET> <Duration> <Width> <TileSet Index> <Max Agents> <ppd Max> <ppd Step>
+
+	Start ET:		Starting Time of cached set (in ET)
+	Duration:		Total number of seconds of cached set
+	Width:			How many degrees tall the cached set is
+	TileSet Index:		See Below
+	Max Agents:		How many simultaneous threads to spawn (Recomend 8)
+	ppd Max:		Max. Pixels/deg as a power of 2 (ie 6=64ppd max)
+	ppd Step:		Should Skipping be needed, ie 2 would skip every other value
+
+OR: Generate global  <clat> <clon> <TileSet Index> <ppd Max> <ppd Step> <Max Agents> 
+
+
+OR: Generate student <Start ET> <Duration>
+
+

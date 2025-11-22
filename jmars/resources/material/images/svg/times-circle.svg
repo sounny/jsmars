@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="496px" height="496px" viewBox="0 0 496 496" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.2 (78181) - https://sketchapp.com -->
+    <title>times-circle</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="times-circle" fill="#878787" fill-rule="nonzero">
+            <path d="M248,0 C111,0 0,111 0,248 C0,385 111,496 248,496 C385,496 496,385 496,248 C496,111 385,0 248,0 Z M369.6,313.1 C374.3,317.8 374.3,325.4 369.6,330.1 L330,369.6 C325.3,374.3 317.7,374.3 313,369.6 L248,304 L182.9,369.6 C178.2,374.3 170.6,374.3 165.9,369.6 L126.4,330 C121.7,325.3 121.7,317.7 126.4,313 L192,248 L126.4,182.9 C121.7,178.2 121.7,170.6 126.4,165.9 L166,126.3 C170.7,121.6 178.3,121.6 183,126.3 L248,192 L313.1,126.4 C317.8,121.7 325.4,121.7 330.1,126.4 L369.7,166 C374.4,170.7 374.4,178.3 369.7,183 L304,248 L369.6,313.1 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>
