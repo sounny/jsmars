@@ -168,6 +168,18 @@
       <!-- Layers will be injected here -->
       <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
     </div>
+
+    <!-- Tools Section -->
+    <div class="control-header" style="border-top: 1px solid #444;">
+      <span>Tools</span>
+    </div>
+    <div style="padding: 10px;">
+      <button id="crater-tool-btn"
+        style="width: 100%; padding: 8px; background: #444; color: #fff; border: none; cursor: pointer; border-radius: 4px;">Start
+        Crater Counting</button>
+      <div id="crater-table-container" style="margin-top: 10px;"></div>
+    </div>
+
     <div style="padding: 10px; text-align: center; border-top: 1px solid #444; font-size: 12px;">
       <a href="about.html" style="color: #888; text-decoration: none;">About JSMARS</a>
     </div>
@@ -183,6 +195,8 @@
     import { JMARSMap } from './src/jmars-map.js';
     import { LayerManager } from './src/ui/layer-manager.js';
     import { Sidebar } from './src/ui/Sidebar.js';
+    import { CraterLayer } from './src/features/crater-counting/CraterLayer.js';
+    import { CraterTable } from './src/features/crater-counting/CraterTable.js';
 
     document.addEventListener('DOMContentLoaded', () => {
       const sidebar = new Sidebar('controls', 'sidebar-toggle');
@@ -192,6 +206,23 @@
 
       const layerListContainer = document.getElementById('layer-list');
       const layerManager = new LayerManager(jmars, 'layer-list');
+
+      // Initialize Crater Tool
+      const craterLayer = new CraterLayer(jmars.map);
+      const craterTable = new CraterTable('crater-table-container');
+
+      const craterBtn = document.getElementById('crater-tool-btn');
+      craterBtn.addEventListener('click', () => {
+        if (craterLayer.isActive) {
+          craterLayer.deactivate();
+          craterBtn.innerText = 'Start Crater Counting';
+          craterBtn.style.background = '#444';
+        } else {
+          craterLayer.activate();
+          craterBtn.innerText = 'Stop Crater Counting';
+          craterBtn.style.background = '#d6336c';
+        }
+      });
 
       // Handle errors
       window.addEventListener('unhandledrejection', function (event) {
