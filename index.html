@@ -169,15 +169,25 @@
       <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
     </div>
 
+    <div id="fixed-overlays"></div>
+
     <!-- Tools Section -->
     <div class="control-header" style="border-top: 1px solid #444;">
       <span>Tools</span>
     </div>
-    <div style="padding: 10px;">
+
+    <!-- Crater Counting -->
+    <div style="padding: 10px; border-bottom: 1px solid #444;">
       <button id="crater-tool-btn"
-        style="width: 100%; padding: 8px; background: #444; color: #fff; border: none; cursor: pointer; border-radius: 4px;">Start
-        Crater Counting</button>
-      <div id="crater-table-container" style="margin-top: 10px;"></div>
+        style="width: 100%; padding: 8px; background: #444; color: #fff; border: none; cursor: pointer; border-radius: 4px; margin-bottom: 5px;">Start Crater Counting</button>
+      <div id="crater-table-container"></div>
+    </div>
+
+    <!-- Radial Profile -->
+    <div style="padding: 10px;">
+      <button id="profile-tool-btn"
+        style="width: 100%; padding: 8px; background: #444; color: #fff; border: none; cursor: pointer; border-radius: 4px; margin-bottom: 5px;">Radial Profile</button>
+      <div id="profile-chart-container"></div>
     </div>
 
     <div style="padding: 10px; text-align: center; border-top: 1px solid #444; font-size: 12px;">
@@ -195,8 +205,11 @@
     import { JMARSMap } from './src/jmars-map.js';
     import { LayerManager } from './src/ui/layer-manager.js';
     import { Sidebar } from './src/ui/Sidebar.js';
+    import { FixedOverlays } from './src/ui/FixedOverlays.js';
     import { CraterLayer } from './src/features/crater-counting/CraterLayer.js';
     import { CraterTable } from './src/features/crater-counting/CraterTable.js';
+    import { RadialProfileTool } from './src/features/profile/RadialProfileTool.js';
+    import { ProfileChart } from './src/features/profile/ProfileChart.js';
 
     document.addEventListener('DOMContentLoaded', () => {
       const sidebar = new Sidebar('controls', 'sidebar-toggle');
@@ -206,6 +219,7 @@
 
       const layerListContainer = document.getElementById('layer-list');
       const layerManager = new LayerManager(jmars, 'layer-list');
+      const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
 
       // Initialize Crater Tool
       const craterLayer = new CraterLayer(jmars.map);
@@ -218,9 +232,36 @@
           craterBtn.innerText = 'Start Crater Counting';
           craterBtn.style.background = '#444';
         } else {
+          // Deactivate other tools
+          profileTool.deactivate();
+          profileBtn.innerText = 'Radial Profile';
+          profileBtn.style.background = '#444';
+
           craterLayer.activate();
           craterBtn.innerText = 'Stop Crater Counting';
           craterBtn.style.background = '#d6336c';
+        }
+      });
+
+      // Initialize Radial Profile Tool
+      const profileTool = new RadialProfileTool(jmars.map);
+      const profileChart = new ProfileChart('profile-chart-container');
+
+      const profileBtn = document.getElementById('profile-tool-btn');
+      profileBtn.addEventListener('click', () => {
+        if (profileTool.isActive) {
+          profileTool.deactivate();
+          profileBtn.innerText = 'Radial Profile';
+          profileBtn.style.background = '#444';
+        } else {
+          // Deactivate other tools
+          craterLayer.deactivate();
+          craterBtn.innerText = 'Start Crater Counting';
+          craterBtn.style.background = '#444';
+
+          profileTool.activate();
+          profileBtn.innerText = 'Stop Profile';
+          profileBtn.style.background = '#1098ad';
         }
       });
 

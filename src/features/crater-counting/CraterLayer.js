@@ -1,7 +1,7 @@
 export class CraterLayer {
     constructor(map) {
         this.map = map;
-        this.craters = []; // Array of { id, lat, lng, diameter }
+        this.craters = []; // Array of { id, lat, lng, diameter, layer }
         this.isActive = false;
         this.ghostCircle = null;
         this.currentRadius = 50000; // Meters
@@ -11,6 +11,12 @@ export class CraterLayer {
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onWheel = this.onWheel.bind(this);
         this.onClick = this.onClick.bind(this);
+        this.handleRemoveRequest = this.handleRemoveRequest.bind(this);
+        this.handleClearRequest = this.handleClearRequest.bind(this);
+
+        // Listen for external requests
+        document.addEventListener('jmars-crater-remove-request', this.handleRemoveRequest);
+        document.addEventListener('jmars-crater-clear-request', this.handleClearRequest);
     }
 
     activate() {
@@ -88,8 +94,6 @@ export class CraterLayer {
     }
 
     addCrater(crater) {
-        this.craters.push(crater);
-
         // Draw permanent circle
         const circle = L.circle([crater.lat, crater.lng], {
             color: '#f00',
@@ -98,11 +102,36 @@ export class CraterLayer {
             radius: crater.diameter / 2
         }).addTo(this.layerGroup);
 
-        // Store reference for removal if needed
+        // Store reference
         crater.layer = circle;
+        this.craters.push(crater);
 
         // Dispatch event for table update
-        const event = new CustomEvent('jmars-crater-added', { detail: crater });
+        const event = new CustomEvent('jmars-crater-added', { detail: {
+            id: crater.id,
+            lat: crater.lat,
+            lng: crater.lng,
+            diameter: crater.diameter
+        }});
         document.dispatchEvent(event);
+    }
+
+    handleRemoveRequest(e) {
+        const id = e.detail.id;
+        const index = this.craters.findIndex(c => c.id === id);
+        if (index !== -1) {
+            const crater = this.craters[index];
+            if (crater.layer) {
+                this.layerGroup.removeLayer(crater.layer);
+            }
+            this.craters.splice(index, 1);
+        }
+    }
+
+    handleClearRequest(e) {
+        this.craters.forEach(c => {
+            if (c.layer) this.layerGroup.removeLayer(c.layer);
+        });
+        this.craters = [];
     }
 }

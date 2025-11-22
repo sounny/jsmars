@@ -18,6 +18,10 @@ export class CraterTable {
 
     render() {
         this.container.innerHTML = `
+      <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+        <button id="crater-export-btn" style="flex: 1; padding: 4px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-size: 11px;">Export CSV</button>
+        <button id="crater-clear-btn" style="flex: 1; padding: 4px; background: #500; color: #fff; border: 1px solid #700; cursor: pointer; font-size: 11px;">Clear All</button>
+      </div>
       <div class="crater-table-container" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.8); color: #fff; font-size: 12px; padding: 5px;">
         <table style="width: 100%; border-collapse: collapse;">
           <thead>
@@ -26,6 +30,7 @@ export class CraterTable {
               <th>Lat</th>
               <th>Lon</th>
               <th>Diam (km)</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="crater-table-body">
@@ -34,19 +39,78 @@ export class CraterTable {
       </div>
     `;
         this.tbody = this.container.querySelector('#crater-table-body');
+
+        this.container.querySelector('#crater-export-btn').addEventListener('click', () => this.exportCSV());
+        this.container.querySelector('#crater-clear-btn').addEventListener('click', () => this.clearAll());
     }
 
     addCrater(crater) {
         if (!this.tbody) return;
+        this.craters.push(crater);
 
         const tr = document.createElement('tr');
+        tr.id = `crater-row-${crater.id}`;
         tr.style.borderBottom = '1px solid #333';
         tr.innerHTML = `
       <td>${crater.id.toString().slice(-4)}</td>
       <td>${crater.lat.toFixed(2)}</td>
       <td>${crater.lng.toFixed(2)}</td>
       <td>${(crater.diameter / 1000).toFixed(1)}</td>
+      <td style="text-align: right;">
+        <button class="delete-crater-btn" data-id="${crater.id}" style="background: none; border: none; color: #f55; cursor: pointer;">&times;</button>
+      </td>
     `;
+
+        tr.querySelector('.delete-crater-btn').addEventListener('click', (e) => {
+            const id = parseInt(e.target.dataset.id);
+            this.removeCrater(id);
+        });
+
         this.tbody.prepend(tr); // Add new at top
+    }
+
+    removeCrater(id) {
+        // Remove from local list
+        this.craters = this.craters.filter(c => c.id !== id);
+
+        // Remove from DOM
+        const row = this.tbody.querySelector(`#crater-row-${id}`);
+        if (row) row.remove();
+
+        // Dispatch removal event
+        const event = new CustomEvent('jmars-crater-remove-request', { detail: { id } });
+        document.dispatchEvent(event);
+    }
+
+    clearAll() {
+        if (!confirm('Are you sure you want to clear all craters?')) return;
+
+        this.craters = [];
+        this.tbody.innerHTML = '';
+
+        // Dispatch clear event
+        const event = new CustomEvent('jmars-crater-clear-request');
+        document.dispatchEvent(event);
+    }
+
+    exportCSV() {
+        if (this.craters.length === 0) {
+            alert('No craters to export.');
+            return;
+        }
+
+        const headers = ['ID,Lat,Lon,Diameter_km\n'];
+        const rows = this.craters.map(c =>
+            `${c.id},${c.lat.toFixed(5)},${c.lng.toFixed(5)},${(c.diameter / 1000).toFixed(3)}`
+        );
+
+        const csvContent = "data:text/csv;charset=utf-8," + headers.join('') + rows.join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "jmars_craters.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
