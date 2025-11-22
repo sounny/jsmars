@@ -1,6 +1,7 @@
 import { GraticuleLayer } from '../layers/GraticuleLayer.js';
 import { Panner } from './Panner.js';
 import { jmarsState } from '../jmars-state.js';
+import { NorthArrow } from './NorthArrow.js';
 
 export class FixedOverlays {
   constructor(jmarsMap, containerId) {
@@ -15,6 +16,7 @@ export class FixedOverlays {
     // Instantiate features
     this.graticule = new GraticuleLayer();
     this.panner = new Panner(jmarsMap);
+    this.northArrow = new NorthArrow(jmarsMap.map);
 
     this.init();
   }
@@ -53,6 +55,10 @@ export class FixedOverlays {
     this.checkPanner = this.createToggle('Panner View', 'panner');
     content.appendChild(this.checkPanner.container);
 
+    // North Arrow
+    this.checkNorth = this.createToggle('North Arrow', 'northArrow');
+    content.appendChild(this.checkNorth.container);
+
     this.container.appendChild(header);
     this.container.appendChild(content);
   }
@@ -87,6 +93,7 @@ export class FixedOverlays {
   updateUI(overlays) {
     if (this.checkGraticule) this.checkGraticule.input.checked = !!overlays.graticule;
     if (this.checkPanner) this.checkPanner.input.checked = !!overlays.panner;
+    if (this.checkNorth) this.checkNorth.input.checked = !!overlays.northArrow;
   }
 
   applyState(overlays) {
@@ -103,5 +110,8 @@ export class FixedOverlays {
 
     // Panner
     this.panner.toggle(!!overlays.panner);
+
+    // North Arrow
+    this.northArrow.toggle(!!overlays.northArrow);
   }
 }
