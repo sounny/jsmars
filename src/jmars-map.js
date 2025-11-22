@@ -131,6 +131,23 @@ export class JMARSMap {
     }
   }
 
+  updateLayerOrder(layerIds) {
+    // layerIds is expected to be from Top (highest z-index) to Bottom (lowest z-index)
+    const total = layerIds.length;
+    layerIds.forEach((id, index) => {
+      const layer = this.activeLayers[id];
+      if (layer && typeof layer.setZIndex === 'function') {
+        // Leaflet TileLayers support setZIndex.
+        // Higher zIndex is on top.
+        layer.setZIndex(total - index);
+      } else if (layer && layer.setStyle) {
+        // Vectors don't usually have setZIndex in the same way, but we can try bringToFront
+        if (index === 0) layer.bringToFront();
+        else if (index === total - 1) layer.bringToBack();
+      }
+    });
+  }
+
   addControls() {
     // Coordinate readout
     const coordControl = L.control({ position: 'bottomright' });

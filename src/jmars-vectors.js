@@ -1,11 +1,15 @@
+import { StyleEditor } from './features/shapes/StyleEditor.js';
+
 export class JMARSVectors {
   constructor(map, featureGroup) {
     this.map = map;
     this.featureGroup = featureGroup;
     this.drawControl = null;
+    this.styleEditor = null;
   }
 
   init() {
+    console.log('JMARSVectors initializing...');
     if (!L.Control.Draw) {
       console.error('Leaflet.Draw not found. Make sure to load it in index.html');
       return;
@@ -14,16 +18,19 @@ export class JMARSVectors {
     // Initialize the FeatureGroup to store editable layers
     this.map.addLayer(this.featureGroup);
 
-    // Initialize the draw control and pass it the FeatureGroup of editable layers
+    // Initialize StyleEditor
+    this.styleEditor = new StyleEditor(this.map);
+
+    // Initialize the draw control
     this.drawControl = new L.Control.Draw({
       position: 'topright',
       draw: {
         polyline: true,
         polygon: true,
-        circle: false, // Circles are less useful for planetary mapping (projection issues)
+        circle: true,
         rectangle: true,
         marker: true,
-        circlemarker: false
+        circlemarker: true // Enabled for styling tests
       },
       edit: {
         featureGroup: this.featureGroup
@@ -33,7 +40,8 @@ export class JMARSVectors {
     this.map.addControl(this.drawControl);
 
     // Handle created items
-    this.map.on(L.Draw.Event.CREATED, (e) => {
+    this.map.on('draw:created', (e) => {
+      console.log('draw:created event fired');
       const type = e.layerType;
       const layer = e.layer;
 
@@ -43,6 +51,24 @@ export class JMARSVectors {
 
       this.featureGroup.addLayer(layer);
       console.log('Created new vector shape:', type);
+    });
+
+    // Handle interactions
+    this.featureGroup.on('contextmenu', (e) => {
+        console.log('Context menu on shape');
+        L.DomEvent.stopPropagation(e); // Prevent map context menu
+
+        // Only open for layers with setStyle (vectors)
+        if (typeof e.layer.setStyle === 'function') {
+            this.styleEditor.open(e.layer, e.containerPoint);
+        } else {
+            console.log('Layer does not support styling');
+        }
+    });
+
+    // Close editor on map click
+    this.map.on('click', () => {
+        this.styleEditor.close();
     });
   }
 }
