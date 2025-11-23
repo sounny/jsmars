@@ -11,65 +11,9 @@ export class NorthArrow {
     this.control = null;
   }
 
+  // Styles are now in style.css
   static ensureStyles() {
-    if (document.getElementById('north-arrow-styles')) return;
-
-    const style = document.createElement('style');
-    style.id = 'north-arrow-styles';
-    style.textContent = `
-      .north-arrow-control {
-        width: var(--north-arrow-size, 72px);
-        height: var(--north-arrow-size, 72px);
-        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), rgba(0,0,0,0.15));
-        border: 1px solid #555;
-        border-radius: 8px;
-        display: grid;
-        place-items: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-        backdrop-filter: blur(2px);
-        margin-bottom: 6px;
-        margin-right: 6px;
-      }
-
-      .north-arrow-rose {
-        width: 80%;
-        height: 80%;
-      }
-
-      .north-arrow-needle {
-        fill: #f03e3e;
-      }
-
-      .north-arrow-ring {
-        stroke: #ddd;
-        stroke-width: 2;
-        fill: rgba(0,0,0,0.25);
-      }
-
-      .north-arrow-cardinal {
-        font: 700 14px 'Segoe UI', sans-serif;
-        fill: #fff;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.6);
-      }
-
-      .north-arrow-reset {
-        margin-top: 6px;
-        font: 12px 'Segoe UI', sans-serif;
-        color: #ddd;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid #555;
-        border-radius: 6px;
-        padding: 4px 8px;
-        cursor: pointer;
-      }
-
-      .north-arrow-reset:hover {
-        background: rgba(255,255,255,0.12);
-        color: #fff;
-      }
-    `;
-
-    document.head.appendChild(style);
+    // No-op
   }
 
   add() {

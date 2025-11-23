@@ -1,7 +1,7 @@
 import { GraticuleLayer } from '../layers/GraticuleLayer.js';
 import { Panner } from './Panner.js';
-import { jmarsState } from '../jmars-state.js';
 import { NorthArrow } from './NorthArrow.js';
+import { jmarsState } from '../jmars-state.js';
 
 export class FixedOverlays {
   constructor(jmarsMap, containerId) {
@@ -9,8 +9,8 @@ export class FixedOverlays {
     this.container = document.getElementById(containerId);
 
     if (!this.container) {
-        console.error(`FixedOverlays container '${containerId}' not found.`);
-        return;
+      console.error(`FixedOverlays container '${containerId}' not found.`);
+      return;
     }
 
     // Instantiate features
@@ -56,8 +56,8 @@ export class FixedOverlays {
     content.appendChild(this.checkPanner.container);
 
     // North Arrow
-    this.checkNorth = this.createToggle('North Arrow', 'northArrow');
-    content.appendChild(this.checkNorth.container);
+    this.checkNorthArrow = this.createToggle('North Arrow', 'northArrow');
+    content.appendChild(this.checkNorthArrow.container);
 
     this.container.appendChild(header);
     this.container.appendChild(content);
@@ -93,7 +93,7 @@ export class FixedOverlays {
   updateUI(overlays) {
     if (this.checkGraticule) this.checkGraticule.input.checked = !!overlays.graticule;
     if (this.checkPanner) this.checkPanner.input.checked = !!overlays.panner;
-    if (this.checkNorth) this.checkNorth.input.checked = !!overlays.northArrow;
+    if (this.checkNorthArrow) this.checkNorthArrow.input.checked = !!overlays.northArrow;
   }
 
   applyState(overlays) {

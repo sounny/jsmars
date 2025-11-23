@@ -9,16 +9,6 @@ export class StyleEditor {
     init() {
         this.container = document.createElement('div');
         this.container.id = 'style-editor';
-        this.container.style.position = 'absolute';
-        this.container.style.zIndex = '2000';
-        this.container.style.background = '#222';
-        this.container.style.border = '1px solid #555';
-        this.container.style.padding = '10px';
-        this.container.style.color = '#fff';
-        this.container.style.display = 'none';
-        this.container.style.borderRadius = '4px';
-        this.container.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-        this.container.style.width = '200px';
 
         this.container.innerHTML = `
             <div style="margin-bottom: 8px; font-weight: bold; display: flex; justify-content: space-between;">
@@ -41,12 +31,6 @@ export class StyleEditor {
                 <label>Opacity</label>
                 <input type="range" id="style-opacity" min="0" max="1" step="0.1">
             </div>
-            <style>
-                .style-field { margin-bottom: 5px; font-size: 12px; }
-                .style-field label { display: block; margin-bottom: 2px; }
-                .style-field input[type="color"] { width: 100%; height: 25px; border: none; }
-                .style-field input[type="range"] { width: 100%; }
-            </style>
         `;
 
         document.body.appendChild(this.container);

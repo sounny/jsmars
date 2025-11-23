@@ -18,14 +18,14 @@ export class CraterTable {
 
     render() {
         this.container.innerHTML = `
-      <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-        <button id="crater-export-btn" style="flex: 1; padding: 4px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-size: 11px;">Export CSV</button>
-        <button id="crater-clear-btn" style="flex: 1; padding: 4px; background: #500; color: #fff; border: 1px solid #700; cursor: pointer; font-size: 11px;">Clear All</button>
+      <div class="crater-btn-group">
+        <button id="crater-export-btn" class="crater-action-btn" style="background: #333;">Export CSV</button>
+        <button id="crater-clear-btn" class="crater-action-btn" style="background: #500; border-color: #700;">Clear All</button>
       </div>
-      <div class="crater-table-container" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.8); color: #fff; font-size: 12px; padding: 5px;">
-        <table style="width: 100%; border-collapse: collapse;">
+      <div class="crater-table-container">
+        <table class="crater-table">
           <thead>
-            <tr style="border-bottom: 1px solid #555; text-align: left;">
+            <tr>
               <th>ID</th>
               <th>Lat</th>
               <th>Lon</th>
