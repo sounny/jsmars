@@ -7,62 +7,147 @@
   <title>JSMARS - JMARS for the Web</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
-  const searchBar = new SearchBar(jmars.map, 'search-bar-container');
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="stylesheet" href="style.css">
+</head>
 
-  // Initialize Crater Tool
-  const craterLayer = new CraterLayer(jmars.map);
-  const craterTable = new CraterTable('crater-table-container');
+<body>
+  <button id="sidebar-toggle" title="Collapse Sidebar">&times;</button>
+  <div id="controls">
+    <!-- Branding -->
+    <div style="padding: 15px; text-align: center; border-bottom: 1px solid #444; flex-shrink: 0;">
+      <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;">
+    </div>
 
-  const craterBtn = document.getElementById('crater-tool-btn');
-  craterBtn.addEventListener('click', () => {
-  if (craterLayer.isActive) {
-  craterLayer.deactivate();
-  craterBtn.innerText = 'Start Crater Counting';
-  craterBtn.classList.remove('active');
-  } else {
-  // Deactivate other tools
-  profileTool.deactivate();
-  profileBtn.innerText = 'Radial Profile';
-  profileBtn.classList.remove('active');
+    <!-- Section 1: Layer Manager -->
+    <div class="accordion-section expanded">
+      <div class="accordion-header">Layer Manager</div>
+      <div class="accordion-content">
+        <div id="layer-list">
+          <!-- Layers will be injected here -->
+          <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
+        </div>
+      </div>
+    </div>
 
-  craterLayer.activate();
-  craterBtn.innerText = 'Stop Crater Counting';
-  craterBtn.classList.add('active');
-  }
-  });
+    <!-- Section 2: Map Options (Search + Overlays) -->
+    <div class="accordion-section">
+      <div class="accordion-header">Map Options</div>
+      <div class="accordion-content">
+        <div style="padding: 10px;">
+          <div id="search-bar-container" style="margin-bottom: 15px;"></div>
+          <div id="fixed-overlays"></div>
+        </div>
+      </div>
+    </div>
 
-  // Initialize Radial Profile Tool
-  const profileTool = new RadialProfileTool(jmars.map);
-  const profileChart = new ProfileChart('profile-chart-container');
+    <!-- Section 3: Tools -->
+    <div class="accordion-section">
+      <div class="accordion-header">Tools</div>
+      <div class="accordion-content">
+        <!-- Crater Counting -->
+        <div class="tool-section border-bottom">
+          <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
+          <div id="crater-table-container"></div>
+        </div>
 
-  const profileBtn = document.getElementById('profile-tool-btn');
-  profileBtn.addEventListener('click', () => {
-  if (profileTool.isActive) {
-  profileTool.deactivate();
-  profileBtn.innerText = 'Radial Profile';
-  profileBtn.classList.remove('active');
-  } else {
-  // Deactivate other tools
-  craterLayer.deactivate();
-  craterBtn.innerText = 'Start Crater Counting';
-  craterBtn.classList.remove('active');
+        <!-- Radial Profile -->
+        <div class="tool-section">
+          <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
+          <div id="profile-chart-container"></div>
+        </div>
+      </div>
+    </div>
 
-  profileTool.activate();
-  profileBtn.innerText = 'Stop Profile';
-  profileBtn.classList.add('active');
-  }
-  });
+    <!-- Footer -->
+    <div style="padding: 10px; text-align: center; border-top: 1px solid #444; font-size: 12px; flex-shrink: 0;">
+      <a href="about.html" style="color: #888; text-decoration: none;">About JSMARS</a>
+    </div>
+  </div>
+  <div id="loading-indicator">Loading map data...</div>
+  <div id="map"></div>
 
-  // Handle errors
-  window.addEventListener('unhandledrejection', function (event) {
-  console.error("Unhandled rejection:", event.reason);
-  if (layerListContainer.innerText.includes('Loading')) {
-  layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
-  }
-  });
-  });
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+  <script type="module">
+    import { JMARSMap } from './src/jmars-map.js';
+    import { LayerManager } from './src/ui/layer-manager.js';
+    import { Sidebar } from './src/ui/Sidebar.js';
+    import { FixedOverlays } from './src/ui/FixedOverlays.js';
+    import { CraterLayer } from './src/features/crater-counting/CraterLayer.js';
+    import { CraterTable } from './src/features/crater-counting/CraterTable.js';
+    import { RadialProfileTool } from './src/features/profile/RadialProfileTool.js';
+    import { ProfileChart } from './src/features/profile/ProfileChart.js';
+    import { SearchBar } from './src/features/search/SearchBar.js';
+    import { Accordion } from './src/ui/Accordion.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const sidebar = new Sidebar('controls', 'sidebar-toggle');
+      const accordion = new Accordion('controls');
+      const jmars = new JMARSMap('map');
+      jmars.init();
+      window.jmars = jmars; // Expose for debugging
+
+      const layerListContainer = document.getElementById('layer-list');
+      const layerManager = new LayerManager(jmars, 'layer-list');
+      const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
+      const searchBar = new SearchBar(jmars.map, 'search-bar-container');
+
+      // Initialize Crater Tool
+      const craterLayer = new CraterLayer(jmars.map);
+      const craterTable = new CraterTable('crater-table-container');
+
+      const craterBtn = document.getElementById('crater-tool-btn');
+      craterBtn.addEventListener('click', () => {
+        if (craterLayer.isActive) {
+          craterLayer.deactivate();
+          craterBtn.innerText = 'Start Crater Counting';
+          craterBtn.classList.remove('active');
+        } else {
+          // Deactivate other tools
+          profileTool.deactivate();
+          profileBtn.innerText = 'Radial Profile';
+          profileBtn.classList.remove('active');
+
+          craterLayer.activate();
+          craterBtn.innerText = 'Stop Crater Counting';
+          craterBtn.classList.add('active');
+        }
+      });
+
+      // Initialize Radial Profile Tool
+      const profileTool = new RadialProfileTool(jmars.map);
+      const profileChart = new ProfileChart('profile-chart-container');
+
+      const profileBtn = document.getElementById('profile-tool-btn');
+      profileBtn.addEventListener('click', () => {
+        if (profileTool.isActive) {
+          profileTool.deactivate();
+          profileBtn.innerText = 'Radial Profile';
+          profileBtn.classList.remove('active');
+        } else {
+          // Deactivate other tools
+          craterLayer.deactivate();
+          craterBtn.innerText = 'Start Crater Counting';
+          craterBtn.classList.remove('active');
+
+          profileTool.activate();
+          profileBtn.innerText = 'Stop Profile';
+          profileBtn.classList.add('active');
+        }
+      });
+
+      // Handle errors
+      window.addEventListener('unhandledrejection', function (event) {
+        console.error("Unhandled rejection:", event.reason);
+        if (layerListContainer.innerText.includes('Loading')) {
+          layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
+        }
+      });
+    });
   </script>
-  </body>
+</body>
 
 </html>
