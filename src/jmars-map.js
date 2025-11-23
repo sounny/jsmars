@@ -149,25 +149,7 @@ export class JMARSMap {
   }
 
   addControls() {
-    // Coordinate readout
-    const coordControl = L.control({ position: 'bottomright' });
-    coordControl.onAdd = (map) => {
-      const div = L.DomUtil.create('div', 'coordinate-control');
-      div.style.background = 'rgba(0,0,0,0.5)';
-      div.style.color = '#fff';
-      div.style.padding = '5px';
-      div.style.fontSize = '12px';
-      div.innerHTML = 'Lat: 0, Lon: 0';
-
-      map.on('mousemove', (e) => {
-        div.innerHTML = `Lat: ${e.latlng.lat.toFixed(4)}, Lon: ${e.latlng.lng.toFixed(4)}`;
-      });
-
-      return div;
-    };
-    coordControl.addTo(this.map);
-
-    // Scale control
-    L.control.scale({ position: 'bottomright' }).addTo(this.map);
+    // Controls are now handled by external UI components (StatusBar, etc.)
+    // We can keep this method for future map-specific controls if needed.
   }
 }
