@@ -9,9 +9,23 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <link rel="stylesheet" href="style.css">
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 </head>
 
 <body>
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Status Bar -->
+  <div id="status-bar"></div>
+
+  <!-- Loading Indicator -->
+  <div id="loading-indicator">Loading...</div>
+
   <button id="sidebar-toggle" title="Collapse Sidebar">&times;</button>
   <div id="controls">
     <!-- Branding -->
@@ -58,58 +72,89 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Main Application Script -->
+  <script type="module">
+    import { JMARSMap } from './src/jmars-map.js';
+    import { CraterLayer } from './src/features/crater-counting/CraterLayer.js';
+    import { CraterTable } from './src/features/crater-counting/CraterTable.js';
+    import { RadialProfileTool } from './src/features/profile/RadialProfileTool.js';
+    import { ProfileChart } from './src/features/profile/ProfileChart.js';
+    import { LayerManager } from './src/ui/layer-manager.js';
+    import { Accordion } from './src/ui/Accordion.js';
+    import { StatusBar } from './src/ui/StatusBar.js';
+    import { FixedOverlays } from './src/ui/FixedOverlays.js';
+    import { Sidebar } from './src/ui/Sidebar.js';
+
+    // Initialize Map
+    const jmars = new JMARSMap('map');
+    jmars.init();
+    window.jmars = jmars; // Expose for debugging
+
+    // Initialize UI Components
+    const layerManager = new LayerManager(jmars, 'layer-list');
+    const accordion = new Accordion('controls');
+    const statusBar = new StatusBar(jmars.map, 'status-bar');
+    const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
+    const sidebar = new Sidebar('controls', 'sidebar-toggle');
+
+    // Initialize Tools
     const craterLayer = new CraterLayer(jmars.map);
     const craterTable = new CraterTable('crater-table-container');
 
     const craterBtn = document.getElementById('crater-tool-btn');
-    craterBtn.addEventListener('click', () => {
-    if (craterLayer.isActive) {
-    craterLayer.deactivate();
-    craterBtn.innerText = 'Start Crater Counting';
-    craterBtn.classList.remove('active');
-    } else {
-    // Deactivate other tools
-    profileTool.deactivate();
-    profileBtn.innerText = 'Radial Profile';
-    profileBtn.classList.remove('active');
-
-    craterLayer.activate();
-    craterBtn.innerText = 'Stop Crater Counting';
-    craterBtn.classList.add('active');
-    }
-    });
 
     // Initialize Radial Profile Tool
     const profileTool = new RadialProfileTool(jmars.map);
     const profileChart = new ProfileChart('profile-chart-container');
-
     const profileBtn = document.getElementById('profile-tool-btn');
-    profileBtn.addEventListener('click', () => {
-    if (profileTool.isActive) {
-    profileTool.deactivate();
-    profileBtn.innerText = 'Radial Profile';
-    profileBtn.classList.remove('active');
-    } else {
-    // Deactivate other tools
-    craterLayer.deactivate();
-    craterBtn.innerText = 'Start Crater Counting';
-    craterBtn.classList.remove('active');
 
-    profileTool.activate();
-    profileBtn.innerText = 'Stop Profile';
-    profileBtn.classList.add('active');
-    }
+    // Crater Button Event Listener
+    craterBtn.addEventListener('click', () => {
+      if (craterLayer.isActive) {
+        craterLayer.deactivate();
+        craterBtn.innerText = 'Start Crater Counting';
+        craterBtn.classList.remove('active');
+      } else {
+        // Deactivate other tools
+        profileTool.deactivate();
+        profileBtn.innerText = 'Radial Profile';
+        profileBtn.classList.remove('active');
+
+        craterLayer.activate();
+        craterBtn.innerText = 'Stop Crater Counting';
+        craterBtn.classList.add('active');
+      }
+    });
+
+    // Profile Button Event Listener
+    profileBtn.addEventListener('click', () => {
+      if (profileTool.isActive) {
+        profileTool.deactivate();
+        profileBtn.innerText = 'Radial Profile';
+        profileBtn.classList.remove('active');
+      } else {
+        // Deactivate other tools
+        craterLayer.deactivate();
+        craterBtn.innerText = 'Start Crater Counting';
+        craterBtn.classList.remove('active');
+
+        profileTool.activate();
+        profileBtn.innerText = 'Stop Profile';
+        profileBtn.classList.add('active');
+      }
     });
 
     // Handle errors
+    const layerListContainer = document.getElementById('layer-list');
     window.addEventListener('unhandledrejection', function (event) {
-    console.error("Unhandled rejection:", event.reason);
-    if (layerListContainer.innerText.includes('Loading')) {
-    layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
-    }
+      console.error("Unhandled rejection:", event.reason);
+      if (layerListContainer && layerListContainer.innerText.includes('Loading')) {
+        layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
+      }
     });
-    });
-    </script>
+  </script>
 </body>
 
 </html>
