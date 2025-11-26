@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Olympus Mons",
+    "lat": 18.65,
+    "lon": 226.2,
+    "type": "Mons"
+  },
+  {
+    "name": "Gale Crater",
+    "lat": -5.4,
+    "lon": 137.8,
+    "type": "Crater"
+  },
+  {
+    "name": "Valles Marineris",
+    "lat": -13.9,
+    "lon": 300.8,
+    "type": "Valles"
+  },
+  {
+    "name": "Jezero Crater",
+    "lat": 18.38,
+    "lon": 77.58,
+    "type": "Crater"
+  },
+  {
+    "name": "Hellas Planitia",
+    "lat": -42.4,
+    "lon": 70.5,
+    "type": "Planitia"
+  },
+  {
+    "name": "Tharsis Montes",
+    "lat": 1.5,
+    "lon": 247.5,
+    "type": "Mons"
+  },
+  {
+    "name": "Elysium Mons",
+    "lat": 24.8,
+    "lon": 147.2,
+    "type": "Mons"
+  },
+  {
+    "name": "Victoria Crater",
+    "lat": -2.05,
+    "lon": 354.5,
+    "type": "Crater"
+  },
+  {
+    "name": "Endeavour Crater",
+    "lat": -2.28,
+    "lon": 354.77,
+    "type": "Crater"
+  },
+  {
+    "name": "Gusev Crater",
+    "lat": -14.6,
+    "lon": 175.4,
+    "type": "Crater"
+  }
+]

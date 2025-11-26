@@ -64,31 +64,6 @@
     import { JMARSMap } from './src/jmars-map.js';
     import { CraterLayer } from './src/features/crater-counting/CraterLayer.js';
     import { CraterTable } from './src/features/crater-counting/CraterTable.js';
-    import { RadialProfileTool } from './src/features/profile/RadialProfileTool.js';
-    import { ProfileChart } from './src/features/profile/ProfileChart.js';
-    import { LayerManager } from './src/ui/layer-manager.js';
-    import { Accordion } from './src/ui/Accordion.js';
-    import { StatusBar } from './src/ui/StatusBar.js';
-    import { FixedOverlays } from './src/ui/FixedOverlays.js';
-    import { Sidebar } from './src/ui/Sidebar.js';
-
-    // Initialize Map
-    const jmars = new JMARSMap('map');
-    jmars.init();
-    window.jmars = jmars; // Expose for debugging
-
-    // Initialize UI Components
-    const layerManager = new LayerManager(jmars, 'layer-list');
-    const accordion = new Accordion('controls');
-    const statusBar = new StatusBar(jmars.map, 'status-bar');
-    const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
-    const sidebar = new Sidebar('controls', 'sidebar-toggle');
-
-    // Initialize Tools
-    const craterLayer = new CraterLayer(jmars.map);
-    const craterTable = new CraterTable('crater-table-container');
-
-    const craterBtn = document.getElementById('crater-tool-btn');
 
     // Initialize Radial Profile Tool
     const profileTool = new RadialProfileTool(jmars.map);
