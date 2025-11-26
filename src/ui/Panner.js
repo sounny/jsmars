@@ -15,18 +15,7 @@ export class Panner {
     // Create container
     this.container = document.createElement('div');
     this.container.id = 'jmars-panner';
-    this.container.style.position = 'absolute';
-    this.container.style.bottom = '30px'; // Higher to avoid attribution
-    this.container.style.right = '20px';  // Bottom Right
-    this.container.style.width = '200px';
-    this.container.style.height = '100px';
-    this.container.style.border = '2px solid #555';
-    this.container.style.borderRadius = '4px';
-    this.container.style.zIndex = '1000';
-    this.container.style.display = 'none'; // Hidden by default
-    this.container.style.background = '#000';
-    this.container.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-
+    // Styles are now handled in style.css
     document.body.appendChild(this.container);
 
     // Initialize MiniMap
@@ -72,10 +61,12 @@ export class Panner {
 
   toggle(show) {
     this.isOpen = show;
-    this.container.style.display = show ? 'block' : 'none';
     if (show) {
+      this.container.classList.add('visible');
       this.miniMap.invalidateSize();
       this.update();
+    } else {
+      this.container.classList.remove('visible');
     }
   }
 }

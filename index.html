@@ -23,55 +23,40 @@
   <!-- Status Bar -->
   <div id="status-bar"></div>
 
-  <!-- Loading Indicator -->
-  <div id="loading-indicator">Loading...</div>
+  <!-- Layers will be injected here -->
+  <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
+  </div>
+  </div>
+  </div>
 
-  <button id="sidebar-toggle" title="Collapse Sidebar">&times;</button>
-  <div id="controls">
-    <!-- Branding -->
-    <div style="padding: 15px; text-align: center; border-bottom: 1px solid #444; flex-shrink: 0;">
-      <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;">
-    </div>
-
-    <!-- Section 1: Layer Manager -->
-    <div class="accordion-section expanded">
-      <div class="accordion-header">Layer Manager</div>
-      <div class="accordion-content">
-        <div id="layer-list">
-          <!-- Layers will be injected here -->
-          <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
-        </div>
+  <!-- Section 2: Map Options (Search + Overlays) -->
+  <div class="accordion-section">
+    <div class="accordion-header">Map Options</div>
+    <div class="accordion-content">
+      <div style="padding: 10px;">
+        <div id="search-bar-container" style="margin-bottom: 15px;"></div>
+        <div id="fixed-overlays"></div>
       </div>
     </div>
+  </div>
 
-    <!-- Section 2: Map Options (Search + Overlays) -->
-    <div class="accordion-section">
-      <div class="accordion-header">Map Options</div>
-      <div class="accordion-content">
-        <div style="padding: 10px;">
-          <div id="search-bar-container" style="margin-bottom: 15px;"></div>
-          <div id="fixed-overlays"></div>
-        </div>
+  <!-- Section 3: Tools -->
+  <div class="accordion-section">
+    <div class="accordion-header">Tools</div>
+    <div class="accordion-content">
+      <!-- Crater Counting -->
+      <div class="tool-section border-bottom">
+        <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
+        <div id="crater-table-container"></div>
+      </div>
+
+      <!-- Radial Profile -->
+      <div class="tool-section">
+        <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
+        <div id="profile-chart-container"></div>
       </div>
     </div>
-
-    <!-- Section 3: Tools -->
-    <div class="accordion-section">
-      <div class="accordion-header">Tools</div>
-      <div class="accordion-content">
-        <!-- Crater Counting -->
-        <div class="tool-section border-bottom">
-          <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
-          <div id="crater-table-container"></div>
-        </div>
-
-        <!-- Radial Profile -->
-        <div class="tool-section">
-          <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
-          <div id="profile-chart-container"></div>
-        </div>
-      </div>
-    </div>
+  </div>
   </div>
 
   <!-- Main Application Script -->
