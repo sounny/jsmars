@@ -1,6 +1,5 @@
 import { GraticuleLayer } from '../layers/GraticuleLayer.js';
 import { Panner } from './Panner.js';
-import { NorthArrow } from './NorthArrow.js';
 import { ResetViewControl } from './ResetViewControl.js';
 import { jmarsState } from '../jmars-state.js';
 
@@ -17,7 +16,6 @@ export class FixedOverlays {
     // Instantiate features
     this.graticule = new GraticuleLayer();
     this.panner = new Panner(jmarsMap);
-    this.northArrow = new NorthArrow(jmarsMap.map);
     this.resetView = new ResetViewControl(jmarsMap.map);
 
     this.init();
@@ -57,9 +55,6 @@ export class FixedOverlays {
     this.checkPanner = this.createToggle('Panner View', 'panner');
     content.appendChild(this.checkPanner.container);
 
-    // North Arrow
-    this.checkNorthArrow = this.createToggle('North Arrow', 'northArrow');
-    content.appendChild(this.checkNorthArrow.container);
 
     // Reset View (Optional toggle, but good to have)
     this.checkResetView = this.createToggle('Reset View Btn', 'resetView');
@@ -99,7 +94,6 @@ export class FixedOverlays {
   updateUI(overlays) {
     if (this.checkGraticule) this.checkGraticule.input.checked = !!overlays.graticule;
     if (this.checkPanner) this.checkPanner.input.checked = !!overlays.panner;
-    if (this.checkNorthArrow) this.checkNorthArrow.input.checked = !!overlays.northArrow;
     if (this.checkResetView) this.checkResetView.input.checked = !!overlays.resetView;
   }
 
@@ -118,8 +112,6 @@ export class FixedOverlays {
     // Panner
     this.panner.toggle(!!overlays.panner);
 
-    // North Arrow
-    this.northArrow.toggle(!!overlays.northArrow);
 
     // Reset View
     this.resetView.toggle(!!overlays.resetView);

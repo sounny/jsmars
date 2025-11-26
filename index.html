@@ -23,40 +23,58 @@
   <!-- Status Bar -->
   <div id="status-bar"></div>
 
-  <!-- Layers will be injected here -->
-  <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
-  </div>
-  </div>
-  </div>
+  <!-- Loading Indicator -->
+  <div id="loading-indicator">Loading...</div>
 
-  <!-- Section 2: Map Options (Search + Overlays) -->
-  <div class="accordion-section">
-    <div class="accordion-header">Map Options</div>
-    <div class="accordion-content">
-      <div style="padding: 10px;">
-        <div id="search-bar-container" style="margin-bottom: 15px;"></div>
-        <div id="fixed-overlays"></div>
+  <button id="sidebar-toggle" title="Collapse Sidebar">&times;</button>
+  <div id="controls">
+    <!-- Branding -->
+    <div style="padding: 15px; text-align: center; border-bottom: 1px solid #444; flex-shrink: 0;">
+      <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;">
+      <div style="margin-top: 5px;">
+        <a href="about.html" target="_blank" style="color: #aaa; text-decoration: none; font-size: 12px;">About</a>
       </div>
     </div>
-  </div>
 
-  <!-- Section 3: Tools -->
-  <div class="accordion-section">
-    <div class="accordion-header">Tools</div>
-    <div class="accordion-content">
-      <!-- Crater Counting -->
-      <div class="tool-section border-bottom">
-        <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
-        <div id="crater-table-container"></div>
-      </div>
-
-      <!-- Radial Profile -->
-      <div class="tool-section">
-        <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
-        <div id="profile-chart-container"></div>
+    <!-- Section 1: Layer Manager -->
+    <div class="accordion-section expanded">
+      <div class="accordion-header">Layer Manager</div>
+      <div class="accordion-content">
+        <div id="layer-list">
+          <!-- Layers will be injected here -->
+          <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
+        </div>
       </div>
     </div>
-  </div>
+
+    <!-- Section 2: Map Options (Search + Overlays) -->
+    <div class="accordion-section">
+      <div class="accordion-header">Map Options</div>
+      <div class="accordion-content">
+        <div style="padding: 10px;">
+          <div id="search-bar-container" style="margin-bottom: 15px;"></div>
+          <div id="fixed-overlays"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Tools -->
+    <div class="accordion-section">
+      <div class="accordion-header">Tools</div>
+      <div class="accordion-content">
+        <!-- Crater Counting -->
+        <div class="tool-section border-bottom">
+          <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
+          <div id="crater-table-container"></div>
+        </div>
+
+        <!-- Radial Profile -->
+        <div class="tool-section">
+          <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
+          <div id="profile-chart-container"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Main Application Script -->
@@ -64,6 +82,33 @@
     import { JMARSMap } from './src/jmars-map.js';
     import { CraterLayer } from './src/features/crater-counting/CraterLayer.js';
     import { CraterTable } from './src/features/crater-counting/CraterTable.js';
+    import { RadialProfileTool } from './src/features/profile/RadialProfileTool.js';
+    import { ProfileChart } from './src/features/profile/ProfileChart.js';
+    import { LayerManager } from './src/ui/layer-manager.js';
+    import { Accordion } from './src/ui/Accordion.js';
+    import { StatusBar } from './src/ui/StatusBar.js';
+    import { FixedOverlays } from './src/ui/FixedOverlays.js';
+    import { Sidebar } from './src/ui/Sidebar.js';
+    import { SearchBar } from './src/ui/SearchBar.js';
+
+    // Initialize Map
+    const jmars = new JMARSMap('map');
+    jmars.init();
+    window.jmars = jmars; // Expose for debugging
+
+    // Initialize UI Components
+    const layerManager = new LayerManager(jmars, 'layer-list');
+    const accordion = new Accordion('controls');
+    const statusBar = new StatusBar(jmars.map, 'status-bar');
+    const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
+    const sidebar = new Sidebar('controls', 'sidebar-toggle');
+    const searchBar = new SearchBar(jmars.map, 'search-bar-container');
+
+    // Initialize Tools
+    const craterLayer = new CraterLayer(jmars.map);
+    const craterTable = new CraterTable('crater-table-container');
+
+    const craterBtn = document.getElementById('crater-tool-btn');
 
     // Initialize Radial Profile Tool
     const profileTool = new RadialProfileTool(jmars.map);
