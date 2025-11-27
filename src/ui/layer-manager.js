@@ -1,13 +1,17 @@
 import { jmarsState } from '../jmars-state.js';
 
 export class LayerManager {
-  constructor(jmarsMap, containerId) {
+  constructor(containerOrId, jmarsMap) {
     this.jmarsMap = jmarsMap;
-    this.container = document.getElementById(containerId);
+    if (typeof containerOrId === 'string') {
+      this.container = document.getElementById(containerOrId);
+    } else {
+      this.container = containerOrId;
+    }
     this.availableLayers = [];
 
     if (!this.container) {
-      console.error(`LayerManager container '${containerId}' not found.`);
+      console.error(`LayerManager container not found.`);
       return;
     }
 
@@ -124,11 +128,11 @@ export class LayerManager {
     const available = this.availableLayers.filter(l => !activeIds.includes(l.id));
 
     if (available.length === 0) {
-        const msg = document.createElement('div');
-        msg.textContent = 'No more layers available';
-        msg.style.padding = '10px';
-        msg.style.color = '#888';
-        this.container.appendChild(msg);
+      const msg = document.createElement('div');
+      msg.textContent = 'No more layers available';
+      msg.style.padding = '10px';
+      msg.style.color = '#888';
+      this.container.appendChild(msg);
     }
 
     available.forEach(layer => {
@@ -213,7 +217,7 @@ export class LayerManager {
     slider.value = layerState.opacity;
     slider.style.flex = 1;
     slider.addEventListener('input', (e) => {
-       jmarsState.updateLayer(layerState.id, { opacity: parseFloat(e.target.value) });
+      jmarsState.updateLayer(layerState.id, { opacity: parseFloat(e.target.value) });
     });
 
     sliderContainer.appendChild(sliderLabel);
@@ -251,20 +255,20 @@ export class LayerManager {
   }
 
   moveLayer(layerId, direction) {
-      // Direction: 1 (Move towards Top/End of array), -1 (Move towards Bottom/Start of array)
-      const activeLayers = [...jmarsState.get('activeLayers')];
-      const index = activeLayers.findIndex(l => l.id === layerId);
-      if (index === -1) return;
+    // Direction: 1 (Move towards Top/End of array), -1 (Move towards Bottom/Start of array)
+    const activeLayers = [...jmarsState.get('activeLayers')];
+    const index = activeLayers.findIndex(l => l.id === layerId);
+    if (index === -1) return;
 
-      const newIndex = index + direction;
-      if (newIndex < 0 || newIndex >= activeLayers.length) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= activeLayers.length) return;
 
-      // Swap
-      [activeLayers[index], activeLayers[newIndex]] = [activeLayers[newIndex], activeLayers[index]];
+    // Swap
+    [activeLayers[index], activeLayers[newIndex]] = [activeLayers[newIndex], activeLayers[index]];
 
-      // Extract IDs for State (State expects reordering via event, or we just direct update)
-      // My jmarsState has `reorderLayers`
-      const newOrderIds = activeLayers.map(l => l.id);
-      jmarsState.reorderLayers(newOrderIds);
+    // Extract IDs for State (State expects reordering via event, or we just direct update)
+    // My jmarsState has `reorderLayers`
+    const newOrderIds = activeLayers.map(l => l.id);
+    jmarsState.reorderLayers(newOrderIds);
   }
 }

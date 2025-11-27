@@ -646,16 +646,16 @@ html {
   height: calc(100% - 30px);
 }
 
-/* Panner (Overview Map) */
-#jmars-panner {
-  position: absolute;
-  bottom: 30px;
-  /* Above status bar */
-  left: 0;
-  right: 0;
-  height: 150px;
-  background: #000;
-  border-top: 2px solid #555;
+/* Search Bar */
+.search-bar-wrapper {
+  position: relative;
+  display: flex;
+  gap: 5px;
+}
+
+#jmars-search-input {
+  flex: 1;
+  padding: 6px;
   border-radius: 4px;
   border: 1px solid #555;
   background: #222;

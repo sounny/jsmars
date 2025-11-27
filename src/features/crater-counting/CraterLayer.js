@@ -25,7 +25,8 @@ export class CraterLayer {
 
         // Create ghost circle
         this.ghostCircle = L.circle(this.map.getCenter(), {
-            color: '#ff0',
+            color: '#ffffff',
+            fillColor: '#ffff00',
             weight: 2,
             fillOpacity: 0.1,
             radius: this.currentRadius,
@@ -96,7 +97,8 @@ export class CraterLayer {
     addCrater(crater) {
         // Draw permanent circle
         const circle = L.circle([crater.lat, crater.lng], {
-            color: '#f00',
+            color: '#ffffff',
+            fillColor: '#ff0000',
             weight: 2,
             fillOpacity: 0.2,
             radius: crater.diameter / 2
@@ -107,12 +109,14 @@ export class CraterLayer {
         this.craters.push(crater);
 
         // Dispatch event for table update
-        const event = new CustomEvent('jmars-crater-added', { detail: {
-            id: crater.id,
-            lat: crater.lat,
-            lng: crater.lng,
-            diameter: crater.diameter
-        }});
+        const event = new CustomEvent('jmars-crater-added', {
+            detail: {
+                id: crater.id,
+                lat: crater.lat,
+                lng: crater.lng,
+                diameter: crater.diameter
+            }
+        });
         document.dispatchEvent(event);
     }
 

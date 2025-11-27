@@ -3,7 +3,7 @@ import { JMARS_CONFIG } from '../jmars-config.js';
 export class ResetViewControl {
     constructor(map, options = {}) {
         this.map = map;
-        this.options = Object.assign({ position: 'topleft' }, options);
+        this.options = Object.assign({ position: 'topright' }, options);
         this.control = null;
     }
 

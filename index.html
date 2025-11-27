@@ -97,7 +97,7 @@
     window.jmars = jmars; // Expose for debugging
 
     // Initialize UI Components
-    const layerManager = new LayerManager(jmars, 'layer-list');
+    const layerManager = new LayerManager('layer-list', jmars);
     const accordion = new Accordion('controls');
     const statusBar = new StatusBar(jmars.map, 'status-bar');
     const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');

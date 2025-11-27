@@ -12,6 +12,8 @@ export class JMARSMap {
     this.availableLayers = [...initialLayers]; // Start with hardcoded, append WMS later
     this.loadingIndicator = document.getElementById('loading-indicator');
     this.vectors = null;
+    this.bodyStates = {}; // Store state for each body
+    this.currentBody = JMARS_CONFIG.body.toLowerCase();
   }
 
   init() {
@@ -57,6 +59,70 @@ export class JMARSMap {
 
     // Add controls
     this.addControls();
+
+    // Listen for body changes
+    window.addEventListener('jmars:body-changed', (e) => {
+      this.switchBody(e.detail.body);
+    });
+  }
+
+  switchBody(bodyKey) {
+    const bodyConfig = JMARS_CONFIG.bodies[bodyKey];
+    if (!bodyConfig) return;
+
+    console.log(`Switching to body: ${bodyConfig.name}`);
+
+    // 1. Save current state
+    if (this.currentBody) {
+      this.bodyStates[this.currentBody] = {
+        center: this.map.getCenter(),
+        zoom: this.map.getZoom(),
+        activeLayers: Object.keys(this.activeLayers).map(id => {
+          const layer = this.activeLayers[id];
+          return {
+            id: id,
+            opacity: layer.options.opacity
+          };
+        })
+      };
+    }
+
+    // 2. Clear current layers
+    Object.keys(this.activeLayers).forEach(id => this.removeLayer(id));
+    this.activeLayers = {};
+
+    // 3. Update Map View & Restore State
+    this.currentBody = bodyKey;
+    const savedState = this.bodyStates[bodyKey];
+
+    if (savedState) {
+      // Restore saved view
+      this.map.setView(savedState.center, savedState.zoom);
+
+      // Restore saved layers
+      // We need to make sure availableLayers are correct first
+      this.availableLayers = [...bodyConfig.layers];
+
+      savedState.activeLayers.forEach(l => {
+        this.addLayer(l.id);
+        if (l.opacity !== undefined) {
+          this.setLayerOpacity(l.id, l.opacity);
+        }
+      });
+    } else {
+      // Default view
+      this.map.setView(bodyConfig.center, bodyConfig.zoom);
+
+      // Default layers
+      this.availableLayers = [...bodyConfig.layers];
+      if (this.availableLayers.length > 0) {
+        this.addLayer(this.availableLayers[0].id);
+      }
+    }
+
+    // 4. Trigger UI update
+    const event = new CustomEvent('jmars-layers-updated', { detail: this.availableLayers });
+    document.dispatchEvent(event);
   }
 
   setLoading(isLoading) {

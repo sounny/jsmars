@@ -22,6 +22,7 @@ export class FixedOverlays {
   }
 
   init() {
+    this.resetView.add();
     this.render();
 
     // Listen to state
@@ -56,9 +57,6 @@ export class FixedOverlays {
     content.appendChild(this.checkPanner.container);
 
 
-    // Reset View (Optional toggle, but good to have)
-    this.checkResetView = this.createToggle('Reset View Btn', 'resetView');
-    content.appendChild(this.checkResetView.container);
 
     this.container.appendChild(header);
     this.container.appendChild(content);
@@ -94,7 +92,6 @@ export class FixedOverlays {
   updateUI(overlays) {
     if (this.checkGraticule) this.checkGraticule.input.checked = !!overlays.graticule;
     if (this.checkPanner) this.checkPanner.input.checked = !!overlays.panner;
-    if (this.checkResetView) this.checkResetView.input.checked = !!overlays.resetView;
   }
 
   applyState(overlays) {
@@ -113,7 +110,5 @@ export class FixedOverlays {
     this.panner.toggle(!!overlays.panner);
 
 
-    // Reset View
-    this.resetView.toggle(!!overlays.resetView);
   }
 }
