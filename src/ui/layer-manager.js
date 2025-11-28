@@ -9,6 +9,7 @@ export class LayerManager {
       this.container = containerOrId;
     }
     this.availableLayers = [];
+    this.sectionsState = { active: true, available: true };
 
     if (!this.container) {
       console.error(`LayerManager container not found.`);
@@ -84,13 +85,17 @@ export class LayerManager {
     const getConfig = (id) => this.availableLayers.find(l => l.id === id);
 
     // --- Active Layers Section ---
-    const activeHeader = document.createElement('div');
-    activeHeader.style.background = '#333';
-    activeHeader.style.padding = '5px';
-    activeHeader.style.fontSize = '12px';
-    activeHeader.style.fontWeight = 'bold';
-    activeHeader.textContent = 'Active Layers';
-    this.container.appendChild(activeHeader);
+    const activeSection = document.createElement('div');
+    activeSection.className = 'layer-section';
+
+    const activeHeader = this.createSectionHeader('Active Layers', 'active');
+    activeSection.appendChild(activeHeader);
+
+    const activeContent = document.createElement('div');
+    activeContent.className = 'layer-section-content';
+    if (!this.sectionsState.active) {
+      activeContent.style.display = 'none';
+    }
 
     const activeLayers = [...jmarsState.get('activeLayers')];
     // Render Top to Bottom (Reverse of array)
@@ -98,14 +103,8 @@ export class LayerManager {
       const config = getConfig(layerState.id);
       const name = config ? config.name : layerState.id;
 
-      // Real index in the state array (for logic)
-      // index is 0 (Top), 1...
-      // array is [Bottom, ..., Top]
-      // So Top is at index (len - 1)
-      // Top-most visual item corresponds to last item in state array.
-
       const el = this.createActiveLayerItem(layerState, name, index, activeLayers.length);
-      this.container.appendChild(el);
+      activeContent.appendChild(el);
     });
 
     if (activeLayers.length === 0) {
@@ -113,17 +112,26 @@ export class LayerManager {
       msg.textContent = 'No active layers';
       msg.style.padding = '10px';
       msg.style.color = '#888';
-      this.container.appendChild(msg);
+      activeContent.appendChild(msg);
     }
-
-    // --- Divider ---
-    const divider = document.createElement('div');
-    divider.style.borderTop = '1px solid #555';
-    divider.style.margin = '10px 0';
-    divider.innerHTML = '<div style="background:#333; padding:5px; font-size:12px; font-weight:bold;">Available Layers</div>';
-    this.container.appendChild(divider);
+    activeSection.appendChild(activeContent);
+    this.container.appendChild(activeSection);
 
     // --- Available Layers Section ---
+    const availableSection = document.createElement('div');
+    availableSection.className = 'layer-section';
+    availableSection.style.marginTop = '10px';
+    availableSection.style.borderTop = '1px solid #555';
+
+    const availableHeader = this.createSectionHeader('Available Layers', 'available');
+    availableSection.appendChild(availableHeader);
+
+    const availableContent = document.createElement('div');
+    availableContent.className = 'layer-section-content';
+    if (!this.sectionsState.available) {
+      availableContent.style.display = 'none';
+    }
+
     const activeIds = activeLayers.map(l => l.id);
     const available = this.availableLayers.filter(l => !activeIds.includes(l.id));
 
@@ -132,13 +140,44 @@ export class LayerManager {
       msg.textContent = 'No more layers available';
       msg.style.padding = '10px';
       msg.style.color = '#888';
-      this.container.appendChild(msg);
+      availableContent.appendChild(msg);
     }
 
     available.forEach(layer => {
       const el = this.createAvailableLayerItem(layer);
-      this.container.appendChild(el);
+      availableContent.appendChild(el);
     });
+    availableSection.appendChild(availableContent);
+    this.container.appendChild(availableSection);
+  }
+
+  createSectionHeader(title, stateKey) {
+    const header = document.createElement('div');
+    header.className = 'layer-section-header';
+    header.style.background = '#333';
+    header.style.padding = '5px';
+    header.style.fontSize = '12px';
+    header.style.fontWeight = 'bold';
+    header.style.cursor = 'pointer';
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = title;
+
+    const icon = document.createElement('span');
+    icon.textContent = this.sectionsState[stateKey] ? '-' : '+';
+
+    header.appendChild(titleSpan);
+    header.appendChild(icon);
+
+    header.onclick = () => {
+      this.sectionsState[stateKey] = !this.sectionsState[stateKey];
+      this.render();
+    };
+
+    return header;
   }
 
   createActiveLayerItem(layerState, name, visualIndex, total) {

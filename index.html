@@ -62,16 +62,24 @@
     <div class="accordion-section">
       <div class="accordion-header">Tools</div>
       <div class="accordion-content">
-        <!-- Crater Counting -->
-        <div class="tool-section border-bottom">
-          <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
-          <div id="crater-table-container"></div>
-        </div>
+        <div id="tools-list">
+          <!-- Crater Counting -->
+          <div class="layer-section">
+            <div class="layer-section-header">Crater Counting <span class="icon">+</span></div>
+            <div class="layer-section-content" style="display:none">
+              <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
+              <div id="crater-table-container"></div>
+            </div>
+          </div>
 
-        <!-- Radial Profile -->
-        <div class="tool-section">
-          <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
-          <div id="profile-chart-container"></div>
+          <!-- Radial Profile -->
+          <div class="layer-section">
+            <div class="layer-section-header">Radial Profile <span class="icon">+</span></div>
+            <div class="layer-section-content" style="display:none">
+              <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
+              <div id="profile-chart-container"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -90,6 +98,7 @@
     import { FixedOverlays } from './src/ui/FixedOverlays.js';
     import { Sidebar } from './src/ui/Sidebar.js';
     import { SearchBar } from './src/ui/SearchBar.js';
+    import { CollapsibleGroup } from './src/ui/CollapsibleGroup.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -103,6 +112,7 @@
     const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
     const sidebar = new Sidebar('controls', 'sidebar-toggle');
     const searchBar = new SearchBar(jmars.map, 'search-bar-container');
+    const toolsGroup = new CollapsibleGroup('tools-list');
 
     // Initialize Tools
     const craterLayer = new CraterLayer(jmars.map);

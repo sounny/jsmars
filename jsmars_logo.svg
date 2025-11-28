@@ -14,7 +14,7 @@
     </linearGradient>
   </defs>
   <text x="10" y="35" font-family="sans-serif" font-weight="bold" font-size="32" fill="#fff">JS</text>
-  <text x="55" y="35" font-family="sans-serif" font-weight="bold" font-size="32" fill="url(#marsGrad)">MARS</text>
+  <text x="50" y="35" font-family="sans-serif" font-weight="bold" font-size="32" fill="url(#marsGrad)">MARS</text>
   <!-- Earth -->
   <circle cx="160" cy="25" r="15" fill="url(#earthGrad)" opacity="0.8" />
   <!-- Moon -->
