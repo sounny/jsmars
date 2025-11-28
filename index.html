@@ -47,6 +47,20 @@
       </div>
     </div>
 
+    <!-- Section: Session -->
+    <div class="accordion-section">
+      <div class="accordion-header">Session</div>
+      <div class="accordion-content">
+        <div style="padding: 10px; display: flex; flex-direction: column; gap: 5px;">
+            <button id="session-save-btn" class="tool-btn">Save Session</button>
+            <div style="display: flex; gap: 5px;">
+                <input type="file" id="session-load-input" accept=".json" style="display: none;">
+                <button id="session-load-btn" class="tool-btn" style="flex: 1;">Load Session</button>
+            </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Section 2: Map Options (Search + Overlays) -->
     <div class="accordion-section">
       <div class="accordion-header">Map Options</div>
@@ -122,6 +136,7 @@
     import { Sidebar } from './src/ui/Sidebar.js';
     import { SearchBar } from './src/ui/SearchBar.js';
     import { CollapsibleGroup } from './src/ui/CollapsibleGroup.js';
+    import { SessionManager } from './src/ui/SessionManager.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -151,6 +166,28 @@
     // Initialize Measure Tool
     const measureTool = new MeasureTool(jmars.map);
     const measureTable = new MeasurementTable('measure-table-container', measureTool);
+
+    // Initialize Session Manager
+    const sessionManager = new SessionManager(craterLayer, measureTool);
+
+    // Session Event Listeners
+    document.getElementById('session-save-btn').addEventListener('click', () => sessionManager.saveSession());
+
+    const loadInput = document.getElementById('session-load-input');
+    document.getElementById('session-load-btn').addEventListener('click', () => loadInput.click());
+    loadInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            sessionManager.loadSession(e.target.files[0]);
+            e.target.value = ''; // Reset
+        }
+    });
+
+    // View Update Listener (from Session Load)
+    document.addEventListener('jmars:update-view', (e) => {
+        if (e.detail) {
+            jmars.map.setView([e.detail.lat, e.detail.lng], e.detail.zoom);
+        }
+    });
 
     const measureDistBtn = document.getElementById('measure-dist-btn');
     const measureAreaBtn = document.getElementById('measure-area-btn');

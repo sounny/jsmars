@@ -269,4 +269,55 @@ export class MeasureTool {
         element.click();
         document.body.removeChild(element);
     }
+
+    getData() {
+        return this.measurements.map(m => ({
+            id: m.id,
+            type: m.type,
+            name: m.name,
+            value: m.value,
+            valueStr: m.valueStr,
+            vertices: m.vertices,
+            latlngs: m.layer.getLatLngs()
+        }));
+    }
+
+    loadData(data) {
+        this.clear();
+        if (!Array.isArray(data)) return;
+
+        data.forEach(m => {
+            let layer;
+            // Reconstruct Layer
+            if (m.type === 'Line') {
+                layer = L.polyline(m.latlngs, { color: '#00ff00', weight: 3 });
+            } else {
+                // Polygon latlngs from getLatLngs() might be nested [[...]] for simple polygons in Leaflet
+                // But L.polygon constructor handles it if we pass it back exactly as retrieved usually.
+                // However, L.Draw.Polygon usually creates a simple polygon. 
+                // Let's try passing it directly.
+                layer = L.polygon(m.latlngs, { color: '#00ff00', weight: 3, fillOpacity: 0.2 });
+            }
+
+            this.layerGroup.addLayer(layer);
+
+            const measurement = {
+                ...m,
+                layer: layer
+            };
+
+            this.measurements.push(measurement);
+
+            // Re-bind Popup
+            this.updatePopup(measurement);
+
+            // Re-bind Events
+            layer.on('click', () => {
+                this.highlight(m.id);
+                layer.openPopup();
+            });
+        });
+
+        this.notifyUpdate();
+    }
 }

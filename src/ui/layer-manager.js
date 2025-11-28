@@ -263,7 +263,86 @@ export class LayerManager {
     sliderContainer.appendChild(slider);
     div.appendChild(sliderContainer);
 
+    // --- Drag and Drop Events ---
+    div.draggable = true;
+    div.dataset.layerId = layerState.id;
+    
+    div.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', layerState.id);
+      e.dataTransfer.effectAllowed = 'move';
+      div.style.opacity = '0.4';
+      // Store the element being dragged
+      this.draggedElement = div;
+    });
+
+    div.addEventListener('dragend', (e) => {
+      div.style.opacity = '1';
+      this.draggedElement = null;
+      this.container.querySelectorAll('.layer-item-container').forEach(el => {
+        el.style.borderTop = '';
+        el.style.borderBottom = '';
+      });
+    });
+
+    div.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      return false;
+    });
+
+    div.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      if (this.draggedElement === div) return;
+      div.style.background = '#444';
+    });
+
+    div.addEventListener('dragleave', (e) => {
+      if (this.draggedElement === div) return;
+      div.style.background = '#222'; // Restore default
+    });
+
+    div.addEventListener('drop', (e) => {
+      e.stopPropagation(); // stops the browser from redirecting.
+      e.preventDefault();
+      
+      div.style.background = '#222'; // Restore default
+
+      const draggedId = e.dataTransfer.getData('text/plain');
+      const targetId = layerState.id;
+
+      if (draggedId === targetId) return;
+
+      this.handleReorder(draggedId, targetId);
+      return false;
+    });
+
     return div;
+  }
+
+  handleReorder(draggedId, targetId) {
+    // State order is [Bottom, ..., Top]
+    // DOM order is [Top, ..., Bottom]
+    
+    // We want to think in DOM order (Top to Bottom) because that's what the user sees.
+    // Get current IDs in DOM order (which is State reversed)
+    const stateLayers = [...jmarsState.get('activeLayers')];
+    const domOrderIds = stateLayers.map(l => l.id).reverse();
+
+    const oldIndex = domOrderIds.indexOf(draggedId);
+    const newIndex = domOrderIds.indexOf(targetId);
+
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    // Move draggedId to newIndex position in DOM order
+    domOrderIds.splice(oldIndex, 1);
+    domOrderIds.splice(newIndex, 0, draggedId);
+
+    // Now domOrderIds is [NewTop, ..., NewBottom]
+    // State expects [Bottom, ..., Top]
+    // So reverse it back
+    const newStateOrder = domOrderIds.reverse();
+
+    jmarsState.reorderLayers(newStateOrder);
   }
 
   createAvailableLayerItem(layer) {

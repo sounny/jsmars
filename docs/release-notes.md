@@ -1,5 +1,19 @@
 # JSMARS Release Notes
 
+## v0.3.0 - Session Management & Usability
+**Date:** 2025-11-28
+
+### New Features
+- **Session Management:** Save your entire workspace (Active Layers, Craters, Measurements, View) to a `.json` file and load it back later to resume work.
+- **Layer Reordering:** Drag and drop layers in the Layer Manager to change their draw order.
+- **Enhanced Exports:** Added GeoJSON export support for Crater Counting and Measurement tools.
+
+### Improvements
+- Added "Session" section to the sidebar.
+- Improved data handling for tools to support state persistence.
+
+---
+
 ## v0.2.1 - Navigation Overlay
 **Date:** 2025-11-22
 

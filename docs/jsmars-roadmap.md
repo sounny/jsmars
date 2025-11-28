@@ -15,7 +15,7 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 ## Phase 2: Core UI & Map Interface (In Progress)
 - [x] **Sidebar (Layer Manager)**:
     - [x] Collapsible panel on the left.
-    - [ ] Drag-and-drop reordering (z-index).
+    - [x] Drag-and-drop reordering (z-index).
     - [ ] Double-click for "Settings/Options" panel.
     - [x] **Fixed Overlays**: Toggles for Grid, Scalebar.
 - [ ] **Navigation Bar**:
@@ -31,7 +31,7 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 ### 3.1 Crater Counting Tool (Foundation Implemented)
 - [x] **Interaction**: "Ghost Circle" cursor, Scroll to resize, Click to place.
 - [x] **Data**: Table view (ID, Lat, Lon, Diameter).
-- [ ] **Export**: CSV and CraterStats format.
+- [x] **Export**: CSV and GeoJSON format.
 
 ### 3.2 Radial Profile Viewer (Foundation Implemented)
 - [x] **Algorithm**: Sample elevation along N radiating lines from a center point.
@@ -53,9 +53,9 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [ ] **Unified Search**:
     - **Landmarks**: Fuzzy search against local JSON database (mimics `places`).
     - **Bookmarks**: Save/Rename/Delete current viewport (localStorage).
-- [ ] **Session Management**:
-    - [ ] Save session (Active layers, order, opacity, panner, ROIs, bookmarks).
-    - [ ] Load session (JSON file upload).
+- [x] **Session Management**:
+    - [x] Save session (Active layers, order, opacity, panner, ROIs, bookmarks).
+    - [x] Load session (JSON file upload).
 - [ ] **Multi-body Support**:
     - [ ] Body selector (Mars, Moon, Earth, etc.).
     - [ ] Configurable endpoints and coordinate systems.

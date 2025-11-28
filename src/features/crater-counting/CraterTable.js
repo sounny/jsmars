@@ -20,6 +20,7 @@ export class CraterTable {
         this.container.innerHTML = `
       <div class="crater-btn-group">
         <button id="crater-export-btn" class="crater-action-btn" style="background: #333;">Export CSV</button>
+        <button id="crater-export-json-btn" class="crater-action-btn" style="background: #333;">Export GeoJSON</button>
         <button id="crater-clear-btn" class="crater-action-btn" style="background: #500; border-color: #700;">Clear All</button>
       </div>
       <div class="crater-table-container">
@@ -41,6 +42,7 @@ export class CraterTable {
         this.tbody = this.container.querySelector('#crater-table-body');
 
         this.container.querySelector('#crater-export-btn').addEventListener('click', () => this.exportCSV());
+        this.container.querySelector('#crater-export-json-btn').addEventListener('click', () => this.exportGeoJSON());
         this.container.querySelector('#crater-clear-btn').addEventListener('click', () => this.clearAll());
     }
 
@@ -109,6 +111,40 @@ export class CraterTable {
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
         link.setAttribute("download", "jmars_craters.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    exportGeoJSON() {
+        if (this.craters.length === 0) {
+            alert('No craters to export.');
+            return;
+        }
+
+        const features = this.craters.map(c => ({
+            type: "Feature",
+            geometry: {
+                type: "Point",
+                coordinates: [c.lng, c.lat] // GeoJSON is Lon, Lat
+            },
+            properties: {
+                id: c.id,
+                diameter_m: c.diameter,
+                diameter_km: c.diameter / 1000
+            }
+        }));
+
+        const collection = {
+            type: "FeatureCollection",
+            features: features
+        };
+
+        const content = JSON.stringify(collection, null, 2);
+        const encodedUri = "data:application/json;charset=utf-8," + encodeURIComponent(content);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "jmars_craters.geojson");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

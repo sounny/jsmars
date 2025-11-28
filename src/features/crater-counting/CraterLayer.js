@@ -138,4 +138,25 @@ export class CraterLayer {
         });
         this.craters = [];
     }
+
+    getData() {
+        // Return serializable data (exclude Leaflet layer objects)
+        return this.craters.map(c => ({
+            id: c.id,
+            lat: c.lat,
+            lng: c.lng,
+            diameter: c.diameter
+        }));
+    }
+
+    loadData(data) {
+        this.handleClearRequest(); // Clear existing
+        if (!Array.isArray(data)) return;
+
+        data.forEach(c => {
+            // Ensure we don't duplicate IDs if they collide with new Date.now(), 
+            // but for session loading we usually trust the source.
+            this.addCrater(c);
+        });
+    }
 }
