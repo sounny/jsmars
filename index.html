@@ -80,6 +80,27 @@
               <div id="profile-chart-container"></div>
             </div>
           </div>
+
+          <!-- Measurement Tools -->
+          <div class="layer-section">
+            <div class="layer-section-header">Measurement <span class="icon">+</span></div>
+            <div class="layer-section-content" style="display:none">
+              <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button id="measure-dist-btn" class="tool-btn" style="flex: 1;">Distance</button>
+                <button id="measure-area-btn" class="tool-btn" style="flex: 1;">Area</button>
+              </div>
+
+              <div id="measure-table-container" class="crater-table-container" style="margin-bottom: 10px;"></div>
+
+              <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                <button id="measure-export-json-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export
+                  GeoJSON</button>
+                <button id="measure-export-csv-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export
+                  CSV</button>
+              </div>
+              <button id="measure-clear-btn" class="tool-btn" style="background: #442222;">Clear Measurements</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -92,6 +113,8 @@
     import { CraterTable } from './src/features/crater-counting/CraterTable.js';
     import { RadialProfileTool } from './src/features/profile/RadialProfileTool.js';
     import { ProfileChart } from './src/features/profile/ProfileChart.js';
+    import { MeasureTool } from './src/features/measure/MeasureTool.js';
+    import { MeasurementTable } from './src/features/measure/MeasurementTable.js';
     import { LayerManager } from './src/ui/layer-manager.js';
     import { Accordion } from './src/ui/Accordion.js';
     import { StatusBar } from './src/ui/StatusBar.js';
@@ -125,6 +148,16 @@
     const profileChart = new ProfileChart('profile-chart-container');
     const profileBtn = document.getElementById('profile-tool-btn');
 
+    // Initialize Measure Tool
+    const measureTool = new MeasureTool(jmars.map);
+    const measureTable = new MeasurementTable('measure-table-container', measureTool);
+
+    const measureDistBtn = document.getElementById('measure-dist-btn');
+    const measureAreaBtn = document.getElementById('measure-area-btn');
+    const measureClearBtn = document.getElementById('measure-clear-btn');
+    const measureExportJsonBtn = document.getElementById('measure-export-json-btn');
+    const measureExportCsvBtn = document.getElementById('measure-export-csv-btn');
+
     // Crater Button Event Listener
     craterBtn.addEventListener('click', () => {
       if (craterLayer.isActive) {
@@ -136,6 +169,10 @@
         profileTool.deactivate();
         profileBtn.innerText = 'Radial Profile';
         profileBtn.classList.remove('active');
+
+        measureTool.deactivate();
+        measureDistBtn.classList.remove('active');
+        measureAreaBtn.classList.remove('active');
 
         craterLayer.activate();
         craterBtn.innerText = 'Stop Crater Counting';
@@ -155,9 +192,74 @@
         craterBtn.innerText = 'Start Crater Counting';
         craterBtn.classList.remove('active');
 
+        measureTool.deactivate();
+        measureDistBtn.classList.remove('active');
+        measureAreaBtn.classList.remove('active');
+
         profileTool.activate();
         profileBtn.innerText = 'Stop Profile';
         profileBtn.classList.add('active');
+      }
+    });
+
+    // Measure Tool Event Listeners
+    measureDistBtn.addEventListener('click', () => {
+      if (measureTool.activeMode === 'distance') {
+        measureTool.deactivate();
+        measureDistBtn.classList.remove('active');
+      } else {
+        // Deactivate others
+        craterLayer.deactivate();
+        craterBtn.innerText = 'Start Crater Counting';
+        craterBtn.classList.remove('active');
+
+        profileTool.deactivate();
+        profileBtn.innerText = 'Radial Profile';
+        profileBtn.classList.remove('active');
+
+        measureTool.activate('distance');
+        measureDistBtn.classList.add('active');
+        measureAreaBtn.classList.remove('active');
+      }
+    });
+
+    measureAreaBtn.addEventListener('click', () => {
+      if (measureTool.activeMode === 'area') {
+        measureTool.deactivate();
+        measureAreaBtn.classList.remove('active');
+      } else {
+        // Deactivate others
+        craterLayer.deactivate();
+        craterBtn.innerText = 'Start Crater Counting';
+        craterBtn.classList.remove('active');
+
+        profileTool.deactivate();
+        profileBtn.innerText = 'Radial Profile';
+        profileBtn.classList.remove('active');
+
+        measureTool.activate('area');
+        measureAreaBtn.classList.add('active');
+        measureDistBtn.classList.remove('active');
+      }
+    });
+
+    measureClearBtn.addEventListener('click', () => {
+      measureTool.clear();
+    });
+
+    measureExportJsonBtn.addEventListener('click', () => {
+      measureTool.exportGeoJSON();
+    });
+
+    measureExportCsvBtn.addEventListener('click', () => {
+      measureTool.exportCSV();
+    });
+
+    // Listen for auto-deactivation (when drawing finishes)
+    document.addEventListener('jmars-tool-deactivated', (e) => {
+      if (e.detail.tool === 'measure') {
+        measureDistBtn.classList.remove('active');
+        measureAreaBtn.classList.remove('active');
       }
     });
 
