@@ -1,3 +1,5 @@
+import { EVENTS } from '../../constants.js';
+
 export class MeasureTool {
     constructor(map) {
         this.map = map;
@@ -20,6 +22,13 @@ export class MeasureTool {
 
         this.map.on(L.Draw.Event.CREATED, this.onDrawCreated);
         this.map.on(L.Draw.Event.DRAWSTOP, this.onDrawStop);
+
+        // Body change listener
+        document.addEventListener(EVENTS.BODY_CHANGED, () => {
+            this.clear();
+            this.deactivate();
+            document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'measure' } }));
+        });
     }
 
     activate(mode) {
@@ -128,7 +137,7 @@ export class MeasureTool {
         }
 
         this.deactivate();
-        document.dispatchEvent(new CustomEvent('jmars-tool-deactivated', { detail: { tool: 'measure' } }));
+        document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'measure' } }));
     }
 
     onDrawStop() {
@@ -136,7 +145,7 @@ export class MeasureTool {
             this.isDrawing = false;
             this.activeMode = null;
             this.drawControl = null;
-            document.dispatchEvent(new CustomEvent('jmars-tool-deactivated', { detail: { tool: 'measure' } }));
+            document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'measure' } }));
         }
     }
 
@@ -183,7 +192,7 @@ export class MeasureTool {
             m.layer.setStyle({ color: '#ffff00', weight: 5, fillOpacity: 0.4 });
 
             // Dispatch event to highlight table row
-            document.dispatchEvent(new CustomEvent('jmars-measurement-highlight', { detail: { id } }));
+            document.dispatchEvent(new CustomEvent(EVENTS.MEASURE_HIGHLIGHT, { detail: { id } }));
         }
     }
 
@@ -213,7 +222,7 @@ export class MeasureTool {
     }
 
     notifyUpdate() {
-        document.dispatchEvent(new CustomEvent('jmars-measurements-updated', { detail: this.measurements }));
+        document.dispatchEvent(new CustomEvent(EVENTS.MEASURE_UPDATED, { detail: this.measurements }));
     }
 
     exportGeoJSON() {

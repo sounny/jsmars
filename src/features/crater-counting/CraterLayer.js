@@ -1,3 +1,5 @@
+import { EVENTS } from '../../constants.js';
+
 export class CraterLayer {
     constructor(map) {
         this.map = map;
@@ -15,8 +17,20 @@ export class CraterLayer {
         this.handleClearRequest = this.handleClearRequest.bind(this);
 
         // Listen for external requests
-        document.addEventListener('jmars-crater-remove-request', this.handleRemoveRequest);
-        document.addEventListener('jmars-crater-clear-request', this.handleClearRequest);
+        document.addEventListener(EVENTS.CRATER_REMOVE, this.handleRemoveRequest);
+        document.addEventListener(EVENTS.CRATER_CLEAR, this.handleClearRequest);
+
+        // Body change listener
+        document.addEventListener(EVENTS.BODY_CHANGED, () => {
+            this.handleClearRequest();
+            if (this.isActive) this.deactivate();
+            // Also update button state in UI? 
+            // The UI button logic is in index.html. 
+            // We can dispatch a deactivate event that index.html listens to.
+            // But index.html listens to 'jmars-tool-deactivated'?
+            // Let's dispatch it.
+            document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'crater' } }));
+        });
     }
 
     activate() {
@@ -109,7 +123,7 @@ export class CraterLayer {
         this.craters.push(crater);
 
         // Dispatch event for table update
-        const event = new CustomEvent('jmars-crater-added', {
+        const event = new CustomEvent(EVENTS.CRATER_ADDED, {
             detail: {
                 id: crater.id,
                 lat: crater.lat,

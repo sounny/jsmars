@@ -1,4 +1,5 @@
 import { jmarsState } from '../jmars-state.js';
+import { EVENTS } from '../constants.js';
 
 export class LayerManager {
   constructor(containerOrId, jmarsMap) {
@@ -21,13 +22,15 @@ export class LayerManager {
 
   init() {
     // 1. Listen for Discovery (available layers)
-    document.addEventListener('jmars-layers-updated', (e) => {
+    document.addEventListener(EVENTS.LAYERS_UPDATED, (e) => {
+      console.debug('LayerManager received layers update', e.detail);
       this.availableLayers = e.detail;
       this.render();
     });
 
     // 2. Listen for State Changes
-    jmarsState.on('layers-changed', (activeLayers) => {
+    jmarsState.on(EVENTS.LAYERS_CHANGED, (activeLayers) => {
+      console.debug('LayerManager received active layers change:', activeLayers);
       this.updateMapFromState(activeLayers);
       this.render();
     });
@@ -39,8 +42,15 @@ export class LayerManager {
     // Sync Map -> State (Initial population)
     // If Map has layers but State is empty, populate State.
     const mapActiveIds = Object.keys(this.jmarsMap.activeLayers);
-    const stateActiveIds = jmarsState.get('activeLayers').map(l => l.id);
+    const stateActiveLayers = jmarsState.get('activeLayers');
+    const stateActiveIds = stateActiveLayers.map(l => l.id);
 
+    // If state is populated (e.g. by JMARSMap.init calling switchBody), sync Map to match State
+    if (stateActiveLayers.length > 0) {
+        this.updateMapFromState(stateActiveLayers);
+    }
+
+    // If map has layers but state is empty (fallback)
     mapActiveIds.forEach(id => {
       if (!stateActiveIds.includes(id)) {
         jmarsState.addLayer(id);

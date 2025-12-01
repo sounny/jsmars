@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JSMARS Tests</title>
+    <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
+</head>
+<body>
+    <div id="mocha"></div>
+    <script src="https://unpkg.com/chai/chai.js"></script>
+    <script src="https://unpkg.com/mocha/mocha.js"></script>
+
+    <script class="mocha-init">
+        mocha.setup('bdd');
+        mocha.checkLeaks();
+    </script>
+
+    <!-- Test Scripts -->
+    <script type="module" src="unit.js"></script>
+
+    <script class="mocha-exec">
+        // Wait for modules to load
+        setTimeout(() => mocha.run(), 1000);
+    </script>
+</body>
+</html>

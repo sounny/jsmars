@@ -9,7 +9,7 @@ export class JMARSVectors {
   }
 
   init() {
-    console.log('JMARSVectors initializing...');
+    console.debug('JMARSVectors initializing...');
     if (!L.Control.Draw) {
       console.error('Leaflet.Draw not found. Make sure to load it in index.html');
       return;
@@ -41,7 +41,7 @@ export class JMARSVectors {
 
     // Handle created items
     this.map.on('draw:created', (e) => {
-      console.log('draw:created event fired');
+      console.debug('draw:created event fired');
       const type = e.layerType;
       const layer = e.layer;
 
@@ -50,19 +50,19 @@ export class JMARSVectors {
       }
 
       this.featureGroup.addLayer(layer);
-      console.log('Created new vector shape:', type);
+      console.debug('Created new vector shape:', type);
     });
 
     // Handle interactions
     this.featureGroup.on('contextmenu', (e) => {
-        console.log('Context menu on shape');
+        console.debug('Context menu on shape');
         L.DomEvent.stopPropagation(e); // Prevent map context menu
 
         // Only open for layers with setStyle (vectors)
         if (typeof e.layer.setStyle === 'function') {
             this.styleEditor.open(e.layer, e.containerPoint);
         } else {
-            console.log('Layer does not support styling');
+            console.warn('Layer does not support styling');
         }
     });
 

@@ -1,49 +1,62 @@
 import { JMARS_CONFIG } from '../jmars-config.js';
+import { jmarsState } from '../jmars-state.js';
+import { EVENTS } from '../constants.js';
 
 export class BodySelector {
-    constructor(container) {
-        this.container = container;
-        this.element = document.createElement('div');
-        this.element.className = 'jmars-body-selector';
-        this.element.style.padding = '10px';
-        this.element.style.borderBottom = '1px solid #444';
-
-        this.render();
-        this.container.appendChild(this.element);
+    constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        if (!this.container) return;
+        
+        this.init();
     }
 
-    render() {
-        const label = document.createElement('label');
-        label.textContent = 'Active Body: ';
-        label.style.color = '#ccc';
-        label.style.marginRight = '5px';
+    init() {
+        console.debug('BodySelector initializing...');
+        if (!this.container) {
+            console.error('BodySelector container not found!');
+            return;
+        }
 
+        // Create dropdown
         const select = document.createElement('select');
-        select.style.background = '#333';
-        select.style.color = '#fff';
-        select.style.border = '1px solid #555';
-        select.style.padding = '2px 5px';
+        select.className = 'body-selector-dropdown';
+        
+        // Populate options
+        const bodies = JMARS_CONFIG.bodies;
+        if (bodies) {
+            Object.keys(bodies).forEach(key => {
+                const body = bodies[key];
+                const option = document.createElement('option');
+                option.value = key;
+                option.text = body.name;
+                select.appendChild(option);
+            });
+        } else {
+            console.error('JMARS_CONFIG.bodies is undefined');
+        }
 
-        Object.keys(JMARS_CONFIG.bodies).forEach(key => {
-            const body = JMARS_CONFIG.bodies[key];
-            const option = document.createElement('option');
-            option.value = key;
-            option.textContent = body.name;
-            if (key === JMARS_CONFIG.body.toLowerCase()) {
-                option.selected = true;
-            }
-            select.appendChild(option);
-        });
+        // Set initial value
+        const currentBody = (jmarsState.get('body') || 'Mars').toLowerCase();
+        select.value = currentBody;
+        console.debug('BodySelector initial value:', currentBody);
 
+        // Event listener
         select.addEventListener('change', (e) => {
             const newBody = e.target.value;
-            // Dispatch event for other components
-            window.dispatchEvent(new CustomEvent('jmars:body-changed', {
-                detail: { body: newBody }
-            }));
+            console.debug('BodySelector changed to:', newBody);
+            jmarsState.set('body', newBody);
+            const event = new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: newBody } });
+            document.dispatchEvent(event);
         });
 
-        this.element.appendChild(label);
-        this.element.appendChild(select);
+        // Listen for external changes (e.g. loaded session)
+        document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
+            if (e.detail && e.detail.body) {
+                select.value = e.detail.body.toLowerCase();
+            }
+        });
+
+        this.container.appendChild(select);
+        console.debug('BodySelector appended to container');
     }
 }

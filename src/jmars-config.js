@@ -20,13 +20,29 @@ export const JMARS_CONFIG = {
       name: "Mars",
       center: [0, 0],
       zoom: 2,
+      defaultLayer: 'mars_viking',
       layers: [
         {
-          id: "mars_mola",
-          name: "MOLA Shaded Relief",
+          id: "mars_viking",
+          name: "Mars Viking (OpenPlanetary)",
           type: "xyz",
           url: "https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-1/all/{z}/{x}/{y}.png",
-          attribution: "OpenPlanetary"
+          options: {
+            attribution: "OpenPlanetary",
+            maxZoom: 10
+          }
+        },
+        {
+          id: "mars_wms_viking",
+          name: "Mars Viking MDIM2.1 (USGS WMS)",
+          type: "wms",
+          url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map",
+          options: {
+            layers: "MDIM21",
+            format: "image/png",
+            transparent: true,
+            attribution: "USGS Astrogeology"
+          }
         }
       ]
     },
@@ -34,15 +50,19 @@ export const JMARS_CONFIG = {
       name: "Earth",
       center: [0, 0],
       zoom: 2,
+      defaultLayer: 'earth_blue_marble',
       layers: [
         {
           id: "earth_blue_marble",
           name: "Blue Marble",
           type: "wms",
           url: "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi",
-          layers: "BlueMarble_NextGeneration",
-          format: "image/jpeg",
-          attribution: "NASA GIBS"
+          options: {
+            layers: "BlueMarble_NextGeneration",
+            format: "image/jpeg",
+            transparent: true,
+            attribution: "NASA GIBS"
+          }
         }
       ]
     },
@@ -50,14 +70,17 @@ export const JMARS_CONFIG = {
       name: "Moon",
       center: [0, 0],
       zoom: 2,
+      defaultLayer: 'moon_opm_basemap',
       layers: [
         {
-          id: "moon_lro_wac",
-          name: "LRO WAC",
-          type: "wms",
-          url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/moon/moon_simp_cyl.map",
-          layers: "LRO_WAC_Mosaic_Global_303m",
-          attribution: "USGS Astrogeology"
+          id: "moon_opm_basemap",
+          name: "Moon Basemap (OpenPlanetary)",
+          type: "xyz",
+          url: "https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-moon-basemap-v0-1/all/{z}/{x}/{y}.png",
+          options: {
+            attribution: "OpenPlanetary",
+            maxZoom: 10
+          }
         }
       ]
     }

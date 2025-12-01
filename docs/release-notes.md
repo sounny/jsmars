@@ -1,5 +1,42 @@
 # JSMARS Release Notes
 
+## v0.4.1 - Polish
+**Date:** 2025-11-29
+
+### Improvements
+- **Logging**: Reduced console noise by moving verbose logs to debug level.
+- **Configuration**: Hardened default layer selection logic.
+
+---
+
+## v0.4.0 - Code Quality & Stability
+**Date:** 2025-11-29
+
+### Improvements
+- **Architecture**: Centralized event handling using constants to improve maintainability.
+- **Testing**: Added a browser-based unit test suite (`tests/index.html`) covering core state and WMS logic.
+- **Performance**: Optimized application startup sequence to ensure reliable layer loading.
+
+---
+
+## v0.3.2 - Multi-body & Bookmarks
+**Date:** 2025-11-28
+
+### New Features
+- **Multi-body Support:** Switch the entire map context between Mars, Earth, and Moon using the new dropdown in the header.
+- **Bookmarks Tool:** Save your favorite map views (location and zoom) to quickly navigate back to them. Bookmarks are saved to your browser's local storage and included in Session files.
+
+---
+
+## v0.3.1 - Science Tools Expansion
+**Date:** 2025-11-28
+
+### New Features
+- **Nomenclature Tool:** View and filter labels for major Martian landmarks (Craters, Montes, Valles) directly on the map.
+- **Investigate Tool:** Click any point on the map to inspect coordinates and query underlying WMS layers for data values (via `GetFeatureInfo`).
+
+---
+
 ## v0.3.0 - Session Management & Usability
 **Date:** 2025-11-28
 

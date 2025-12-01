@@ -9,8 +9,6 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <link rel="stylesheet" href="style.css">
-
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
@@ -30,38 +28,36 @@
   <div id="controls">
     <!-- Branding -->
     <div style="padding: 15px; text-align: center; border-bottom: 1px solid #444; flex-shrink: 0;">
-      <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;">
+      <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;" />
+      <div id="body-selector-container" style="margin-top: 10px;"></div>
       <div style="margin-top: 5px;">
         <a href="about.html" target="_blank" style="color: #aaa; text-decoration: none; font-size: 12px;">About</a>
       </div>
     </div>
 
-    <!-- Section 1: Layer Manager -->
+    <!-- Layer Manager -->
     <div class="accordion-section expanded">
       <div class="accordion-header">Layer Manager</div>
       <div class="accordion-content">
         <div id="layer-list">
-          <!-- Layers will be injected here -->
           <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
         </div>
       </div>
     </div>
 
-    <!-- Section: Session -->
+    <!-- Session -->
     <div class="accordion-section">
       <div class="accordion-header">Session</div>
-      <div class="accordion-content">
-        <div style="padding: 10px; display: flex; flex-direction: column; gap: 5px;">
-            <button id="session-save-btn" class="tool-btn">Save Session</button>
-            <div style="display: flex; gap: 5px;">
-                <input type="file" id="session-load-input" accept=".json" style="display: none;">
-                <button id="session-load-btn" class="tool-btn" style="flex: 1;">Load Session</button>
-            </div>
+      <div class="accordion-content" style="padding: 10px; flex-direction: column; gap: 5px;">
+        <button id="session-save-btn" class="tool-btn">Save Session</button>
+        <div style="display: flex; gap: 5px;">
+          <input type="file" id="session-load-input" accept=".json" style="display: none;" />
+          <button id="session-load-btn" class="tool-btn" style="flex: 1;">Load Session</button>
         </div>
       </div>
     </div>
 
-    <!-- Section 2: Map Options (Search + Overlays) -->
+    <!-- Map Options -->
     <div class="accordion-section">
       <div class="accordion-header">Map Options</div>
       <div class="accordion-content">
@@ -72,7 +68,7 @@
       </div>
     </div>
 
-    <!-- Section 3: Tools -->
+    <!-- Tools -->
     <div class="accordion-section">
       <div class="accordion-header">Tools</div>
       <div class="accordion-content">
@@ -80,7 +76,7 @@
           <!-- Crater Counting -->
           <div class="layer-section">
             <div class="layer-section-header">Crater Counting <span class="icon">+</span></div>
-            <div class="layer-section-content" style="display:none">
+            <div class="layer-section-content" style="display:none;">
               <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
               <div id="crater-table-container"></div>
             </div>
@@ -89,23 +85,21 @@
           <!-- Radial Profile -->
           <div class="layer-section">
             <div class="layer-section-header">Radial Profile <span class="icon">+</span></div>
-            <div class="layer-section-content" style="display:none">
+            <div class="layer-section-content" style="display:none;">
               <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
               <div id="profile-chart-container"></div>
             </div>
           </div>
 
-          <!-- Measurement Tools -->
+          <!-- Measurement -->
           <div class="layer-section">
             <div class="layer-section-header">Measurement <span class="icon">+</span></div>
-            <div class="layer-section-content" style="display:none">
+            <div class="layer-section-content" style="display:none;">
               <div style="display: flex; gap: 5px; margin-bottom: 10px;">
                 <button id="measure-dist-btn" class="tool-btn" style="flex: 1;">Distance</button>
                 <button id="measure-area-btn" class="tool-btn" style="flex: 1;">Area</button>
               </div>
-
               <div id="measure-table-container" class="crater-table-container" style="margin-bottom: 10px;"></div>
-
               <div style="display: flex; gap: 5px; margin-bottom: 5px;">
                 <button id="measure-export-json-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export
                   GeoJSON</button>
@@ -115,12 +109,61 @@
               <button id="measure-clear-btn" class="tool-btn" style="background: #442222;">Clear Measurements</button>
             </div>
           </div>
+
+          <!-- Nomenclature -->
+          <div class="layer-section">
+            <div class="layer-section-header">Nomenclature <span class="icon">+</span></div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="nomenclature-tool-container"></div>
+            </div>
+          </div>
+
+          <!-- Investigate -->
+          <div class="layer-section">
+            <div class="layer-section-header">Investigate <span class="icon">+</span></div>
+            <div class="layer-section-content" style="display:none;">
+              <button id="investigate-tool-btn" class="tool-btn">Investigate Point</button>
+            </div>
+          </div>
+
+          <!-- Bookmarks -->
+          <div class="layer-section">
+            <div class="layer-section-header">Bookmarks <span class="icon">+</span></div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="bookmarks-tool-container"></div>
+            </div>
+          </div>
+
+          <!-- Enhanced Profile -->
+          <div class="layer-section">
+            <div class="layer-section-header">Enhanced Profile <span class="icon">+</span></div>
+            <div class="layer-section-content" style="display:none;">
+              <button id="enhanced-profile-btn" class="tool-btn">Draw Profile</button>
+              <button id="enhanced-profile-export-btn" class="tool-btn">Export CSV</button>
+            </div>
+          </div>
+
+          <!-- Sampling -->
+          <div class="layer-section">
+            <div class="layer-section-header">Sampling <span class="icon">+</span></div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button id="sampling-point-btn" class="tool-btn" style="flex: 1;">Sample Point</button>
+                <button id="sampling-area-btn" class="tool-btn" style="flex: 1;">Sample Area</button>
+              </div>
+              <div id="sample-table-container"></div>
+              <div style="display: flex; gap: 5px; margin-top: 10px;">
+                <button id="sample-export-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export CSV</button>
+                <button id="sample-clear-btn" class="tool-btn"
+                  style="flex: 1; font-size: 11px; background: #442222;">Clear Samples</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Main Application Script -->
   <script type="module">
     import { JMARSMap } from './src/jmars-map.js';
     import { CraterLayer } from './src/features/crater-counting/CraterLayer.js';
@@ -137,6 +180,14 @@
     import { SearchBar } from './src/ui/SearchBar.js';
     import { CollapsibleGroup } from './src/ui/CollapsibleGroup.js';
     import { SessionManager } from './src/ui/SessionManager.js';
+    import { BodySelector } from './src/ui/BodySelector.js';
+    import { NomenclatureTool } from './src/features/nomenclature/NomenclatureTool.js';
+    import { InvestigateTool } from './src/features/investigate/InvestigateTool.js';
+    import { BookmarksTool } from './src/features/bookmarks/BookmarksTool.js';
+    import { EnhancedProfileTool } from './src/features/profile/EnhancedProfileTool.js';
+    import { SamplingTool } from './src/features/sampling/SamplingTool.js';
+    import { SampleTable } from './src/features/sampling/SampleTable.js';
+    import { EVENTS } from './src/constants.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -151,109 +202,111 @@
     const sidebar = new Sidebar('controls', 'sidebar-toggle');
     const searchBar = new SearchBar(jmars.map, 'search-bar-container');
     const toolsGroup = new CollapsibleGroup('tools-list');
+    const bodySelector = new BodySelector('body-selector-container');
 
     // Initialize Tools
     const craterLayer = new CraterLayer(jmars.map);
     const craterTable = new CraterTable('crater-table-container');
-
     const craterBtn = document.getElementById('crater-tool-btn');
 
-    // Initialize Radial Profile Tool
     const profileTool = new RadialProfileTool(jmars.map);
     const profileChart = new ProfileChart('profile-chart-container');
     const profileBtn = document.getElementById('profile-tool-btn');
 
-    // Initialize Measure Tool
     const measureTool = new MeasureTool(jmars.map);
     const measureTable = new MeasurementTable('measure-table-container', measureTool);
-
-    // Initialize Session Manager
-    const sessionManager = new SessionManager(craterLayer, measureTool);
-
-    // Session Event Listeners
-    document.getElementById('session-save-btn').addEventListener('click', () => sessionManager.saveSession());
-
-    const loadInput = document.getElementById('session-load-input');
-    document.getElementById('session-load-btn').addEventListener('click', () => loadInput.click());
-    loadInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            sessionManager.loadSession(e.target.files[0]);
-            e.target.value = ''; // Reset
-        }
-    });
-
-    // View Update Listener (from Session Load)
-    document.addEventListener('jmars:update-view', (e) => {
-        if (e.detail) {
-            jmars.map.setView([e.detail.lat, e.detail.lng], e.detail.zoom);
-        }
-    });
-
     const measureDistBtn = document.getElementById('measure-dist-btn');
     const measureAreaBtn = document.getElementById('measure-area-btn');
     const measureClearBtn = document.getElementById('measure-clear-btn');
     const measureExportJsonBtn = document.getElementById('measure-export-json-btn');
     const measureExportCsvBtn = document.getElementById('measure-export-csv-btn');
 
-    // Crater Button Event Listener
+    const nomenclatureTool = new NomenclatureTool(jmars.map, 'nomenclature-tool-container');
+    const investigateTool = new InvestigateTool(jmars.map);
+    const investigateBtn = document.getElementById('investigate-tool-btn');
+
+    const bookmarksTool = new BookmarksTool(jmars.map, 'bookmarks-tool-container');
+
+    const enhancedProfileTool = new EnhancedProfileTool(jmars.map);
+    const enhancedProfileBtn = document.getElementById('enhanced-profile-btn');
+    document.getElementById('enhanced-profile-export-btn').addEventListener('click', () => enhancedProfileTool.exportCSV());
+
+    const samplingTool = new SamplingTool(jmars.map);
+    const samplingPointBtn = document.getElementById('sampling-point-btn');
+    const samplingAreaBtn = document.getElementById('sampling-area-btn');
+    const sampleTable = new SampleTable('sample-table-container');
+    document.getElementById('sample-export-btn').addEventListener('click', () => samplingTool.exportCSV());
+    document.getElementById('sample-clear-btn').addEventListener('click', () => samplingTool.clear());
+
+    // Session Manager (include bookmarksTool)
+    const sessionManager = new SessionManager(craterLayer, measureTool, bookmarksTool);
+
+    // Session Event Listeners
+    document.getElementById('session-save-btn').addEventListener('click', () => sessionManager.saveSession());
+    const loadInput = document.getElementById('session-load-input');
+    document.getElementById('session-load-btn').addEventListener('click', () => loadInput.click());
+    loadInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        sessionManager.loadSession(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+
+    // View Update Listener
+    document.addEventListener('jmars:update-view', (e) => {
+      if (e.detail) {
+        jmars.map.setView([e.detail.lat, e.detail.lng], e.detail.zoom);
+      }
+    });
+
+    // Tool Button Event Listeners
     craterBtn.addEventListener('click', () => {
       if (craterLayer.isActive) {
         craterLayer.deactivate();
         craterBtn.innerText = 'Start Crater Counting';
         craterBtn.classList.remove('active');
       } else {
-        // Deactivate other tools
         profileTool.deactivate();
         profileBtn.innerText = 'Radial Profile';
         profileBtn.classList.remove('active');
-
         measureTool.deactivate();
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
-
         craterLayer.activate();
         craterBtn.innerText = 'Stop Crater Counting';
         craterBtn.classList.add('active');
       }
     });
 
-    // Profile Button Event Listener
     profileBtn.addEventListener('click', () => {
       if (profileTool.isActive) {
         profileTool.deactivate();
         profileBtn.innerText = 'Radial Profile';
         profileBtn.classList.remove('active');
       } else {
-        // Deactivate other tools
         craterLayer.deactivate();
         craterBtn.innerText = 'Start Crater Counting';
         craterBtn.classList.remove('active');
-
         measureTool.deactivate();
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
-
         profileTool.activate();
         profileBtn.innerText = 'Stop Profile';
         profileBtn.classList.add('active');
       }
     });
 
-    // Measure Tool Event Listeners
     measureDistBtn.addEventListener('click', () => {
       if (measureTool.activeMode === 'distance') {
         measureTool.deactivate();
         measureDistBtn.classList.remove('active');
       } else {
-        // Deactivate others
         craterLayer.deactivate();
         craterBtn.innerText = 'Start Crater Counting';
         craterBtn.classList.remove('active');
-
         profileTool.deactivate();
         profileBtn.innerText = 'Radial Profile';
         profileBtn.classList.remove('active');
-
         measureTool.activate('distance');
         measureDistBtn.classList.add('active');
         measureAreaBtn.classList.remove('active');
@@ -265,34 +318,23 @@
         measureTool.deactivate();
         measureAreaBtn.classList.remove('active');
       } else {
-        // Deactivate others
         craterLayer.deactivate();
         craterBtn.innerText = 'Start Crater Counting';
         craterBtn.classList.remove('active');
-
         profileTool.deactivate();
         profileBtn.innerText = 'Radial Profile';
         profileBtn.classList.remove('active');
-
         measureTool.activate('area');
         measureAreaBtn.classList.add('active');
         measureDistBtn.classList.remove('active');
       }
     });
 
-    measureClearBtn.addEventListener('click', () => {
-      measureTool.clear();
-    });
+    measureClearBtn.addEventListener('click', () => measureTool.clear());
+    measureExportJsonBtn.addEventListener('click', () => measureTool.exportGeoJSON());
+    measureExportCsvBtn.addEventListener('click', () => measureTool.exportCSV());
 
-    measureExportJsonBtn.addEventListener('click', () => {
-      measureTool.exportGeoJSON();
-    });
-
-    measureExportCsvBtn.addEventListener('click', () => {
-      measureTool.exportCSV();
-    });
-
-    // Listen for auto-deactivation (when drawing finishes)
+    // Auto-deactivation handling
     document.addEventListener('jmars-tool-deactivated', (e) => {
       if (e.detail.tool === 'measure') {
         measureDistBtn.classList.remove('active');
@@ -300,13 +342,21 @@
       }
     });
 
-    // Handle errors
+    // Error handling
     const layerListContainer = document.getElementById('layer-list');
-    window.addEventListener('unhandledrejection', function (event) {
-      console.error("Unhandled rejection:", event.reason);
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Unhandled rejection:', event.reason);
       if (layerListContainer && layerListContainer.innerText.includes('Loading')) {
         layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
       }
+    });
+  </script>
+
+  <script>
+    // Sidebar toggle functionality
+    document.getElementById('sidebar-toggle').addEventListener('click', () => {
+      document.getElementById('controls').classList.toggle('collapsed');
+      document.getElementById('sidebar-toggle').classList.toggle('collapsed');
     });
   </script>
 </body>

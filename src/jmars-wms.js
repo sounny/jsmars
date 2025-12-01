@@ -99,4 +99,45 @@ export class JMARSWMS {
 
     return validLayers;
   }
+
+  /**
+   * Constructs a GetFeatureInfo URL.
+   * @param {string} baseUrl - Base WMS URL.
+   * @param {object} params - { layers, query_layers, bbox, width, height, x, y, crs, version }
+   * @returns {string}
+   */
+  static getFeatureInfoUrl(baseUrl, params) {
+    const version = params.version || '1.3.0';
+    const url = new URL(baseUrl);
+    
+    // Base WMS params
+    url.searchParams.set('service', 'WMS');
+    url.searchParams.set('version', version);
+    url.searchParams.set('request', 'GetFeatureInfo');
+    
+    // Layers
+    url.searchParams.set('layers', params.layers);
+    url.searchParams.set('query_layers', params.query_layers || params.layers);
+    
+    // Spatial
+    url.searchParams.set('bbox', params.bbox);
+    url.searchParams.set('width', params.width);
+    url.searchParams.set('height', params.height);
+    url.searchParams.set(version === '1.3.0' ? 'crs' : 'srs', params.crs || 'EPSG:4326');
+    
+    // Point
+    if (version === '1.3.0') {
+        url.searchParams.set('i', Math.round(params.x));
+        url.searchParams.set('j', Math.round(params.y));
+    } else {
+        url.searchParams.set('x', Math.round(params.x));
+        url.searchParams.set('y', Math.round(params.y));
+    }
+    
+    // Format
+    url.searchParams.set('info_format', params.info_format || 'text/html');
+    url.searchParams.set('styles', '');
+
+    return url.toString();
+  }
 }

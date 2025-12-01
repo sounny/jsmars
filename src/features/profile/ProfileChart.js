@@ -18,6 +18,22 @@ export class ProfileChart {
 
     init() {
         this.container.innerHTML = '';
+        
+        // Controls
+        const controls = document.createElement('div');
+        controls.style.marginBottom = '5px';
+        controls.style.textAlign = 'right';
+        
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'tool-btn'; // Use existing style
+        exportBtn.style.width = 'auto';
+        exportBtn.style.padding = '2px 8px';
+        exportBtn.style.fontSize = '11px';
+        exportBtn.innerText = 'Export PNG';
+        exportBtn.onclick = () => this.exportPNG();
+        controls.appendChild(exportBtn);
+        this.container.appendChild(controls);
+
         this.canvas = document.createElement('canvas');
         this.canvas.width = 280; // Fit in sidebar
         this.canvas.height = 150;
@@ -26,6 +42,10 @@ export class ProfileChart {
         this.container.appendChild(this.canvas);
         this.ctx = this.canvas.getContext('2d');
 
+        // Interaction
+        this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        this.canvas.addEventListener('mouseleave', () => this.draw(this.lastProfiles)); // Redraw clean
+
         // Initial text
         this.ctx.fillStyle = '#666';
         this.ctx.font = '12px sans-serif';
@@ -33,7 +53,68 @@ export class ProfileChart {
         this.ctx.fillText('No profile data', this.canvas.width / 2, this.canvas.height / 2);
     }
 
+    exportPNG() {
+        const link = document.createElement('a');
+        link.download = 'profile_chart.png';
+        link.href = this.canvas.toDataURL();
+        link.click();
+    }
+
+    onMouseMove(e) {
+        if (!this.lastProfiles || this.lastProfiles.length === 0) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        
+        // Redraw base
+        this.draw(this.lastProfiles);
+
+        // Find nearest point across all profiles
+        let nearest = null;
+        let minDiff = Infinity;
+
+        // We need to reverse the scaleX to find data index from pixel X
+        // scaleX = (d) => pad + (d / maxDist) * (w - 2 * pad);
+        // d = (x - pad) / (w - 2 * pad) * maxDist
+        
+        // Easier: Just iterate all points and find closest in X pixels.
+        // Since we already computed scales in draw(), we should store them or recompute.
+        // Storing in `this` is easiest.
+        
+        if (!this.scales) return;
+
+        this.lastProfiles.forEach(p => {
+            p.data.forEach(d => {
+                const px = this.scales.x(d.dist);
+                const diff = Math.abs(px - mouseX);
+                if (diff < minDiff && diff < 10) { // 10px threshold
+                    minDiff = diff;
+                    nearest = { ...d, color: p.color, px: px, py: this.scales.y(d.elev) };
+                }
+            });
+        });
+
+        if (nearest) {
+            // Highlight
+            this.ctx.beginPath();
+            this.ctx.arc(nearest.px, nearest.py, 4, 0, 2 * Math.PI);
+            this.ctx.fillStyle = '#fff';
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Tooltip
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.fillRect(nearest.px + 10, nearest.py - 30, 120, 40);
+            this.ctx.fillStyle = '#fff';
+            this.ctx.textAlign = 'left';
+            this.ctx.font = '10px monospace';
+            this.ctx.fillText(`Dist: ${Math.round(nearest.dist)}m`, nearest.px + 15, nearest.py - 20);
+            this.ctx.fillText(`Elev: ${Math.round(nearest.elev)}m`, nearest.px + 15, nearest.py - 8);
+        }
+    }
+
     draw(profiles) {
+        this.lastProfiles = profiles; // Store for redraw
         const ctx = this.ctx;
         const w = this.canvas.width;
         const h = this.canvas.height;
@@ -67,6 +148,8 @@ export class ProfileChart {
         // Scaling functions
         const scaleX = (d) => pad + (d / maxDist) * (w - 2 * pad);
         const scaleY = (e) => h - pad - ((e - minElev) / (maxElev - minElev)) * (h - 2 * pad);
+        
+        this.scales = { x: scaleX, y: scaleY }; // Store for interaction
 
         // Draw Axes
         ctx.strokeStyle = '#666';

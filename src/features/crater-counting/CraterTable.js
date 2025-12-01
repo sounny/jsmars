@@ -1,3 +1,5 @@
+import { EVENTS } from '../../constants.js';
+
 export class CraterTable {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -11,7 +13,7 @@ export class CraterTable {
         this.render();
 
         // Listen for updates
-        document.addEventListener('jmars-crater-added', (e) => {
+        document.addEventListener(EVENTS.CRATER_ADDED, (e) => {
             this.addCrater(e.detail);
         });
     }
@@ -80,7 +82,7 @@ export class CraterTable {
         if (row) row.remove();
 
         // Dispatch removal event
-        const event = new CustomEvent('jmars-crater-remove-request', { detail: { id } });
+        const event = new CustomEvent(EVENTS.CRATER_REMOVE, { detail: { id } });
         document.dispatchEvent(event);
     }
 
@@ -91,7 +93,7 @@ export class CraterTable {
         this.tbody.innerHTML = '';
 
         // Dispatch clear event
-        const event = new CustomEvent('jmars-crater-clear-request');
+        const event = new CustomEvent(EVENTS.CRATER_CLEAR);
         document.dispatchEvent(event);
     }
 

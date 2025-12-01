@@ -46,18 +46,21 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [ ] **Measurements**: Independent distance/area tools (Azimuth, Length, Perimeter).
 
 ### 3.4 Investigate Tool (New)
-- [ ] **Pixel Inspector**: Click to query WMS/Numeric values at a point.
+- [x] **Pixel Inspector**: Click to query WMS/Numeric values at a point.
 - [ ] **Spectral Plot**: If multi-band data is available, plot spectrum.
 
 ## Phase 4: Data Management & Search
 - [ ] **Unified Search**:
     - **Landmarks**: Fuzzy search against local JSON database (mimics `places`).
-    - **Bookmarks**: Save/Rename/Delete current viewport (localStorage).
+    - [x] **Bookmarks**: Save/Rename/Delete current viewport (localStorage & Session).
+- [x] **Nomenclature Tool**:
+    - [x] Toggleable layer of major landmarks (Craters, Mons, Valles).
+    - [x] Filter by type.
 - [x] **Session Management**:
     - [x] Save session (Active layers, order, opacity, panner, ROIs, bookmarks).
     - [x] Load session (JSON file upload).
-- [ ] **Multi-body Support**:
-    - [ ] Body selector (Mars, Moon, Earth, etc.).
+- [x] **Multi-body Support**:
+    - [x] Body selector (Mars, Moon, Earth, etc.).
     - [ ] Configurable endpoints and coordinate systems.
 
 ## Phase 5: Advanced Layers & Tools (Reference Parity)
