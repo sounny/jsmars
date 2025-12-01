@@ -423,6 +423,67 @@ html {
   overflow-y: auto;
 }
 
+.mosaic-catalog {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mosaic-header {
+  font-weight: bold;
+  font-size: 13px;
+  color: #eee;
+}
+
+.mosaic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mosaic-card {
+  display: flex;
+  gap: 10px;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.mosaic-thumb {
+  width: 72px;
+  height: 72px;
+  background: #222 center center / cover no-repeat;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.mosaic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.mosaic-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+}
+
+.mosaic-desc {
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.2;
+}
+
+.mosaic-activate-btn {
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
 /* Status Bar */
 #status-bar {
   position: absolute;

@@ -62,7 +62,8 @@
       <div class="accordion-header">Map Options</div>
       <div class="accordion-content">
         <div style="padding: 10px;">
-          <div id="search-bar-container" style="margin-bottom: 15px;"></div>
+        <div id="search-bar-container" style="margin-bottom: 15px;"></div>
+          <div id="mosaic-catalog" class="mosaic-catalog"></div>
           <div id="fixed-overlays"></div>
         </div>
       </div>
@@ -178,6 +179,7 @@
     import { FixedOverlays } from './src/ui/FixedOverlays.js';
     import { Sidebar } from './src/ui/Sidebar.js';
     import { SearchBar } from './src/ui/SearchBar.js';
+    import { MosaicCatalog } from './src/ui/MosaicCatalog.js';
     import { CollapsibleGroup } from './src/ui/CollapsibleGroup.js';
     import { SessionManager } from './src/ui/SessionManager.js';
     import { BodySelector } from './src/ui/BodySelector.js';
@@ -201,6 +203,7 @@
     const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
     const sidebar = new Sidebar('controls', 'sidebar-toggle');
     const searchBar = new SearchBar(jmars.map, 'search-bar-container');
+    const mosaicCatalog = new MosaicCatalog(jmars, 'mosaic-catalog');
     const toolsGroup = new CollapsibleGroup('tools-list');
     const bodySelector = new BodySelector('body-selector-container');
 

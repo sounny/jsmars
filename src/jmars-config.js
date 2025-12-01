@@ -84,5 +84,52 @@ export const JMARS_CONFIG = {
         }
       ]
     }
+  },
+  // Optional mosaic catalog per body
+  mosaics: {
+    mars: [
+      {
+        id: "mars_mdim21_mosaic",
+        name: "MDIM 2.1 Global Mosaic",
+        description: "Viking MDIM 2.1 global mosaic (256 px/deg)",
+        type: "wms",
+        url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map",
+        options: {
+          layers: "MDIM21",
+          format: "image/png",
+          transparent: true,
+          attribution: "USGS Astrogeology"
+        },
+        thumbnail: "https://via.placeholder.com/140x90?text=MDIM21"
+      },
+      {
+        id: "mars_themis_day_mosaic",
+        name: "THEMIS IR Day 100m",
+        description: "Mars Odyssey THEMIS IR Day global mosaic (100m)",
+        type: "wms",
+        url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map",
+        options: {
+          layers: "THEMIS",
+          format: "image/png",
+          transparent: true,
+          attribution: "USGS Astrogeology"
+        },
+        thumbnail: "https://via.placeholder.com/140x90?text=THEMIS"
+      },
+      {
+        id: "mars_mola_hillshade",
+        name: "MOLA Hillshade",
+        description: "MOLA shaded relief (global)",
+        type: "wms",
+        url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map",
+        options: {
+          layers: "MOLA_bw",
+          format: "image/png",
+          transparent: true,
+          attribution: "USGS Astrogeology"
+        },
+        thumbnail: "https://via.placeholder.com/140x90?text=MOLA"
+      }
+    ]
   }
 };
