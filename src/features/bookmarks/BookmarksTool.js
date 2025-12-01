@@ -65,11 +65,19 @@ export class BookmarksTool {
     render() {
         this.container.innerHTML = '';
         
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bookmarks-block';
+
+        const header = document.createElement('h4');
+        header.textContent = 'Bookmarks';
+        wrapper.appendChild(header);
+
         const addBtn = document.createElement('button');
         addBtn.className = 'tool-btn';
         addBtn.textContent = '+ Add Bookmark';
+        addBtn.type = 'button';
         addBtn.onclick = () => this.addCurrentView();
-        this.container.appendChild(addBtn);
+        wrapper.appendChild(addBtn);
 
         const list = document.createElement('div');
         list.style.marginTop = '10px';
@@ -112,7 +120,8 @@ export class BookmarksTool {
             list.appendChild(empty);
         }
 
-        this.container.appendChild(list);
+        wrapper.appendChild(list);
+        this.container.appendChild(wrapper);
     }
     
     // Session Integration

@@ -63,6 +63,18 @@ export const JMARS_CONFIG = {
             transparent: true,
             attribution: "NASA GIBS"
           }
+        },
+        {
+          id: "earth_bluemarble_shaded_relief",
+          name: "Blue Marble Shaded Relief",
+          type: "wms",
+          url: "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi",
+          options: {
+            layers: "BlueMarble_ShadedRelief",
+            format: "image/jpeg",
+            transparent: true,
+            attribution: "NASA GIBS"
+          }
         }
       ]
     },
@@ -100,7 +112,7 @@ export const JMARS_CONFIG = {
           transparent: true,
           attribution: "USGS Astrogeology"
         },
-        thumbnail: "https://via.placeholder.com/140x90?text=MDIM21"
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
       },
       {
         id: "mars_themis_day_mosaic",
@@ -114,7 +126,7 @@ export const JMARS_CONFIG = {
           transparent: true,
           attribution: "USGS Astrogeology"
         },
-        thumbnail: "https://via.placeholder.com/140x90?text=THEMIS"
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
       },
       {
         id: "mars_mola_hillshade",
@@ -128,7 +140,7 @@ export const JMARS_CONFIG = {
           transparent: true,
           attribution: "USGS Astrogeology"
         },
-        thumbnail: "https://via.placeholder.com/140x90?text=MOLA"
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
       }
     ]
   }

@@ -20,6 +20,16 @@
 
   <!-- Status Bar -->
   <div id="status-bar"></div>
+  <div class="welcome-modal-backdrop" id="welcome-modal">
+    <div class="welcome-modal">
+      <img src="jsmars_logo.svg" alt="JSMARS Logo">
+      <h2>Welcome to JSMARS (Beta)</h2>
+      <p>This web preview is still under active development and not fully functional.</p>
+      <p>We’re collecting feedback and contributions.</p>
+      <p><a href="https://github.com/sounny/jsmars" target="_blank" rel="noopener">Report issues or contribute on GitHub</a></p>
+      <button id="welcome-dismiss">Got it</button>
+    </div>
+  </div>
 
   <!-- Loading Indicator -->
   <div id="loading-indicator">Loading...</div>
@@ -60,10 +70,10 @@
     <!-- Map Options -->
     <div class="accordion-section">
       <div class="accordion-header">Map Options</div>
-      <div class="accordion-content">
-        <div style="padding: 10px;">
-        <div id="search-bar-container" style="margin-bottom: 15px;"></div>
-          <div id="mosaic-catalog" class="mosaic-catalog"></div>
+        <div class="accordion-content">
+          <div style="padding: 10px;">
+            <div id="search-bar-container" style="margin-bottom: 15px;"></div>
+          <div id="bookmarks-tool-container" style="margin-top: 10px;"></div>
           <div id="fixed-overlays"></div>
         </div>
       </div>
@@ -83,12 +93,25 @@
             </div>
           </div>
 
-          <!-- Radial Profile -->
+          <!-- Profiles -->
           <div class="layer-section">
-            <div class="layer-section-header">Radial Profile <span class="icon">+</span></div>
+            <div class="layer-section-header">Profiles <span class="icon">+</span></div>
             <div class="layer-section-content" style="display:none;">
+              <label for="enhanced-profile-source" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 6px;">Linear Profile Source</label>
+              <select id="enhanced-profile-source" class="tool-select" style="width: 100%; margin-bottom: 8px;">
+                <option value="mola">MOLA Hillshade (USGS WMS)</option>
+              </select>
+              <button id="enhanced-profile-btn" class="tool-btn">Linear Profile</button>
+              <button id="enhanced-profile-export-btn" class="tool-btn">Export CSV</button>
+
+              <div style="margin: 12px 0; border-top: 1px solid #333;"></div>
+
+              <label for="profile-source-select" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 6px;">Radial Elevation Source</label>
+              <select id="profile-source-select" class="tool-select" style="width: 100%; margin-bottom: 8px;">
+                <option value="mola">MOLA Hillshade (USGS WMS)</option>
+              </select>
               <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
-              <div id="profile-chart-container"></div>
+              <div id="profile-chart-container" style="margin-bottom: 12px;"></div>
             </div>
           </div>
 
@@ -128,22 +151,6 @@
           </div>
 
           <!-- Bookmarks -->
-          <div class="layer-section">
-            <div class="layer-section-header">Bookmarks <span class="icon">+</span></div>
-            <div class="layer-section-content" style="display:none;">
-              <div id="bookmarks-tool-container"></div>
-            </div>
-          </div>
-
-          <!-- Enhanced Profile -->
-          <div class="layer-section">
-            <div class="layer-section-header">Enhanced Profile <span class="icon">+</span></div>
-            <div class="layer-section-content" style="display:none;">
-              <button id="enhanced-profile-btn" class="tool-btn">Draw Profile</button>
-              <button id="enhanced-profile-export-btn" class="tool-btn">Export CSV</button>
-            </div>
-          </div>
-
           <!-- Sampling -->
           <div class="layer-section">
             <div class="layer-section-header">Sampling <span class="icon">+</span></div>
@@ -179,7 +186,6 @@
     import { FixedOverlays } from './src/ui/FixedOverlays.js';
     import { Sidebar } from './src/ui/Sidebar.js';
     import { SearchBar } from './src/ui/SearchBar.js';
-    import { MosaicCatalog } from './src/ui/MosaicCatalog.js';
     import { CollapsibleGroup } from './src/ui/CollapsibleGroup.js';
     import { SessionManager } from './src/ui/SessionManager.js';
     import { BodySelector } from './src/ui/BodySelector.js';
@@ -196,6 +202,21 @@
     jmars.init();
     window.jmars = jmars; // Expose for debugging
 
+    // Welcome modal (one-time per session)
+    const welcomeBackdrop = document.getElementById('welcome-modal');
+    const welcomeDismiss = document.getElementById('welcome-dismiss');
+    if (!sessionStorage.getItem('jsmars_welcome_shown')) {
+      welcomeBackdrop.style.display = 'flex';
+    }
+    const closeWelcome = () => {
+      welcomeBackdrop.style.display = 'none';
+      sessionStorage.setItem('jsmars_welcome_shown', '1');
+    };
+    welcomeDismiss.addEventListener('click', closeWelcome);
+    welcomeBackdrop.addEventListener('click', (e) => {
+      if (e.target === welcomeBackdrop) closeWelcome();
+    });
+
     // Initialize UI Components
     const layerManager = new LayerManager('layer-list', jmars);
     const accordion = new Accordion('controls');
@@ -203,7 +224,6 @@
     const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
     const sidebar = new Sidebar('controls', 'sidebar-toggle');
     const searchBar = new SearchBar(jmars.map, 'search-bar-container');
-    const mosaicCatalog = new MosaicCatalog(jmars, 'mosaic-catalog');
     const toolsGroup = new CollapsibleGroup('tools-list');
     const bodySelector = new BodySelector('body-selector-container');
 
@@ -213,6 +233,9 @@
     const craterBtn = document.getElementById('crater-tool-btn');
 
     const profileTool = new RadialProfileTool(jmars.map);
+    const profileSource = document.getElementById('profile-source-select');
+    profileTool.populateSourceDropdown(profileSource);
+    profileSource.addEventListener('change', (e) => profileTool.setElevationSource(e.target.value));
     const profileChart = new ProfileChart('profile-chart-container');
     const profileBtn = document.getElementById('profile-tool-btn');
 
@@ -231,6 +254,13 @@
     const bookmarksTool = new BookmarksTool(jmars.map, 'bookmarks-tool-container');
 
     const enhancedProfileTool = new EnhancedProfileTool(jmars.map);
+    const enhancedProfileSource = document.getElementById('enhanced-profile-source');
+    enhancedProfileTool.populateSourceDropdown(enhancedProfileSource);
+    enhancedProfileSource.addEventListener('change', (e) => enhancedProfileTool.setElevationSource(e.target.value));
+    document.addEventListener(EVENTS.BODY_CHANGED, () => {
+      profileTool.populateSourceDropdown(profileSource);
+      enhancedProfileTool.populateSourceDropdown(enhancedProfileSource);
+    });
     const enhancedProfileBtn = document.getElementById('enhanced-profile-btn');
     document.getElementById('enhanced-profile-export-btn').addEventListener('click', () => enhancedProfileTool.exportCSV());
 
@@ -240,6 +270,18 @@
     const sampleTable = new SampleTable('sample-table-container');
     document.getElementById('sample-export-btn').addEventListener('click', () => samplingTool.exportCSV());
     document.getElementById('sample-clear-btn').addEventListener('click', () => samplingTool.clear());
+
+    samplingPointBtn.addEventListener('click', () => {
+      samplingTool.activate('point');
+      samplingPointBtn.classList.add('active');
+      samplingAreaBtn.classList.remove('active');
+    });
+
+    samplingAreaBtn.addEventListener('click', () => {
+      samplingTool.activate('area');
+      samplingAreaBtn.classList.add('active');
+      samplingPointBtn.classList.remove('active');
+    });
 
     // Session Manager (include bookmarksTool)
     const sessionManager = new SessionManager(craterLayer, measureTool, bookmarksTool);
@@ -342,6 +384,10 @@
       if (e.detail.tool === 'measure') {
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
+      }
+      if (e.detail.tool === 'sampling') {
+        samplingPointBtn.classList.remove('active');
+        samplingAreaBtn.classList.remove('active');
       }
     });
 

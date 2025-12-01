@@ -45,6 +45,8 @@ export class SamplingTool {
         }
         this.map.off(L.Draw.Event.CREATED); // simplistic off
         this.map.getContainer().style.cursor = '';
+
+        document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'sampling' } }));
     }
 
     onDrawCreated(e) {

@@ -82,6 +82,62 @@ html {
   left: 10px;
 }
 
+.welcome-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 4000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-modal {
+  background: #111;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 8px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  padding: 20px;
+  text-align: center;
+}
+
+.welcome-modal img {
+  height: 64px;
+  margin-bottom: 10px;
+}
+
+.welcome-modal h2 {
+  margin: 0 0 10px 0;
+  font-size: 20px;
+}
+
+.welcome-modal p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #ccc;
+}
+
+.welcome-modal a {
+  color: #8ec5ff;
+  text-decoration: none;
+}
+
+.welcome-modal button {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 1px solid #555;
+  background: #222;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
 .control-header {
   padding: 12px;
   background: #333;
@@ -484,6 +540,18 @@ html {
   padding: 4px 8px;
 }
 
+.bookmarks-block {
+  padding: 10px 0;
+  border-top: 1px solid #333;
+  margin-top: 10px;
+}
+
+.bookmarks-block h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #eee;
+}
+
 /* Status Bar */
 #status-bar {
   position: absolute;
@@ -905,16 +973,18 @@ html {
 /* Panner (Overview Map) */
 #jmars-panner {
   position: absolute;
-  bottom: 30px;
-  /* Above status bar */
-  left: 0;
-  right: 0;
-  height: 150px;
+  bottom: 60px;
+  right: 20px;
+  width: 240px;
+  height: 170px;
+  padding: 8px;
   background: #000;
-  border-top: 2px solid #555;
+  border: 1px solid #555;
+  border-radius: 6px;
   z-index: 1000;
   display: none;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
 }
 
 #jmars-panner.visible {
@@ -1095,25 +1165,6 @@ overflow-y: auto;
 /* Adjust map height to account for status bar */
 #map {
   height: calc(100% - 30px);
-}
-
-/* Panner (Overview Map) */
-#jmars-panner {
-  position: absolute;
-  bottom: 30px;
-  /* Above status bar */
-  left: 0;
-  right: 0;
-  height: 150px;
-  background: #000;
-  border-top: 2px solid #555;
-  z-index: 1000;
-  display: none;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
-}
-
-#jmars-panner.visible {
-  display: block;
 }
 
 /* Custom Leaflet Controls */

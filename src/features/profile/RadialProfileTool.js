@@ -10,6 +10,28 @@ export class RadialProfileTool {
         // Config
         this.numLines = 8; // Number of radiating lines
         this.stepSize = 1000; // Meters between samples
+        this.elevationSources = {
+            mars: [
+                {
+                    id: 'mola',
+                    name: 'MOLA Hillshade',
+                    url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
+                    layer: 'MOLA_bw'
+                }
+            ],
+            earth: [
+                {
+                    id: 'aster_gdem',
+                    name: 'ASTER GDEM (GIBS shaded relief)',
+                    url: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+                    layer: 'ASTER_GDEM_Greyscale_ShadedRelief'
+                }
+            ],
+            moon: [
+                // no source yet
+            ]
+        };
+        this.currentSourceId = 'mola';
 
         // Bindings
         this.onClick = this.onClick.bind(this);
@@ -43,6 +65,35 @@ export class RadialProfileTool {
             this.previewLine.remove();
             this.previewLine = null;
         }
+    }
+
+    populateSourceDropdown(selectEl) {
+        if (!selectEl) return;
+        const body = (window.jmars?.currentBody || 'mars').toLowerCase();
+        const sources = this.elevationSources[body] || [];
+
+        selectEl.innerHTML = '';
+        selectEl.disabled = sources.length === 0;
+        if (sources.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = 'none';
+            opt.textContent = 'No elevation source';
+            selectEl.appendChild(opt);
+            this.currentSourceId = 'none';
+            return;
+        }
+
+        sources.forEach((s, idx) => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            selectEl.appendChild(opt);
+            if (idx === 0 && !sources.find(src => src.id === this.currentSourceId)) {
+                this.currentSourceId = s.id;
+            }
+        });
+
+        selectEl.value = this.currentSourceId;
     }
 
     onClick(e) {
@@ -84,6 +135,10 @@ export class RadialProfileTool {
         }
     }
 
+    setElevationSource(sourceId) {
+        this.currentSourceId = sourceId;
+    }
+
     generateProfile(center, radius) {
         this.layerGroup.clearLayers();
         L.circleMarker(center, { radius: 5, color: '#0ff' }).addTo(this.layerGroup);
@@ -119,36 +174,82 @@ export class RadialProfileTool {
             // Draw line
             L.polyline(linePoints, { color: this.getColor(i), weight: 2 }).addTo(this.layerGroup);
 
-            // Generate Data
-            const dataPoints = [];
-            const steps = 50; // Number of samples per line
-            for (let s = 0; s <= steps; s++) {
-                const dist = (radius / steps) * s;
-                // Interpolate pos
-                const ratio = s / steps;
-                const sampleLat = center.lat + (endLat - center.lat) * ratio;
-                const sampleLng = center.lng + (endLng - center.lng) * ratio;
-
-                // Mock Elevation
-                // Noise function based on coords
-                const noise = Math.sin(sampleLat * 10) * Math.cos(sampleLng * 10) * 500;
-                const base = Math.sin(sampleLat * 0.5) * 3000; // Global trend
-                const crater = Math.random() > 0.9 ? -1000 : 0; // Random craters
-
-                const elev = base + noise + crater;
-                dataPoints.push({ dist, elev });
-            }
-
+            // Generate Data (async)
             profiles.push({
                 angle: angleDeg,
                 color: this.getColor(i),
-                data: dataPoints
+                data: []
+            });
+            this.sampleElevations(linePoints).then((dataPoints) => {
+                const target = profiles.find(p => p.angle === angleDeg);
+                if (target) target.data = dataPoints;
+                document.dispatchEvent(new CustomEvent('jmars-profile-generated', { detail: { profiles } }));
             });
         }
 
-        // Dispatch Data
-        const event = new CustomEvent('jmars-profile-generated', { detail: { profiles } });
-        document.dispatchEvent(event);
+        // Initial dispatch to clear chart
+        document.dispatchEvent(new CustomEvent('jmars-profile-generated', { detail: { profiles } }));
+    }
+
+    sampleElevations(linePoints) {
+        const [start, end] = linePoints;
+        const samples = [];
+        const steps = 50;
+        for (let s = 0; s <= steps; s++) {
+            const ratio = s / steps;
+            const lat = start.lat + (end.lat - start.lat) * ratio;
+            const lng = start.lng + (end.lng - start.lng) * ratio;
+            samples.push({ dist: ratio, lat, lng });
+        }
+        return this.populateElevations(samples);
+    }
+
+    async populateElevations(samples) {
+        const body = (window.jmars?.currentBody || 'mars').toLowerCase();
+        const sources = this.elevationSources[body] || [];
+        const source = sources.find(s => s.id === this.currentSourceId);
+
+        if (!source) {
+            return samples.map(s => ({ dist: s.dist, elev: null }));
+        }
+
+        const mapSize = this.map.getSize();
+        const bounds = this.map.getBounds();
+        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+        const dataPoints = [];
+
+        for (const s of samples) {
+            const pt = this.map.latLngToContainerPoint([s.lat, s.lng]);
+            const url = window.JMARSWMS
+                ? window.JMARSWMS.getFeatureInfoUrl(source.url, {
+                    layers: source.layer,
+                    bbox,
+                    width: mapSize.x,
+                    height: mapSize.y,
+                    x: pt.x,
+                    y: pt.y,
+                    crs: 'EPSG:4326',
+                    info_format: 'text/plain',
+                    version: '1.3.0'
+                  })
+                : null;
+
+            if (!url) {
+                dataPoints.push({ dist: s.dist, elev: null });
+                continue;
+            }
+
+            try {
+                const resp = await fetch(url);
+                const text = await resp.text();
+                const match = text.match(/-?\\d+\\.?\\d*/);
+                dataPoints.push({ dist: s.dist, elev: match ? parseFloat(match[0]) : null });
+            } catch {
+                dataPoints.push({ dist: s.dist, elev: null });
+            }
+        }
+
+        return dataPoints;
     }
 
     getColor(index) {

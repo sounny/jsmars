@@ -9,6 +9,28 @@ export class EnhancedProfileTool {
         this.featureGroup = L.featureGroup().addTo(map);
         this.drawControl = null;
         this.profileData = [];
+        this.elevationSources = {
+            mars: [
+                {
+                    id: 'mola',
+                    name: 'MOLA Hillshade',
+                    url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
+                    layer: 'MOLA_bw'
+                }
+            ],
+            earth: [
+                {
+                    id: 'aster_gdem',
+                    name: 'ASTER GDEM (GIBS shaded relief)',
+                    url: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+                    layer: 'ASTER_GDEM_Greyscale_ShadedRelief'
+                }
+            ],
+            moon: [
+                // No elevation source available yet; disabled in UI.
+            ]
+        };
+        this.currentSourceId = 'mola';
         
         this.onDrawCreated = this.onDrawCreated.bind(this);
         this.onDrawStop = this.onDrawStop.bind(this);
@@ -126,39 +148,7 @@ export class EnhancedProfileTool {
         const last = latlngs[latlngs.length - 1];
         samples.push({ dist: totalDist, lat: last.lat, lng: last.lng });
 
-        // Mock Data or WMS?
-        // The user request says: "For elevation profiles, may need to sample DEM rasters directly ... Leverage WMS GetFeatureInfo".
-        // Sampling 100 points via HTTP WMS is slow (100 requests).
-        // Unless we use a specialized service or WMS allows multi-point. Standard WMS doesn't.
-        // JMARS Desktop uses backend support.
-        // Here we will use the "Mock Data" approach from the original RadialProfileTool for speed, 
-        // BUT we can try to fetch ONE point to calibrate or just show mock.
-        // Or, if we want to be real, we pick 10 points and interpolate.
-        // Let's stick to the mock noise function used in RadialProfileTool for now, 
-        // but structurally ready for data.
-        // Wait, `InvestigateTool` does WMS.
-        // Let's try to fetch REAL data for start/end/mid and interpolate?
-        // No, let's use the noise function for responsiveness as requested in "Mock Data" of original implementation plan, 
-        // but maybe add a "Fetch Real Data" button? 
-        // The user prompt says "Enhance ... to match key JMARS desktop capabilities".
-        // Real data is key.
-        // Let's implement a "slow" mode that fetches real data if requested, but default to mock? 
-        // Or just Mock for now. The prompt asks for "Interactive profile chart ... Y-axis: Elevation".
-        // I will port the Mock logic from RadialProfileTool but applied to the polyline.
-
-        const profileData = samples.map(s => {
-            // Mock Elevation Logic
-            // Mars radius ~3396km.
-            const noise = Math.sin(s.lat * 10) * Math.cos(s.lng * 10) * 500;
-            const base = Math.sin(s.lat * 0.5) * 3000;
-            const elev = base + noise;
-            return {
-                dist: s.dist,
-                elev: elev,
-                lat: s.lat,
-                lng: s.lng
-            };
-        });
+        const profileData = await this.populateElevations(samples);
 
         this.profileData = profileData;
 
@@ -188,4 +178,122 @@ export class EnhancedProfileTool {
         link.click();
         document.body.removeChild(link);
     }
+
+    setElevationSource(sourceId) {
+        this.currentSourceId = sourceId;
+    }
+
+    populateSourceDropdown(selectEl) {
+        if (!selectEl) return;
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        const sources = this.elevationSources[body] || [];
+
+        selectEl.innerHTML = '';
+        selectEl.disabled = sources.length === 0;
+        if (sources.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = 'none';
+            opt.textContent = 'No elevation source';
+            selectEl.appendChild(opt);
+            this.currentSourceId = 'none';
+            return;
+        }
+
+        sources.forEach((s, idx) => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            selectEl.appendChild(opt);
+            if (idx === 0 && !sources.find(src => src.id === this.currentSourceId)) {
+                this.currentSourceId = s.id;
+            }
+        });
+
+        selectEl.value = this.currentSourceId;
+    }
+
+    async populateElevations(samples) {
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        const sources = this.elevationSources[body] || [];
+        const source = sources.find(s => s.id === this.currentSourceId);
+
+        if (!source) {
+            // No source available (e.g., moon) — return empty profile
+            return samples.map(s => ({
+                dist: s.dist,
+                elev: null,
+                lat: s.lat,
+                lng: s.lng
+            }));
+        }
+
+        // Limit requests
+        const maxSamples = 40;
+        const step = Math.max(1, Math.floor(samples.length / maxSamples));
+        const reduced = samples.filter((_, idx) => idx % step === 0);
+
+        const mapSize = this.map.getSize();
+        const bounds = this.map.getBounds();
+        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+        const results = [];
+
+        for (const s of reduced) {
+            const pt = this.map.latLngToContainerPoint([s.lat, s.lng]);
+            const url = JMARSWMS.getFeatureInfoUrl(source.url, {
+                layers: source.layer,
+                bbox,
+                width: mapSize.x,
+                height: mapSize.y,
+                x: pt.x,
+                y: pt.y,
+                crs: 'EPSG:4326',
+                info_format: 'text/plain',
+                version: '1.3.0'
+            });
+
+            try {
+                const resp = await fetch(url);
+                const text = await resp.text();
+                const match = text.match(/-?\\d+\\.?\\d*/);
+                const elev = match ? parseFloat(match[0]) : null;
+                results.push({
+                    dist: s.dist,
+                    elev: elev !== null ? elev : null,
+                    lat: s.lat,
+                    lng: s.lng
+                });
+            } catch (e) {
+                results.push({
+                    dist: s.dist,
+                    elev: null,
+                    lat: s.lat,
+                    lng: s.lng
+                });
+            }
+        }
+
+        if (results.length !== samples.length) {
+            const interpolated = [];
+            for (let i = 0; i < samples.length; i++) {
+                const ratio = i / (samples.length - 1);
+                const pos = ratio * (results.length - 1);
+                const idx = Math.floor(pos);
+                const t = pos - idx;
+                const a = results[idx];
+                const b = results[Math.min(idx + 1, results.length - 1)];
+                const elev = a.elev + (b.elev - a.elev) * t;
+                const s = samples[i];
+                interpolated.push({
+                    dist: s.dist,
+                    elev,
+                    lat: s.lat,
+                    lng: s.lng
+                });
+            }
+            return interpolated;
+        }
+
+        return results;
+    }
+
 }
