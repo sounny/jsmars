@@ -114,7 +114,14 @@ export class ProfileChart {
     }
 
     draw(profiles) {
-        this.lastProfiles = profiles; // Store for redraw
+        const filteredProfiles = (profiles || [])
+            .map(p => ({
+                ...p,
+                data: (p.data || []).filter(d => Number.isFinite(d.elev))
+            }))
+            .filter(p => p.data.length > 0);
+
+        this.lastProfiles = filteredProfiles; // Store for redraw
         const ctx = this.ctx;
         const w = this.canvas.width;
         const h = this.canvas.height;
@@ -125,14 +132,21 @@ export class ProfileChart {
         ctx.fillStyle = '#222';
         ctx.fillRect(0, 0, w, h);
 
-        if (!profiles || profiles.length === 0) return;
+        if (!filteredProfiles || filteredProfiles.length === 0) {
+            this.scales = null;
+            ctx.fillStyle = '#666';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('No profile data', w / 2, h / 2);
+            return;
+        }
 
         // Find Min/Max
         let minElev = Infinity;
         let maxElev = -Infinity;
         let maxDist = 0;
 
-        profiles.forEach(p => {
+        filteredProfiles.forEach(p => {
             p.data.forEach(d => {
                 if (d.elev < minElev) minElev = d.elev;
                 if (d.elev > maxElev) maxElev = d.elev;
@@ -144,6 +158,10 @@ export class ProfileChart {
         const range = maxElev - minElev;
         minElev -= range * 0.1;
         maxElev += range * 0.1;
+
+        if (maxDist === 0) {
+            maxDist = 1;
+        }
 
         // Scaling functions
         const scaleX = (d) => pad + (d / maxDist) * (w - 2 * pad);
@@ -161,7 +179,7 @@ export class ProfileChart {
         ctx.stroke();
 
         // Draw Profiles
-        profiles.forEach(p => {
+        filteredProfiles.forEach(p => {
             ctx.strokeStyle = p.color;
             ctx.lineWidth = 1.5;
             ctx.beginPath();

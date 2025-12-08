@@ -1,6 +1,7 @@
 import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
-import { JMARS_CONFIG } from '../../jmars-config.js';
+import { EVENTS } from '../../constants.js';
+import { molaDem } from '../../util/mola-dem.js';
 
 export class InvestigateTool {
     constructor(map) {
@@ -9,19 +10,27 @@ export class InvestigateTool {
         this.popup = L.popup({ maxWidth: 300 });
         
         this.onClick = this.onClick.bind(this);
+
+        document.addEventListener(EVENTS.BODY_CHANGED, () => this.deactivate());
     }
 
     activate() {
         this.isActive = true;
         this.map.getContainer().style.cursor = 'help';
         this.map.on('click', this.onClick);
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        if (body === 'mars') {
+            molaDem.ensureLoaded().catch(() => {});
+        }
     }
 
     deactivate() {
+        if (!this.isActive) return;
         this.isActive = false;
         this.map.getContainer().style.cursor = '';
         this.map.off('click', this.onClick);
         this.map.closePopup();
+        document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'investigate' } }));
     }
 
     async onClick(e) {
@@ -38,6 +47,7 @@ export class InvestigateTool {
                 <b>Coordinates</b><br>
                 Lat: ${lat.toFixed(4)}<br>
                 Lon: ${displayLng.toFixed(4)} E<br>
+                Elev: <span id="investigate-elevation">Loading...</span><br>
                 <hr style="margin: 5px 0; border: 0; border-top: 1px solid #ccc;">
                 <div id="investigate-loading">Querying layers...</div>
                 <div id="investigate-results"></div>
@@ -49,9 +59,32 @@ export class InvestigateTool {
             .setContent(content)
             .openOn(this.map);
 
+        // Elevation (best-effort, Mars only for now)
+        this.loadElevation(e.latlng);
+
         // 2. Query WMS Layers
         const results = await this.queryLayers(e.latlng, e.containerPoint);
         this.updatePopup(results);
+    }
+
+    async loadElevation(latlng) {
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        const elevationEl = document.getElementById('investigate-elevation');
+        if (!elevationEl) return;
+
+        if (body !== 'mars') {
+            elevationEl.innerText = 'N/A';
+            return;
+        }
+
+        try {
+            const values = await molaDem.sampleElevations([{ lat: latlng.lat, lng: latlng.lng }]);
+            const elev = values[0];
+            elevationEl.innerText = Number.isFinite(elev) ? `${Math.round(elev)} m` : 'No data';
+        } catch (err) {
+            console.warn('Investigate elevation failed', err);
+            elevationEl.innerText = 'Error';
+        }
     }
 
     async queryLayers(latlng, containerPoint) {
@@ -68,7 +101,6 @@ export class InvestigateTool {
         const bounds = this.map.getBounds();
         // Leaflet bounds: SouthWest, NorthEast.
         // WMS 1.3.0 BBOX depends on CRS axis order. EPSG:4326 is usually Lat,Lon.
-        // But JMARS_CONFIG might use a server that expects Lon,Lat (1.1.1 style) even in 1.3.0 if it's not strict.
         // USGS Astrogeology WMS 1.3.0 is usually strict (Lat,Lon).
         
         const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;

@@ -1,5 +1,6 @@
 import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
+import { molaDem } from '../../util/mola-dem.js';
 import { EVENTS } from '../../constants.js';
 
 export class EnhancedProfileTool {
@@ -12,10 +13,9 @@ export class EnhancedProfileTool {
         this.elevationSources = {
             mars: [
                 {
-                    id: 'mola',
-                    name: 'MOLA Hillshade',
-                    url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
-                    layer: 'MOLA_bw'
+                    id: molaDem.SOURCE_ID,
+                    name: molaDem.SOURCE_NAME,
+                    type: 'dem'
                 }
             ],
             earth: [
@@ -30,7 +30,7 @@ export class EnhancedProfileTool {
                 // No elevation source available yet; disabled in UI.
             ]
         };
-        this.currentSourceId = 'mola';
+        this.currentSourceId = molaDem.SOURCE_ID;
         
         this.onDrawCreated = this.onDrawCreated.bind(this);
         this.onDrawStop = this.onDrawStop.bind(this);
@@ -42,6 +42,10 @@ export class EnhancedProfileTool {
     activate() {
         if (this.isActive) return;
         this.isActive = true;
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        if (body === 'mars') {
+            molaDem.ensureLoaded().catch(() => {});
+        }
         this.featureGroup.clearLayers();
         this.profileData = [];
 
@@ -110,15 +114,15 @@ export class EnhancedProfileTool {
         // But L.Draw.Polyline usually returns simple array of LatLng objects.
         
         const samples = [];
-        const stepPixels = 10; // Sample every 10 pixels on screen? No, geographical steps.
-        // Let's aim for ~100 samples total for performance.
+        // Aim for a smooth curve without too many fetches.
+        const targetSamples = 150;
         
         let totalDist = 0;
         for (let i = 0; i < latlngs.length - 1; i++) {
             totalDist += latlngs[i].distanceTo(latlngs[i+1]);
         }
 
-        const stepSize = totalDist / 100; 
+        const stepSize = totalDist / targetSamples; 
         
         let currentDist = 0;
         // Generate points
@@ -166,9 +170,10 @@ export class EnhancedProfileTool {
         if (this.profileData.length === 0) return;
         
         const header = ['Distance_m,Elevation_m,Lat,Lon\n'];
-        const rows = this.profileData.map(p => 
-            `${p.dist.toFixed(2)},${p.elev.toFixed(2)},${p.lat.toFixed(5)},${p.lng.toFixed(5)}`
-        );
+        const rows = this.profileData.map(p => {
+            const elev = Number.isFinite(p.elev) ? p.elev.toFixed(2) : '';
+            return `${p.dist.toFixed(2)},${elev},${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
+        });
         
         const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(header.join('') + rows.join('\n'));
         const link = document.createElement("a");
@@ -217,6 +222,26 @@ export class EnhancedProfileTool {
         const sources = this.elevationSources[body] || [];
         const source = sources.find(s => s.id === this.currentSourceId);
 
+        if (body === 'mars' && source && source.id === molaDem.SOURCE_ID) {
+            try {
+                const elevations = await molaDem.sampleElevations(samples);
+                return samples.map((s, idx) => ({
+                    dist: s.dist,
+                    elev: elevations[idx],
+                    lat: s.lat,
+                    lng: s.lng
+                }));
+            } catch (err) {
+                console.error('MOLA DEM sampling failed', err);
+                return samples.map(s => ({
+                    dist: s.dist,
+                    elev: null,
+                    lat: s.lat,
+                    lng: s.lng
+                }));
+            }
+        }
+
         if (!source) {
             // No source available (e.g., moon) — return empty profile
             return samples.map(s => ({
@@ -228,7 +253,7 @@ export class EnhancedProfileTool {
         }
 
         // Limit requests
-        const maxSamples = 40;
+        const maxSamples = 60;
         const step = Math.max(1, Math.floor(samples.length / maxSamples));
         const reduced = samples.filter((_, idx) => idx % step === 0);
 
@@ -254,7 +279,7 @@ export class EnhancedProfileTool {
             try {
                 const resp = await fetch(url);
                 const text = await resp.text();
-                const match = text.match(/-?\\d+\\.?\\d*/);
+                const match = text.match(/-?\d+\.?\d*/);
                 const elev = match ? parseFloat(match[0]) : null;
                 results.push({
                     dist: s.dist,

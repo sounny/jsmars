@@ -1,5 +1,15 @@
 # JSMARS Release Notes
 
+## v0.4.2 - MOLA Profiles Fixes
+**Date:** 2025-12-06
+
+### Improvements
+- Switched profile tools to sample the USGS MOLA 128ppd DEM directly, replacing the hillshade-based queries.
+- Stabilized profile chart rendering when samples contain gaps or null elevation values.
+- Wired the linear profile control and synchronized profile tool buttons to stop/start cleanly.
+
+---
+
 ## v0.4.1 - Polish
 **Date:** 2025-11-29
 

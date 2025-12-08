@@ -1,3 +1,8 @@
+import { JMARSWMS } from '../../jmars-wms.js';
+import { jmarsState } from '../../jmars-state.js';
+import { molaDem } from '../../util/mola-dem.js';
+import { EVENTS } from '../../constants.js';
+
 export class RadialProfileTool {
     constructor(map) {
         this.map = map;
@@ -13,10 +18,9 @@ export class RadialProfileTool {
         this.elevationSources = {
             mars: [
                 {
-                    id: 'mola',
-                    name: 'MOLA Hillshade',
-                    url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
-                    layer: 'MOLA_bw'
+                    id: molaDem.SOURCE_ID,
+                    name: molaDem.SOURCE_NAME,
+                    type: 'dem'
                 }
             ],
             earth: [
@@ -31,7 +35,7 @@ export class RadialProfileTool {
                 // no source yet
             ]
         };
-        this.currentSourceId = 'mola';
+        this.currentSourceId = molaDem.SOURCE_ID;
 
         // Bindings
         this.onClick = this.onClick.bind(this);
@@ -41,6 +45,10 @@ export class RadialProfileTool {
     activate() {
         if (this.isActive) return;
         this.isActive = true;
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        if (body === 'mars') {
+            molaDem.ensureLoaded().catch(() => {});
+        }
         this.reset();
 
         this.map.on('click', this.onClick);
@@ -56,6 +64,7 @@ export class RadialProfileTool {
         this.map.off('mousemove', this.onMouseMove);
         this.map.getContainer().style.cursor = '';
         this.reset();
+        document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'profile' } }));
     }
 
     reset() {
@@ -69,7 +78,7 @@ export class RadialProfileTool {
 
     populateSourceDropdown(selectEl) {
         if (!selectEl) return;
-        const body = (window.jmars?.currentBody || 'mars').toLowerCase();
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
         const sources = this.elevationSources[body] || [];
 
         selectEl.innerHTML = '';
@@ -108,6 +117,10 @@ export class RadialProfileTool {
             const endPoint = e.latlng;
             const radius = this.map.distance(this.center, endPoint);
             this.generateProfile(this.center, radius);
+            if (this.previewLine) {
+                this.previewLine.remove();
+                this.previewLine = null;
+            }
 
             // Reset state to allow new profile? Or keep it?
             // Let's keep it until user clicks "Stop" or "Clear"
@@ -119,6 +132,8 @@ export class RadialProfileTool {
             this.map.off('click', this.onClick);
             this.map.off('mousemove', this.onMouseMove);
             this.map.getContainer().style.cursor = '';
+            this.isActive = false;
+            document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'profile' } }));
 
             // Notify UI we are done (optional)
         }
@@ -148,6 +163,8 @@ export class RadialProfileTool {
         for (let i = 0; i < this.numLines; i++) {
             const angleDeg = (360 / this.numLines) * i;
             const angleRad = (angleDeg * Math.PI) / 180;
+            const body = (jmarsState.get('body') || 'mars').toLowerCase();
+            const R = body === 'earth' ? 6371000 : 3396190; // approximate radii in meters
 
             // Calculate end point using simple approximation or proper geodesy
             // Leaflet has tools, but we can just use geometry for short distances or find a point.
@@ -158,7 +175,6 @@ export class RadialProfileTool {
             // lat2 = asin(sin(lat1)*cos(d/R) + cos(lat1)*sin(d/R)*cos(brng))
             // lon2 = lon1 + atan2(sin(brng)*sin(d/R)*cos(lat1), cos(d/R)-sin(lat1)*sin(lat2))
 
-            const R = 3396190; // Mars radius in meters
             const d = radius;
             const lat1 = center.lat * Math.PI / 180;
             const lon1 = center.lng * Math.PI / 180;
@@ -195,19 +211,30 @@ export class RadialProfileTool {
         const [start, end] = linePoints;
         const samples = [];
         const steps = 50;
+        const totalDist = this.map.distance(start, end);
         for (let s = 0; s <= steps; s++) {
             const ratio = s / steps;
             const lat = start.lat + (end.lat - start.lat) * ratio;
             const lng = start.lng + (end.lng - start.lng) * ratio;
-            samples.push({ dist: ratio, lat, lng });
+            samples.push({ dist: ratio * totalDist, lat, lng });
         }
         return this.populateElevations(samples);
     }
 
     async populateElevations(samples) {
-        const body = (window.jmars?.currentBody || 'mars').toLowerCase();
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
         const sources = this.elevationSources[body] || [];
         const source = sources.find(s => s.id === this.currentSourceId);
+
+        if (body === 'mars' && source && source.id === molaDem.SOURCE_ID) {
+            try {
+                const elevations = await molaDem.sampleElevations(samples);
+                return samples.map((s, idx) => ({ dist: s.dist, elev: elevations[idx] }));
+            } catch (err) {
+                console.error('MOLA DEM sampling failed (radial)', err);
+                return samples.map(s => ({ dist: s.dist, elev: null }));
+            }
+        }
 
         if (!source) {
             return samples.map(s => ({ dist: s.dist, elev: null }));
@@ -220,29 +247,22 @@ export class RadialProfileTool {
 
         for (const s of samples) {
             const pt = this.map.latLngToContainerPoint([s.lat, s.lng]);
-            const url = window.JMARSWMS
-                ? window.JMARSWMS.getFeatureInfoUrl(source.url, {
-                    layers: source.layer,
-                    bbox,
-                    width: mapSize.x,
-                    height: mapSize.y,
-                    x: pt.x,
-                    y: pt.y,
-                    crs: 'EPSG:4326',
-                    info_format: 'text/plain',
-                    version: '1.3.0'
-                  })
-                : null;
-
-            if (!url) {
-                dataPoints.push({ dist: s.dist, elev: null });
-                continue;
-            }
+            const url = JMARSWMS.getFeatureInfoUrl(source.url, {
+                layers: source.layer,
+                bbox,
+                width: mapSize.x,
+                height: mapSize.y,
+                x: pt.x,
+                y: pt.y,
+                crs: 'EPSG:4326',
+                info_format: 'text/plain',
+                version: '1.3.0'
+            });
 
             try {
                 const resp = await fetch(url);
                 const text = await resp.text();
-                const match = text.match(/-?\\d+\\.?\\d*/);
+                const match = text.match(/-?\d+\.?\d*/);
                 dataPoints.push({ dist: s.dist, elev: match ? parseFloat(match[0]) : null });
             } catch {
                 dataPoints.push({ dist: s.dist, elev: null });

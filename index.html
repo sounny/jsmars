@@ -3,6 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="jsmars_logo.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JSMARS - JMARS for the Web</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -26,7 +27,8 @@
       <h2>Welcome to JSMARS (Beta)</h2>
       <p>This web preview is still under active development and not fully functional.</p>
       <p>We’re collecting feedback and contributions.</p>
-      <p><a href="https://github.com/sounny/jsmars" target="_blank" rel="noopener">Report issues or contribute on GitHub</a></p>
+      <p><a href="https://github.com/sounny/jsmars" target="_blank" rel="noopener">Report issues or contribute on
+          GitHub</a></p>
       <button id="welcome-dismiss">Got it</button>
     </div>
   </div>
@@ -70,9 +72,9 @@
     <!-- Map Options -->
     <div class="accordion-section">
       <div class="accordion-header">Map Options</div>
-        <div class="accordion-content">
-          <div style="padding: 10px;">
-            <div id="search-bar-container" style="margin-bottom: 15px;"></div>
+      <div class="accordion-content">
+        <div style="padding: 10px;">
+          <div id="search-bar-container" style="margin-bottom: 15px;"></div>
           <div id="bookmarks-tool-container" style="margin-top: 10px;"></div>
           <div id="fixed-overlays"></div>
         </div>
@@ -86,7 +88,11 @@
         <div id="tools-list">
           <!-- Crater Counting -->
           <div class="layer-section">
-            <div class="layer-section-header">Crater Counting <span class="icon">+</span></div>
+            <div class="layer-section-header"
+              data-tool-info="Draw craters by sizing the preview circle and clicking to log locations and diameters.">
+              <span class="layer-title">Crater Counting</span>
+              <span class="icon">+</span>
+            </div>
             <div class="layer-section-content" style="display:none;">
               <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
               <div id="crater-table-container"></div>
@@ -95,20 +101,27 @@
 
           <!-- Profiles -->
           <div class="layer-section">
-            <div class="layer-section-header">Profiles <span class="icon">+</span></div>
+            <div class="layer-section-header"
+              data-tool-info="Build radial or linear elevation profiles from the selected height source, then view or export the charted values.">
+              <span class="layer-title">Profiles</span>
+              <span class="icon">+</span>
+            </div>
             <div class="layer-section-content" style="display:none;">
-              <label for="enhanced-profile-source" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 6px;">Linear Profile Source</label>
+              <label for="enhanced-profile-source"
+                style="font-size: 12px; color: #ccc; display: block; margin-bottom: 6px;">Linear Profile Source</label>
               <select id="enhanced-profile-source" class="tool-select" style="width: 100%; margin-bottom: 8px;">
-                <option value="mola">MOLA Hillshade (USGS WMS)</option>
+                <option value="mola_dem">MOLA DEM (USGS 128ppd)</option>
               </select>
               <button id="enhanced-profile-btn" class="tool-btn">Linear Profile</button>
               <button id="enhanced-profile-export-btn" class="tool-btn">Export CSV</button>
 
               <div style="margin: 12px 0; border-top: 1px solid #333;"></div>
 
-              <label for="profile-source-select" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 6px;">Radial Elevation Source</label>
+              <label for="profile-source-select"
+                style="font-size: 12px; color: #ccc; display: block; margin-bottom: 6px;">Radial Elevation
+                Source</label>
               <select id="profile-source-select" class="tool-select" style="width: 100%; margin-bottom: 8px;">
-                <option value="mola">MOLA Hillshade (USGS WMS)</option>
+                <option value="mola_dem">MOLA DEM (USGS 128ppd)</option>
               </select>
               <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
               <div id="profile-chart-container" style="margin-bottom: 12px;"></div>
@@ -117,7 +130,11 @@
 
           <!-- Measurement -->
           <div class="layer-section">
-            <div class="layer-section-header">Measurement <span class="icon">+</span></div>
+            <div class="layer-section-header"
+              data-tool-info="Measure distances or areas with draw tools; results are listed for review and can be exported.">
+              <span class="layer-title">Measurement</span>
+              <span class="icon">+</span>
+            </div>
             <div class="layer-section-content" style="display:none;">
               <div style="display: flex; gap: 5px; margin-bottom: 10px;">
                 <button id="measure-dist-btn" class="tool-btn" style="flex: 1;">Distance</button>
@@ -136,7 +153,11 @@
 
           <!-- Nomenclature -->
           <div class="layer-section">
-            <div class="layer-section-header">Nomenclature <span class="icon">+</span></div>
+            <div class="layer-section-header"
+              data-tool-info="Show named Mars surface features with quick filters for crater, mons, valles, and planitia labels.">
+              <span class="layer-title">Nomenclature</span>
+              <span class="icon">+</span>
+            </div>
             <div class="layer-section-content" style="display:none;">
               <div id="nomenclature-tool-container"></div>
             </div>
@@ -144,7 +165,11 @@
 
           <!-- Investigate -->
           <div class="layer-section">
-            <div class="layer-section-header">Investigate <span class="icon">+</span></div>
+            <div class="layer-section-header"
+              data-tool-info="Click the map to query active WMS layers and see returned feature info at that location.">
+              <span class="layer-title">Investigate</span>
+              <span class="icon">+</span>
+            </div>
             <div class="layer-section-content" style="display:none;">
               <button id="investigate-tool-btn" class="tool-btn">Investigate Point</button>
             </div>
@@ -153,7 +178,11 @@
           <!-- Bookmarks -->
           <!-- Sampling -->
           <div class="layer-section">
-            <div class="layer-section-header">Sampling <span class="icon">+</span></div>
+            <div class="layer-section-header"
+              data-tool-info="Collect point or area samples, pull feature info from visible WMS layers, and review or export the results.">
+              <span class="layer-title">Sampling</span>
+              <span class="icon">+</span>
+            </div>
             <div class="layer-section-content" style="display:none;">
               <div style="display: flex; gap: 5px; margin-bottom: 10px;">
                 <button id="sampling-point-btn" class="tool-btn" style="flex: 1;">Sample Point</button>
@@ -238,6 +267,7 @@
     profileSource.addEventListener('change', (e) => profileTool.setElevationSource(e.target.value));
     const profileChart = new ProfileChart('profile-chart-container');
     const profileBtn = document.getElementById('profile-tool-btn');
+    const enhancedProfileBtn = document.getElementById('enhanced-profile-btn');
 
     const measureTool = new MeasureTool(jmars.map);
     const measureTable = new MeasurementTable('measure-table-container', measureTool);
@@ -261,8 +291,17 @@
       profileTool.populateSourceDropdown(profileSource);
       enhancedProfileTool.populateSourceDropdown(enhancedProfileSource);
     });
-    const enhancedProfileBtn = document.getElementById('enhanced-profile-btn');
     document.getElementById('enhanced-profile-export-btn').addEventListener('click', () => enhancedProfileTool.exportCSV());
+    const resetProfileButtons = () => {
+      profileBtn.innerText = 'Radial Profile';
+      profileBtn.classList.remove('active');
+      enhancedProfileBtn.classList.remove('active');
+    };
+    const deactivateProfiles = () => {
+      profileTool.deactivate();
+      enhancedProfileTool.deactivate();
+      resetProfileButtons();
+    };
 
     const samplingTool = new SamplingTool(jmars.map);
     const samplingPointBtn = document.getElementById('sampling-point-btn');
@@ -271,16 +310,47 @@
     document.getElementById('sample-export-btn').addEventListener('click', () => samplingTool.exportCSV());
     document.getElementById('sample-clear-btn').addEventListener('click', () => samplingTool.clear());
 
+    const deactivateInvestigate = () => {
+      if (investigateTool.isActive) {
+        investigateTool.deactivate();
+        investigateBtn.classList.remove('active');
+      }
+    };
+
     samplingPointBtn.addEventListener('click', () => {
       samplingTool.activate('point');
       samplingPointBtn.classList.add('active');
       samplingAreaBtn.classList.remove('active');
+      deactivateInvestigate();
     });
 
     samplingAreaBtn.addEventListener('click', () => {
       samplingTool.activate('area');
       samplingAreaBtn.classList.add('active');
       samplingPointBtn.classList.remove('active');
+      deactivateInvestigate();
+    });
+
+    investigateBtn.addEventListener('click', () => {
+      if (investigateTool.isActive) {
+        deactivateInvestigate();
+      } else {
+        craterLayer.deactivate();
+        craterBtn.innerText = 'Start Crater Counting';
+        craterBtn.classList.remove('active');
+
+        deactivateProfiles();
+        measureTool.deactivate();
+        measureDistBtn.classList.remove('active');
+        measureAreaBtn.classList.remove('active');
+
+        samplingTool.deactivate();
+        samplingPointBtn.classList.remove('active');
+        samplingAreaBtn.classList.remove('active');
+
+        investigateTool.activate();
+        investigateBtn.classList.add('active');
+      }
     });
 
     // Session Manager (include bookmarksTool)
@@ -311,12 +381,11 @@
         craterBtn.innerText = 'Start Crater Counting';
         craterBtn.classList.remove('active');
       } else {
-        profileTool.deactivate();
-        profileBtn.innerText = 'Radial Profile';
-        profileBtn.classList.remove('active');
+        deactivateProfiles();
         measureTool.deactivate();
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
+        deactivateInvestigate();
         craterLayer.activate();
         craterBtn.innerText = 'Stop Crater Counting';
         craterBtn.classList.add('active');
@@ -335,9 +404,32 @@
         measureTool.deactivate();
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
+        enhancedProfileTool.deactivate();
+        enhancedProfileBtn.classList.remove('active');
+        deactivateInvestigate();
         profileTool.activate();
         profileBtn.innerText = 'Stop Profile';
         profileBtn.classList.add('active');
+      }
+    });
+
+    enhancedProfileBtn.addEventListener('click', () => {
+      if (enhancedProfileTool.isActive) {
+        enhancedProfileTool.deactivate();
+        enhancedProfileBtn.classList.remove('active');
+      } else {
+        craterLayer.deactivate();
+        craterBtn.innerText = 'Start Crater Counting';
+        craterBtn.classList.remove('active');
+        profileTool.deactivate();
+        profileBtn.innerText = 'Radial Profile';
+        profileBtn.classList.remove('active');
+        measureTool.deactivate();
+        measureDistBtn.classList.remove('active');
+        measureAreaBtn.classList.remove('active');
+        deactivateInvestigate();
+        enhancedProfileTool.activate();
+        enhancedProfileBtn.classList.add('active');
       }
     });
 
@@ -349,9 +441,8 @@
         craterLayer.deactivate();
         craterBtn.innerText = 'Start Crater Counting';
         craterBtn.classList.remove('active');
-        profileTool.deactivate();
-        profileBtn.innerText = 'Radial Profile';
-        profileBtn.classList.remove('active');
+        deactivateProfiles();
+        deactivateInvestigate();
         measureTool.activate('distance');
         measureDistBtn.classList.add('active');
         measureAreaBtn.classList.remove('active');
@@ -366,9 +457,8 @@
         craterLayer.deactivate();
         craterBtn.innerText = 'Start Crater Counting';
         craterBtn.classList.remove('active');
-        profileTool.deactivate();
-        profileBtn.innerText = 'Radial Profile';
-        profileBtn.classList.remove('active');
+        deactivateProfiles();
+        deactivateInvestigate();
         measureTool.activate('area');
         measureAreaBtn.classList.add('active');
         measureDistBtn.classList.remove('active');
@@ -381,13 +471,20 @@
 
     // Auto-deactivation handling
     document.addEventListener('jmars-tool-deactivated', (e) => {
+      if (!e.detail) return;
       if (e.detail.tool === 'measure') {
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
       }
+      if (e.detail.tool === 'profile') {
+        resetProfileButtons();
+      }
       if (e.detail.tool === 'sampling') {
         samplingPointBtn.classList.remove('active');
         samplingAreaBtn.classList.remove('active');
+      }
+      if (e.detail.tool === 'investigate') {
+        investigateBtn.classList.remove('active');
       }
     });
 

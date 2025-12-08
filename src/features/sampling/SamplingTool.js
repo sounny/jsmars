@@ -8,6 +8,7 @@ export class SamplingTool {
         this.isActive = false;
         this.featureGroup = L.featureGroup().addTo(map);
         this.samples = []; // { id, lat, lng, layers: { name: value } }
+        this.unqueryableLayers = new Set(); // cache of layers that return ServiceException for GetFeatureInfo
         
         this.onClick = this.onClick.bind(this);
         
@@ -161,9 +162,11 @@ export class SamplingTool {
         for (let i = activeState.length - 1; i >= 0; i--) {
             const layerState = activeState[i];
             if (!layerState.visible) continue;
+            if (this.unqueryableLayers.has(layerState.id)) continue;
 
             const config = availableLayers.find(l => l.id === layerState.id);
             if (!config || config.type !== 'wms') continue;
+            if (!config.options || !config.options.layers) continue;
 
             try {
                 const url = JMARSWMS.getFeatureInfoUrl(config.url, {
@@ -174,15 +177,24 @@ export class SamplingTool {
                     x: containerPoint.x,
                     y: containerPoint.y,
                     crs: 'EPSG:4326',
-                    info_format: 'text/html'
+                    info_format: 'text/plain'
                 });
 
                 const response = await fetch(url);
                 if (response.ok) {
                     const text = await response.text();
-                    // Strip HTML tags
+                    const serviceError = text.includes('Layer(s) specified in QUERY_LAYERS parameter is not offered');
+                    const exceptionReport = text.includes('ServiceException') || text.includes('ExceptionReport');
+                    if (serviceError || exceptionReport) {
+                        this.unqueryableLayers.add(layerState.id);
+                        results.push({ name: config.name, value: 'Layer not queryable for point samples' });
+                        continue;
+                    }
+                    // Strip HTML tags if the server ignored text/plain
                     const clean = text.replace(/<[^>]*>?/gm, '').trim();
                     results.push({ name: config.name, value: clean || 'No Data' });
+                } else {
+                    results.push({ name: config.name, value: 'No response' });
                 }
             } catch (e) {
                 results.push({ name: config.name, value: 'Error' });

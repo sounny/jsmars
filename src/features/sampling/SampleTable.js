@@ -2,7 +2,7 @@ export class SampleTable {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.samples = [];
-        
+
         if (!this.container) return;
         this.render();
 
@@ -13,11 +13,9 @@ export class SampleTable {
     }
 
     render() {
+        // Note: Export and Clear buttons are defined in index.html
+        // SampleTable only renders the data table
         this.container.innerHTML = `
-            <div style="margin-bottom: 5px;">
-                <button id="sample-export-btn" class="tool-btn" style="font-size: 11px; width: auto; padding: 4px 8px;">Export CSV</button>
-                <button id="sample-clear-btn" class="tool-btn" style="font-size: 11px; width: auto; padding: 4px 8px; background: #500;">Clear</button>
-            </div>
             <div class="crater-table-container" style="height: 150px;">
                 <table class="crater-table">
                     <thead>
@@ -32,26 +30,13 @@ export class SampleTable {
                 </table>
             </div>
         `;
-        
-        // Bind buttons later in integration or dispatch events?
-        // Since SamplingTool handles logic, these buttons should call SamplingTool methods.
-        // But SampleTable doesn't have reference to Tool.
-        // Solution: Dispatch request events.
-        
-        this.container.querySelector('#sample-export-btn').addEventListener('click', () => {
-            document.dispatchEvent(new CustomEvent('jmars-sample-export-request'));
-        });
-        
-        this.container.querySelector('#sample-clear-btn').addEventListener('click', () => {
-            document.dispatchEvent(new CustomEvent('jmars-sample-clear-request'));
-        });
     }
 
     updateTable() {
         const tbody = this.container.querySelector('#sample-table-body');
         if (!tbody) return;
         tbody.innerHTML = '';
-        
+
         this.samples.forEach(s => {
             const tr = document.createElement('tr');
             const valSummary = s.values.length > 0 ? s.values[0].value : '-'; // Show first value summary
