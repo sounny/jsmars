@@ -7,8 +7,9 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 2. The map will load centered on Mars (Lat 0, Lon 0).
 
 ## Managing Layers
-- **Toggle:** Use the checkboxes in the "Layer Manager" panel (top-right) to show/hide layers.
-- **Opacity:** Use the slider below each layer name to adjust transparency.
+- **Add/Remove:** Use the buttons in the "Layer Manager" panel (top-right) to add layers from the available list or remove active layers.
+- **Opacity:** Use the slider below each active layer name to adjust transparency.
+- **Settings:** Double-click an active layer to open its settings panel with metadata, attribution, and a quick opacity control.
 
 ## Drawing Shapes (ROIs)
 1. Look for the toolbar on the left side of the map.

@@ -11,12 +11,16 @@ export class LayerManager {
     }
     this.availableLayers = [];
     this.sectionsState = { active: true, available: true };
+    this.settingsModal = null;
+    this.settingsContent = null;
+    this.settingsTitle = null;
 
     if (!this.container) {
       console.error(`LayerManager container not found.`);
       return;
     }
 
+    this.initSettingsModal();
     this.init();
   }
 
@@ -58,6 +62,60 @@ export class LayerManager {
     });
 
     this.render();
+  }
+
+  initSettingsModal() {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'layer-settings-backdrop';
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-modal', 'true');
+    backdrop.setAttribute('aria-hidden', 'true');
+
+    const modal = document.createElement('div');
+    modal.className = 'layer-settings-modal';
+    modal.setAttribute('role', 'document');
+
+    const header = document.createElement('div');
+    header.className = 'layer-settings-header';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Layer Settings';
+    title.id = 'layer-settings-title';
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'layer-settings-close';
+    closeButton.textContent = 'Close';
+    closeButton.setAttribute('aria-label', 'Close layer settings');
+
+    header.appendChild(title);
+    header.appendChild(closeButton);
+
+    const content = document.createElement('div');
+    content.className = 'layer-settings-content';
+
+    modal.appendChild(header);
+    modal.appendChild(content);
+    backdrop.appendChild(modal);
+
+    closeButton.addEventListener('click', () => this.closeLayerSettings());
+    backdrop.addEventListener('click', (event) => {
+      if (event.target === backdrop) {
+        this.closeLayerSettings();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && backdrop.style.display === 'flex') {
+        this.closeLayerSettings();
+      }
+    });
+
+    document.body.appendChild(backdrop);
+
+    this.settingsModal = backdrop;
+    this.settingsContent = content;
+    this.settingsTitle = title;
   }
 
   updateMapFromState(activeLayers) {
@@ -197,6 +255,7 @@ export class LayerManager {
     div.style.background = '#222';
     div.style.marginBottom = '5px';
     div.style.borderRadius = '4px';
+    div.title = 'Double-click to view layer settings';
 
     // Header: Name + Actions
     const header = document.createElement('div');
@@ -276,6 +335,11 @@ export class LayerManager {
     // --- Drag and Drop Events ---
     div.draggable = true;
     div.dataset.layerId = layerState.id;
+
+    div.addEventListener('dblclick', (event) => {
+      if (event.target.closest('button')) return;
+      this.openLayerSettings(layerState.id);
+    });
     
     div.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/plain', layerState.id);
@@ -398,5 +462,90 @@ export class LayerManager {
     // My jmarsState has `reorderLayers`
     const newOrderIds = activeLayers.map(l => l.id);
     jmarsState.reorderLayers(newOrderIds);
+  }
+
+  openLayerSettings(layerId) {
+    const layerState = jmarsState.get('activeLayers').find(layer => layer.id === layerId);
+    if (!layerState || !this.settingsModal || !this.settingsContent) return;
+
+    const config = this.availableLayers.find(layer => layer.id === layerId);
+    const layerName = config?.name || layerId;
+
+    this.settingsTitle.textContent = `${layerName} Settings`;
+    this.settingsContent.innerHTML = '';
+
+    const infoList = document.createElement('dl');
+    infoList.className = 'layer-settings-list';
+
+    const addRow = (label, value) => {
+      const term = document.createElement('dt');
+      term.textContent = label;
+      const desc = document.createElement('dd');
+      desc.textContent = value || '—';
+      infoList.appendChild(term);
+      infoList.appendChild(desc);
+    };
+
+    addRow('Layer ID', layerId);
+    addRow('Type', config?.type || 'Unknown');
+    addRow('Source URL', config?.url);
+    addRow('Attribution', config?.options?.attribution);
+    addRow('WMS Layers', config?.options?.layers);
+    addRow('Max Zoom', config?.options?.maxZoom?.toString());
+
+    const opacitySection = document.createElement('div');
+    opacitySection.className = 'layer-settings-opacity';
+
+    const opacityLabel = document.createElement('label');
+    opacityLabel.textContent = 'Opacity';
+    opacityLabel.setAttribute('for', 'layer-settings-opacity');
+
+    const opacityValue = document.createElement('span');
+    opacityValue.className = 'layer-settings-opacity-value';
+    opacityValue.textContent = `${Math.round(layerState.opacity * 100)}%`;
+
+    const opacityInput = document.createElement('input');
+    opacityInput.type = 'range';
+    opacityInput.min = 0;
+    opacityInput.max = 1;
+    opacityInput.step = 0.01;
+    opacityInput.value = layerState.opacity;
+    opacityInput.id = 'layer-settings-opacity';
+    opacityInput.addEventListener('input', (event) => {
+      const value = parseFloat(event.target.value);
+      opacityValue.textContent = `${Math.round(value * 100)}%`;
+      jmarsState.updateLayer(layerId, { opacity: value });
+    });
+
+    opacitySection.appendChild(opacityLabel);
+    opacitySection.appendChild(opacityValue);
+    opacitySection.appendChild(opacityInput);
+
+    const actions = document.createElement('div');
+    actions.className = 'layer-settings-actions';
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.textContent = 'Remove Layer';
+    removeButton.className = 'layer-settings-remove';
+    removeButton.addEventListener('click', () => {
+      jmarsState.removeLayer(layerId);
+      this.closeLayerSettings();
+    });
+
+    actions.appendChild(removeButton);
+
+    this.settingsContent.appendChild(infoList);
+    this.settingsContent.appendChild(opacitySection);
+    this.settingsContent.appendChild(actions);
+
+    this.settingsModal.style.display = 'flex';
+    this.settingsModal.setAttribute('aria-hidden', 'false');
+  }
+
+  closeLayerSettings() {
+    if (!this.settingsModal) return;
+    this.settingsModal.style.display = 'none';
+    this.settingsModal.setAttribute('aria-hidden', 'true');
   }
 }

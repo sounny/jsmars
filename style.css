@@ -138,6 +138,105 @@ html {
   border-radius: 4px;
 }
 
+.layer-settings-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 4500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.layer-settings-modal {
+  background: #111;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 8px;
+  width: 420px;
+  max-width: 92%;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  padding: 16px;
+}
+
+.layer-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.layer-settings-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.layer-settings-close {
+  border: 1px solid #555;
+  background: #222;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.layer-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.layer-settings-list {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.layer-settings-list dt {
+  font-weight: bold;
+  color: #bbb;
+}
+
+.layer-settings-list dd {
+  margin: 0;
+  color: #eee;
+  word-break: break-word;
+}
+
+.layer-settings-opacity {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  align-items: center;
+}
+
+.layer-settings-opacity input {
+  grid-column: 1 / -1;
+}
+
+.layer-settings-opacity-value {
+  color: #bbb;
+  font-size: 12px;
+}
+
+.layer-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.layer-settings-remove {
+  background: #d6336c;
+  border: none;
+  color: #fff;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
 .control-header {
   padding: 12px;
   background: #333;

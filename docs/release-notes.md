@@ -1,5 +1,13 @@
 # JSMARS Release Notes
 
+## v0.4.3 - Layer Settings Panel
+**Date:** 2025-12-13
+
+### Improvements
+- Added a double-click layer settings panel with metadata, opacity control, and quick removal.
+
+---
+
 ## v0.4.2 - MOLA Profiles Fixes
 **Date:** 2025-12-06
 
