@@ -11,6 +11,7 @@ export class SamplingTool {
         this.unqueryableLayers = new Set(); // cache of layers that return ServiceException for GetFeatureInfo
         
         this.onClick = this.onClick.bind(this);
+        this.onDrawCreated = this.onDrawCreated.bind(this);
         
         document.addEventListener(EVENTS.BODY_CHANGED, () => this.clear());
     }
@@ -30,7 +31,7 @@ export class SamplingTool {
                 showArea: true
             });
             this.drawControl.enable();
-            this.map.on(L.Draw.Event.CREATED, (e) => this.onDrawCreated(e));
+            this.map.on(L.Draw.Event.CREATED, this.onDrawCreated);
         }
     }
 
@@ -44,19 +45,20 @@ export class SamplingTool {
             this.drawControl.disable();
             this.drawControl = null;
         }
-        this.map.off(L.Draw.Event.CREATED); // simplistic off
+        this.map.off(L.Draw.Event.CREATED, this.onDrawCreated);
         this.map.getContainer().style.cursor = '';
 
         document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'sampling' } }));
     }
 
     onDrawCreated(e) {
+        if (!this.isActive || this.activeMode !== 'area') return;
+
         const layer = e.layer;
         this.featureGroup.addLayer(layer);
         this.calculatePolygonStats(layer);
         
         this.deactivate();
-        document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'sampling' } }));
     }
 
     async calculatePolygonStats(layer) {
