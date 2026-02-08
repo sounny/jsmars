@@ -317,6 +317,14 @@
       }
     };
 
+    const deactivateSampling = () => {
+      if (samplingTool.isActive) {
+        samplingTool.deactivate();
+      }
+      samplingPointBtn.classList.remove('active');
+      samplingAreaBtn.classList.remove('active');
+    };
+
     samplingPointBtn.addEventListener('click', () => {
       samplingTool.activate('point');
       samplingPointBtn.classList.add('active');
@@ -344,9 +352,7 @@
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
 
-        samplingTool.deactivate();
-        samplingPointBtn.classList.remove('active');
-        samplingAreaBtn.classList.remove('active');
+        deactivateSampling();
 
         investigateTool.activate();
         investigateBtn.classList.add('active');
@@ -386,6 +392,7 @@
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
         deactivateInvestigate();
+        deactivateSampling();
         craterLayer.activate();
         craterBtn.innerText = 'Stop Crater Counting';
         craterBtn.classList.add('active');
@@ -407,6 +414,7 @@
         enhancedProfileTool.deactivate();
         enhancedProfileBtn.classList.remove('active');
         deactivateInvestigate();
+        deactivateSampling();
         profileTool.activate();
         profileBtn.innerText = 'Stop Profile';
         profileBtn.classList.add('active');
@@ -428,6 +436,7 @@
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
         deactivateInvestigate();
+        deactivateSampling();
         enhancedProfileTool.activate();
         enhancedProfileBtn.classList.add('active');
       }
@@ -443,6 +452,7 @@
         craterBtn.classList.remove('active');
         deactivateProfiles();
         deactivateInvestigate();
+        deactivateSampling();
         measureTool.activate('distance');
         measureDistBtn.classList.add('active');
         measureAreaBtn.classList.remove('active');
@@ -459,6 +469,7 @@
         craterBtn.classList.remove('active');
         deactivateProfiles();
         deactivateInvestigate();
+        deactivateSampling();
         measureTool.activate('area');
         measureAreaBtn.classList.add('active');
         measureDistBtn.classList.remove('active');
