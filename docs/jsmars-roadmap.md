@@ -21,6 +21,9 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [ ] **Navigation Bar**:
     - Top bar with Zoom controls, Lat/Lon readout.
     - Unified Search/Landmark tool.
+- [x] **Quick Actions Palette**:
+    - [x] Added keyboard-first command input in sidebar branding area.
+    - [x] Added shortcuts for session save/load, reset view, panel navigation, and sidebar toggle.
 - [x] **Map Tools**:
     - [x] **Panner View**: Overview map (MiniMap) linked to main viewport.
     - [x] **Lat/Lon Grid**: Graticule overlay with configurable spacing/colors.

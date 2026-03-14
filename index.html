@@ -42,6 +42,7 @@
     <div style="padding: 15px; text-align: center; border-bottom: 1px solid #444; flex-shrink: 0;">
       <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;" />
       <div id="body-selector-container" style="margin-top: 10px;"></div>
+      <div id="quick-actions-container" style="margin-top: 12px;"></div>
       <div style="margin-top: 5px;">
         <a href="about.html" target="_blank" style="color: #aaa; text-decoration: none; font-size: 12px;">About</a>
       </div>
@@ -225,6 +226,8 @@
     import { SamplingTool } from './src/features/sampling/SamplingTool.js';
     import { SampleTable } from './src/features/sampling/SampleTable.js';
     import { EVENTS } from './src/constants.js';
+    import { JMARS_CONFIG } from './src/jmars-config.js';
+    import { QuickActions } from './src/ui/QuickActions.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -255,6 +258,15 @@
     const searchBar = new SearchBar(jmars.map, 'search-bar-container');
     const toolsGroup = new CollapsibleGroup('tools-list');
     const bodySelector = new BodySelector('body-selector-container');
+
+    const openAccordionSection = (sectionTitle) => {
+      const sections = document.querySelectorAll('.accordion-section');
+      sections.forEach((section) => {
+        const header = section.querySelector('.accordion-header');
+        if (!header) return;
+        section.classList.toggle('expanded', header.textContent.trim().toLowerCase() === sectionTitle.toLowerCase());
+      });
+    };
 
     // Initialize Tools
     const craterLayer = new CraterLayer(jmars.map);
@@ -361,6 +373,21 @@
 
     // Session Manager (include bookmarksTool)
     const sessionManager = new SessionManager(craterLayer, measureTool, bookmarksTool);
+    new QuickActions('quick-actions-container', {
+      onSaveSession: () => sessionManager.saveSession(),
+      onLoadSession: () => document.getElementById('session-load-input').click(),
+      onOpenLayers: () => openAccordionSection('Layer Manager'),
+      onOpenTools: () => openAccordionSection('Tools'),
+      onToggleSidebar: () => {
+        document.getElementById('controls').classList.toggle('collapsed');
+        document.getElementById('sidebar-toggle').classList.toggle('collapsed');
+      },
+      onResetView: () => {
+        const body = JMARS_CONFIG.bodies[jmars.currentBody];
+        if (!body) return;
+        jmars.map.setView(body.center, body.zoom);
+      }
+    });
 
     // Session Event Listeners
     document.getElementById('session-save-btn').addEventListener('click', () => sessionManager.saveSession());
