@@ -10,6 +10,7 @@ export class LayerManager {
       this.container = containerOrId;
     }
     this.availableLayers = [];
+    this.availableFilter = '';
     this.sectionsState = { active: true, available: true };
     this.settingsModal = null;
     this.settingsContent = null;
@@ -202,8 +203,37 @@ export class LayerManager {
       availableContent.style.display = 'none';
     }
 
+    const filterWrap = document.createElement('div');
+    filterWrap.className = 'layer-filter-wrap';
+
+    const filterInput = document.createElement('input');
+    filterInput.type = 'search';
+    filterInput.className = 'layer-filter-input';
+    filterInput.placeholder = 'Filter available layers…';
+    filterInput.value = this.availableFilter;
+    filterInput.setAttribute('aria-label', 'Filter available layers');
+    filterInput.addEventListener('input', (event) => {
+      this.availableFilter = event.target.value;
+      this.render();
+    });
+
+    filterWrap.appendChild(filterInput);
+    availableContent.appendChild(filterWrap);
+
     const activeIds = activeLayers.map(l => l.id);
     const available = this.availableLayers.filter(l => !activeIds.includes(l.id));
+    const normalizedFilter = this.availableFilter.trim().toLowerCase();
+    const filteredAvailable = normalizedFilter
+      ? available.filter((layer) => {
+          const haystack = `${layer.name || ''} ${layer.id || ''}`.toLowerCase();
+          return haystack.includes(normalizedFilter);
+        })
+      : available;
+
+    const availableCount = document.createElement('div');
+    availableCount.className = 'layer-filter-count';
+    availableCount.textContent = `${filteredAvailable.length} of ${available.length} layers`;
+    availableContent.appendChild(availableCount);
 
     if (available.length === 0) {
       const msg = document.createElement('div');
@@ -211,9 +241,15 @@ export class LayerManager {
       msg.style.padding = '10px';
       msg.style.color = '#888';
       availableContent.appendChild(msg);
+    } else if (filteredAvailable.length === 0) {
+      const msg = document.createElement('div');
+      msg.textContent = 'No layers match this filter';
+      msg.style.padding = '10px';
+      msg.style.color = '#888';
+      availableContent.appendChild(msg);
     }
 
-    available.forEach(layer => {
+    filteredAvailable.forEach(layer => {
       const el = this.createAvailableLayerItem(layer);
       availableContent.appendChild(el);
     });
