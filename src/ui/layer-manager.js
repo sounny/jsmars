@@ -14,6 +14,7 @@ export class LayerManager {
     this.settingsModal = null;
     this.settingsContent = null;
     this.settingsTitle = null;
+    this.lastFocusedElement = null;
 
     if (!this.container) {
       console.error(`LayerManager container not found.`);
@@ -70,6 +71,7 @@ export class LayerManager {
     backdrop.setAttribute('role', 'dialog');
     backdrop.setAttribute('aria-modal', 'true');
     backdrop.setAttribute('aria-hidden', 'true');
+    backdrop.setAttribute('aria-labelledby', 'layer-settings-title');
 
     const modal = document.createElement('div');
     modal.className = 'layer-settings-modal';
@@ -251,6 +253,7 @@ export class LayerManager {
   createActiveLayerItem(layerState, name, visualIndex, total) {
     const div = document.createElement('div');
     div.className = 'layer-item-container';
+    div.setAttribute('tabindex', '0');
     div.style.padding = '8px';
     div.style.background = '#222';
     div.style.marginBottom = '5px';
@@ -299,6 +302,14 @@ export class LayerManager {
     btnRemove.style.cursor = 'pointer';
     btnRemove.onclick = () => jmarsState.removeLayer(layerState.id);
 
+    const btnSettings = document.createElement('button');
+    btnSettings.innerHTML = '&#9881;';
+    btnSettings.title = 'Layer Settings';
+    btnSettings.setAttribute('aria-label', `Open settings for ${name}`);
+    btnSettings.style.marginRight = '5px';
+    btnSettings.onclick = () => this.openLayerSettings(layerState.id);
+
+    actions.appendChild(btnSettings);
     actions.appendChild(btnUp);
     actions.appendChild(btnDown);
     actions.appendChild(btnRemove);
@@ -338,6 +349,15 @@ export class LayerManager {
 
     div.addEventListener('dblclick', (event) => {
       if (event.target.closest('button')) return;
+      this.openLayerSettings(layerState.id);
+    });
+
+    div.addEventListener('keydown', (event) => {
+      const isActionKey = event.key === 'Enter' || event.key === ' ';
+      const targetIsInteractive = event.target.closest('button, input, select, textarea, a');
+      if (!isActionKey || targetIsInteractive) return;
+
+      event.preventDefault();
       this.openLayerSettings(layerState.id);
     });
     
@@ -470,6 +490,7 @@ export class LayerManager {
 
     const config = this.availableLayers.find(layer => layer.id === layerId);
     const layerName = config?.name || layerId;
+    this.lastFocusedElement = document.activeElement;
 
     this.settingsTitle.textContent = `${layerName} Settings`;
     this.settingsContent.innerHTML = '';
@@ -541,11 +562,15 @@ export class LayerManager {
 
     this.settingsModal.style.display = 'flex';
     this.settingsModal.setAttribute('aria-hidden', 'false');
+
+    const closeButton = this.settingsModal.querySelector('.layer-settings-close');
+    closeButton?.focus();
   }
 
   closeLayerSettings() {
     if (!this.settingsModal) return;
     this.settingsModal.style.display = 'none';
     this.settingsModal.setAttribute('aria-hidden', 'true');
+    this.lastFocusedElement?.focus?.();
   }
 }

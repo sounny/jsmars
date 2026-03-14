@@ -1,5 +1,15 @@
 # JSMARS Release Notes
 
+## v0.4.4 - Layer Manager Accessibility
+**Date:** 2026-03-14
+
+### Improvements
+- Added a dedicated layer settings (⚙) button to each active layer card in the Layer Manager.
+- Enabled keyboard access to open layer settings from focused layer cards using Enter/Space.
+- Improved modal accessibility by wiring `aria-labelledby` and returning focus to the previously focused element when closing settings.
+
+---
+
 ## v0.4.3 - Layer Settings Panel
 **Date:** 2025-12-13
 

@@ -9,7 +9,7 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 ## Managing Layers
 - **Add/Remove:** Use the buttons in the "Layer Manager" panel (top-right) to add layers from the available list or remove active layers.
 - **Opacity:** Use the slider below each active layer name to adjust transparency.
-- **Settings:** Double-click an active layer to open its settings panel with metadata, attribution, and a quick opacity control.
+- **Settings:** Double-click an active layer, press **Enter/Space** when the layer item is focused, or use the **⚙ settings button** to open its settings panel with metadata, attribution, and a quick opacity control.
 
 ## Drawing Shapes (ROIs)
 1. Look for the toolbar on the left side of the map.
