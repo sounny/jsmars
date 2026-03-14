@@ -1,5 +1,14 @@
 # JSMARS Release Notes
 
+## v0.4.6 - Layer Discovery Enhancements
+**Date:** 2026-03-14
+
+### Improvements
+- Added a filter box to the Layer Manager "Available Layers" section to quickly narrow large layer catalogs by layer name or ID.
+- Added an available-layer count indicator that shows filtered results versus total discoverable layers.
+
+---
+
 ## v0.4.5 - Quick Actions & Workflow Boost
 **Date:** 2026-03-14
 

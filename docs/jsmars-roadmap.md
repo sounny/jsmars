@@ -17,6 +17,7 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] Collapsible panel on the left.
     - [x] Drag-and-drop reordering (z-index).
     - [x] Double-click for "Settings/Options" panel.
+    - [x] Added available-layer filtering to quickly find layers by name/ID.
     - [x] **Fixed Overlays**: Toggles for Grid, Scalebar.
 - [ ] **Navigation Bar**:
     - Top bar with Zoom controls, Lat/Lon readout.

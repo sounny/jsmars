@@ -1295,6 +1295,33 @@ overflow-y: auto;
   margin-bottom: 10px;
 }
 
+
+.layer-filter-wrap {
+  padding: 8px 6px 4px;
+}
+
+.layer-filter-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #eee;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.layer-filter-input:focus {
+  outline: 1px solid #6aa9ff;
+  border-color: #6aa9ff;
+}
+
+.layer-filter-count {
+  color: #9a9a9a;
+  font-size: 11px;
+  padding: 2px 8px 8px;
+}
+
 #tools-list {
     margin-top: 10px;
 }
