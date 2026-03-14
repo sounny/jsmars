@@ -16,7 +16,7 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **Sidebar (Layer Manager)**:
     - [x] Collapsible panel on the left.
     - [x] Drag-and-drop reordering (z-index).
-    - [ ] Double-click for "Settings/Options" panel.
+    - [x] Double-click for "Settings/Options" panel.
     - [x] **Fixed Overlays**: Toggles for Grid, Scalebar.
 - [ ] **Navigation Bar**:
     - Top bar with Zoom controls, Lat/Lon readout.
