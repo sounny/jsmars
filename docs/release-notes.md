@@ -1,5 +1,15 @@
 # JSMARS Release Notes
 
+## v0.4.5 - Quick Actions & Workflow Boost
+**Date:** 2026-03-14
+
+### Improvements
+- Added a new Quick Command palette in the sidebar for fast actions (save/load session, reset view, open panels, toggle sidebar).
+- Added keyboard shortcut support (`Ctrl+K` / `⌘+K`) to focus the command input for faster navigation.
+- Added command suggestions and inline status feedback behavior to improve accessibility and usability.
+
+---
+
 ## v0.4.4 - Layer Manager Accessibility
 **Date:** 2026-03-14
 

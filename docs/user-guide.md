@@ -11,6 +11,12 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 - **Opacity:** Use the slider below each active layer name to adjust transparency.
 - **Settings:** Double-click an active layer, press **Enter/Space** when the layer item is focused, or use the **⚙ settings button** to open its settings panel with metadata, attribution, and a quick opacity control.
 
+
+## Quick Actions
+- Use the **Quick Command** box below the logo to run common actions quickly.
+- Supported commands include: `Save Session`, `Load Session`, `Reset View`, `Open Layer Manager`, `Open Tools`, and `Toggle Sidebar`.
+- Press **Ctrl+K** (or **⌘+K** on macOS) to focus the command input from anywhere in the app.
+
 ## Drawing Shapes (ROIs)
 1. Look for the toolbar on the left side of the map.
 2. Select a tool:
