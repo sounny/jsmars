@@ -154,7 +154,7 @@ export class StampQueryPanel {
         this.stampLayer.selectStamp(idx);
         const product = this.stampLayer.results[idx];
         if (product) {
-          this.map?.flyTo([product.centerLat, product.centerLon], 8);
+          this.stampLayer.map?.flyTo([product.centerLat, product.centerLon], 8);
         }
       });
     });

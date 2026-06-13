@@ -228,7 +228,13 @@ export class JMARSMap {
         return;
     }
 
-    const leafletLayer = createLeafletLayer(layerConfig);
+    let leafletLayer;
+    if (this.customLayerInstances && this.customLayerInstances[layerId]) {
+      leafletLayer = this.customLayerInstances[layerId];
+    } else {
+      leafletLayer = createLeafletLayer(layerConfig);
+    }
+    
     if (leafletLayer) {
       leafletLayer.addTo(this.map);
       this.activeLayers[layerId] = leafletLayer;

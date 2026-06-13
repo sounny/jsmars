@@ -284,6 +284,46 @@
               </div>
             </div>
           </div>
+
+          <!-- Hillshade -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Generate real-time hillshade relief shading from MOLA DEM with configurable light direction.">
+              <span class="layer-title">Hillshade</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="hillshade-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Contour Lines -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Generate elevation contour lines from MOLA DEM data.">
+              <span class="layer-title">Contour Lines</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="contour-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Custom Map Upload -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Load a local GeoTIFF file as a map layer (processed entirely in your browser).">
+              <span class="layer-title">Custom GeoTIFF</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none; padding:10px;">
+              <div style="font-size:12px; color:#aaa; margin-bottom:8px">
+                Select a local GeoTIFF file to display it on the map.
+              </div>
+              <input type="file" id="custom-geotiff-input" accept=".tif,.tiff" style="display:none">
+              <button class="tool-btn" onclick="document.getElementById('custom-geotiff-input').click()">Choose File</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -326,6 +366,15 @@
     import { GroundTrackPanel } from './src/features/groundtrack/GroundTrackPanel.js';
     import { ExportTool } from './src/features/export/ExportTool.js';
     import { PlacesManager } from './src/features/places/PlacesManager.js';
+    import { KeyboardShortcuts } from './src/ui/KeyboardShortcuts.js';
+    import { MiniMap } from './src/ui/MiniMap.js';
+    import { HillshadeLayer } from './src/features/hillshade/HillshadeLayer.js';
+    import { HillshadePanel } from './src/features/hillshade/HillshadePanel.js';
+    import { ColorStretchControl } from './src/ui/ColorStretchControl.js';
+    import { InfoPanel } from './src/ui/InfoPanel.js';
+    import { ContourLayer } from './src/features/contour/ContourLayer.js';
+    import { ContourPanel } from './src/features/contour/ContourPanel.js';
+    import { CustomMapManager } from './src/features/custom-map/CustomMapManager.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -457,6 +506,51 @@
 
     // -- NEW: Places Manager --
     const placesManager = new PlacesManager(jmars.map);
+
+    // -- NEW: MiniMap Overview --
+    const miniMapUrl = JMARS_CONFIG.services.mars_basemap;
+    const miniMap = new MiniMap(jmars.map, miniMapUrl);
+    miniMap.activate();
+    // Update minimap when body changes
+    document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
+      const body = e?.detail?.body;
+      const bodyConfig = JMARS_CONFIG.bodies[body];
+      if (bodyConfig?.baseMaps?.[0]?.url) {
+        miniMap.updateBaseMap(bodyConfig.baseMaps[0].url);
+      }
+    });
+
+    // -- NEW: Hillshade Layer --
+    const hillshadeLayer = new HillshadeLayer(jmars.map);
+    const hillshadePanel = new HillshadePanel(
+      document.getElementById('hillshade-panel-container'), hillshadeLayer
+    );
+
+    // -- NEW: Color Stretch Control --
+    const colorStretch = new ColorStretchControl(jmars.map);
+    // Expose for layer manager to use
+    window.jsmarsColorStretch = colorStretch;
+
+    // -- NEW: Layer Info Panel --
+    const infoPanel = new InfoPanel();
+    window.jsmarsInfoPanel = infoPanel;
+
+    // -- NEW: Contour Lines Layer --
+    const contourLayer = new ContourLayer(jmars.map);
+    const contourPanel = new ContourPanel(
+      document.getElementById('contour-panel-container'), contourLayer
+    );
+
+    // -- NEW: Custom Map Manager --
+    const customMapManager = new CustomMapManager(jmars.map);
+    document.getElementById('custom-geotiff-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        customMapManager.loadGeoTIFF(file);
+      }
+      e.target.value = ''; // Reset
+    });
+
     const resetProfileButtons = () => {
       profileBtn.innerText = 'Radial Profile';
       profileBtn.classList.remove('active');
@@ -685,6 +779,33 @@
       console.error('Unhandled rejection:', event.reason);
       if (layerListContainer && layerListContainer.innerText.includes('Loading')) {
         layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
+      }
+    });
+
+    // -- NEW: Keyboard Shortcuts --
+    const shortcuts = new KeyboardShortcuts(jmars.map, {
+      saveSession: () => sessionManager.saveSession(),
+      loadSession: () => document.getElementById('session-load-input').click(),
+      quickActions: () => {
+        const input = document.querySelector('#quick-actions-container input');
+        if (input) input.focus();
+      },
+      exportMap: () => exportTool.exportPNG(),
+      cancelTool: () => {
+        craterLayer.deactivate();
+        craterBtn.innerText = 'Start Crater Counting';
+        craterBtn.classList.remove('active');
+        deactivateProfiles();
+        measureTool.deactivate();
+        deactivateInvestigate();
+        deactivateSampling();
+        shapeLayer.stopDrawing();
+        measureDistBtn.classList.remove('active');
+        measureAreaBtn.classList.remove('active');
+      },
+      resetView: () => {
+        const body = JMARS_CONFIG.bodies[jmars.currentBody];
+        if (body) jmars.map.setView(body.center, body.zoom);
       }
     });
   </script>

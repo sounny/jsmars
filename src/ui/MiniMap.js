@@ -1,0 +1,124 @@
+/**
+ * MiniMap provides a small overview map in the corner,
+ * similar to the JMARS desktop panner.
+ * Uses Leaflet.MiniMap plugin loaded from CDN.
+ */
+export class MiniMap {
+  /**
+   * @param {L.Map} map - Main Leaflet map
+   * @param {string} baseMapUrl - XYZ tile URL for the minimap
+   */
+  constructor(map, baseMapUrl) {
+    this.map = map;
+    this.baseMapUrl = baseMapUrl;
+    this.miniMap = null;
+    this.isActive = false;
+    this._loaded = false;
+  }
+
+  /**
+   * Initialize and show the minimap.
+   */
+  async activate() {
+    if (this.isActive) return;
+
+    await this._ensurePlugin();
+
+    const miniLayer = L.tileLayer(this.baseMapUrl, {
+      minZoom: 0,
+      maxZoom: 8,
+      attribution: ''
+    });
+
+    this.miniMap = new L.Control.MiniMap(miniLayer, {
+      toggleDisplay: true,
+      minimized: false,
+      position: 'bottomright',
+      width: 160,
+      height: 120,
+      zoomLevelOffset: -4,
+      zoomLevelFixed: false,
+      centerFixed: false,
+      zoomAnimation: false,
+      autoToggleDisplay: true,
+      aimingRectOptions: {
+        color: '#4dabf7',
+        weight: 1.5,
+        fillOpacity: 0.1,
+        dashArray: '3,3'
+      },
+      shadowRectOptions: {
+        color: '#888',
+        weight: 1,
+        fillOpacity: 0,
+        dashArray: '5,5'
+      }
+    });
+
+    this.miniMap.addTo(this.map);
+    this.isActive = true;
+  }
+
+  /**
+   * Remove the minimap.
+   */
+  deactivate() {
+    if (!this.isActive || !this.miniMap) return;
+    this.map.removeControl(this.miniMap);
+    this.miniMap = null;
+    this.isActive = false;
+  }
+
+  /**
+   * Toggle minimap visibility.
+   * @returns {boolean} New active state
+   */
+  toggle() {
+    if (this.isActive) {
+      this.deactivate();
+    } else {
+      this.activate();
+    }
+    return this.isActive;
+  }
+
+  /**
+   * Update the minimap basemap when body changes.
+   * @param {string} baseMapUrl
+   */
+  updateBaseMap(baseMapUrl) {
+    this.baseMapUrl = baseMapUrl;
+    if (this.isActive) {
+      this.deactivate();
+      this.activate();
+    }
+  }
+
+  /**
+   * Lazy-load the Leaflet.MiniMap plugin from CDN.
+   */
+  async _ensurePlugin() {
+    if (this._loaded || window.L?.Control?.MiniMap) {
+      this._loaded = true;
+      return;
+    }
+
+    // Load CSS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.min.css';
+    document.head.appendChild(link);
+
+    // Load JS
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.min.js';
+      script.onload = () => {
+        this._loaded = true;
+        resolve();
+      };
+      script.onerror = () => reject(new Error('Failed to load Leaflet.MiniMap'));
+      document.head.appendChild(script);
+    });
+  }
+}

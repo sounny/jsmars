@@ -580,16 +580,49 @@ export class LayerManager {
 
     const actions = document.createElement('div');
     actions.className = 'layer-settings-actions';
+    actions.style.display = 'flex';
+    actions.style.flexWrap = 'wrap';
+    actions.style.gap = '5px';
+
+    const infoBtn = document.createElement('button');
+    infoBtn.type = 'button';
+    infoBtn.textContent = 'Layer Info';
+    infoBtn.className = 'layer-settings-btn';
+    infoBtn.style.flex = '1';
+    infoBtn.addEventListener('click', () => {
+      this.closeLayerSettings();
+      if (window.jsmarsInfoPanel) {
+        // Fetch Capabilities (dummy capabilities for now, we'll just pass config)
+        window.jsmarsInfoPanel.open(config);
+      }
+    });
+
+    const stretchBtn = document.createElement('button');
+    stretchBtn.type = 'button';
+    stretchBtn.textContent = 'Color Stretch';
+    stretchBtn.className = 'layer-settings-btn';
+    stretchBtn.style.flex = '1';
+    // Only show color stretch for WMS layers basically (local too works with css filter)
+    stretchBtn.addEventListener('click', () => {
+      this.closeLayerSettings();
+      if (window.jsmarsColorStretch) {
+        const leafletLayer = this.jmarsMap.activeLayers[layerId];
+        window.jsmarsColorStretch.open(leafletLayer, layerName);
+      }
+    });
 
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
     removeButton.textContent = 'Remove Layer';
     removeButton.className = 'layer-settings-remove';
+    removeButton.style.flex = '1';
     removeButton.addEventListener('click', () => {
       jmarsState.removeLayer(layerId);
       this.closeLayerSettings();
     });
 
+    actions.appendChild(infoBtn);
+    actions.appendChild(stretchBtn);
     actions.appendChild(removeButton);
 
     this.settingsContent.appendChild(infoList);
