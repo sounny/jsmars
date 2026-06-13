@@ -1,5 +1,14 @@
 /**
- * HillshadePanel provides UI controls for the hillshade layer.
+ * @module features/hillshade/HillshadePanel
+ * @description UI panel for controlling real-time hillshade (relief shading)
+ * derived from the MOLA digital elevation model. Exposes sliders for sun
+ * azimuth, altitude, vertical exaggeration, and layer opacity, plus a toggle
+ * button to enable or disable the effect.
+ */
+
+/**
+ * @class HillshadePanel
+ * @description Provides UI controls for the hillshade layer.
  * Controls azimuth, altitude, vertical exaggeration, and opacity.
  */
 export class HillshadePanel {

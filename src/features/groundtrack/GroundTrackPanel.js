@@ -50,4 +50,18 @@ export class GroundTrackPanel {
     // Show button
     this.container.querySelector('#groundtrack-show-btn').addEventListener('click', () => {
       this.layer.activate();
-      this.layer.clearAll()
+      this.layer.clearAll();
+
+      this.container.querySelectorAll('input[data-sc]').forEach(cb => {
+        if (cb.checked) {
+          this.layer.toggleSpacecraft(cb.dataset.sc, true);
+        }
+      });
+    });
+
+    // Clear button
+    this.container.querySelector('#groundtrack-clear-btn').addEventListener('click', () => {
+      this.layer.clearAll();
+    });
+  }
+}

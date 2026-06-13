@@ -1,5 +1,14 @@
 /**
- * ContourPanel provides UI controls for the contour layer.
+ * @module features/contour/ContourPanel
+ * @description UI panel for controlling elevation contour lines derived from
+ * the MOLA digital elevation model. Exposes controls for contour interval,
+ * line color, line width, and layer opacity, along with a toggle button to
+ * enable or disable contour rendering.
+ */
+
+/**
+ * @class ContourPanel
+ * @description Provides UI controls for the contour layer.
  * Controls step interval, line color, and opacity.
  */
 export class ContourPanel {
