@@ -1644,3 +1644,272 @@ overflow-y: auto;
   background: #202020;
   font-size: 11px;
 }
+
+/* ==========================================
+   P1/P2 Feature Styles
+   ========================================== */
+
+/* Stamp Panel */
+.stamp-panel {
+  padding: 10px;
+}
+
+.stamp-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stamp-label {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.stamp-select {
+  width: 100%;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background: #222;
+  color: #fff;
+  font-size: 13px;
+}
+
+.stamp-btn-row {
+  margin-top: 6px;
+}
+
+.stamp-search-btn {
+  background: #1098ad !important;
+}
+
+.stamp-status {
+  font-size: 12px;
+  padding: 4px 0;
+  min-height: 18px;
+}
+
+.stamp-results-container {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.stamp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.stamp-table th {
+  border-bottom: 1px solid #555;
+  text-align: left;
+  padding: 4px;
+  color: #aaa;
+  position: sticky;
+  top: 0;
+  background: #1a1a1a;
+}
+
+.stamp-table td {
+  padding: 4px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.stamp-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stamp-row:hover {
+  background: #333;
+}
+
+.stamp-row-selected {
+  background: #1a3a4a !important;
+}
+
+.stamp-tooltip {
+  background: rgba(0,0,0,0.85) !important;
+  border: 1px solid #555 !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  padding: 3px 6px !important;
+}
+
+.stamp-footprint {
+  cursor: pointer;
+}
+
+/* Shape Table */
+.shape-table-wrapper {
+  max-height: 250px;
+  display: flex;
+  flex-direction: column;
+}
+
+.shape-table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #333;
+}
+
+.shape-count {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.shape-table-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.shape-table-scroll {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.shape-attr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.shape-attr-table th {
+  border-bottom: 1px solid #555;
+  text-align: left;
+  padding: 4px;
+  color: #aaa;
+  position: sticky;
+  top: 0;
+  background: #1a1a1a;
+}
+
+.shape-attr-table td {
+  padding: 4px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.shape-table-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.shape-table-row:hover {
+  background: #333;
+}
+
+.shape-row-selected {
+  background: #1a3a4a !important;
+}
+
+.editable-cell {
+  cursor: text;
+}
+
+.editable-cell:hover {
+  background: rgba(77, 171, 247, 0.1);
+}
+
+/* Landing Site Markers */
+.landing-site-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.landing-marker-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.6);
+  position: absolute;
+  top: 2px;
+  left: 2px;
+}
+
+.landing-marker-label {
+  position: absolute;
+  left: 20px;
+  top: 0;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 0 0 4px #000, 0 0 8px #000;
+  font-weight: 600;
+}
+
+.landing-popup-container .leaflet-popup-content-wrapper {
+  background: rgba(20, 20, 20, 0.95);
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #eee;
+}
+
+.landing-popup-container .leaflet-popup-tip {
+  background: rgba(20, 20, 20, 0.95);
+  border: 1px solid #444;
+}
+
+/* Ground Track */
+.groundtrack-label {
+  background: transparent !important;
+  border: none !important;
+  pointer-events: none;
+}
+
+.groundtrack-sc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.groundtrack-sc-item:hover {
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+
+/* Style Editor Presets */
+.style-presets {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.style-preset-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #555;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.style-preset-btn:hover {
+  transform: scale(1.2);
+  border-color: #fff;
+}
+
+/* Drag & Drop overlay */
+.drag-over {
+  outline: 3px dashed #4dabf7 !important;
+  outline-offset: -3px;
+}
+
+/* Status Bar coordinate format */
+.coord-format-btn {
+  background: none;
+  border: 1px solid #555;
+  color: #aaa;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  transition: color 0.15s;
+}
+
+.coord-format-btn:hover {
+  color: #fff;
+  border-color: #888;
+}

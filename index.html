@@ -197,6 +197,93 @@
               </div>
             </div>
           </div>
+
+          <!-- Stamp Layer (Footprint Browser) -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Search for instrument footprints (THEMIS, CTX, HiRISE, MOC, CRISM) in the current map view using the USGS ODE REST API.">
+              <span class="layer-title">Stamp (Footprints)</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="stamp-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Shapes (Draw / Edit / Import / Export) -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Draw, edit, and style vector shapes. Import/export GeoJSON, CSV, or KML files.">
+              <span class="layer-title">Shapes</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="padding:10px">
+                <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px">
+                  <button id="shape-draw-marker" class="crater-action-btn" style="background:#333; flex:1" title="Point">&#128205; Point</button>
+                  <button id="shape-draw-polyline" class="crater-action-btn" style="background:#333; flex:1" title="Line">&#128207; Line</button>
+                  <button id="shape-draw-polygon" class="crater-action-btn" style="background:#333; flex:1" title="Polygon">&#11039; Poly</button>
+                </div>
+                <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px">
+                  <button id="shape-draw-circle" class="crater-action-btn" style="background:#333; flex:1" title="Circle">&#9711; Circle</button>
+                  <button id="shape-draw-rectangle" class="crater-action-btn" style="background:#333; flex:1" title="Rectangle">&#9634; Rect</button>
+                  <button id="shape-edit-btn" class="crater-action-btn" style="background:#333; flex:1" title="Edit shapes">&#9998; Edit</button>
+                </div>
+                <div style="display:flex; gap:4px; margin-bottom:8px">
+                  <button id="shape-import-btn" class="tool-btn" style="flex:1; font-size:11px">Import File</button>
+                  <select id="shape-export-format" class="stamp-select" style="flex:0.6">
+                    <option value="geojson">GeoJSON</option>
+                    <option value="csv">CSV</option>
+                    <option value="kml">KML</option>
+                  </select>
+                  <button id="shape-export-btn" class="tool-btn" style="flex:0.6; font-size:11px">Export</button>
+                </div>
+                <div id="shape-table-container"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Landing Sites -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Toggle display of spacecraft landing sites on the current planetary body.">
+              <span class="layer-title">Landing Sites</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="padding:10px">
+                <button id="landing-sites-btn" class="tool-btn">Show Landing Sites</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ground Track -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Visualize spacecraft orbit ground tracks. Approximate paths using Keplerian orbital elements.">
+              <span class="layer-title">Ground Tracks</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="groundtrack-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Map Export -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Export the current map view as PNG, JPEG, or with a georeferencing world file.">
+              <span class="layer-title">Export Map</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="padding:10px; display:flex; flex-direction:column; gap:5px">
+                <button id="export-png-btn" class="tool-btn">Export PNG</button>
+                <button id="export-jpeg-btn" class="tool-btn">Export JPEG</button>
+                <button id="export-world-btn" class="tool-btn" style="font-size:11px">Export World File (.pgw)</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -228,6 +315,17 @@
     import { EVENTS } from './src/constants.js';
     import { JMARS_CONFIG } from './src/jmars-config.js';
     import { QuickActions } from './src/ui/QuickActions.js';
+    // New P1/P2 features
+    import { StampLayer } from './src/features/stamp/StampLayer.js';
+    import { StampQueryPanel } from './src/features/stamp/StampQueryPanel.js';
+    import { ShapeLayer } from './src/features/shapes/ShapeLayer.js';
+    import { ShapeTable } from './src/features/shapes/ShapeTable.js';
+    import { ShapeIO } from './src/features/shapes/ShapeIO.js';
+    import { LandingSitesLayer } from './src/features/landing/LandingSitesLayer.js';
+    import { GroundTrackLayer } from './src/features/groundtrack/GroundTrackLayer.js';
+    import { GroundTrackPanel } from './src/features/groundtrack/GroundTrackPanel.js';
+    import { ExportTool } from './src/features/export/ExportTool.js';
+    import { PlacesManager } from './src/features/places/PlacesManager.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -304,6 +402,61 @@
       enhancedProfileTool.populateSourceDropdown(enhancedProfileSource);
     });
     document.getElementById('enhanced-profile-export-btn').addEventListener('click', () => enhancedProfileTool.exportCSV());
+
+    // -- NEW: Stamp Layer --
+    const stampLayer = new StampLayer(jmars.map);
+    const stampPanel = new StampQueryPanel(
+      document.getElementById('stamp-panel-container'), stampLayer
+    );
+
+    // -- NEW: Shape Layer --
+    const shapeLayer = new ShapeLayer(jmars.map);
+    shapeLayer.activate();
+    const shapeTable = new ShapeTable(
+      document.getElementById('shape-table-container'), shapeLayer, jmars.map
+    );
+    const shapeIO = new ShapeIO(shapeLayer);
+    shapeIO.enableDragDrop(document.getElementById('map'));
+
+    // Shape draw buttons
+    ['marker', 'polyline', 'polygon', 'circle', 'rectangle'].forEach(type => {
+      const btn = document.getElementById(`shape-draw-${type}`);
+      if (btn) {
+        btn.addEventListener('click', () => shapeLayer.startDrawing(type));
+      }
+    });
+    document.getElementById('shape-edit-btn')?.addEventListener('click', () => {
+      shapeLayer.enableEditing();
+    });
+    document.getElementById('shape-import-btn')?.addEventListener('click', () => shapeIO.importFile());
+    document.getElementById('shape-export-btn')?.addEventListener('click', () => {
+      const fmt = document.getElementById('shape-export-format').value;
+      shapeIO.exportFile(fmt);
+    });
+
+    // -- NEW: Landing Sites --
+    const landingSitesLayer = new LandingSitesLayer(jmars.map);
+    const landingBtn = document.getElementById('landing-sites-btn');
+    landingBtn.addEventListener('click', () => {
+      const active = landingSitesLayer.toggle();
+      landingBtn.textContent = active ? 'Hide Landing Sites' : 'Show Landing Sites';
+      landingBtn.classList.toggle('active', active);
+    });
+
+    // -- NEW: Ground Track --
+    const groundTrackLayer = new GroundTrackLayer(jmars.map);
+    const groundTrackPanel = new GroundTrackPanel(
+      document.getElementById('groundtrack-panel-container'), groundTrackLayer
+    );
+
+    // -- NEW: Export Tool --
+    const exportTool = new ExportTool(jmars.map);
+    document.getElementById('export-png-btn')?.addEventListener('click', () => exportTool.exportPNG());
+    document.getElementById('export-jpeg-btn')?.addEventListener('click', () => exportTool.exportJPEG());
+    document.getElementById('export-world-btn')?.addEventListener('click', () => exportTool.exportWorldFile());
+
+    // -- NEW: Places Manager --
+    const placesManager = new PlacesManager(jmars.map);
     const resetProfileButtons = () => {
       profileBtn.innerText = 'Radial Profile';
       profileBtn.classList.remove('active');

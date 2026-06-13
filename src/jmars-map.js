@@ -159,6 +159,9 @@ export class JMARSMap {
     // 5. Update State (This triggers LayerManager to update the map)
     console.debug('SwitchBody: Setting active layers to:', newActiveLayers);
     jmarsState.setActiveLayers(newActiveLayers);
+
+    // 6. Discover WMS layers for the new body
+    this.discoverLayers();
   }
 
   setLoading(isLoading) {
@@ -169,15 +172,20 @@ export class JMARSMap {
   }
 
   async discoverLayers() {
-    if (this.currentBody !== 'mars') return;
+    // Look up WMS endpoint for current body
+    const wmsKey = `${this.currentBody}_wms`;
+    const wmsUrl = JMARS_CONFIG.services[wmsKey];
+    if (!wmsUrl) {
+      console.debug(`No WMS endpoint configured for body: ${this.currentBody}`);
+      return;
+    }
 
     this.setLoading(true);
-    const wmsUrl = JMARS_CONFIG.services.mars_wms;
-    console.debug(`Fetching capabilities from ${wmsUrl}...`);
+    console.debug(`Fetching capabilities from ${wmsUrl} for ${this.currentBody}...`);
 
     try {
         const wmsLayers = await JMARSWMS.fetchCapabilities(wmsUrl);
-        console.debug(`Discovered ${wmsLayers.length} layers.`);
+        console.debug(`Discovered ${wmsLayers.length} layers for ${this.currentBody}.`);
 
         wmsLayers.forEach(l => {
           // Avoid duplicates if hardcoded layers exist

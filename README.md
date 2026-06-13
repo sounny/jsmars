@@ -7,23 +7,39 @@
 
 This project adheres to a **"No-Build"** philosophy: it uses standard ES Modules and Vanilla JavaScript. 
 
-## ✨ Key Features
-- **Planetary Maps**: View high-resolution Mars basemaps (Viking MDIM 2.1).
-- **WMS Integration**: Dynamically fetches layers from USGS and OpenPlanetary WMS servers.
-- **Layer Management**: Toggle layers, adjust opacity, and reorder (coming soon).
-- **Vector Tools**: Draw shapes (Polygons, Rectangles, Lines, Markers) using the integrated toolbar.
-- **Lightweight**: No Webpack, no Vite, no `npm install` required to run.
+## Key Features
+- **Multi-Body Maps**: View Mars, Moon, and Earth with WMS-discovered layers
+- **WMS Integration**: Auto-discovers layers from USGS, OpenPlanetary, and NASA GIBS
+- **Layer Management**: Toggle, reorder (drag), opacity, settings modal, filter
+- **Stamp Layer**: Browse THEMIS, CTX, HiRISE, MOC, CRISM footprints via USGS ODE REST API
+- **Advanced Shapes**: Draw (point, line, polygon, circle, rectangle), edit attributes, style with presets
+- **Import/Export**: GeoJSON, CSV, KML file support with drag-and-drop import
+- **Crater Counting**: Interactive crater sizing and logging
+- **Elevation Profiles**: Linear and radial profiles from MOLA DEM
+- **Measurements**: Distance, area with azimuth and great-circle calculations
+- **Landing Sites**: Mars rovers/landers + Moon landing sites with mission info
+- **Ground Tracks**: Approximate spacecraft orbit visualization (MRO, Odyssey, MAVEN, etc.)
+- **Map Export**: PNG, JPEG, and georeferenced world file (.pgw/.jgw)
+- **Nomenclature**: IAU feature labels (craters, mons, valles, planitia)
+- **Investigate**: WMS GetFeatureInfo point queries
+- **Sampling**: Point and area data collection
+- **Session Save/Load**: Full state persistence as JSON
+- **Bookmarks & Places**: Location bookmarks with coordinate parsing
+- **Lightweight**: No Webpack, no Vite, no `npm install`. Runs on GitHub Pages.
 
 
-## 🗺️ Roadmap
-We are actively developing JSMARS to match core JMARS desktop features:
-- [x] **Phase 1**: WMS Layer Support & Basic Map
-- [x] **Phase 2**: UI Polish (Loading indicators, Layer Manager)
-- [ ] **Phase 3**: Advanced Vector Support (Import/Export Shapes, Measurements)
-- [ ] **Phase 4**: Search, Bookmarks, and Session Saving
-- [ ] **Phase 5**: Multi-body support (Moon, Earth, etc.)
+## Roadmap
+- [x] **Phase 1**: WMS Layer Support, Basic Map
+- [x] **Phase 2**: UI Polish, Layer Manager, Accordion sidebar
+- [x] **Phase 3**: Multi-body support (Mars, Moon, Earth)
+- [x] **Phase 4**: Crater Counting, Profiles, Measurements, Nomenclature
+- [x] **Phase 5**: Search, Bookmarks, Session Saving, Sampling
+- [x] **Phase 6 (v0.5.0)**: Stamp Layer, Shapes, Landing Sites, Ground Track, Export
+- [ ] **Phase 7**: KRC Thermal Model, Time Slider, 3D View (WebGL)
 
 See [docs/jsmars-roadmap.md](docs/jsmars-roadmap.md) for the detailed plan.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for project architecture.
+
 
 ## 🤝 Contributing
 Please read [AGENTS.md](AGENTS.md) for architectural guidelines and coding standards.

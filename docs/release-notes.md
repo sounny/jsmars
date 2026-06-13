@@ -1,5 +1,73 @@
 # JSMARS Release Notes
 
+## v0.5.0 - Feature Parity Push (P1/P2)
+**Date:** 2026-06-13
+
+### New Features
+
+#### Stamp Layer (Footprint Browser)
+- Query USGS ODE REST API for instrument footprints (THEMIS, CTX, HiRISE, MOC, CRISM)
+- Interactive footprint polygons on map with hover/click behavior
+- Results table with product ID, coordinates, solar longitude
+- Export search results as CSV
+
+#### Advanced Shape Layer
+- Full drawing palette: Point, Line, Polygon, Circle, Rectangle
+- Interactive attribute table with inline editing
+- Measurements computed per shape (distance for lines, area for polygons)
+- Import: GeoJSON, CSV, KML file formats
+- Export: GeoJSON, CSV, KML file formats
+- Drag-and-drop file import onto map
+- Enhanced style editor with color presets, dash patterns, stroke/fill opacity
+
+#### Landing Sites
+- Interactive markers for Mars rovers/landers (Viking through Perseverance)
+- Moon landing sites (Apollo, Chang'e, Chandrayaan, SLIM)
+- Agency-colored markers with mission info popups
+
+#### Ground Track Visualization
+- Approximate spacecraft ground tracks (MRO, Odyssey, MAVEN, Mars Express, MGS)
+- Configurable visibility per spacecraft
+- Color-coded tracks with orbit labels
+
+#### Map Export
+- Export current view as PNG or JPEG (via html2canvas CDN)
+- Export georeferencing world file (.pgw/.jgw) for GIS software
+
+#### Places Manager
+- Save/recall map locations
+- Coordinate string parsing (lat, lon entry)
+- Local storage persistence
+- Import/export places as JSON
+
+### Improvements
+
+#### Multi-Body WMS Discovery
+- WMS GetCapabilities now runs for Moon and Earth (not just Mars)
+- Added USGS Moon WMS endpoint
+- Body switching triggers WMS rediscovery
+
+#### Enhanced Geo Utilities
+- Mars/Moon/Earth body constants (radii, flattening)
+- Haversine distance with body-specific radii
+- Azimuth (initial bearing) calculation
+- DMS coordinate formatting
+- Spherical polygon area computation
+- Great circle interpolation
+- Planetocentric/planetographic latitude conversion
+
+#### Core Architecture
+- New EventBus module for centralized event dispatch
+- New ToolManager for mutual-exclusion tool activation
+- New PluginRegistry for feature registration
+- Expanded event constants for all features
+
+#### Documentation
+- New ARCHITECTURE.md with project structure and patterns
+- Updated release notes
+
+---
+
 ## v0.4.6 - Layer Discovery Enhancements
 **Date:** 2026-03-14
 

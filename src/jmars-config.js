@@ -12,7 +12,11 @@ export const JMARS_CONFIG = {
     // OpenPlanetary Mars Basemap (XYZ)
     mars_basemap: 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-1/all/{z}/{x}/{y}.png',
     // USGS Astrogeology Mars WMS
-    mars_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map'
+    mars_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
+    // USGS Astrogeology Moon WMS
+    moon_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/moon/moon_simp_cyl.map',
+    // NASA GIBS Earth WMS
+    earth_wms: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi'
   },
   // Multi-body configurations
   bodies: {
