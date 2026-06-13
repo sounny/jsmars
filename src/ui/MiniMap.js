@@ -1,7 +1,8 @@
 /**
- * MiniMap provides a small overview map in the corner,
+ * @module MiniMap
+ * @description Provides a small overview map in the corner,
  * similar to the JMARS desktop panner.
- * Uses Leaflet.MiniMap plugin loaded from CDN.
+ * Uses the Leaflet.MiniMap plugin, lazy-loaded from CDN.
  */
 export class MiniMap {
   /**
@@ -71,26 +72,28 @@ export class MiniMap {
 
   /**
    * Toggle minimap visibility.
-   * @returns {boolean} New active state
+   * Async because activate() loads the plugin from CDN on first call.
+   * @returns {Promise<boolean>} New active state
    */
-  toggle() {
+  async toggle() {
     if (this.isActive) {
       this.deactivate();
     } else {
-      this.activate();
+      await this.activate();
     }
     return this.isActive;
   }
 
   /**
    * Update the minimap basemap when body changes.
-   * @param {string} baseMapUrl
+   * Async because re-activation loads the plugin if needed.
+   * @param {string} baseMapUrl - New XYZ tile URL
    */
-  updateBaseMap(baseMapUrl) {
+  async updateBaseMap(baseMapUrl) {
     this.baseMapUrl = baseMapUrl;
     if (this.isActive) {
       this.deactivate();
-      this.activate();
+      await this.activate();
     }
   }
 

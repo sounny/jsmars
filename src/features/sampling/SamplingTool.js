@@ -2,7 +2,19 @@ import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
 
+/**
+ * @module SamplingTool
+ * @description Point and area sampling tool for querying WMS layer values.
+ *
+ * In point mode, the user clicks the map to drop sample markers.
+ * In area mode, a polygon is drawn and the centroid is queried.
+ * Results are dispatched via SAMPLE_UPDATED.
+ */
 export class SamplingTool {
+    /**
+     * Create a SamplingTool.
+     * @param {L.Map} map - The Leaflet map instance.
+     */
     constructor(map) {
         this.map = map;
         this.isActive = false;
@@ -16,6 +28,10 @@ export class SamplingTool {
         document.addEventListener(EVENTS.BODY_CHANGED, () => this.clear());
     }
 
+    /**
+     * Activate the sampling tool in the given mode.
+     * @param {'point'|'area'} [mode='point'] - Sampling mode.
+     */
     activate(mode = 'point') {
         if (this.isActive && this.activeMode === mode) return;
         this.deactivate(); // Clear previous listeners
@@ -35,6 +51,9 @@ export class SamplingTool {
         }
     }
 
+    /**
+     * Deactivate the sampling tool and remove listeners.
+     */
     deactivate() {
         if (!this.isActive) return;
         this.isActive = false;
@@ -214,10 +233,16 @@ export class SamplingTool {
         return html;
     }
 
+    /**
+     * Dispatch a SAMPLE_UPDATED event with current samples.
+     */
     notifyUpdate() {
-        document.dispatchEvent(new CustomEvent('jmars-samples-updated', { detail: { samples: this.samples } }));
+        document.dispatchEvent(new CustomEvent(EVENTS.SAMPLE_UPDATED, { detail: { samples: this.samples } }));
     }
 
+    /**
+     * Export all samples as a CSV file download.
+     */
     exportCSV() {
         if (this.samples.length === 0) return;
         

@@ -19,7 +19,7 @@ export class PlacesManager {
    */
   savePlace(place) {
     const entry = {
-      id: Date.now(),
+      id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: place.name,
       lat: place.lat,
       lon: place.lon,

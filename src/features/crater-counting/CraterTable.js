@@ -1,6 +1,25 @@
+/**
+ * @module features/crater-counting/CraterTable
+ * @description Interactive HTML table component for managing digitized crater
+ * records. Displays crater coordinates and diameters, supports inline deletion,
+ * and provides export to both CSV and GeoJSON formats. Listens for
+ * {@link EVENTS.CRATER_ADDED} events and dispatches
+ * {@link EVENTS.CRATER_REMOVE} and {@link EVENTS.CRATER_CLEAR} events.
+ */
 import { EVENTS } from '../../constants.js';
 
+/**
+ * @class CraterTable
+ * @description Renders a sortable table of crater measurements with toolbar
+ * buttons for CSV export, GeoJSON export, and bulk clearing. Each row shows
+ * a short ID, latitude, longitude, and diameter in kilometers, plus a delete
+ * button for individual removal.
+ */
 export class CraterTable {
+    /**
+     * Creates a new CraterTable and renders it into the given container.
+     * @param {string} containerId - DOM id of the element that will host the table.
+     */
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.craters = [];
@@ -18,6 +37,11 @@ export class CraterTable {
         });
     }
 
+    /**
+     * Builds the initial table markup, including the toolbar and column headers,
+     * and wires up the export and clear button listeners.
+     * @returns {void}
+     */
     render() {
         this.container.innerHTML = `
       <div class="crater-btn-group">
@@ -48,6 +72,15 @@ export class CraterTable {
         this.container.querySelector('#crater-clear-btn').addEventListener('click', () => this.clearAll());
     }
 
+    /**
+     * Appends a crater record to the table and internal list.
+     * @param {object} crater - Crater data object.
+     * @param {number} crater.id - Unique numeric identifier.
+     * @param {number} crater.lat - Latitude in decimal degrees.
+     * @param {number} crater.lng - Longitude in decimal degrees.
+     * @param {number} crater.diameter - Diameter in meters.
+     * @returns {void}
+     */
     addCrater(crater) {
         if (!this.tbody) return;
         this.craters.push(crater);
@@ -73,6 +106,12 @@ export class CraterTable {
         this.tbody.prepend(tr); // Add new at top
     }
 
+    /**
+     * Removes a single crater by id from the table and internal list,
+     * then dispatches a {@link EVENTS.CRATER_REMOVE} event.
+     * @param {number} id - The crater id to remove.
+     * @returns {void}
+     */
     removeCrater(id) {
         // Remove from local list
         this.craters = this.craters.filter(c => c.id !== id);
@@ -86,6 +125,11 @@ export class CraterTable {
         document.dispatchEvent(event);
     }
 
+    /**
+     * Clears all crater records after user confirmation. Empties the table
+     * body and dispatches a {@link EVENTS.CRATER_CLEAR} event.
+     * @returns {void}
+     */
     clearAll() {
         if (!confirm('Are you sure you want to clear all craters?')) return;
 
@@ -97,6 +141,11 @@ export class CraterTable {
         document.dispatchEvent(event);
     }
 
+    /**
+     * Exports all recorded craters as a downloadable CSV file
+     * with columns: ID, Lat, Lon, Diameter_km.
+     * @returns {void}
+     */
     exportCSV() {
         if (this.craters.length === 0) {
             alert('No craters to export.');
@@ -118,6 +167,11 @@ export class CraterTable {
         document.body.removeChild(link);
     }
 
+    /**
+     * Exports all recorded craters as a downloadable GeoJSON FeatureCollection.
+     * Each feature is a Point with diameter properties.
+     * @returns {void}
+     */
     exportGeoJSON() {
         if (this.craters.length === 0) {
             alert('No craters to export.');

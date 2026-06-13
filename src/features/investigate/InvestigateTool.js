@@ -3,7 +3,16 @@ import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
 import { molaDem } from '../../util/mola-dem.js';
 
+/**
+ * @module InvestigateTool
+ * @description Click-to-query tool that probes WMS layers and
+ * displays pixel values, elevation, and metadata in a popup.
+ */
 export class InvestigateTool {
+    /**
+     * Create an InvestigateTool.
+     * @param {L.Map} map - The Leaflet map instance.
+     */
     constructor(map) {
         this.map = map;
         this.isActive = false;
@@ -14,7 +23,12 @@ export class InvestigateTool {
         document.addEventListener(EVENTS.BODY_CHANGED, () => this.deactivate());
     }
 
+    /**
+     * Activate the investigate tool.
+     * Sets cursor to 'help' and begins listening for map clicks.
+     */
     activate() {
+        if (this.isActive) return;
         this.isActive = true;
         this.map.getContainer().style.cursor = 'help';
         this.map.on('click', this.onClick);
@@ -24,6 +38,9 @@ export class InvestigateTool {
         }
     }
 
+    /**
+     * Deactivate the investigate tool.
+     */
     deactivate() {
         if (!this.isActive) return;
         this.isActive = false;
@@ -33,6 +50,10 @@ export class InvestigateTool {
         document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'investigate' } }));
     }
 
+    /**
+     * Handle map click: show popup with coordinates, then query WMS layers.
+     * @param {L.LeafletMouseEvent} e - Leaflet click event.
+     */
     async onClick(e) {
         if (!this.isActive) return;
 
@@ -67,26 +88,36 @@ export class InvestigateTool {
         this.updatePopup(results);
     }
 
+    /**
+     * Load elevation for the clicked point (Mars only, via MOLA DEM).
+     * @param {L.LatLng} latlng - Clicked coordinates.
+     */
     async loadElevation(latlng) {
         const body = (jmarsState.get('body') || 'mars').toLowerCase();
         const elevationEl = document.getElementById('investigate-elevation');
         if (!elevationEl) return;
 
         if (body !== 'mars') {
-            elevationEl.innerText = 'N/A';
+            elevationEl.textContent = 'N/A';
             return;
         }
 
         try {
             const values = await molaDem.sampleElevations([{ lat: latlng.lat, lng: latlng.lng }]);
             const elev = values[0];
-            elevationEl.innerText = Number.isFinite(elev) ? `${Math.round(elev)} m` : 'No data';
+            elevationEl.textContent = Number.isFinite(elev) ? `${Math.round(elev)} m` : 'No data';
         } catch (err) {
             console.warn('Investigate elevation failed', err);
-            elevationEl.innerText = 'Error';
+            elevationEl.textContent = 'Error';
         }
     }
 
+    /**
+     * Query all visible WMS layers at the clicked point.
+     * @param {L.LatLng} latlng - Clicked coordinates.
+     * @param {L.Point} containerPoint - Pixel position in the map container.
+     * @returns {Promise<Array<object>>} Array of { name, value } results.
+     */
     async queryLayers(latlng, containerPoint) {
         // Get active WMS layers from State
         // We need the URL and layer names.
@@ -113,7 +144,8 @@ export class InvestigateTool {
         // We can import the map instance via `window.jmars` if it's exposed, or passed in constructor.
         // In `index.html`, we exposed `window.jmars`.
         
-        const availableLayers = window.jmars.availableLayers;
+        const availableLayers = window.jmars ? window.jmars.availableLayers : [];
+        if (availableLayers.length === 0) return [];
 
         for (let i = activeState.length - 1; i >= 0; i--) {
             const layerState = activeState[i];
@@ -159,6 +191,11 @@ export class InvestigateTool {
         return results;
     }
 
+    /**
+     * Parse WMS GetFeatureInfo HTML response into displayable content.
+     * @param {string} html - Raw HTML response.
+     * @returns {string} Cleaned inner HTML.
+     */
     parseFeatureInfo(html) {
         // This is highly dependent on the server output.
         // MapServer/GeoServer output simple tables.
@@ -168,6 +205,10 @@ export class InvestigateTool {
         return doc.body.innerHTML;
     }
 
+    /**
+     * Update the investigate popup with query results.
+     * @param {Array<object>} results - Array of { name, value }.
+     */
     updatePopup(results) {
         const loadingEl = document.getElementById('investigate-loading');
         const resultsEl = document.getElementById('investigate-results');

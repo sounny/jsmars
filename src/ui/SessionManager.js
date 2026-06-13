@@ -1,18 +1,37 @@
 import { jmarsState } from '../jmars-state.js';
 import { EVENTS } from '../constants.js';
 
+/**
+ * @module SessionManager
+ * @description Manages saving and loading jsMars sessions to/from JSON files.
+ * Serializes the application state (layers, view, body), crater data,
+ * measurement data, and bookmarks. On load, restores all components
+ * to their saved state.
+ */
 export class SessionManager {
+    /**
+     * Create a new SessionManager.
+     * @param {object|null} craterLayer - CraterCounter instance (or null)
+     * @param {object|null} measureTool - MeasureTool instance (or null)
+     * @param {object|null} bookmarksTool - BookmarksTool instance (or null)
+     */
     constructor(craterLayer, measureTool, bookmarksTool) {
         this.craterLayer = craterLayer;
         this.measureTool = measureTool;
         this.bookmarksTool = bookmarksTool;
     }
 
+    /**
+     * Save the current session to a downloadable JSON file.
+     * Deep-clones state before serialization to avoid capturing
+     * live object references.
+     */
     saveSession() {
         const session = {
             version: '1.0',
             timestamp: new Date().toISOString(),
-            state: jmarsState.state,
+            // Deep clone state to avoid serializing live references
+            state: JSON.parse(JSON.stringify(jmarsState.state)),
             craters: this.craterLayer ? this.craterLayer.getData() : [],
             measurements: this.measureTool ? this.measureTool.getData() : [],
             bookmarks: this.bookmarksTool ? this.bookmarksTool.getData() : []
@@ -22,6 +41,12 @@ export class SessionManager {
         this.downloadFile(`jsmars_session_${Date.now()}.json`, content);
     }
 
+    /**
+     * Load a session from a JSON File object.
+     * Restores state, layers, view, body, and tool data.
+     * @param {File} file - JSON session file chosen by the user
+     * @returns {Promise<void>}
+     */
     async loadSession(file) {
         try {
             const text = await file.text();
@@ -34,10 +59,9 @@ export class SessionManager {
 
             // 1. Restore State
             if (session.state) {
-                // Active Layers
+                // Active Layers: use the setter to update state properly
                 if (session.state.activeLayers) {
-                    jmarsState.state.activeLayers = session.state.activeLayers;
-                    jmarsState.emit(EVENTS.LAYERS_CHANGED, jmarsState.state.activeLayers);
+                    jmarsState.setActiveLayers(session.state.activeLayers);
                 }
 
                 // View (Lat/Lon/Zoom)
@@ -78,6 +102,12 @@ export class SessionManager {
         }
     }
 
+    /**
+     * Trigger a browser download for the given content.
+     * @param {string} filename - Name for the downloaded file
+     * @param {string} content - File content string
+     * @private
+     */
     downloadFile(filename, content) {
         const element = document.createElement('a');
         element.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(content));

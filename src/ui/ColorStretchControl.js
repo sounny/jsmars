@@ -1,5 +1,6 @@
 /**
- * ColorStretchControl provides a UI for adjusting WMS layer color rendering.
+ * @module ColorStretchControl
+ * @description Provides a UI for adjusting WMS layer color rendering.
  * In JMARS desktop, this is the "Color Stretch" panel.
  *
  * For WMS, we use SLD_BODY or STYLES parameters to request different renderings.
@@ -24,7 +25,7 @@ export class ColorStretchControl {
     this.container.innerHTML = `
       <div style="margin-bottom: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
         <span>Color Stretch</span>
-        <span id="color-stretch-close" style="cursor: pointer; font-size: 18px; line-height: 1">&times;</span>
+        <button id="color-stretch-close" type="button" style="cursor: pointer; font-size: 18px; line-height: 1; background: none; border: none; color: inherit" aria-label="Close color stretch panel">&times;</button>
       </div>
 
       <div class="info-row" id="color-stretch-layer-name" style="margin-bottom:8px; color:#4dabf7"></div>
@@ -134,6 +135,8 @@ export class ColorStretchControl {
 
   /**
    * Open the color stretch control for a layer.
+   * Parses the layer's current CSS filter string and syncs sliders
+   * to the actual values instead of resetting to defaults.
    * @param {L.TileLayer|L.TileLayer.WMS} layer - Leaflet layer
    * @param {string} name - Layer name for display
    */
@@ -141,11 +144,27 @@ export class ColorStretchControl {
     this.currentLayer = layer;
     this.container.querySelector('#color-stretch-layer-name').textContent = name || 'Layer';
 
-    // Read current filter values from the layer container
+    // Parse current CSS filter values from the layer container and sync sliders
     const el = layer.getContainer?.();
-    if (el) {
-      // Could parse current filter string, but for simplicity just reset
-    }
+    const parsed = this._parseFilter(el?.style?.filter || '');
+
+    const brightness = this.container.querySelector('#color-brightness');
+    const contrast = this.container.querySelector('#color-contrast');
+    const saturation = this.container.querySelector('#color-saturation');
+    const hue = this.container.querySelector('#color-hue');
+    const invert = this.container.querySelector('#color-invert');
+
+    brightness.value = parsed.brightness;
+    contrast.value = parsed.contrast;
+    saturation.value = parsed.saturation;
+    hue.value = parsed.hueRotate;
+    invert.checked = parsed.invert;
+
+    // Update the displayed value labels
+    this.container.querySelector('#brightness-val').textContent = parsed.brightness;
+    this.container.querySelector('#contrast-val').textContent = parsed.contrast;
+    this.container.querySelector('#saturation-val').textContent = parsed.saturation;
+    this.container.querySelector('#hue-val').textContent = parsed.hueRotate;
 
     this.container.style.display = 'block';
   }
@@ -160,7 +179,13 @@ export class ColorStretchControl {
 
   /**
    * Apply CSS filter to the layer's DOM container.
-   * @param {object} opts
+   * @param {object} opts - Filter options
+   * @param {number} opts.brightness - Brightness multiplier (1 = 100%)
+   * @param {number} opts.contrast - Contrast multiplier (1 = 100%)
+   * @param {number} opts.saturation - Saturation multiplier (1 = 100%)
+   * @param {number} opts.hueRotate - Hue rotation in degrees
+   * @param {boolean} opts.invert - Whether to invert colors
+   * @private
    */
   _applyFilter(opts) {
     if (!this.currentLayer) return;
@@ -177,5 +202,36 @@ export class ColorStretchControl {
     if (opts.invert) parts.push('invert(1)');
 
     el.style.filter = parts.join(' ');
+  }
+
+  /**
+   * Parse a CSS filter string into slider-friendly numeric values.
+   * Falls back to defaults (100% brightness/contrast/saturation, 0 hue, no invert).
+   * @param {string} filterStr - CSS filter property value
+   * @returns {{brightness: number, contrast: number, saturation: number, hueRotate: number, invert: boolean}}
+   * @private
+   */
+  _parseFilter(filterStr) {
+    const defaults = { brightness: 100, contrast: 100, saturation: 100, hueRotate: 0, invert: false };
+    if (!filterStr) return defaults;
+
+    // Extract numeric value from a CSS filter function, e.g. "brightness(1.1)" => 1.1
+    const extract = (name) => {
+      const match = filterStr.match(new RegExp(`${name}\\(([\\d.]+)`));
+      return match ? parseFloat(match[1]) : null;
+    };
+
+    const b = extract('brightness');
+    const c = extract('contrast');
+    const s = extract('saturate');
+    const h = extract('hue-rotate');
+
+    return {
+      brightness: b !== null ? Math.round(b * 100) : defaults.brightness,
+      contrast: c !== null ? Math.round(c * 100) : defaults.contrast,
+      saturation: s !== null ? Math.round(s * 100) : defaults.saturation,
+      hueRotate: h !== null ? Math.round(h) : defaults.hueRotate,
+      invert: filterStr.includes('invert(1)')
+    };
   }
 }

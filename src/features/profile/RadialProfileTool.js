@@ -3,7 +3,19 @@ import { jmarsState } from '../../jmars-state.js';
 import { molaDem } from '../../util/mola-dem.js';
 import { EVENTS } from '../../constants.js';
 
+/**
+ * @module RadialProfileTool
+ * @description Radial elevation profile tool.
+ *
+ * The user clicks a center point and an edge point to define a radius.
+ * The tool then generates N radiating lines and samples elevation
+ * along each, dispatching PROFILE_GENERATED for the chart.
+ */
 export class RadialProfileTool {
+    /**
+     * Create a RadialProfileTool.
+     * @param {L.Map} map - The Leaflet map instance.
+     */
     constructor(map) {
         this.map = map;
         this.isActive = false;
@@ -42,6 +54,9 @@ export class RadialProfileTool {
         this.onMouseMove = this.onMouseMove.bind(this);
     }
 
+    /**
+     * Activate the radial profile tool and listen for clicks.
+     */
     activate() {
         if (this.isActive) return;
         this.isActive = true;
@@ -56,6 +71,9 @@ export class RadialProfileTool {
         this.map.getContainer().style.cursor = 'crosshair';
     }
 
+    /**
+     * Deactivate the radial profile tool.
+     */
     deactivate() {
         if (!this.isActive) return;
         this.isActive = false;
@@ -154,6 +172,11 @@ export class RadialProfileTool {
         this.currentSourceId = sourceId;
     }
 
+    /**
+     * Generate radial elevation profiles from a center point.
+     * @param {L.LatLng} center - Center point.
+     * @param {number} radius - Radius in meters.
+     */
     generateProfile(center, radius) {
         this.layerGroup.clearLayers();
         L.circleMarker(center, { radius: 5, color: '#0ff' }).addTo(this.layerGroup);
@@ -199,14 +222,19 @@ export class RadialProfileTool {
             this.sampleElevations(linePoints).then((dataPoints) => {
                 const target = profiles.find(p => p.angle === angleDeg);
                 if (target) target.data = dataPoints;
-                document.dispatchEvent(new CustomEvent('jmars-profile-generated', { detail: { profiles } }));
+                document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles } }));
             });
         }
 
         // Initial dispatch to clear chart
-        document.dispatchEvent(new CustomEvent('jmars-profile-generated', { detail: { profiles } }));
+        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles } }));
     }
 
+    /**
+     * Sample elevation values along a two-point line segment.
+     * @param {Array<L.LatLng>} linePoints - [start, end] coordinates.
+     * @returns {Promise<Array<object>>} Array of { dist, elev }.
+     */
     sampleElevations(linePoints) {
         const [start, end] = linePoints;
         const samples = [];
@@ -272,6 +300,11 @@ export class RadialProfileTool {
         return dataPoints;
     }
 
+    /**
+     * Return a distinct color for a radial line by index.
+     * @param {number} index - Line index.
+     * @returns {string} CSS color string.
+     */
     getColor(index) {
         const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
         return colors[index % colors.length];

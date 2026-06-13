@@ -17,7 +17,7 @@ export class ShapeIO {
   importFile() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.geojson,.json,.csv,.kml,.kmz';
+    input.accept = '.geojson,.json,.csv,.kml';
     input.style.display = 'none';
 
     input.addEventListener('change', async (e) => {
@@ -108,9 +108,13 @@ export class ShapeIO {
       }
 
       const attrs = attrKeys.map(k => {
-        const val = shape.attributes[k] || '';
-        // Escape CSV: wrap in quotes if contains comma
-        return val.toString().includes(',') ? `"${val}"` : val;
+        const val = (shape.attributes[k] || '').toString();
+        // Escape CSV per RFC 4180: wrap in quotes if the value
+        // contains commas, double-quotes, or newlines.
+        if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
       });
 
       return [shape.id, shape.type, lat, lon, ...attrs].join(',');

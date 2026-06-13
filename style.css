@@ -1,3 +1,17 @@
+/* ==========================================================================
+   JMARS Web Client — Master Stylesheet
+   Organized sections: Reset, Layout, Loading, Controls Sidebar, Welcome Modal,
+   Layer Settings Modal, Layer List, Tools, North Arrow, Style Editor,
+   Search Bar, Crater Table, Accordion, Mosaic Catalog, Bookmarks,
+   Status Bar, Panner, Leaflet Controls, Collapsible Sections, Tool Info,
+   Nomenclature, Investigate, Body Selector, Quick Actions,
+   P1/P2 Features, Keyboard Shortcuts, Info Panel, Color Stretch, Hillshade
+   ========================================================================== */
+
+/* ==========================================================================
+   1. Reset & Base
+   ========================================================================== */
+
 body,
 html {
   margin: 0;
@@ -8,13 +22,17 @@ html {
   background: #000;
 }
 
+/* Adjust map height to account for status bar */
 #map {
   width: 100%;
-  height: 100%;
+  height: calc(100% - 30px);
   background: #000;
 }
 
-/* Loading Indicator */
+/* ==========================================================================
+   2. Loading Indicator
+   ========================================================================== */
+
 #loading-indicator {
   position: absolute;
   top: 50%;
@@ -35,7 +53,10 @@ html {
   display: block;
 }
 
-/* Controls Sidebar */
+/* ==========================================================================
+   3. Controls Sidebar
+   ========================================================================== */
+
 #controls {
   position: absolute;
   top: 10px;
@@ -81,6 +102,20 @@ html {
 #sidebar-toggle.collapsed {
   left: 10px;
 }
+
+.control-header {
+  padding: 12px;
+  background: #333;
+  border-bottom: 1px solid #444;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ==========================================================================
+   4. Welcome Modal
+   ========================================================================== */
 
 .welcome-modal-backdrop {
   position: fixed;
@@ -137,6 +172,10 @@ html {
   cursor: pointer;
   border-radius: 4px;
 }
+
+/* ==========================================================================
+   5. Layer Settings Modal
+   ========================================================================== */
 
 .layer-settings-backdrop {
   position: fixed;
@@ -253,17 +292,10 @@ html {
   color: #fff;
 }
 
-.control-header {
-  padding: 12px;
-  background: #333;
-  border-bottom: 1px solid #444;
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+/* ==========================================================================
+   6. Layer List
+   ========================================================================== */
 
-/* Layer List */
 #layer-list {
   flex: 1;
   overflow-y: auto;
@@ -312,7 +344,10 @@ html {
   font-size: 12px;
 }
 
-/* Tools Section */
+/* ==========================================================================
+   7. Tools Section
+   ========================================================================== */
+
 .tool-section {
   padding: 10px;
 }
@@ -336,12 +371,25 @@ html {
   background: #555;
 }
 
+/* Unified active color: teal */
 .tool-btn.active {
   background: #1098ad;
-  /* Default active color, can be overridden */
 }
 
-/* North Arrow */
+.tool-select {
+  width: 100%;
+  padding: 6px 8px;
+  background: #2a2a2a;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   8. North Arrow
+   ========================================================================== */
+
 .north-arrow-control {
   width: var(--north-arrow-size, 72px);
   height: var(--north-arrow-size, 72px);
@@ -393,22 +441,28 @@ html {
   color: #fff;
 }
 
-/* Style Editor */
+/* ==========================================================================
+   9. Style Editor
+   ========================================================================== */
+
 #style-editor {
+  display: none;
   position: absolute;
   z-index: 2000;
   background: #222;
   border: 1px solid #555;
   padding: 10px;
-  color: #fff;
-  display: none;
   border-radius: 4px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-  width: 200px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  min-width: 200px;
+  color: #eee;
 }
 
 .style-field {
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 12px;
 }
 
@@ -418,16 +472,42 @@ html {
 }
 
 .style-field input[type="color"] {
-  width: 100%;
-  height: 25px;
   border: none;
+  width: 30px;
+  height: 20px;
+  padding: 0;
+  background: none;
 }
 
 .style-field input[type="range"] {
-  width: 100%;
+  width: 100px;
 }
 
-/* Search Bar */
+/* Style Editor Presets */
+.style-presets {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.style-preset-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #555;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.style-preset-btn:hover {
+  transform: scale(1.2);
+  border-color: #fff;
+}
+
+/* ==========================================================================
+   10. Search Bar
+   ========================================================================== */
+
 .search-bar-wrapper {
   position: relative;
   display: flex;
@@ -483,24 +563,34 @@ html {
   background: #444;
 }
 
-/* Crater Table */
+/* ==========================================================================
+   11. Crater Table
+   ========================================================================== */
+
 .crater-table-container {
   max-height: 200px;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  font-size: 12px;
-  padding: 5px;
+  border: 1px solid #444;
+  margin-bottom: 10px;
 }
 
 .crater-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 12px;
+}
+
+.crater-table th,
+.crater-table td {
+  text-align: left;
+  padding: 4px;
+  border-bottom: 1px solid #333;
 }
 
 .crater-table th {
-  border-bottom: 1px solid #555;
-  text-align: left;
+  background: #333;
+  position: sticky;
+  top: 0;
 }
 
 .crater-table tr {
@@ -516,13 +606,17 @@ html {
 .crater-action-btn {
   flex: 1;
   padding: 4px;
-  color: #fff;
   border: 1px solid #555;
+  color: white;
   cursor: pointer;
   font-size: 11px;
+  border-radius: 3px;
 }
 
-/* Accordion Styles */
+/* ==========================================================================
+   12. Accordion
+   ========================================================================== */
+
 .accordion-section {
   border-bottom: 1px solid #444;
   display: flex;
@@ -568,18 +662,6 @@ html {
   background: rgba(0, 0, 0, 0.2);
 }
 
-.accordion-section.expanded .accordion-content {
-  display: block;
-  /* If we want it to fill remaining height, we need the parent #controls to handle flex correctly */
-}
-
-/* Adjust #controls to support full height expansion */
-#controls {
-  /* Existing styles... */
-  display: flex;
-  flex-direction: column;
-}
-
 /* When a section is expanded, make it take available space */
 .accordion-section.expanded {
   flex: 1;
@@ -593,6 +675,10 @@ html {
   height: 100%;
   overflow-y: auto;
 }
+
+/* ==========================================================================
+   13. Mosaic Catalog
+   ========================================================================== */
 
 .mosaic-catalog {
   padding: 10px;
@@ -655,6 +741,10 @@ html {
   padding: 4px 8px;
 }
 
+/* ==========================================================================
+   14. Bookmarks
+   ========================================================================== */
+
 .bookmarks-block {
   padding: 10px 0;
   border-top: 1px solid #333;
@@ -667,202 +757,10 @@ html {
   color: #eee;
 }
 
-/* Status Bar */
-#status-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 30px;
-  background: rgba(20, 20, 20, 0.95);
-  border-top: 1px solid #444;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  color: #eee;
-  font-size: 12px;
-  z-index: 1000;
-  gap: 20px;
-}
+/* ==========================================================================
+   15. Status Bar
+   ========================================================================== */
 
-.status-item {
-  width: 100%;
-  height: 25px;
-  border: none;
-}
-
-.style-field input[type="range"] {
-  width: 100%;
-}
-
-/* Search Bar */
-.search-bar-wrapper {
-  position: relative;
-  display: flex;
-  gap: 5px;
-}
-
-#jmars-search-input {
-  flex: 1;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #555;
-  background: #222;
-  color: #fff;
-}
-
-#jmars-bookmark-btn {
-  padding: 6px 10px;
-  background: #444;
-  border: 1px solid #555;
-  color: #fff;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-#jmars-search-results {
-  position: absolute;
-  top: 35px;
-  left: 0;
-  right: 0;
-  background: #222;
-  border: 1px solid #555;
-  border-radius: 4px;
-  display: none;
-  z-index: 3000;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.search-result-header {
-  padding: 5px 10px;
-  background: #333;
-  font-size: 11px;
-  color: #aaa;
-}
-
-.search-result-item {
-  padding: 8px 10px;
-  cursor: pointer;
-  border-bottom: 1px solid #333;
-}
-
-.search-result-item:hover {
-  background: #444;
-}
-
-/* Crater Table */
-.crater-table-container {
-  max-height: 200px;
-  overflow-y: auto;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  font-size: 12px;
-  padding: 5px;
-}
-
-.crater-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.crater-table th {
-  border-bottom: 1px solid #555;
-  text-align: left;
-}
-
-.crater-table tr {
-  border-bottom: 1px solid #333;
-}
-
-.crater-btn-group {
-  display: flex;
-  gap: 5px;
-  margin-bottom: 5px;
-}
-
-.crater-action-btn {
-  flex: 1;
-  padding: 4px;
-  color: #fff;
-  border: 1px solid #555;
-  cursor: pointer;
-  font-size: 11px;
-}
-
-/* Accordion Styles */
-.accordion-section {
-  border-bottom: 1px solid #444;
-  display: flex;
-  flex-direction: column;
-  /* Default collapsed state handled by content visibility */
-}
-
-.accordion-section:last-child {
-  border-bottom: none;
-}
-
-.accordion-header {
-  padding: 12px;
-  background: #333;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: none;
-}
-
-.accordion-header:hover {
-  background: #3a3a3a;
-}
-
-.accordion-header::after {
-  content: '+';
-  font-weight: normal;
-  color: #aaa;
-}
-
-.accordion-section.expanded .accordion-header::after {
-  content: '-';
-}
-
-.accordion-content {
-  display: none;
-  padding: 0;
-  overflow-y: auto;
-  flex: 1;
-  /* Allow it to grow if parent is flex column */
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.accordion-section.expanded .accordion-content {
-  display: block;
-  /* If we want it to fill remaining height, we need the parent #controls to handle flex correctly */
-}
-
-/* Adjust #controls to support full height expansion */
-#controls {
-  /* Existing styles... */
-  display: flex;
-  flex-direction: column;
-}
-
-/* When a section is expanded, make it take available space */
-.accordion-section.expanded {
-  flex: 1;
-  overflow: hidden;
-  /* Contain the scrollable content */
-}
-
-.accordion-section.expanded .accordion-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow-y: auto;
-}
-
-/* Status Bar */
 #status-bar {
   position: absolute;
   bottom: 0;
@@ -885,207 +783,27 @@ html {
   align-items: center;
 }
 
-/* Adjust map height to account for status bar */
-#map {
-  height: calc(100% - 30px);
-}
-
-/* Search Bar */
-.search-bar-wrapper {
-  position: relative;
-  display: flex;
-  gap: 5px;
-}
-
-#jmars-search-input {
-  flex: 1;
-  padding: 6px;
-  border-radius: 4px;
+/* Status Bar coordinate format toggle */
+.coord-format-btn {
+  background: none;
   border: 1px solid #555;
-  background: #222;
-  color: #fff;
-}
-
-#jmars-bookmark-btn {
-  padding: 6px 10px;
-  background: #444;
-  border: 1px solid #555;
-  color: #fff;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-#jmars-search-results {
-  position: absolute;
-  top: 35px;
-  left: 0;
-  right: 0;
-  background: #222;
-  border: 1px solid #555;
-  border-radius: 4px;
-  display: none;
-  z-index: 3000;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.search-result-header {
-  padding: 5px 10px;
-  background: #333;
-  font-size: 11px;
   color: #aaa;
-}
-
-.search-result-item {
-  padding: 8px 10px;
   cursor: pointer;
-  border-bottom: 1px solid #333;
-}
-
-.search-result-item:hover {
-  background: #444;
-}
-
-/* Crater Table */
-.crater-table-container {
-  max-height: 200px;
-  overflow-y: auto;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  font-size: 12px;
-  padding: 5px;
-}
-
-.crater-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.crater-table th {
-  border-bottom: 1px solid #555;
-  text-align: left;
-}
-
-.crater-table tr {
-  border-bottom: 1px solid #333;
-}
-
-.crater-btn-group {
-  display: flex;
-  gap: 5px;
-  margin-bottom: 5px;
-}
-
-.crater-action-btn {
-  flex: 1;
-  padding: 4px;
-  color: #fff;
-  border: 1px solid #555;
-  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
   font-size: 11px;
+  transition: color 0.15s;
 }
 
-/* Accordion Styles */
-.accordion-section {
-  border-bottom: 1px solid #444;
-  display: flex;
-  flex-direction: column;
-  /* Default collapsed state handled by content visibility */
+.coord-format-btn:hover {
+  color: #fff;
+  border-color: #888;
 }
 
-.accordion-section:last-child {
-  border-bottom: none;
-}
+/* ==========================================================================
+   16. Panner (Overview Map)
+   ========================================================================== */
 
-.accordion-header {
-  padding: 12px;
-  background: #333;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: none;
-}
-
-.accordion-header:hover {
-  background: #3a3a3a;
-}
-
-.accordion-header::after {
-  content: '+';
-  font-weight: normal;
-  color: #aaa;
-}
-
-.accordion-section.expanded .accordion-header::after {
-  content: '-';
-}
-
-.accordion-content {
-  display: none;
-  padding: 0;
-  overflow-y: auto;
-  flex: 1;
-  /* Allow it to grow if parent is flex column */
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.accordion-section.expanded .accordion-content {
-  display: block;
-  /* If we want it to fill remaining height, we need the parent #controls to handle flex correctly */
-}
-
-/* Adjust #controls to support full height expansion */
-#controls {
-  /* Existing styles... */
-  display: flex;
-  flex-direction: column;
-}
-
-/* When a section is expanded, make it take available space */
-.accordion-section.expanded {
-  flex: 1;
-  overflow: hidden;
-  /* Contain the scrollable content */
-}
-
-.accordion-section.expanded .accordion-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow-y: auto;
-}
-
-/* Status Bar */
-#status-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 30px;
-  background: rgba(20, 20, 20, 0.95);
-  border-top: 1px solid #444;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  color: #eee;
-  font-size: 12px;
-  z-index: 1000;
-  gap: 20px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-}
-
-/* Adjust map height to account for status bar */
-#map {
-  height: calc(100% - 30px);
-}
-
-/* Panner (Overview Map) */
 #jmars-panner {
   position: absolute;
   bottom: 60px;
@@ -1106,183 +824,10 @@ html {
   display: block;
 }
 
-/* Custom Leaflet Controls */
-.leaflet-bar a.reset-view-btn,
-.leaflet-bar a.north-arrow-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  background: #fff;
-  border-bottom: 1px solid #ccc;
-  color: #333;
-  text-decoration: none;
-}
+/* ==========================================================================
+   17. Custom Leaflet Controls
+   ========================================================================== */
 
-display: none;
-z-index: 3000;
-max-height: 300px;
-overflow-y: auto;
-}
-
-.search-result-header {
-  padding: 5px 10px;
-  background: #333;
-  font-size: 11px;
-  color: #aaa;
-}
-
-.search-result-item {
-  padding: 8px 10px;
-  cursor: pointer;
-  border-bottom: 1px solid #333;
-}
-
-.search-result-item:hover {
-  background: #444;
-}
-
-/* Crater Table */
-.crater-table-container {
-  max-height: 200px;
-  overflow-y: auto;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  font-size: 12px;
-  padding: 5px;
-}
-
-.crater-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.crater-table th {
-  border-bottom: 1px solid #555;
-  text-align: left;
-}
-
-.crater-table tr {
-  border-bottom: 1px solid #333;
-}
-
-.crater-btn-group {
-  display: flex;
-  gap: 5px;
-  margin-bottom: 5px;
-}
-
-.crater-action-btn {
-  flex: 1;
-  padding: 4px;
-  color: #fff;
-  border: 1px solid #555;
-  cursor: pointer;
-  font-size: 11px;
-}
-
-/* Accordion Styles */
-.accordion-section {
-  border-bottom: 1px solid #444;
-  display: flex;
-  flex-direction: column;
-  /* Default collapsed state handled by content visibility */
-}
-
-.accordion-section:last-child {
-  border-bottom: none;
-}
-
-.accordion-header {
-  padding: 12px;
-  background: #333;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: none;
-}
-
-.accordion-header:hover {
-  background: #3a3a3a;
-}
-
-.accordion-header::after {
-  content: '+';
-  font-weight: normal;
-  color: #aaa;
-}
-
-.accordion-section.expanded .accordion-header::after {
-  content: '-';
-}
-
-.accordion-content {
-  display: none;
-  padding: 0;
-  overflow-y: auto;
-  flex: 1;
-  /* Allow it to grow if parent is flex column */
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.accordion-section.expanded .accordion-content {
-  display: block;
-  /* If we want it to fill remaining height, we need the parent #controls to handle flex correctly */
-}
-
-/* Adjust #controls to support full height expansion */
-#controls {
-  /* Existing styles... */
-  display: flex;
-  flex-direction: column;
-}
-
-/* When a section is expanded, make it take available space */
-.accordion-section.expanded {
-  flex: 1;
-  overflow: hidden;
-  /* Contain the scrollable content */
-}
-
-.accordion-section.expanded .accordion-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow-y: auto;
-}
-
-/* Status Bar */
-#status-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 30px;
-  background: rgba(20, 20, 20, 0.95);
-  border-top: 1px solid #444;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  color: #eee;
-  font-size: 12px;
-  z-index: 1000;
-  gap: 20px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-}
-
-/* Adjust map height to account for status bar */
-#map {
-  height: calc(100% - 30px);
-}
-
-/* Custom Leaflet Controls */
 .leaflet-bar a.reset-view-btn,
 .leaflet-bar a.north-arrow-btn {
   display: flex;
@@ -1306,11 +851,13 @@ overflow-y: auto;
   display: block;
 }
 
-/* Collapsible Sections */
+/* ==========================================================================
+   18. Collapsible Layer Sections
+   ========================================================================== */
+
 .layer-section {
   margin-bottom: 10px;
 }
-
 
 .layer-filter-wrap {
   padding: 8px 6px 4px;
@@ -1339,7 +886,7 @@ overflow-y: auto;
 }
 
 #tools-list {
-    margin-top: 10px;
+  margin-top: 10px;
 }
 
 .layer-section-header {
@@ -1363,6 +910,21 @@ overflow-y: auto;
 .layer-title {
   flex: 1;
 }
+
+/* Icon used in collapsible section headers */
+.icon {
+  font-size: 14px;
+  transition: transform 0.2s;
+}
+
+/* Rotate the expand/collapse icon when section is open */
+.layer-section.expanded > .layer-section-header .icon {
+  transform: rotate(45deg);
+}
+
+/* ==========================================================================
+   19. Tool Info Popover
+   ========================================================================== */
 
 .tool-info-btn {
   background: transparent;
@@ -1437,172 +999,62 @@ overflow-y: auto;
   background: #555;
 }
 
-.tool-btn.active {
-    background: #1971c2; /* Blue */
-}
-
-.crater-table-container {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #444;
-    margin-bottom: 10px;
-}
-
-.crater-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-}
-
-.crater-table th, .crater-table td {
-    text-align: left;
-    padding: 4px;
-    border-bottom: 1px solid #333;
-}
-
-.crater-table th {
-    background: #333;
-    position: sticky;
-    top: 0;
-}
-
-.crater-btn-group {
-    display: flex;
-    gap: 5px;
-    margin-bottom: 5px;
-}
-
-.crater-action-btn {
-    flex: 1;
-    padding: 4px;
-    border: 1px solid #555;
-    color: white;
-    cursor: pointer;
-    font-size: 11px;
-    border-radius: 3px;
-}
+/* ==========================================================================
+   20. Chart Container
+   ========================================================================== */
 
 .chart-container {
-    margin-top: 10px;
-    width: 100%;
-    height: 150px;
-    background: #222;
-    border: 1px solid #444;
+  margin-top: 10px;
+  width: 100%;
+  height: 150px;
+  background: #222;
+  border: 1px solid #444;
 }
 
-/* Nomenclature Labels */
+/* ==========================================================================
+   21. Nomenclature Labels
+   ========================================================================== */
+
 .nomenclature-label {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-weight: bold;
-    font-size: 12px;
-    text-shadow: 1px 1px 2px black, 0 0 5px black;
-    pointer-events: none; /* Don't block clicks */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: bold;
+  font-size: 12px;
+  text-shadow: 1px 1px 2px black, 0 0 5px black;
+  pointer-events: none; /* Don't block clicks */
 }
 
-/* Investigate Tool Popup */
+/* ==========================================================================
+   22. Investigate Tool Popup
+   ========================================================================== */
+
 .investigate-layer-result {
-    margin-bottom: 8px;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 4px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
 }
 
 .investigate-layer-result:last-child {
-
-    border-bottom: none;
-
+  border-bottom: none;
 }
 
-
-
-/* Body Selector */
+/* ==========================================================================
+   23. Body Selector
+   ========================================================================== */
 
 .body-selector-dropdown {
-
-    background: #222;
-
-    color: white;
-
-    border: 1px solid #555;
-
-    padding: 4px;
-
-    border-radius: 3px;
-
-    width: 100%;
-
-    margin-top: 5px;
-
-    cursor: pointer;
-
+  background: #222;
+  color: white;
+  border: 1px solid #555;
+  padding: 4px;
+  border-radius: 3px;
+  width: 100%;
+  margin-top: 5px;
+  cursor: pointer;
 }
 
-
-
-/* Style Editor */
-
-#style-editor {
-
-    display: none;
-
-    position: absolute;
-
-    z-index: 2000;
-
-    background: #222;
-
-    border: 1px solid #555;
-
-    padding: 10px;
-
-    border-radius: 4px;
-
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-
-    min-width: 200px;
-
-    color: #eee;
-
-}
-
-
-
-.style-field {
-
-    margin-bottom: 8px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    font-size: 12px;
-
-}
-
-
-
-.style-field input[type="color"] {
-
-    border: none;
-
-    width: 30px;
-
-    height: 20px;
-
-    padding: 0;
-
-    background: none;
-
-}
-
-
-
-.style-field input[type="range"] {
-
-    width: 100px;
-
-}
+/* ==========================================================================
+   24. Quick Actions
+   ========================================================================== */
 
 .quick-actions {
   background: #171717;
@@ -1661,9 +1113,9 @@ overflow-y: auto;
   font-size: 11px;
 }
 
-/* ==========================================
-   P1/P2 Feature Styles
-   ========================================== */
+/* ==========================================================================
+   25. P1/P2 Feature Styles
+   ========================================================================== */
 
 /* Stamp Panel */
 .stamp-panel {
@@ -1886,51 +1338,19 @@ overflow-y: auto;
   border-radius: 4px;
 }
 
-/* Style Editor Presets */
-.style-presets {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-}
+/* ==========================================================================
+   26. Drag & Drop Overlay
+   ========================================================================== */
 
-.style-preset-btn {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid #555;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-
-.style-preset-btn:hover {
-  transform: scale(1.2);
-  border-color: #fff;
-}
-
-/* Drag & Drop overlay */
 .drag-over {
   outline: 3px dashed #4dabf7 !important;
   outline-offset: -3px;
 }
 
-/* Status Bar coordinate format */
-.coord-format-btn {
-  background: none;
-  border: 1px solid #555;
-  color: #aaa;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 11px;
-  transition: color 0.15s;
-}
+/* ==========================================================================
+   27. Keyboard Shortcuts Help
+   ========================================================================== */
 
-.coord-format-btn:hover {
-  color: #fff;
-  border-color: #888;
-}
-
-/* Keyboard Shortcuts Help */
 .shortcut-grid {
   display: flex;
   flex-direction: column;
@@ -1971,7 +1391,10 @@ overflow-y: auto;
   color: #bbb;
 }
 
-/* Info Panel */
+/* ==========================================================================
+   28. Info Panel
+   ========================================================================== */
+
 .info-section {
   margin-bottom: 12px;
   padding-bottom: 8px;
@@ -1997,7 +1420,10 @@ overflow-y: auto;
   font-size: 11px;
 }
 
-/* Color Stretch Control */
+/* ==========================================================================
+   29. Color Stretch Control
+   ========================================================================== */
+
 #color-stretch-panel {
   position: absolute;
   right: 60px;
@@ -2028,7 +1454,10 @@ overflow-y: auto;
   border-color: #4dabf7;
 }
 
-/* Hillshade tile blending */
+/* ==========================================================================
+   30. Hillshade Tile Blending
+   ========================================================================== */
+
 .hillshade-tile {
   mix-blend-mode: multiply;
 }

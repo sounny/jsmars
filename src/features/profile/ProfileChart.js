@@ -1,4 +1,17 @@
+import { EVENTS } from '../../constants.js';
+
+/**
+ * @module ProfileChart
+ * @description Canvas-based elevation profile chart renderer.
+ *
+ * Listens for PROFILE_GENERATED events and draws one or more
+ * elevation profiles onto a 2D canvas element.
+ */
 export class ProfileChart {
+    /**
+     * Create a ProfileChart.
+     * @param {string} containerId - DOM element ID for the chart container.
+     */
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.canvas = null;
@@ -11,11 +24,14 @@ export class ProfileChart {
 
         this.init();
 
-        document.addEventListener('jmars-profile-generated', (e) => {
+        document.addEventListener(EVENTS.PROFILE_GENERATED, (e) => {
             this.draw(e.detail.profiles);
         });
     }
 
+    /**
+     * Build the initial chart UI (canvas, export button).
+     */
     init() {
         this.container.innerHTML = '';
         
@@ -53,6 +69,9 @@ export class ProfileChart {
         this.ctx.fillText('No profile data', this.canvas.width / 2, this.canvas.height / 2);
     }
 
+    /**
+     * Export the current chart as a PNG image download.
+     */
     exportPNG() {
         const link = document.createElement('a');
         link.download = 'profile_chart.png';
@@ -60,6 +79,10 @@ export class ProfileChart {
         link.click();
     }
 
+    /**
+     * Handle mouse-move on the canvas for interactive tooltips.
+     * @param {MouseEvent} e - Native mouse event.
+     */
     onMouseMove(e) {
         if (!this.lastProfiles || this.lastProfiles.length === 0) return;
 
@@ -113,6 +136,10 @@ export class ProfileChart {
         }
     }
 
+    /**
+     * Draw all profiles onto the canvas.
+     * @param {Array<object>} profiles - Array of { color, data: [{dist, elev}] }.
+     */
     draw(profiles) {
         const filteredProfiles = (profiles || [])
             .map(p => ({
@@ -154,8 +181,8 @@ export class ProfileChart {
             });
         });
 
-        // Add padding to Y
-        const range = maxElev - minElev;
+        // Add padding to Y; enforce minimum range to avoid divide-by-zero on flat terrain
+        const range = Math.max(maxElev - minElev, 1);
         minElev -= range * 0.1;
         maxElev += range * 0.1;
 

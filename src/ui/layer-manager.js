@@ -1,7 +1,23 @@
+/**
+ * @module layer-manager
+ * @description UI component for managing map layers.
+ *
+ * Displays active layers (with opacity, visibility, reorder controls) and
+ * available layers (with search filter). Syncs bidirectionally between
+ * jmarsState and the JMARSMap instance.
+ */
 import { jmarsState } from '../jmars-state.js';
 import { EVENTS } from '../constants.js';
 
+/**
+ * @class LayerManager
+ * @description Interactive layer management panel for the sidebar.
+ */
 export class LayerManager {
+  /**
+   * @param {string|HTMLElement} containerOrId - Container element or its DOM ID.
+   * @param {JMARSMap} jmarsMap - The map instance for layer operations.
+   */
   constructor(containerOrId, jmarsMap) {
     this.jmarsMap = jmarsMap;
     if (typeof containerOrId === 'string') {
@@ -150,6 +166,11 @@ export class LayerManager {
   }
 
   render() {
+    // Save filter input focus state before clearing DOM
+    const hadFilterFocus = document.activeElement &&
+      document.activeElement.classList.contains('layer-filter-input');
+    const cursorPos = hadFilterFocus ? document.activeElement.selectionStart : 0;
+
     this.container.innerHTML = '';
 
     // Helper to find config
@@ -255,6 +276,16 @@ export class LayerManager {
     });
     availableSection.appendChild(availableContent);
     this.container.appendChild(availableSection);
+
+    // Restore focus to the filter input if it had focus before render
+    if (hadFilterFocus) {
+      const newInput = this.container.querySelector('.layer-filter-input');
+      if (newInput) {
+        newInput.focus();
+        // Restore cursor position so the user doesn't lose their place
+        newInput.setSelectionRange(cursorPos, cursorPos);
+      }
+    }
   }
 
   createSectionHeader(title, stateKey) {

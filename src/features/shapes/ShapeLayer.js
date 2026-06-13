@@ -452,15 +452,28 @@ export class ShapeLayer {
    * Export current shapes to KML file download.
    */
   downloadKML() {
+    /**
+     * Escape XML special characters to produce valid KML.
+     * @param {string} str - Raw string.
+     * @returns {string} XML-safe string.
+     */
+    const escapeXml = (str) =>
+      str.replace(/&/g, '&amp;')
+         .replace(/</g, '&lt;')
+         .replace(/>/g, '&gt;')
+         .replace(/"/g, '&quot;');
+
     let kml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     kml += '<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n';
     kml += `<name>jsMars Shapes</name>\n`;
 
     this.shapes.forEach(shape => {
       const gj = shape.layer.toGeoJSON();
+      const safeName = escapeXml(shape.attributes.name || '');
+      const safeDesc = escapeXml(shape.attributes.description || '');
       kml += '<Placemark>\n';
-      kml += `  <name>${shape.attributes.name || ''}</name>\n`;
-      kml += `  <description>${shape.attributes.description || ''}</description>\n`;
+      kml += `  <name>${safeName}</name>\n`;
+      kml += `  <description>${safeDesc}</description>\n`;
 
       if (gj.geometry.type === 'Point') {
         const [lon, lat] = gj.geometry.coordinates;

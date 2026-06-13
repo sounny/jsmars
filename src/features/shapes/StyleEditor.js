@@ -1,8 +1,20 @@
 /**
- * StyleEditor provides a floating panel for editing vector shape styles.
+ * @module features/shapes/StyleEditor
+ * @description Floating editor panel for modifying vector shape visual styles
+ * in real time. Supports stroke and fill color, opacity, weight, and dash
+ * patterns, along with a row of color preset buttons for quick theming.
+ */
+
+/**
+ * @class StyleEditor
+ * @description Provides a floating panel for editing vector shape styles.
  * Enhanced with dash patterns, fill opacity, stroke opacity, and presets.
  */
 export class StyleEditor {
+  /**
+   * Creates the StyleEditor and appends it to the document body.
+   * @param {L.Map} map - The Leaflet map instance associated with the shapes.
+   */
   constructor(map) {
     this.map = map;
     this.container = null;

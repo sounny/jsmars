@@ -2,25 +2,37 @@ import { JMARS_CONFIG } from '../jmars-config.js';
 import { jmarsState } from '../jmars-state.js';
 import { EVENTS } from '../constants.js';
 
+/**
+ * @module BodySelector
+ * @description Dropdown selector for switching planetary bodies (Mars, Moon, Earth).
+ * Reads available bodies from JMARS_CONFIG and dispatches BODY_CHANGED events
+ * when the user selects a different body. Also listens for external body changes
+ * (e.g., from session restore) to keep the dropdown in sync.
+ */
 export class BodySelector {
+    /**
+     * Create a new BodySelector.
+     * @param {string} containerId - DOM id of the container element
+     */
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         if (!this.container) return;
-        
+
         this.init();
     }
 
+    /**
+     * Build the select dropdown, populate options from config, and bind events.
+     * @private
+     */
     init() {
         console.debug('BodySelector initializing...');
-        if (!this.container) {
-            console.error('BodySelector container not found!');
-            return;
-        }
 
         // Create dropdown
         const select = document.createElement('select');
         select.className = 'body-selector-dropdown';
-        
+        select.setAttribute('aria-label', 'Select planetary body');
+
         // Populate options
         const bodies = JMARS_CONFIG.bodies;
         if (bodies) {

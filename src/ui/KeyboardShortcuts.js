@@ -1,7 +1,8 @@
 import { EVENTS } from '../constants.js';
 
 /**
- * KeyboardShortcuts provides global keyboard shortcut handling for jsMars.
+ * @module KeyboardShortcuts
+ * @description Provides global keyboard shortcut handling for jsMars.
  * Matches common shortcuts from the JMARS desktop application.
  *
  * Shortcuts:
@@ -10,12 +11,12 @@ import { EVENTS } from '../constants.js';
  *   Ctrl+K       Quick actions palette
  *   Ctrl+Shift+E Export map
  *   Ctrl+G       Go to coordinates (prompt)
- *   Ctrl+Z       Undo last shape action
  *   Escape       Cancel current tool
  *   ?            Show shortcuts help
  *   1-5          Quick zoom levels
  *   + / -        Zoom in / out
  *   R            Reset view
+ *   F            Toggle fullscreen
  */
 export class KeyboardShortcuts {
   /**
@@ -165,8 +166,8 @@ export class KeyboardShortcuts {
     this.helpModal.className = 'welcome-modal-backdrop';
     this.helpModal.style.display = 'none';
     this.helpModal.innerHTML = `
-      <div class="welcome-modal" style="max-width:480px; text-align:left">
-        <h2 style="margin-top:0; text-align:center">Keyboard Shortcuts</h2>
+      <div class="welcome-modal" style="max-width:480px; text-align:left" role="dialog" aria-modal="true" aria-labelledby="keyboard-help-title">
+        <h2 id="keyboard-help-title" style="margin-top:0; text-align:center">Keyboard Shortcuts</h2>
         <div class="shortcut-grid">
           <div class="shortcut-section">
             <h3>Navigation</h3>

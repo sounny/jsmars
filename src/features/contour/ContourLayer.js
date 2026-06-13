@@ -219,7 +219,7 @@ export class ContourLayer {
       REQUEST: 'GetMap',
       LAYERS: this.demLayer,
       STYLES: '',
-      CRS: 'EPSG:4326',
+      SRS: 'EPSG:4326',
       BBOX: `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`,
       WIDTH: width,
       HEIGHT: height,

@@ -1,7 +1,15 @@
+/**
+ * @module features/stamp/StampQueryPanel
+ * @description UI panel for querying planetary image stamp footprints. Lets the
+ * user choose an instrument, set a result limit, and search the current map
+ * view. Displays results in a scrollable table with click-to-zoom selection
+ * and CSV export support.
+ */
 import { EVENTS } from '../../constants.js';
 
 /**
- * StampQueryPanel provides a UI for querying the stamp layer.
+ * @class StampQueryPanel
+ * @description Provides a UI for querying the stamp layer.
  * Shows instrument selector, filter controls, and search actions.
  */
 export class StampQueryPanel {

@@ -1,7 +1,30 @@
+/**
+ * @module QuickActions
+ * @description Provides a quick command palette for common actions.
+ * Users type commands like "Save Session" or "Reset View" and the
+ * palette dispatches to registered handler callbacks.
+ *
+ * NOTE: The Ctrl+K keyboard shortcut is handled globally by
+ * KeyboardShortcuts.js; this module only provides the UI and
+ * command execution.
+ */
 export class QuickActions {
+    /**
+     * Create a new QuickActions panel.
+     * @param {string} containerId - DOM id of the container element
+     * @param {object} [options] - Callback handlers for each command
+     * @param {Function} [options.onSaveSession] - Handler for "Save Session"
+     * @param {Function} [options.onLoadSession] - Handler for "Load Session"
+     * @param {Function} [options.onResetView] - Handler for "Reset View"
+     * @param {Function} [options.onOpenLayers] - Handler for "Open Layer Manager"
+     * @param {Function} [options.onOpenTools] - Handler for "Open Tools"
+     * @param {Function} [options.onToggleSidebar] - Handler for "Toggle Sidebar"
+     * @param {Function} [options.onStatus] - Callback for status/feedback messages
+     */
     constructor(containerId, options = {}) {
         this.container = document.getElementById(containerId);
         this.options = options;
+        /** @type {HTMLInputElement|null} */
         this.commandInput = null;
 
         if (!this.container) return;
@@ -9,6 +32,10 @@ export class QuickActions {
         this.bindEvents();
     }
 
+    /**
+     * Build the quick actions DOM (input, run button, datalist, hint).
+     * @private
+     */
     render() {
         this.container.innerHTML = `
             <div class="quick-actions" aria-label="Quick actions panel">
@@ -39,6 +66,11 @@ export class QuickActions {
         this.commandInput = this.container.querySelector('#quick-action-input');
     }
 
+    /**
+     * Bind click and keyboard events for the run button and input.
+     * NOTE: Ctrl+K is NOT handled here; KeyboardShortcuts.js owns that binding.
+     * @private
+     */
     bindEvents() {
         const runBtn = this.container.querySelector('#quick-action-run');
         if (!runBtn || !this.commandInput) return;
@@ -56,16 +88,13 @@ export class QuickActions {
                 runCommand();
             }
         });
-
-        document.addEventListener('keydown', (event) => {
-            const isShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
-            if (!isShortcut) return;
-            event.preventDefault();
-            this.commandInput.focus();
-            this.commandInput.select();
-        });
     }
 
+    /**
+     * Execute a text command by matching against known keywords.
+     * @param {string} command - Normalized lowercase command string
+     * @private
+     */
     executeCommand(command) {
         const normalized = command.replace(/\s+/g, ' ');
 
@@ -108,6 +137,12 @@ export class QuickActions {
         this.announce(`Unknown command: ${command}`);
     }
 
+    /**
+     * Provide feedback for a command result.
+     * Sets aria-invalid when the command was not recognized.
+     * @param {string} message - Feedback message
+     * @private
+     */
     announce(message) {
         this.commandInput.setAttribute('aria-invalid', message.startsWith('Unknown') ? 'true' : 'false');
         const statusEmitter = this.options.onStatus;

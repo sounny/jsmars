@@ -1,8 +1,36 @@
+/**
+ * @module mola-dem
+ * @description MOLA DEM elevation sampling via Cloud-Optimized GeoTIFF.
+ * Lazy-loads the GeoTIFF library from CDN, then reads elevation values
+ * from the USGS 128ppd MOLA dataset using windowed raster reads.
+ *
+ * Both the script loader and the MOLA context are cached as promises.
+ * If either rejects, the cached promise is reset to null so that
+ * subsequent calls can retry instead of permanently failing.
+ */
+
+/** @type {string} URL to the MOLA 128ppd Cloud-Optimized GeoTIFF */
 const MOLA_TIFF_URL = 'https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/mola128_88Nto88S_Simp_clon0.tif';
 
+/**
+ * Cached promise for the GeoTIFF script load.
+ * Reset to null on failure so retries work.
+ * @type {Promise<void>|null}
+ */
 let geoTiffScriptPromise = null;
+
+/**
+ * Cached promise for the MOLA context (image metadata).
+ * Reset to null on failure so retries work.
+ * @type {Promise<object>|null}
+ */
 let molaContextPromise = null;
 
+/**
+ * Lazy-load the GeoTIFF library from CDN.
+ * Caches the loading promise; resets it on failure so retries work.
+ * @returns {Promise<void>} Resolves when window.GeoTIFF is available
+ */
 function loadGeoTiffScript() {
   if (window.GeoTIFF) return Promise.resolve();
   if (geoTiffScriptPromise) return geoTiffScriptPromise;
@@ -17,9 +45,19 @@ function loadGeoTiffScript() {
     document.head.appendChild(script);
   });
 
+  // Reset on rejection so the next call can retry
+  geoTiffScriptPromise.catch(() => {
+    geoTiffScriptPromise = null;
+  });
+
   return geoTiffScriptPromise;
 }
 
+/**
+ * Open the MOLA GeoTIFF and extract image metadata.
+ * Caches the context promise; resets it on failure so retries work.
+ * @returns {Promise<{image: object, bbox: number[], width: number, height: number, resX: number, resY: number, noData: number|null, origin: number[]}>}
+ */
 async function getMolaContext() {
   if (molaContextPromise) return molaContextPromise;
 
@@ -44,11 +82,24 @@ async function getMolaContext() {
     return { image, bbox, width, height, resX, resY, noData, origin };
   })();
 
+  // Reset on rejection so the next call can retry
+  molaContextPromise.catch(() => {
+    molaContextPromise = null;
+  });
+
   return molaContextPromise;
 }
 
+/**
+ * Sample elevation values from the MOLA DEM for an array of points.
+ * Uses windowed raster reads to minimize data transfer.
+ *
+ * @param {Array<{lat: number, lng?: number, lon?: number}>} points
+ *   Array of point objects with lat and lng (or lon) properties.
+ * @returns {Promise<Array<number|null>>} Elevation in meters for each point,
+ *   or null if the point is outside the dataset or has noData.
+ */
 async function sampleElevations(points) {
-  // points: [{ lat, lng|lon }]
   const ctx = await getMolaContext();
   const { image, bbox, width, height, resX, resY, noData, origin } = ctx;
   const [minLon, minLat, maxLon, maxLat] = bbox;
@@ -57,6 +108,11 @@ async function sampleElevations(points) {
   const lonSpan = resX * width;
   const latSpan = resY * height;
 
+  /**
+   * Normalize a longitude value into the dataset's coordinate range.
+   * @param {number} lon - Input longitude
+   * @returns {number} Adjusted longitude within dataset bounds
+   */
   const normalizeLon = (lon) => {
     let adjusted = lon;
     // Pull into the nearest 360-degree wrap relative to origin.
@@ -116,6 +172,10 @@ async function sampleElevations(points) {
   });
 }
 
+/**
+ * Public API for MOLA DEM elevation queries.
+ * @type {{SOURCE_ID: string, SOURCE_NAME: string, URL: string, ensureLoaded: Function, sampleElevations: Function}}
+ */
 export const molaDem = {
   SOURCE_ID: 'mola_dem',
   SOURCE_NAME: 'MOLA DEM (USGS 128ppd)',

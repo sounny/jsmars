@@ -1,19 +1,47 @@
 import { JMARS_CONFIG } from '../jmars-config.js';
 import { EVENTS } from '../constants.js';
 
+/**
+ * @module Panner
+ * @description A small overview mini-map that shows the main map's
+ * current viewport as a rectangle overlay. Clicking the panner
+ * re-centers the main map at the clicked location.
+ *
+ * Listens for body changes to swap its base layer. Uses 'moveend'
+ * instead of 'move' to avoid continuous redraws during panning.
+ */
 export class Panner {
+  /**
+   * Create a new Panner.
+   * @param {object} jmarsMap - The main JmarsMap instance
+   * @param {L.Map} jmarsMap.map - The Leaflet map
+   * @param {string} [jmarsMap.currentBody] - Current body key
+   */
   constructor(jmarsMap) {
     this.mainMap = jmarsMap.map;
     this.currentBody = jmarsMap.currentBody || (JMARS_CONFIG.body || 'mars').toLowerCase();
+    /** @type {HTMLDivElement|null} */
     this.container = null;
+    /** @type {L.Map|null} */
     this.miniMap = null;
+    /** @type {L.Rectangle|null} */
     this.rect = null;
-    this.isOpen = false;
+    /**
+     * Whether the panner is visible. Starts true so the initial
+     * update() call in init() actually renders the viewport rect.
+     * @type {boolean}
+     */
+    this.isOpen = true;
+    /** @type {L.TileLayer|null} */
     this.baseLayer = null;
 
     this.init();
   }
 
+  /**
+   * Build the panner DOM and mini-map, add event listeners.
+   * @private
+   */
   init() {
     // Create container
     this.container = document.createElement('div');
@@ -42,8 +70,8 @@ export class Panner {
     // Add View Rect
     this.rect = L.rectangle(this.mainMap.getBounds(), { color: "#d6336c", weight: 1, fillOpacity: 0.2 }).addTo(this.miniMap);
 
-    // Sync logic
-    this.mainMap.on('move', () => this.update());
+    // Sync on moveend (not 'move') to avoid continuous redraws while dragging
+    this.mainMap.on('moveend', () => this.update());
     this.mainMap.on('zoomend', () => this.update());
 
     // Clicking panner recenters main map at same zoom
@@ -61,11 +89,16 @@ export class Panner {
       this.update(true);
     });
 
-    // Initial update
+    // Initial update runs because isOpen defaults to true
     this.update();
   }
 
-  update() {
+  /**
+   * Sync the viewport rectangle and center the mini-map.
+   * No-op if the panner is not visible.
+   * @param {boolean} [_force] - Unused; kept for call-site compat
+   */
+  update(_force) {
     if (!this.isOpen) return;
 
     const bounds = this.mainMap.getBounds();
@@ -78,6 +111,10 @@ export class Panner {
     this.miniMap.setView(center, zoom);
   }
 
+  /**
+   * Set the base tile layer for the mini-map based on the body key.
+   * @param {string} bodyKey - Body identifier (e.g. 'mars', 'moon')
+   */
   setBaseLayer(bodyKey) {
     const layerCfg = this.getDefaultLayerConfig(bodyKey);
     if (!layerCfg) return;
@@ -101,6 +138,12 @@ export class Panner {
     }
   }
 
+  /**
+   * Look up the default layer config for a given body.
+   * @param {string} bodyKey - Body identifier
+   * @returns {object|null} Layer config object, or null
+   * @private
+   */
   getDefaultLayerConfig(bodyKey) {
     const body = JMARS_CONFIG.bodies[bodyKey];
     if (!body || !Array.isArray(body.layers) || body.layers.length === 0) return null;
@@ -108,6 +151,12 @@ export class Panner {
     return body.layers.find(l => l.id === defaultId) || body.layers[0];
   }
 
+  /**
+   * Create a Leaflet tile layer from a config object.
+   * @param {object} layerConfig - Layer configuration
+   * @returns {L.TileLayer|null}
+   * @private
+   */
   createLeafletLayer(layerConfig) {
     if (!layerConfig) return null;
     if (layerConfig.type === 'wms') {
@@ -116,6 +165,10 @@ export class Panner {
     return L.tileLayer(layerConfig.url, layerConfig.options || {});
   }
 
+  /**
+   * Show or hide the panner.
+   * @param {boolean} show - Whether to show the panner
+   */
   toggle(show) {
     this.isOpen = show;
     if (show) {

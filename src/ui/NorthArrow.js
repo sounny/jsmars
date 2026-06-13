@@ -1,16 +1,27 @@
-import { JMARS_CONFIG } from '../jmars-config.js';
-
 /**
- * North Arrow Control
- * Simple gray button pointing North.
+ * @module NorthArrow
+ * @description North Arrow Leaflet control.
+ * Displays a simple gray arrow icon pointing North.
+ * Non-interactive; serves as a visual orientation indicator.
  */
 export class NorthArrow {
+  /**
+   * Create a NorthArrow control.
+   * @param {L.Map} map - Leaflet map instance
+   * @param {object} [options] - Configuration options
+   * @param {string} [options.position='topleft'] - Leaflet control position
+   */
   constructor(map, options = {}) {
     this.map = map;
     this.options = Object.assign({ position: 'topleft' }, options);
+    /** @type {L.Control|null} */
     this.control = null;
   }
 
+  /**
+   * Add the North Arrow control to the map.
+   * No-op if already added or map is missing.
+   */
   add() {
     if (!this.map || this.control) return;
 
@@ -39,6 +50,9 @@ export class NorthArrow {
     this.control = control;
   }
 
+  /**
+   * Remove the North Arrow control from the map.
+   */
   remove() {
     if (this.control) {
       this.control.remove();
@@ -46,6 +60,10 @@ export class NorthArrow {
     }
   }
 
+  /**
+   * Toggle the North Arrow on or off.
+   * @param {boolean} isActive - Whether to show the control
+   */
   toggle(isActive) {
     if (isActive) this.add();
     else this.remove();

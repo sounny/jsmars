@@ -3,7 +3,18 @@ import { jmarsState } from '../../jmars-state.js';
 import { molaDem } from '../../util/mola-dem.js';
 import { EVENTS } from '../../constants.js';
 
+/**
+ * @module EnhancedProfileTool
+ * @description Linear elevation profile tool.
+ *
+ * Lets the user draw a polyline on the map, then samples
+ * elevation data along the line and dispatches PROFILE_GENERATED.
+ */
 export class EnhancedProfileTool {
+    /**
+     * Create an EnhancedProfileTool.
+     * @param {L.Map} map - The Leaflet map instance.
+     */
     constructor(map) {
         this.map = map;
         this.isActive = false;
@@ -39,6 +50,9 @@ export class EnhancedProfileTool {
         document.addEventListener(EVENTS.BODY_CHANGED, () => this.deactivate());
     }
 
+    /**
+     * Activate the profile tool and begin polyline drawing.
+     */
     activate() {
         if (this.isActive) return;
         this.isActive = true;
@@ -63,6 +77,9 @@ export class EnhancedProfileTool {
         this.map.getContainer().style.cursor = 'crosshair';
     }
 
+    /**
+     * Deactivate the profile tool and unregister draw listeners.
+     */
     deactivate() {
         if (!this.isActive) return;
         this.isActive = false;
@@ -80,12 +97,19 @@ export class EnhancedProfileTool {
         // Standard JMARS behavior: Layer stays. 
     }
 
+    /**
+     * Clear all profile lines and data from the map.
+     */
     clear() {
         this.featureGroup.clearLayers();
         this.profileData = [];
-        document.dispatchEvent(new CustomEvent('jmars-profile-generated', { detail: { profiles: [] } }));
+        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles: [] } }));
     }
 
+    /**
+     * Handle draw:created event from Leaflet.Draw.
+     * @param {object} e - Leaflet draw event.
+     */
     onDrawCreated(e) {
         const layer = e.layer;
         this.featureGroup.addLayer(layer);
@@ -108,6 +132,10 @@ export class EnhancedProfileTool {
         // Handled by deactivate called in onDrawCreated usually.
     }
 
+    /**
+     * Calculate elevation profile along the drawn polyline.
+     * @param {L.Polyline} layer - The drawn polyline layer.
+     */
     async calculateProfile(layer) {
         const latlngs = layer.getLatLngs();
         // Flatten if nested (Leaflet 1.0+ handles multi-polylines differently sometimes)
@@ -120,6 +148,13 @@ export class EnhancedProfileTool {
         let totalDist = 0;
         for (let i = 0; i < latlngs.length - 1; i++) {
             totalDist += latlngs[i].distanceTo(latlngs[i+1]);
+        }
+
+        // Guard: avoid division by zero on zero-length lines
+        if (totalDist === 0) {
+            this.profileData = [];
+            document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles: [] } }));
+            return;
         }
 
         const stepSize = totalDist / targetSamples; 
@@ -163,9 +198,12 @@ export class EnhancedProfileTool {
             data: profileData
         }];
 
-        document.dispatchEvent(new CustomEvent('jmars-profile-generated', { detail: { profiles: chartData } }));
+        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles: chartData } }));
     }
 
+    /**
+     * Export the current profile data as a CSV file download.
+     */
     exportCSV() {
         if (this.profileData.length === 0) return;
         
@@ -217,6 +255,12 @@ export class EnhancedProfileTool {
         selectEl.value = this.currentSourceId;
     }
 
+    /**
+     * Populate elevation values for an array of sample points.
+     * Uses the MOLA DEM for Mars; falls back to WMS GetFeatureInfo for others.
+     * @param {Array<object>} samples - Array of { dist, lat, lng }.
+     * @returns {Promise<Array<object>>} Samples enriched with elev property.
+     */
     async populateElevations(samples) {
         const body = (jmarsState.get('body') || 'mars').toLowerCase();
         const sources = this.elevationSources[body] || [];

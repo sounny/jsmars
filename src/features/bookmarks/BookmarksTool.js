@@ -1,6 +1,17 @@
-import { jmarsState } from '../../jmars-state.js';
-
+/**
+ * @module BookmarksTool
+ * @description Provides a UI for saving, listing, navigating to,
+ * and deleting map view bookmarks.
+ *
+ * Bookmarks are persisted in localStorage under the key 'jmars_bookmarks'
+ * (matching the key used by the search/Bookmarks.js module).
+ */
 export class BookmarksTool {
+    /**
+     * Create a BookmarksTool.
+     * @param {L.Map} map - The Leaflet map instance.
+     * @param {string} containerId - DOM element ID for the bookmarks panel.
+     */
     constructor(map, containerId) {
         this.map = map;
         this.container = document.getElementById(containerId);
@@ -11,13 +22,19 @@ export class BookmarksTool {
         }
     }
 
+    /**
+     * Load stored bookmarks and render the initial UI.
+     */
     init() {
         this.loadFromStorage();
         this.render();
     }
 
+    /**
+     * Load bookmarks from localStorage.
+     */
     loadFromStorage() {
-        const stored = localStorage.getItem('jsmars_bookmarks');
+        const stored = localStorage.getItem('jmars_bookmarks');
         if (stored) {
             try {
                 this.bookmarks = JSON.parse(stored);
@@ -28,10 +45,17 @@ export class BookmarksTool {
         }
     }
 
+    /**
+     * Persist current bookmarks to localStorage.
+     */
     saveToStorage() {
-        localStorage.setItem('jsmars_bookmarks', JSON.stringify(this.bookmarks));
+        localStorage.setItem('jmars_bookmarks', JSON.stringify(this.bookmarks));
     }
 
+    /**
+     * Save the current map view as a new bookmark.
+     * Prompts the user for a name.
+     */
     addCurrentView() {
         const center = this.map.getCenter();
         const zoom = this.map.getZoom();
@@ -39,7 +63,7 @@ export class BookmarksTool {
         
         if (name) {
             this.bookmarks.push({
-                id: Date.now(),
+                id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 name: name,
                 lat: center.lat,
                 lng: center.lng,
@@ -50,10 +74,18 @@ export class BookmarksTool {
         }
     }
 
+    /**
+     * Pan and zoom the map to a saved bookmark.
+     * @param {object} bookmark - Bookmark record with lat, lng, zoom.
+     */
     goTo(bookmark) {
         this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
     }
 
+    /**
+     * Delete a bookmark by ID after confirmation.
+     * @param {number} id - Bookmark ID.
+     */
     remove(id) {
         if (confirm('Delete this bookmark?')) {
             this.bookmarks = this.bookmarks.filter(b => b.id !== id);
@@ -62,6 +94,9 @@ export class BookmarksTool {
         }
     }
 
+    /**
+     * Render the bookmarks list UI.
+     */
     render() {
         this.container.innerHTML = '';
         
@@ -124,20 +159,22 @@ export class BookmarksTool {
         this.container.appendChild(wrapper);
     }
     
-    // Session Integration
+    /**
+     * Get serializable bookmark data for session export.
+     * @returns {Array<object>} Array of bookmark records.
+     */
     getData() {
         return this.bookmarks;
     }
 
+    /**
+     * Load bookmarks from serialized data (session restore).
+     * @param {Array<object>} data - Array of bookmark records.
+     */
     loadData(data) {
         if (Array.isArray(data)) {
             this.bookmarks = data;
-            this.saveToStorage(); // Sync with local storage too? Or just session?
-            // Let's keep local storage as "global favorites" and session as "workspace".
-            // If we load session, should we overwrite local bookmarks? 
-            // JMARS usually treats bookmarks as global. 
-            // Let's merge? Or just replace. 
-            // For now, replace and save.
+            this.saveToStorage();
             this.render();
         }
     }

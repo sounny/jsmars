@@ -1,5 +1,16 @@
 import { JMARS_CONFIG } from '../jmars-config.js';
 
+/**
+ * @module layers
+ * @description Default layer definitions for the jsMars application.
+ * Provides a static list of pre-configured layers and a factory
+ * function to create Leaflet tile layers from config objects.
+ */
+
+/**
+ * Pre-configured layer definitions.
+ * @type {Array<{id: string, name: string, type: string, url: string, options: object}>}
+ */
 export const layers = [
   {
     id: 'mars_viking',
@@ -26,11 +37,22 @@ export const layers = [
   }
 ];
 
+/**
+ * Create a Leaflet tile layer from a layer configuration object.
+ * Supports 'wms' and 'xyz' types. Logs a warning and returns null
+ * for unknown layer types.
+ * @param {object} layerConfig - Layer configuration
+ * @param {string} layerConfig.type - Layer type ('wms' or 'xyz')
+ * @param {string} layerConfig.url - Tile service URL
+ * @param {object} [layerConfig.options] - Leaflet layer options
+ * @returns {L.TileLayer|L.TileLayer.WMS|null} The created layer, or null
+ */
 export function createLeafletLayer(layerConfig) {
   if (layerConfig.type === 'wms') {
     return L.tileLayer.wms(layerConfig.url, layerConfig.options);
   } else if (layerConfig.type === 'xyz') {
     return L.tileLayer(layerConfig.url, layerConfig.options);
   }
+  console.warn(`createLeafletLayer: unknown layer type "${layerConfig.type}" for layer "${layerConfig.id || '(no id)'}"`);
   return null;
 }

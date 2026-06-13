@@ -1,4 +1,16 @@
+import { EVENTS } from '../../constants.js';
+
+/**
+ * @module MeasurementTable
+ * @description Renders a table of measurements and highlights the
+ * selected row when a measurement is clicked on the map.
+ */
 export class MeasurementTable {
+    /**
+     * Create a MeasurementTable.
+     * @param {string} containerId - DOM element ID for the table container.
+     * @param {import('./MeasureTool.js').MeasureTool} measureTool - Associated MeasureTool instance.
+     */
     constructor(containerId, measureTool) {
         this.container = document.getElementById(containerId);
         this.measureTool = measureTool;
@@ -12,15 +24,18 @@ export class MeasurementTable {
         this.render();
 
         // Listeners
-        document.addEventListener('jmars-measurements-updated', (e) => {
+        document.addEventListener(EVENTS.MEASURE_UPDATED, (e) => {
             this.renderRows(e.detail);
         });
 
-        document.addEventListener('jmars-measurement-highlight', (e) => {
+        document.addEventListener(EVENTS.MEASURE_HIGHLIGHT, (e) => {
             this.highlightRow(e.detail.id);
         });
     }
 
+    /**
+     * Build the initial table skeleton inside the container.
+     */
     render() {
         this.container.innerHTML = `
             <table class="crater-table" style="width:100%; font-size:12px; color:#eee; border-collapse:collapse;">
@@ -43,6 +58,10 @@ export class MeasurementTable {
         this.emptyMsg = this.container.querySelector('#measure-empty-msg');
     }
 
+    /**
+     * Populate table rows from the measurements array.
+     * @param {Array<object>} measurements - Array of measurement records.
+     */
     renderRows(measurements) {
         this.tbody.innerHTML = '';
 
@@ -114,6 +133,10 @@ export class MeasurementTable {
         }
     }
 
+    /**
+     * Highlight a specific table row by measurement ID.
+     * @param {string} id - Measurement ID to highlight.
+     */
     highlightRow(id) {
         // Remove previous highlight
         if (this.selectedId) {

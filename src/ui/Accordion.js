@@ -1,33 +1,64 @@
+/**
+ * @module Accordion
+ * @description Exclusive accordion component for sidebar sections.
+ * Only one section can be expanded at a time (clicking a new header
+ * collapses the previous one). Supports keyboard activation via
+ * Enter and Space keys.
+ */
 export class Accordion {
+    /**
+     * Create a new Accordion.
+     * @param {string} containerId - DOM id of the accordion container
+     */
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         if (!this.container) return;
 
+        /** @type {NodeListOf<Element>} */
         this.sections = this.container.querySelectorAll('.accordion-section');
         this.bindEvents();
     }
 
+    /**
+     * Bind click and keyboard events to all accordion headers.
+     * Adds ARIA attributes for accessibility.
+     * @private
+     */
     bindEvents() {
         this.sections.forEach(section => {
             const header = section.querySelector('.accordion-header');
-            if (header) {
-                header.addEventListener('click', () => {
+            if (!header) return;
+
+            // Accessibility: make headers behave as interactive buttons
+            header.setAttribute('role', 'button');
+            header.setAttribute('tabindex', '0');
+            header.setAttribute('aria-expanded', section.classList.contains('expanded') ? 'true' : 'false');
+
+            header.addEventListener('click', () => {
+                this.toggleSection(section);
+            });
+
+            // Keyboard: Enter and Space activate the header
+            header.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
                     this.toggleSection(section);
-                });
-            }
+                }
+            });
         });
     }
 
+    /**
+     * Toggle a section open or closed.
+     * In exclusive mode, expanding one section collapses all others.
+     * Updates aria-expanded on all headers.
+     * @param {Element} targetSection - The accordion section element to toggle
+     */
     toggleSection(targetSection) {
-        // If already expanded, do nothing (or toggle off if we want to allow all closed)
-        // User asked for "expands to height... then when you click next it collapses"
-        // implying exclusive mode.
-
         const isExpanded = targetSection.classList.contains('expanded');
 
         if (isExpanded) {
-            // Optional: Allow collapsing the active one? 
-            // Usually accordions keep one open. Let's allow collapsing for now if they click it again.
+            // Allow collapsing the active section by clicking it again
             targetSection.classList.remove('expanded');
         } else {
             // Collapse all others
@@ -35,5 +66,13 @@ export class Accordion {
             // Expand target
             targetSection.classList.add('expanded');
         }
+
+        // Sync aria-expanded on all section headers
+        this.sections.forEach(s => {
+            const h = s.querySelector('.accordion-header');
+            if (h) {
+                h.setAttribute('aria-expanded', s.classList.contains('expanded') ? 'true' : 'false');
+            }
+        });
     }
 }

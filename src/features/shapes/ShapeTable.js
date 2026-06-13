@@ -1,8 +1,16 @@
+/**
+ * @module features/shapes/ShapeTable
+ * @description Interactive attribute table for vector shapes drawn on the map.
+ * Displays shape type, user-assigned name, and computed measurements (distance,
+ * area, coordinates). Supports row selection, inline name editing, custom
+ * column addition, and zoom-to-shape on click.
+ */
 import { EVENTS } from '../../constants.js';
 import { haversineDistance, sphericalPolygonArea } from '../../util/geo.js';
 
 /**
- * ShapeTable renders an interactive attribute table for shapes.
+ * @class ShapeTable
+ * @description Renders an interactive attribute table for shapes.
  * Click a row to select and zoom to the shape on the map.
  */
 export class ShapeTable {

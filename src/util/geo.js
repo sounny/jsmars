@@ -24,6 +24,7 @@ export const BODIES = {
     equatorialRadius: 6378.137,
     polarRadius: 6356.752,
     meanRadius: 6371.0,
+    // WGS84 exact: 1/298.257223563 = 0.003352811; using rounded approximation
     flattening: 0.003353
   }
 };
@@ -200,6 +201,7 @@ export function formatLatLon(lat, lon, options = {}) {
   } else if (lonFormat === 'west360') {
     displayLon = 360 - to360(lon);
     if (displayLon < 0) displayLon += 360;
+    if (displayLon >= 360) displayLon -= 360; // Avoid displaying "360.0000"
   } else {
     displayLon = to180(lon);
   }

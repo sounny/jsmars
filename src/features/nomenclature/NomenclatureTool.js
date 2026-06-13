@@ -1,13 +1,25 @@
+/**
+ * @module NomenclatureTool
+ * @description UI tool for displaying and filtering planetary nomenclature labels on the map.
+ */
 import { NomenclatureLayer } from './NomenclatureLayer.js';
 import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
 
+/**
+ * @class NomenclatureTool
+ * @description Manages nomenclature label display with type-based filtering.
+ */
 export class NomenclatureTool {
+    /**
+     * @param {L.Map} map - The Leaflet map instance.
+     * @param {string} containerId - DOM element ID for the tool's UI container.
+     */
     constructor(map, containerId) {
         this.layer = new NomenclatureLayer(map);
         this.container = document.getElementById(containerId);
         this.isActive = false;
-        this.currentBody = jmarsState.get('body').toLowerCase();
+        this.currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
         
         if (this.container) {
             this.renderUI();
@@ -41,11 +53,11 @@ export class NomenclatureTool {
         // Toggle Button
         this.toggleBtn = document.createElement('button');
         this.toggleBtn.className = 'tool-btn';
-        this.toggleBtn.innerText = 'Show Nomenclature';
+        this.toggleBtn.textContent = 'Show Nomenclature';
         this.toggleBtn.onclick = () => {
             this.isActive = !this.isActive;
             this.toggleBtn.classList.toggle('active', this.isActive);
-            this.toggleBtn.innerText = this.isActive ? 'Hide Nomenclature' : 'Show Nomenclature';
+            this.toggleBtn.textContent = this.isActive ? 'Hide Nomenclature' : 'Show Nomenclature';
             this.layer.toggle(this.isActive);
             this.filterContainer.style.display = this.isActive ? 'block' : 'none';
         };

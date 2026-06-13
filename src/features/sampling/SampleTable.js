@@ -1,4 +1,15 @@
+import { EVENTS } from '../../constants.js';
+
+/**
+ * @module SampleTable
+ * @description Renders a table of point/area samples collected
+ * by the SamplingTool. Listens for SAMPLE_UPDATED events to refresh.
+ */
 export class SampleTable {
+    /**
+     * Create a SampleTable.
+     * @param {string} containerId - DOM element ID for the table container.
+     */
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.samples = [];
@@ -6,12 +17,15 @@ export class SampleTable {
         if (!this.container) return;
         this.render();
 
-        document.addEventListener('jmars-samples-updated', (e) => {
+        document.addEventListener(EVENTS.SAMPLE_UPDATED, (e) => {
             this.samples = e.detail.samples;
             this.updateTable();
         });
     }
 
+    /**
+     * Build the initial table skeleton.
+     */
     render() {
         // Note: Export and Clear buttons are defined in index.html
         // SampleTable only renders the data table
@@ -32,6 +46,9 @@ export class SampleTable {
         `;
     }
 
+    /**
+     * Re-render all table rows from the current samples array.
+     */
     updateTable() {
         const tbody = this.container.querySelector('#sample-table-body');
         if (!tbody) return;

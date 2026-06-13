@@ -10,9 +10,9 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 </head>
 
 <body>
@@ -21,10 +21,10 @@
 
   <!-- Status Bar -->
   <div id="status-bar"></div>
-  <div class="welcome-modal-backdrop" id="welcome-modal">
+  <div class="welcome-modal-backdrop" id="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
     <div class="welcome-modal">
       <img src="jsmars_logo.svg" alt="JSMARS Logo">
-      <h2>Welcome to JSMARS (Beta)</h2>
+      <h2 id="welcome-title">Welcome to JSMARS (Beta)</h2>
       <p>This web preview is still under active development and not fully functional.</p>
       <p>We’re collecting feedback and contributions.</p>
       <p><a href="https://github.com/sounny/jsmars" target="_blank" rel="noopener">Report issues or contribute on
@@ -36,7 +36,7 @@
   <!-- Loading Indicator -->
   <div id="loading-indicator">Loading...</div>
 
-  <button id="sidebar-toggle" title="Collapse Sidebar">&times;</button>
+  <button id="sidebar-toggle" title="Collapse Sidebar" aria-label="Toggle sidebar" aria-expanded="true">&times;</button>
   <div id="controls">
     <!-- Branding -->
     <div style="padding: 15px; text-align: center; border-bottom: 1px solid #444; flex-shrink: 0;">
@@ -320,8 +320,8 @@
               <div style="font-size:12px; color:#aaa; margin-bottom:8px">
                 Select a local GeoTIFF file to display it on the map.
               </div>
-              <input type="file" id="custom-geotiff-input" accept=".tif,.tiff" style="display:none">
-              <button class="tool-btn" onclick="document.getElementById('custom-geotiff-input').click()">Choose File</button>
+              <input type="file" id="custom-geotiff-input" accept=".tif,.tiff" style="display:none" aria-label="Choose GeoTIFF file">
+              <button id="custom-geotiff-btn" class="tool-btn">Choose File</button>
             </div>
           </div>
         </div>
@@ -515,8 +515,9 @@
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
       const body = e?.detail?.body;
       const bodyConfig = JMARS_CONFIG.bodies[body];
-      if (bodyConfig?.baseMaps?.[0]?.url) {
-        miniMap.updateBaseMap(bodyConfig.baseMaps[0].url);
+      // Use the first layer's URL as the minimap basemap
+      if (bodyConfig?.layers?.[0]?.url) {
+        miniMap.updateBaseMap(bodyConfig.layers[0].url);
       }
     });
 
@@ -541,18 +542,22 @@
       document.getElementById('contour-panel-container'), contourLayer
     );
 
-    // -- NEW: Custom Map Manager --
+    // -- Custom Map Manager (GeoTIFF upload) --
     const customMapManager = new CustomMapManager(jmars.map);
+    // Wire the choose-file button (moved from inline onclick for CSP compliance)
+    document.getElementById('custom-geotiff-btn')?.addEventListener('click', () => {
+      document.getElementById('custom-geotiff-input').click();
+    });
     document.getElementById('custom-geotiff-input').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
         customMapManager.loadGeoTIFF(file);
       }
-      e.target.value = ''; // Reset
+      e.target.value = ''; // Reset so the same file can be re-selected
     });
 
     const resetProfileButtons = () => {
-      profileBtn.innerText = 'Radial Profile';
+      profileBtn.textContent = 'Radial Profile';
       profileBtn.classList.remove('active');
       enhancedProfileBtn.classList.remove('active');
     };
@@ -560,6 +565,22 @@
       profileTool.deactivate();
       enhancedProfileTool.deactivate();
       resetProfileButtons();
+    };
+
+    /**
+     * Deactivate all map interaction tools.
+     * Called before activating a new tool to ensure mutual exclusivity.
+     */
+    const deactivateAllTools = () => {
+      craterLayer.deactivate();
+      craterBtn.textContent = 'Start Crater Counting';
+      craterBtn.classList.remove('active');
+      deactivateProfiles();
+      measureTool.deactivate();
+      measureDistBtn.classList.remove('active');
+      measureAreaBtn.classList.remove('active');
+      deactivateInvestigate();
+      deactivateSampling();
     };
 
     const samplingTool = new SamplingTool(jmars.map);
@@ -658,17 +679,12 @@
     craterBtn.addEventListener('click', () => {
       if (craterLayer.isActive) {
         craterLayer.deactivate();
-        craterBtn.innerText = 'Start Crater Counting';
+        craterBtn.textContent = 'Start Crater Counting';
         craterBtn.classList.remove('active');
       } else {
-        deactivateProfiles();
-        measureTool.deactivate();
-        measureDistBtn.classList.remove('active');
-        measureAreaBtn.classList.remove('active');
-        deactivateInvestigate();
-        deactivateSampling();
+        deactivateAllTools();
         craterLayer.activate();
-        craterBtn.innerText = 'Stop Crater Counting';
+        craterBtn.textContent = 'Stop Crater Counting';
         craterBtn.classList.add('active');
       }
     });
@@ -676,21 +692,14 @@
     profileBtn.addEventListener('click', () => {
       if (profileTool.isActive) {
         profileTool.deactivate();
-        profileBtn.innerText = 'Radial Profile';
+        profileBtn.textContent = 'Radial Profile';
         profileBtn.classList.remove('active');
       } else {
-        craterLayer.deactivate();
-        craterBtn.innerText = 'Start Crater Counting';
-        craterBtn.classList.remove('active');
-        measureTool.deactivate();
-        measureDistBtn.classList.remove('active');
-        measureAreaBtn.classList.remove('active');
+        deactivateAllTools();
         enhancedProfileTool.deactivate();
         enhancedProfileBtn.classList.remove('active');
-        deactivateInvestigate();
-        deactivateSampling();
         profileTool.activate();
-        profileBtn.innerText = 'Stop Profile';
+        profileBtn.textContent = 'Stop Profile';
         profileBtn.classList.add('active');
       }
     });
@@ -700,17 +709,10 @@
         enhancedProfileTool.deactivate();
         enhancedProfileBtn.classList.remove('active');
       } else {
-        craterLayer.deactivate();
-        craterBtn.innerText = 'Start Crater Counting';
-        craterBtn.classList.remove('active');
+        deactivateAllTools();
         profileTool.deactivate();
-        profileBtn.innerText = 'Radial Profile';
+        profileBtn.textContent = 'Radial Profile';
         profileBtn.classList.remove('active');
-        measureTool.deactivate();
-        measureDistBtn.classList.remove('active');
-        measureAreaBtn.classList.remove('active');
-        deactivateInvestigate();
-        deactivateSampling();
         enhancedProfileTool.activate();
         enhancedProfileBtn.classList.add('active');
       }
@@ -721,12 +723,7 @@
         measureTool.deactivate();
         measureDistBtn.classList.remove('active');
       } else {
-        craterLayer.deactivate();
-        craterBtn.innerText = 'Start Crater Counting';
-        craterBtn.classList.remove('active');
-        deactivateProfiles();
-        deactivateInvestigate();
-        deactivateSampling();
+        deactivateAllTools();
         measureTool.activate('distance');
         measureDistBtn.classList.add('active');
         measureAreaBtn.classList.remove('active');
@@ -738,12 +735,7 @@
         measureTool.deactivate();
         measureAreaBtn.classList.remove('active');
       } else {
-        craterLayer.deactivate();
-        craterBtn.innerText = 'Start Crater Counting';
-        craterBtn.classList.remove('active');
-        deactivateProfiles();
-        deactivateInvestigate();
-        deactivateSampling();
+        deactivateAllTools();
         measureTool.activate('area');
         measureAreaBtn.classList.add('active');
         measureDistBtn.classList.remove('active');
@@ -754,8 +746,8 @@
     measureExportJsonBtn.addEventListener('click', () => measureTool.exportGeoJSON());
     measureExportCsvBtn.addEventListener('click', () => measureTool.exportCSV());
 
-    // Auto-deactivation handling
-    document.addEventListener('jmars-tool-deactivated', (e) => {
+    // Auto-deactivation handling (event name now uses jmars: prefix)
+    document.addEventListener(EVENTS.TOOL_DEACTIVATED, (e) => {
       if (!e.detail) return;
       if (e.detail.tool === 'measure') {
         measureDistBtn.classList.remove('active');
@@ -792,30 +784,17 @@
       },
       exportMap: () => exportTool.exportPNG(),
       cancelTool: () => {
-        craterLayer.deactivate();
-        craterBtn.innerText = 'Start Crater Counting';
-        craterBtn.classList.remove('active');
-        deactivateProfiles();
-        measureTool.deactivate();
-        deactivateInvestigate();
-        deactivateSampling();
+        deactivateAllTools();
         shapeLayer.stopDrawing();
-        measureDistBtn.classList.remove('active');
-        measureAreaBtn.classList.remove('active');
       },
       resetView: () => {
         const body = JMARS_CONFIG.bodies[jmars.currentBody];
         if (body) jmars.map.setView(body.center, body.zoom);
       }
     });
-  </script>
 
-  <script>
-    // Sidebar toggle functionality
-    document.getElementById('sidebar-toggle').addEventListener('click', () => {
-      document.getElementById('controls').classList.toggle('collapsed');
-      document.getElementById('sidebar-toggle').classList.toggle('collapsed');
-    });
+    // NOTE: Sidebar toggle is handled by the Sidebar module (line 404).
+    // No duplicate <script> block needed here.
   </script>
 </body>
 

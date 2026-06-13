@@ -1,23 +1,28 @@
 /**
- * ExportTool provides map screenshot/export functionality.
- * Uses html2canvas for PNG capture and optional jspdf for PDF.
- * No npm required; loads libraries from CDN on demand.
+ * @module ExportTool
+ * @description Provides map screenshot/export functionality.
+ * Uses html2canvas for PNG capture. Loads the library from CDN on demand
+ * (no npm required).
+ *
+ * NOTE: `allowTaint` is intentionally omitted because it contradicts
+ * `useCORS`. When both are set, tainted canvases bypass CORS and can
+ * cause `toBlob()` / `toDataURL()` to throw SecurityError.
  */
 export class ExportTool {
   /**
-   * @param {L.Map} map
+   * Create an ExportTool.
+   * @param {L.Map} map - The Leaflet map instance.
    */
   constructor(map) {
     this.map = map;
     this._html2canvasLoaded = false;
-    this._jspdfLoaded = false;
   }
 
   /**
    * Capture the current map view as a PNG image and trigger download.
-   * @param {object} [options]
-   * @param {string} [options.filename] - Download filename
-   * @param {number} [options.scale] - Scale multiplier (1 = screen resolution)
+   * @param {object} [options] - Export options.
+   * @param {string} [options.filename] - Download filename.
+   * @param {number} [options.scale] - Scale multiplier (1 = screen resolution).
    */
   async exportPNG(options = {}) {
     const filename = options.filename || `jsmars_map_${Date.now()}.png`;
@@ -29,7 +34,6 @@ export class ExportTool {
     try {
       const canvas = await html2canvas(mapEl, {
         useCORS: true,
-        allowTaint: true,
         scale: scale,
         backgroundColor: '#000',
         logging: false,
@@ -60,7 +64,10 @@ export class ExportTool {
 
   /**
    * Capture the current map view as a JPEG image.
-   * @param {object} [options]
+   * @param {object} [options] - Export options.
+   * @param {string} [options.filename] - Download filename.
+   * @param {number} [options.quality] - JPEG quality (0 to 1).
+   * @param {number} [options.scale] - Scale multiplier.
    */
   async exportJPEG(options = {}) {
     const filename = options.filename || `jsmars_map_${Date.now()}.jpg`;
@@ -72,7 +79,6 @@ export class ExportTool {
     try {
       const canvas = await html2canvas(mapEl, {
         useCORS: true,
-        allowTaint: true,
         scale: options.scale || 1,
         backgroundColor: '#000',
         logging: false
@@ -96,7 +102,7 @@ export class ExportTool {
   /**
    * Generate a world file (.pgw or .jgw) for the current view.
    * This allows the exported image to be georeferenced in GIS software.
-   * @param {string} [format='pgw'] - 'pgw' for PNG, 'jgw' for JPEG
+   * @param {string} [format='pgw'] - 'pgw' for PNG, 'jgw' for JPEG.
    */
   exportWorldFile(format = 'pgw') {
     const bounds = this.map.getBounds();
@@ -132,8 +138,8 @@ export class ExportTool {
   }
 
   /**
-   * Add attribution text to a canvas.
-   * @param {HTMLCanvasElement} canvas
+   * Add attribution text overlay to a captured canvas.
+   * @param {HTMLCanvasElement} canvas - The canvas to annotate.
    */
   _addAttribution(canvas) {
     const ctx = canvas.getContext('2d');
@@ -144,7 +150,8 @@ export class ExportTool {
   }
 
   /**
-   * Lazy-load html2canvas from CDN.
+   * Lazy-load html2canvas from CDN (pinned version).
+   * @returns {Promise<void>}
    */
   async _ensureHtml2Canvas() {
     if (this._html2canvasLoaded || window.html2canvas) {

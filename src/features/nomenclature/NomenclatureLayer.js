@@ -1,8 +1,22 @@
+/**
+ * @module NomenclatureLayer
+ * @description Leaflet layer for displaying planetary nomenclature labels.
+ * Loads feature names from a local JSON file and renders them as tooltips.
+ */
+
+/**
+ * @class NomenclatureLayer
+ * @description Renders named surface features (craters, mountains, valleys, etc.) as map labels.
+ */
 export class NomenclatureLayer {
+    /**
+     * @param {L.Map} map - The Leaflet map instance.
+     */
     constructor(map) {
         this.map = map;
         this.layerGroup = L.layerGroup().addTo(map);
         this.landmarks = [];
+        /** @type {Object<string, boolean>} Visibility state for each feature type. */
         this.visibleTypes = {
             'Crater': true,
             'Mons': true,
@@ -13,9 +27,16 @@ export class NomenclatureLayer {
         this.isActive = false;
     }
 
+    /**
+     * Load landmark data from the local JSON file.
+     * @returns {Promise<void>}
+     */
     async load() {
         try {
             const response = await fetch('./src/data/landmarks.json');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch landmarks: ${response.statusText}`);
+            }
             this.landmarks = await response.json();
             this.render();
         } catch (e) {

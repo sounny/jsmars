@@ -1,23 +1,56 @@
+/**
+ * @module SearchBar
+ * @description Provides a search input for Mars landmarks.
+ * Loads landmark data from a local JSON file and shows
+ * a filtered dropdown as the user types. Selecting a
+ * result pans the map to that landmark.
+ */
 export class SearchBar {
+    /**
+     * Create a new SearchBar.
+     * @param {L.Map} map - Leaflet map instance
+     * @param {string} containerId - DOM id of the search bar container
+     */
     constructor(map, containerId) {
         this.map = map;
         this.container = document.getElementById(containerId);
+        /** @type {Array<{name: string, lat: number, lon: number}>} */
         this.landmarks = [];
+        /** @type {HTMLDivElement|null} */
         this.resultsContainer = null;
+        /** @type {number|null} Debounce timer id */
+        this._debounceTimer = null;
 
         if (!this.container) {
             console.error(`SearchBar container '${containerId}' not found.`);
             return;
         }
 
+        // Register the global click-outside listener ONCE in the constructor,
+        // not inside render(), to avoid duplicate listeners on re-render.
+        this._boundOutsideClick = (e) => {
+            if (this.resultsContainer && !this.container.contains(e.target)) {
+                this.resultsContainer.style.display = 'none';
+            }
+        };
+        document.addEventListener('click', this._boundOutsideClick);
+
         this.init();
     }
 
+    /**
+     * Initialize the search bar: load data then render.
+     * @private
+     */
     async init() {
         await this.loadLandmarks();
         this.render();
     }
 
+    /**
+     * Fetch landmark data from the local JSON file.
+     * @private
+     */
     async loadLandmarks() {
         try {
             const response = await fetch('./src/data/landmarks.json');
@@ -29,6 +62,11 @@ export class SearchBar {
         }
     }
 
+    /**
+     * Build the search input and results dropdown DOM.
+     * Does NOT register a global click listener (that is done once in the constructor).
+     * @private
+     */
     render() {
         this.container.innerHTML = '';
         this.container.style.position = 'relative';
@@ -45,8 +83,12 @@ export class SearchBar {
         input.style.color = '#eee';
         input.style.borderRadius = '4px';
 
-        input.addEventListener('input', (e) => this.handleInput(e.target.value));
-        input.addEventListener('focus', (e) => this.handleInput(e.target.value)); // Show results on focus if text exists
+        // Debounced input handler (200ms)
+        input.addEventListener('input', (e) => {
+            clearTimeout(this._debounceTimer);
+            this._debounceTimer = setTimeout(() => this.handleInput(e.target.value), 200);
+        });
+        input.addEventListener('focus', (e) => this.handleInput(e.target.value));
 
         // Results Dropdown
         this.resultsContainer = document.createElement('div');
@@ -64,15 +106,12 @@ export class SearchBar {
 
         this.container.appendChild(input);
         this.container.appendChild(this.resultsContainer);
-
-        // Close on click outside
-        document.addEventListener('click', (e) => {
-            if (!this.container.contains(e.target)) {
-                this.resultsContainer.style.display = 'none';
-            }
-        });
     }
 
+    /**
+     * Filter landmarks by query and render matching results.
+     * @param {string} query - Current input value
+     */
     handleInput(query) {
         if (!query || query.trim() === '') {
             this.resultsContainer.style.display = 'none';
@@ -87,6 +126,11 @@ export class SearchBar {
         this.renderResults(matches);
     }
 
+    /**
+     * Render the filtered results dropdown.
+     * @param {Array<{name: string, lat: number, lon: number}>} matches - Matching landmarks
+     * @private
+     */
     renderResults(matches) {
         this.resultsContainer.innerHTML = '';
 
@@ -123,19 +167,17 @@ export class SearchBar {
         this.resultsContainer.style.display = 'block';
     }
 
+    /**
+     * Pan the map to the selected landmark.
+     * Normalizes longitude from 0-360 to -180/180 if needed.
+     * @param {{name: string, lat: number, lon: number}} landmark - Selected landmark
+     */
     selectLandmark(landmark) {
-        // JMARS usually uses 0-360 East positive. Leaflet uses -180/180.
-        // Our data:
-        // Olympus Mons: Lon 226.2. In Leaflet -180/180: 226.2 - 360 = -133.8
-        // Let's assume the map handles standard lat/lon. If the map is configured for 0-360, we might need conversion.
-        // However, Leaflet's default CRS is EPSG:3857 which wraps.
-        // Let's try direct usage first, but if it fails we might need normalization.
-
-        // Simple normalization for Leaflet if needed:
+        // Normalize longitude for Leaflet's -180/180 range
         let targetLon = landmark.lon;
         if (targetLon > 180) targetLon -= 360;
 
-        this.map.setView([landmark.lat, targetLon], 6); // Zoom level 6 for landmark
+        this.map.setView([landmark.lat, targetLon], 6);
         this.resultsContainer.style.display = 'none';
 
         // Update input value

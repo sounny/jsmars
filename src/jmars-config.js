@@ -1,5 +1,36 @@
+/**
+ * @module jmars-config
+ * @description Application configuration for jsMars.
+ *
+ * Defines the default body, initial view, service endpoints, multi-body
+ * layer configurations, and mosaic catalogs. This is the single source
+ * of truth for all server URLs and body-specific settings.
+ *
+ * @typedef {Object} LayerConfig
+ * @property {string} id - Unique layer identifier.
+ * @property {string} name - Human-readable display name.
+ * @property {string} type - Layer type: 'wms' or 'xyz'.
+ * @property {string} url - Service URL (WMS endpoint or XYZ tile template).
+ * @property {Object} options - Leaflet tile layer options (layers, format, attribution, etc.).
+ *
+ * @typedef {Object} BodyConfig
+ * @property {string} name - Human-readable body name (e.g., "Mars").
+ * @property {[number, number]} center - Default map center [lat, lng].
+ * @property {number} zoom - Default zoom level.
+ * @property {string} defaultLayer - ID of the layer shown on first load.
+ * @property {LayerConfig[]} layers - Available base layers for this body.
+ *
+ * @typedef {Object} MosaicConfig
+ * @property {string} id - Unique mosaic identifier.
+ * @property {string} name - Display name.
+ * @property {string} description - Human-readable description.
+ * @property {string} type - Layer type.
+ * @property {string} url - Service URL.
+ * @property {Object} options - Leaflet tile layer options.
+ * @property {string} thumbnail - Base64-encoded thumbnail image.
+ */
 export const JMARS_CONFIG = {
-  // Default to Mars
+  /** @type {string} Default body shown on startup (capitalized; lowercase keys used internally). */
   body: 'Mars',
   // Initial view
   initialView: {
