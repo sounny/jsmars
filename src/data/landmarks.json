@@ -1,62 +1,45 @@
 [
-  {
-    "name": "Olympus Mons",
-    "lat": 18.65,
-    "lon": 226.2,
-    "type": "Mons"
-  },
-  {
-    "name": "Gale Crater",
-    "lat": -5.4,
-    "lon": 137.8,
-    "type": "Crater"
-  },
-  {
-    "name": "Valles Marineris",
-    "lat": -13.9,
-    "lon": 300.8,
-    "type": "Valles"
-  },
-  {
-    "name": "Jezero Crater",
-    "lat": 18.38,
-    "lon": 77.58,
-    "type": "Crater"
-  },
-  {
-    "name": "Hellas Planitia",
-    "lat": -42.4,
-    "lon": 70.5,
-    "type": "Planitia"
-  },
-  {
-    "name": "Tharsis Montes",
-    "lat": 1.5,
-    "lon": 247.5,
-    "type": "Mons"
-  },
-  {
-    "name": "Elysium Mons",
-    "lat": 24.8,
-    "lon": 147.2,
-    "type": "Mons"
-  },
-  {
-    "name": "Victoria Crater",
-    "lat": -2.05,
-    "lon": 354.5,
-    "type": "Crater"
-  },
-  {
-    "name": "Endeavour Crater",
-    "lat": -2.28,
-    "lon": 354.77,
-    "type": "Crater"
-  },
-  {
-    "name": "Gusev Crater",
-    "lat": -14.6,
-    "lon": 175.4,
-    "type": "Crater"
-  }
+  {"name": "Olympus Mons", "lat": 18.65, "lon": 226.2, "type": "Mons", "body": "mars", "diameterKm": 624, "origin": "Mount Olympus, home of Greek gods; tallest planetary volcano."},
+  {"name": "Ascraeus Mons", "lat": 11.92, "lon": 255.92, "type": "Mons", "body": "mars", "diameterKm": 462, "origin": "Northernmost of the Tharsis Montes."},
+  {"name": "Pavonis Mons", "lat": 0.79, "lon": 246.96, "type": "Mons", "body": "mars", "diameterKm": 375, "origin": "Central shield volcano of Tharsis Montes."},
+  {"name": "Arsia Mons", "lat": -8.4, "lon": 239.05, "type": "Mons", "body": "mars", "diameterKm": 435, "origin": "Southernmost of the Tharsis Montes."},
+  {"name": "Elysium Mons", "lat": 24.8, "lon": 147.2, "type": "Mons", "body": "mars", "diameterKm": 240, "origin": "Volcanic peak in Elysium Planitia."},
+  {"name": "Alba Mons", "lat": 40.5, "lon": 250.1, "type": "Mons", "body": "mars", "diameterKm": 1600, "origin": "Broadest volcanic shield on Mars."},
+  {"name": "Valles Marineris", "lat": -13.9, "lon": 300.8, "type": "Valles", "body": "mars", "diameterKm": 4000, "origin": "Grand canyon system of Mars; Mariner 9 mission."},
+  {"name": "Kasei Valles", "lat": 24.6, "lon": 295.0, "type": "Valles", "body": "mars", "diameterKm": 1780, "origin": "Japanese word for Mars; giant outflow channel."},
+  {"name": "Ares Vallis", "lat": 10.4, "lon": 334.2, "type": "Valles", "body": "mars", "diameterKm": 1700, "origin": "Greek god of war; Pathfinder landing site."},
+  {"name": "Mawrth Vallis", "lat": 23.99, "lon": 341.04, "type": "Valles", "body": "mars", "diameterKm": 636, "origin": "Welsh word for Mars; clay-rich ancient outflow."},
+  {"name": "Gale Crater", "lat": -5.4, "lon": 137.8, "type": "Crater", "body": "mars", "diameterKm": 154, "origin": "Walter F. Gale, Australian astronomer; MSL Curiosity site."},
+  {"name": "Jezero Crater", "lat": 18.38, "lon": 77.58, "type": "Crater", "body": "mars", "diameterKm": 49, "origin": "Town in Bosnia and Herzegovina; Mars 2020 Perseverance site."},
+  {"name": "Gusev Crater", "lat": -14.6, "lon": 175.4, "type": "Crater", "body": "mars", "diameterKm": 166, "origin": "Matvey Gusev, Russian astronomer; MER Spirit site."},
+  {"name": "Victoria Crater", "lat": -2.05, "lon": 354.5, "type": "Crater", "body": "mars", "diameterKm": 0.8, "origin": "Magellan's ship; explored by Opportunity rover."},
+  {"name": "Endeavour Crater", "lat": -2.28, "lon": 354.77, "type": "Crater", "body": "mars", "diameterKm": 22, "origin": "HMS Endeavour; Opportunity rover destination."},
+  {"name": "Korolev Crater", "lat": 72.77, "lon": 164.58, "type": "Crater", "body": "mars", "diameterKm": 81, "origin": "Sergei Korolev, Soviet rocket engineer; filled with permanent water ice."},
+  {"name": "Schiaparelli Crater", "lat": -2.71, "lon": 16.78, "type": "Crater", "body": "mars", "diameterKm": 471, "origin": "Giovanni Schiaparelli, Italian astronomer."},
+  {"name": "Hellas Planitia", "lat": -42.4, "lon": 70.5, "type": "Planitia", "body": "mars", "diameterKm": 2300, "origin": "Classical name for Greece; deepest impact basin on Mars."},
+  {"name": "Argyre Planitia", "lat": -49.7, "lon": 316.0, "type": "Planitia", "body": "mars", "diameterKm": 800, "origin": "Mythical silver island in the Indian Ocean."},
+  {"name": "Isidis Planitia", "lat": 12.9, "lon": 87.0, "type": "Planitia", "body": "mars", "diameterKm": 1500, "origin": "Egyptian goddess Isis."},
+  {"name": "Utopia Planitia", "lat": 46.7, "lon": 117.5, "type": "Planitia", "body": "mars", "diameterKm": 3300, "origin": "Nowhere Land; Viking 2 and Zhurong landing site."},
+  {"name": "Acidalia Planitia", "lat": 49.8, "lon": 339.3, "type": "Planitia", "body": "mars", "diameterKm": 3000, "origin": "Mythological fountain of Venus."},
+  {"name": "Elysium Planitia", "lat": 3.0, "lon": 154.7, "type": "Planitia", "body": "mars", "diameterKm": 3000, "origin": "Elysian Fields in Greek mythology; InSight lander site."},
+  {"name": "Noctis Labyrinthus", "lat": -7.0, "lon": 259.0, "type": "Chaos", "body": "mars", "diameterKm": 1190, "origin": "Labyrinth of the night; complex valley network at western Valles Marineris."},
+  {"name": "Aram Chaos", "lat": 2.6, "lon": 338.5, "type": "Chaos", "body": "mars", "diameterKm": 280, "origin": "Biblical region; collapsed chaotic terrain rich in hematite."},
+  {"name": "Gorgonum Chaos", "lat": -37.5, "lon": 189.1, "type": "Chaos", "body": "mars", "diameterKm": 150, "origin": "Mythological Gorgons; source of recent gullies."},
+  {"name": "Hebes Chasma", "lat": 1.1, "lon": 283.8, "type": "Chasma", "body": "mars", "diameterKm": 315, "origin": "Hebes, Greek goddess of youth; closed canyon depression."},
+  {"name": "Melas Chasma", "lat": -9.8, "lon": 283.6, "type": "Chasma", "body": "mars", "diameterKm": 547, "origin": "Greek for dark; central and deepest segment of Valles Marineris."},
+  {"name": "Planum Boreum", "lat": 88.0, "lon": 0.0, "type": "Planum", "body": "mars", "diameterKm": 1100, "origin": "Northern plain; Martian north polar ice cap."},
+  {"name": "Planum Australe", "lat": -85.0, "lon": 0.0, "type": "Planum", "body": "mars", "diameterKm": 1450, "origin": "Southern plain; Martian south polar ice cap."},
+  {"name": "Cerberus Fossae", "lat": 11.28, "lon": 166.37, "type": "Fossa", "body": "mars", "diameterKm": 1235, "origin": "Cerberus from Greek mythology; seismically active fissures detected by InSight."},
+
+  {"name": "Tycho Crater", "lat": -43.31, "lon": -11.36, "type": "Crater", "body": "moon", "diameterKm": 85, "origin": "Tycho Brahe, Danish astronomer; prominent lunar ray crater."},
+  {"name": "Copernicus Crater", "lat": 9.62, "lon": -20.08, "type": "Crater", "body": "moon", "diameterKm": 93, "origin": "Nicolaus Copernicus, Polish astronomer."},
+  {"name": "Aristarchus Crater", "lat": 23.73, "lon": -47.49, "type": "Crater", "body": "moon", "diameterKm": 40, "origin": "Aristarchus of Samos; brightest feature on the lunar surface."},
+  {"name": "Kepler Crater", "lat": 8.12, "lon": -38.01, "type": "Crater", "body": "moon", "diameterKm": 31, "origin": "Johannes Kepler, German astronomer."},
+  {"name": "Shackleton Crater", "lat": -89.67, "lon": 129.78, "type": "Crater", "body": "moon", "diameterKm": 21, "origin": "Ernest Shackleton, Antarctic explorer; lunar south pole with permanently shadowed regions."},
+  {"name": "Clavius Crater", "lat": -58.4, "lon": -14.4, "type": "Crater", "body": "moon", "diameterKm": 225, "origin": "Christopher Clavius, Jesuit mathematician; one of the largest lunar craters."},
+  {"name": "Mare Tranquillitatis", "lat": 8.5, "lon": 31.4, "type": "Planitia", "body": "moon", "diameterKm": 873, "origin": "Sea of Tranquility; Apollo 11 landing site."},
+  {"name": "Mare Imbrium", "lat": 32.8, "lon": -15.6, "type": "Planitia", "body": "moon", "diameterKm": 1123, "origin": "Sea of Showers; vast lava-flooded impact basin."},
+  {"name": "Mare Serenitatis", "lat": 28.0, "lon": 17.5, "type": "Planitia", "body": "moon", "diameterKm": 707, "origin": "Sea of Serenity; Apollo 17 landing site nearby."},
+  {"name": "Oceanus Procellarum", "lat": 18.4, "lon": -57.4, "type": "Planitia", "body": "moon", "diameterKm": 2568, "origin": "Ocean of Storms; largest lunar mare."},
+  {"name": "Montes Apenninus", "lat": 18.9, "lon": -3.7, "type": "Mons", "body": "moon", "diameterKm": 600, "origin": "Apennine Mountains; border of Mare Imbrium; Apollo 15 landing site."}
 ]

@@ -8,6 +8,7 @@ import { CSFDEngine } from '../src/features/crater-counting/CSFDEngine.js';
 import { CraterTable } from '../src/features/crater-counting/CraterTable.js';
 import { StampLayer } from '../src/features/stamp/StampLayer.js';
 import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
+import { GridLayer } from '../src/features/grid/GridLayer.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -306,6 +307,33 @@ describe('Layer Composite Blending & Publishing', () => {
         expect(layer).to.exist;
         expect(layer.blendMode).to.equal('multiply');
         expect(layer.opacity).to.equal(0.8);
+    });
+});
+
+describe('Planetary Graticule Grid Layer', () => {
+    it('should format longitudes in East-positive 360 and West-positive 360 conventions', () => {
+        const dummyMap = { getZoom: () => 4, getBounds: () => ({ getSouth: () => -45, getNorth: () => 45, getWest: () => -90, getEast: () => 90 }), on: () => {}, off: () => {} };
+        const grid = new GridLayer(dummyMap);
+
+        grid.lonFormat = 'east360';
+        expect(grid.formatLon(-45)).to.equal('315°E');
+        expect(grid.formatLon(45)).to.equal('45°E');
+
+        grid.lonFormat = 'west360';
+        expect(grid.formatLon(-45)).to.equal('45°W');
+        expect(grid.formatLon(45)).to.equal('315°W');
+    });
+
+    it('should provide adaptive zoom spacing for major/minor graticule lines', () => {
+        const dummyMap = { getZoom: () => 2, getBounds: () => ({}), on: () => {}, off: () => {} };
+        const grid = new GridLayer(dummyMap);
+
+        const zoom2 = grid.getAdaptiveSpacing();
+        expect(zoom2.major).to.equal(30);
+
+        dummyMap.getZoom = () => 7;
+        const zoom7 = grid.getAdaptiveSpacing();
+        expect(zoom7.major).to.equal(1);
     });
 });
 

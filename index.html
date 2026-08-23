@@ -158,12 +158,24 @@
           <!-- Nomenclature -->
           <div class="layer-section">
             <div class="layer-section-header"
-              data-tool-info="Show named Mars surface features with quick filters for crater, mons, valles, and planitia labels.">
+              data-tool-info="Show named planetary surface features with quick filters for crater, mons, valles, and planitia labels.">
               <span class="layer-title">Nomenclature</span>
               <span class="icon">+</span>
             </div>
             <div class="layer-section-content" style="display:none;">
               <div id="nomenclature-tool-container"></div>
+            </div>
+          </div>
+
+          <!-- Lat/Lon Graticule Grid -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Overlay planetary latitude/longitude graticule lines with adaptive spacing and coordinate labels.">
+              <span class="layer-title">Lat/Lon Grid</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="grid-panel-container"></div>
             </div>
           </div>
 
@@ -434,6 +446,8 @@
     import { ThreeDPanel } from './src/features/threed/ThreeDPanel.js';
     import { BandMathPanel } from './src/features/bands/BandMathPanel.js';
     import { ProjectionManager } from './src/features/projections/ProjectionManager.js';
+    import { GridLayer } from './src/features/grid/GridLayer.js';
+    import { GridPanel } from './src/features/grid/GridPanel.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -603,6 +617,12 @@
     const contourLayer = new ContourLayer(jmars.map);
     const contourPanel = new ContourPanel(
       document.getElementById('contour-panel-container'), contourLayer
+    );
+
+    // -- NEW: Lat/Lon Graticule Grid Layer --
+    const gridLayer = new GridLayer(jmars.map);
+    const gridPanel = new GridPanel(
+      document.getElementById('grid-panel-container'), gridLayer
     );
 
     // -- Custom Map Manager (GeoTIFF upload) --
