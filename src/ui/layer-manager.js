@@ -149,6 +149,11 @@ export class LayerManager {
       // Update opacity
       const lState = activeLayers.find(x => x.id === id);
       this.jmarsMap.setLayerOpacity(id, lState.opacity);
+      const leafletLayer = this.jmarsMap.activeLayers[id];
+      if (leafletLayer?.getContainer) {
+        const el = leafletLayer.getContainer();
+        if (el) el.style.mixBlendMode = lState.blendMode || 'normal';
+      }
     });
 
     // Remove stale
@@ -608,6 +613,62 @@ export class LayerManager {
     opacitySection.appendChild(opacityLabel);
     opacitySection.appendChild(opacityValue);
     opacitySection.appendChild(opacityInput);
+
+    const blendSection = document.createElement('div');
+    blendSection.className = 'layer-settings-blend';
+    blendSection.style.marginTop = '10px';
+    blendSection.style.marginBottom = '12px';
+
+    const blendLabel = document.createElement('label');
+    blendLabel.textContent = 'Composite Blend Mode';
+    blendLabel.setAttribute('for', 'layer-settings-blend');
+    blendLabel.style.display = 'block';
+    blendLabel.style.fontSize = '12px';
+    blendLabel.style.color = '#aaa';
+    blendLabel.style.marginBottom = '4px';
+
+    const blendSelect = document.createElement('select');
+    blendSelect.id = 'layer-settings-blend';
+    blendSelect.style.width = '100%';
+    blendSelect.style.padding = '4px';
+    blendSelect.style.background = '#222';
+    blendSelect.style.color = '#fff';
+    blendSelect.style.border = '1px solid #444';
+    blendSelect.style.borderRadius = '4px';
+
+    const blendModes = [
+      { id: 'normal', name: 'Normal (Standard)' },
+      { id: 'multiply', name: 'Multiply (Topographic shading)' },
+      { id: 'screen', name: 'Screen (Bright highlights)' },
+      { id: 'overlay', name: 'Overlay (Contrast composite)' },
+      { id: 'darken', name: 'Darken' },
+      { id: 'lighten', name: 'Lighten' },
+      { id: 'color-dodge', name: 'Color Dodge' },
+      { id: 'difference', name: 'Difference (Feature detection)' },
+      { id: 'luminosity', name: 'Luminosity' }
+    ];
+
+    const currentBlend = layerState.blendMode || 'normal';
+    blendModes.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      if (m.id === currentBlend) opt.selected = true;
+      blendSelect.appendChild(opt);
+    });
+
+    blendSelect.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      jmarsState.updateLayer(layerId, { blendMode: mode });
+      const leafletLayer = this.jmarsMap.activeLayers[layerId];
+      if (leafletLayer?.getContainer) {
+        const el = leafletLayer.getContainer();
+        if (el) el.style.mixBlendMode = mode;
+      }
+    });
+
+    blendSection.appendChild(blendLabel);
+    blendSection.appendChild(blendSelect);
 
     const actions = document.createElement('div');
     actions.className = 'layer-settings-actions';

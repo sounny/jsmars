@@ -278,6 +278,21 @@ describe('Crater Morphometry & Classification', () => {
     });
 });
 
+describe('Layer Composite Blending & Publishing', () => {
+    beforeEach(() => {
+        jmarsState.reset();
+    });
+
+    it('should support composite blend mode in layer state updates', () => {
+        jmarsState.addLayer('mola_color');
+        jmarsState.updateLayer('mola_color', { blendMode: 'multiply', opacity: 0.8 });
+        const layer = jmarsState.get('activeLayers').find(l => l.id === 'mola_color');
+        expect(layer).to.exist;
+        expect(layer.blendMode).to.equal('multiply');
+        expect(layer.opacity).to.equal(0.8);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

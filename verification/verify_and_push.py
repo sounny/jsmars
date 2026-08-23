@@ -76,8 +76,8 @@ def run_tests():
             fails = page.locator(".test.fail").all()
             fail_msgs = []
             for f in fails:
-                title = f.locator("h2").inner_text()
-                err = f.locator("pre.error").inner_text() if f.locator("pre.error").count() > 0 else "Unknown error"
+                title = f.locator("h2").inner_text().encode('ascii', 'replace').decode('ascii')
+                err = f.locator("pre.error").inner_text().encode('ascii', 'replace').decode('ascii') if f.locator("pre.error").count() > 0 else "Unknown error"
                 fail_msgs.append(f"- {title}: {err}")
             browser.close()
             server.shutdown()
