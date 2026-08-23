@@ -251,3 +251,43 @@ export function interpolateGreatCircle(lat1, lon1, lat2, lon2, numPoints = 100) 
   }
   return points;
 }
+
+/**
+ * Compute rotated landing safety ellipse polygon vertices on a planetary sphere.
+ * @param {number} centerLat - Center latitude (degrees)
+ * @param {number} centerLon - Center longitude (degrees)
+ * @param {number} semiMajorKm - Semi-major axis in kilometers
+ * @param {number} semiMinorKm - Semi-minor axis in kilometers
+ * @param {number} [azimuthDeg=0] - Azimuth orientation in degrees clockwise from North
+ * @param {string} [bodyName='mars'] - Planetary body key
+ * @param {number} [numPoints=64] - Number of polygon vertices
+ * @returns {Array<[number, number]>} - Array of [lat, lon] coordinates
+ */
+export function computeEllipsePolygon(centerLat, centerLon, semiMajorKm, semiMinorKm, azimuthDeg = 0, bodyName = 'mars', numPoints = 64) {
+  const radius = (BODIES[bodyName] || BODIES.mars).meanRadius;
+  const azRad = azimuthDeg * Math.PI / 180;
+  const phi0 = centerLat * Math.PI / 180;
+  const cosPhi0 = Math.max(Math.cos(phi0), 0.001);
+  const coords = [];
+
+  for (let i = 0; i <= numPoints; i++) {
+    const theta = (i / numPoints) * 2 * Math.PI;
+    // Standard ellipse equation
+    const x0 = semiMajorKm * Math.cos(theta);
+    const y0 = semiMinorKm * Math.sin(theta);
+
+    // Rotate by azimuth (clock-wise from North: y is North, x is East)
+    const xRot = x0 * Math.sin(azRad) + y0 * Math.cos(azRad);
+    const yRot = x0 * Math.cos(azRad) - y0 * Math.sin(azRad);
+
+    const dLatDeg = (yRot / radius) * (180 / Math.PI);
+    const dLonDeg = (xRot / (radius * cosPhi0)) * (180 / Math.PI);
+
+    let lat = centerLat + dLatDeg;
+    let lon = to180(centerLon + dLonDeg);
+
+    coords.push([lat, lon]);
+  }
+
+  return coords;
+}

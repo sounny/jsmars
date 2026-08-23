@@ -1,8 +1,9 @@
 import { EVENTS } from '../../constants.js';
+import { computeEllipsePolygon } from '../../util/geo.js';
 
 /**
- * LandingSitesLayer displays markers for spacecraft landing sites
- * on the current planetary body (Mars, Moon).
+ * LandingSitesLayer displays markers and landing dispersion ellipses for
+ * spacecraft landing sites on the current planetary body (Mars, Moon).
  */
 export class LandingSitesLayer {
   constructor(map) {
@@ -10,6 +11,7 @@ export class LandingSitesLayer {
     this.markerGroup = L.layerGroup();
     this.isActive = false;
     this.currentBody = 'mars';
+    this.showEllipses = true;
     this.sites = [];
     this._onBodyChanged = this._onBodyChanged.bind(this);
     this._loadData();
@@ -76,7 +78,7 @@ export class LandingSitesLayer {
   }
 
   /**
-   * Render markers for the current body.
+   * Render markers and landing ellipses for the current body.
    */
   _render() {
     this.markerGroup.clearLayers();
@@ -98,6 +100,35 @@ export class LandingSitesLayer {
     filtered.forEach(site => {
       const color = agencyColors[site.agency] || '#aaa';
 
+      // 1. Landing Error / Dispersion Ellipse
+      if (this.showEllipses && site.ellipse) {
+        const coords = computeEllipsePolygon(
+          site.lat,
+          site.lon,
+          site.ellipse.aKm,
+          site.ellipse.bKm,
+          site.ellipse.azimuthDeg || 0,
+          site.body || this.currentBody
+        );
+
+        const ellipsePolygon = L.polygon(coords, {
+          color: color,
+          weight: 1.5,
+          opacity: 0.8,
+          fillColor: color,
+          fillOpacity: 0.15,
+          dashArray: '4,4',
+          className: 'landing-ellipse'
+        });
+
+        ellipsePolygon.bindTooltip(`${site.name} Landing Ellipse (${site.ellipse.aKm * 2} × ${site.ellipse.bKm * 2} km)`, {
+          sticky: true
+        });
+
+        this.markerGroup.addLayer(ellipsePolygon);
+      }
+
+      // 2. Landing Site Marker
       const icon = L.divIcon({
         className: 'landing-site-marker',
         html: `<div class="landing-marker-dot" style="background:${color}; box-shadow: 0 0 6px ${color}80"></div>
@@ -107,6 +138,8 @@ export class LandingSitesLayer {
       });
 
       const marker = L.marker([site.lat, site.lon], { icon });
+      const ellipseInfo = site.ellipse ? `<div style="font-size:11px; color:#38bdf8; margin-top:4px;"><b>Landing Ellipse:</b> ${site.ellipse.aKm * 2} × ${site.ellipse.bKm * 2} km (${site.ellipse.azimuthDeg || 0}° az)</div>` : '';
+
       marker.bindPopup(`
         <div class="landing-popup">
           <h3 style="margin:0 0 6px; color:${color}">${site.name}</h3>
@@ -114,6 +147,7 @@ export class LandingSitesLayer {
             <strong>${site.agency}</strong> | ${site.year}
           </div>
           <p style="margin:0; font-size:12px; color:#bbb; line-height:1.4">${site.description}</p>
+          ${ellipseInfo}
           <div style="margin-top:8px; font-size:11px; color:#888">
             ${site.lat.toFixed(3)}\u00b0, ${site.lon.toFixed(3)}\u00b0
           </div>

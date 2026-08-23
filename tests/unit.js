@@ -8,7 +8,7 @@ import { CSFDEngine } from '../src/features/crater-counting/CSFDEngine.js';
 import { CraterTable } from '../src/features/crater-counting/CraterTable.js';
 import { StampLayer } from '../src/features/stamp/StampLayer.js';
 import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -246,6 +246,14 @@ describe('Geographic Utilities & Projections', () => {
         ];
         const area = sphericalPolygonArea(polygon, 'mars');
         expect(area).to.be.greaterThan(100000);
+    });
+
+    it('should generate rotated landing safety ellipse polygons', () => {
+        // Perseverance landing ellipse at Jezero (18.44°N, 77.45°E, 3.85 x 3.3 km, az 72°)
+        const ellipseCoords = computeEllipsePolygon(18.44, 77.45, 3.85, 3.3, 72, 'mars', 32);
+        expect(ellipseCoords).to.be.an('array').with.lengthOf(33); // 32 vertices + closing
+        expect(ellipseCoords[0][0]).to.be.closeTo(18.44, 0.2);
+        expect(ellipseCoords[0][1]).to.be.closeTo(77.45, 0.2);
     });
 });
 
