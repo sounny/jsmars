@@ -291,3 +291,69 @@ export function computeEllipsePolygon(centerLat, centerLon, semiMajorKm, semiMin
 
   return coords;
 }
+
+/**
+ * Compute geodesic buffer polygon around points, lines, or polygons.
+ * @param {Array<[number, number]>|[number, number]} coords - Point [lat, lon] or array of points
+ * @param {number} radiusKm - Buffer radius in kilometers
+ * @param {string} [bodyName='mars'] - Planetary body key
+ * @returns {Array<[number, number]>} - Closed buffer polygon coordinates
+ */
+export function computeBufferPolygon(coords, radiusKm, bodyName = 'mars') {
+  if (!coords || radiusKm <= 0) return [];
+  const radius = (BODIES[bodyName] || BODIES.mars).meanRadius;
+
+  // 1. Single Point buffer -> Geodesic circle
+  if (typeof coords[0] === 'number') {
+    return computeEllipsePolygon(coords[0], coords[1], radiusKm, radiusKm, 0, bodyName, 48);
+  }
+
+  if (!Array.isArray(coords) || coords.length === 0) return [];
+
+  if (coords.length === 1) {
+    return computeEllipsePolygon(coords[0][0], coords[0][1], radiusKm, radiusKm, 0, bodyName, 48);
+  }
+
+  // 2. Polyline / Polygon buffer
+  const leftSide = [];
+  const rightSide = [];
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p1 = coords[i];
+    const p2 = coords[i + 1];
+
+    const lat1 = p1[0];
+    const lon1 = p1[1];
+    const lat2 = p2[0];
+    const lon2 = p2[1];
+
+    const dLat = lat2 - lat1;
+    const avgLat = (lat1 + lat2) / 2;
+    const cosLat = Math.max(Math.cos(avgLat * Math.PI / 180), 0.001);
+    const dLon = (lon2 - lon1) * cosLat;
+
+    const len = Math.sqrt(dLat * dLat + dLon * dLon);
+    if (len === 0) continue;
+
+    // Normal vector perpendicular to segment
+    const nx = -dLat / len;
+    const ny = dLon / len;
+
+    const dLatDist = (ny * radiusKm / radius) * (180 / Math.PI);
+    const dLonDist = (nx * radiusKm / (radius * cosLat)) * (180 / Math.PI);
+
+    leftSide.push([lat1 + dLatDist, to180(lon1 + dLonDist)]);
+    leftSide.push([lat2 + dLatDist, to180(lon2 + dLonDist)]);
+
+    rightSide.push([lat1 - dLatDist, to180(lon1 - dLonDist)]);
+    rightSide.push([lat2 - dLatDist, to180(lon2 - dLonDist)]);
+  }
+
+  // Connect left side, then reversed right side to close polygon
+  const bufferPoly = [...leftSide, ...rightSide.reverse()];
+  if (bufferPoly.length > 0) {
+    bufferPoly.push([bufferPoly[0][0], bufferPoly[0][1]]);
+  }
+
+  return bufferPoly;
+}

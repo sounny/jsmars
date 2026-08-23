@@ -1,4 +1,5 @@
 import { EVENTS } from '../../constants.js';
+import { computeBufferPolygon } from '../../util/geo.js';
 
 /**
  * ShapeLayer provides full-featured vector drawing and editing.
@@ -215,6 +216,58 @@ export class ShapeLayer {
         shape.layer.setStyle(style);
       }
     }
+  }
+
+  /**
+   * Create a geodesic buffer polygon around an existing shape.
+   * @param {number} shapeId - ID of source shape
+   * @param {number} [radiusKm=10] - Buffer radius in km
+   * @returns {object|null} - Created buffer shape
+   */
+  createBuffer(shapeId, radiusKm = 10) {
+    const shape = this.shapes.find(s => s.id === shapeId);
+    if (!shape || !shape.layer) return null;
+
+    let rawCoords = [];
+    if (shape.layer.getLatLng) {
+      const ll = shape.layer.getLatLng();
+      rawCoords = [ll.lat, ll.lng];
+    } else if (shape.layer.getLatLngs) {
+      const lls = shape.layer.getLatLngs();
+      const flat = Array.isArray(lls[0]) ? lls[0] : lls;
+      rawCoords = flat.map(p => [p.lat, p.lng]);
+    }
+
+    const bufferCoords = computeBufferPolygon(rawCoords, radiusKm, 'mars');
+    if (bufferCoords.length === 0) return null;
+
+    const bufferLayer = L.polygon(bufferCoords, {
+      color: '#f59e0b',
+      weight: 2,
+      fillColor: '#f59e0b',
+      fillOpacity: 0.2,
+      dashArray: '3,3'
+    });
+
+    const newId = this.nextId++;
+    const bufferShape = {
+      id: newId,
+      layer: bufferLayer,
+      type: 'polygon',
+      attributes: {
+        name: `Buffer (${radiusKm} km) of ${shape.attributes?.name || 'Shape ' + shapeId}`,
+        description: `Geodesic buffer zone of ${radiusKm} km`
+      },
+      style: this._getLayerStyle(bufferLayer)
+    };
+
+    bufferLayer._shapeId = newId;
+    bufferLayer.on('click', () => this.selectShape(newId));
+    this.featureGroup.addLayer(bufferLayer);
+    this.shapes.push(bufferShape);
+
+    document.dispatchEvent(new CustomEvent(EVENTS.SHAPE_CREATED, { detail: bufferShape }));
+    return bufferShape;
   }
 
   /**

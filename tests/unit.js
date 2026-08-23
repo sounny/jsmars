@@ -8,7 +8,7 @@ import { CSFDEngine } from '../src/features/crater-counting/CSFDEngine.js';
 import { CraterTable } from '../src/features/crater-counting/CraterTable.js';
 import { StampLayer } from '../src/features/stamp/StampLayer.js';
 import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -254,6 +254,14 @@ describe('Geographic Utilities & Projections', () => {
         expect(ellipseCoords).to.be.an('array').with.lengthOf(33); // 32 vertices + closing
         expect(ellipseCoords[0][0]).to.be.closeTo(18.44, 0.2);
         expect(ellipseCoords[0][1]).to.be.closeTo(77.45, 0.2);
+    });
+
+    it('should compute spatial geodesic buffer polygons around paths and points', () => {
+        const pointBuffer = computeBufferPolygon([18.44, 77.45], 15, 'mars');
+        expect(pointBuffer).to.be.an('array').with.length.greaterThan(10);
+
+        const lineBuffer = computeBufferPolygon([[0, 0], [1, 1], [2, 0]], 10, 'mars');
+        expect(lineBuffer).to.be.an('array').with.length.greaterThan(4);
     });
 });
 
