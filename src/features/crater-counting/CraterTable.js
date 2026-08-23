@@ -64,7 +64,9 @@ export class CraterTable {
               <th>ID</th>
               <th>Lat</th>
               <th>Lon</th>
-              <th>Diam (km)</th>
+              <th>Diam</th>
+              <th>Depth</th>
+              <th>Type</th>
               <th></th>
             </tr>
           </thead>
@@ -90,6 +92,38 @@ export class CraterTable {
     }
 
     /**
+     * Compute crater morphometric depth and classification.
+     */
+    static getMorphometry(diameterMeters) {
+        const dKm = diameterMeters / 1000;
+        let depthKm = 0;
+        let type = 'Simple';
+
+        if (dKm < 7) {
+            // Simple bowl-shaped crater: d ≈ 0.2 D
+            depthKm = 0.2 * dKm;
+            type = 'Simple';
+        } else if (dKm <= 100) {
+            // Complex central peak: d ≈ 0.36 * D^0.49
+            depthKm = 0.36 * Math.pow(dKm, 0.49);
+            type = 'Complex';
+        } else if (dKm <= 300) {
+            // Peak ring basin: d ≈ 0.25 * D^0.5
+            depthKm = 0.25 * Math.pow(dKm, 0.5);
+            type = 'Peak-Ring';
+        } else {
+            // Multi-ring impact basin
+            depthKm = 0.18 * Math.pow(dKm, 0.52);
+            type = 'Basin';
+        }
+
+        const depthM = Math.round(depthKm * 1000);
+        const depthStr = depthM >= 1000 ? `${(depthM / 1000).toFixed(2)} km` : `${depthM} m`;
+
+        return { dKm, depthKm, depthM, depthStr, type };
+    }
+
+    /**
      * Appends a crater record to the table and internal list.
      * @param {object} crater - Crater data object.
      * @param {number} crater.id - Unique numeric identifier.
@@ -101,19 +135,30 @@ export class CraterTable {
     addCrater(crater) {
         if (!this.tbody) return;
         this.craters.push(crater);
+        const morph = CraterTable.getMorphometry(crater.diameter);
 
         const tr = document.createElement('tr');
         tr.id = `crater-row-${crater.id}`;
         tr.style.borderBottom = '1px solid #333';
+        tr.style.cursor = 'pointer';
         tr.innerHTML = `
       <td>${crater.id.toString().slice(-4)}</td>
       <td>${crater.lat.toFixed(2)}</td>
       <td>${crater.lng.toFixed(2)}</td>
-      <td>${(crater.diameter / 1000).toFixed(1)}</td>
+      <td>${morph.dKm.toFixed(1)}k</td>
+      <td style="color:#38bdf8">${morph.depthStr}</td>
+      <td style="font-size:10px; color:#aaa">${morph.type}</td>
       <td style="text-align: right;">
         <button class="delete-crater-btn" data-id="${crater.id}" style="background: none; border: none; color: #f55; cursor: pointer;">&times;</button>
       </td>
     `;
+
+        tr.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-crater-btn')) return;
+            if (window.jmars?.map) {
+                window.jmars.map.flyTo([crater.lat, crater.lng], 7);
+            }
+        });
 
         tr.querySelector('.delete-crater-btn').addEventListener('click', (e) => {
             const id = parseInt(e.target.dataset.id) || e.target.dataset.id;

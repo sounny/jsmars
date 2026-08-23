@@ -5,6 +5,8 @@ import { MarsTime } from '../src/features/slider/MarsTime.js';
 import { KRCEngine } from '../src/features/krc/KRCEngine.js';
 import { MCDEngine } from '../src/features/mcd/MCDEngine.js';
 import { CSFDEngine } from '../src/features/crater-counting/CSFDEngine.js';
+import { CraterTable } from '../src/features/crater-counting/CraterTable.js';
+import { StampLayer } from '../src/features/stamp/StampLayer.js';
 import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea } from '../src/util/geo.js';
 
@@ -254,6 +256,25 @@ describe('Spacecraft Ground Tracks & Swaths', () => {
         expectedCrafts.forEach(id => {
             expect(id).to.be.a('string');
         });
+    });
+});
+
+describe('Crater Morphometry & Classification', () => {
+    it('should compute depth and simple morphology for small craters (< 7 km)', () => {
+        const small = CraterTable.getMorphometry(3000); // 3 km
+        expect(small.type).to.equal('Simple');
+        expect(small.depthKm).to.be.closeTo(0.6, 0.05);
+    });
+
+    it('should classify complex central peak craters (7 to 100 km)', () => {
+        const complex = CraterTable.getMorphometry(30000); // 30 km
+        expect(complex.type).to.equal('Complex');
+        expect(complex.depthKm).to.be.greaterThan(1.0);
+    });
+
+    it('should classify peak-ring basins (100 to 300 km)', () => {
+        const basin = CraterTable.getMorphometry(150000); // 150 km
+        expect(basin.type).to.equal('Peak-Ring');
     });
 });
 
