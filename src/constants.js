@@ -102,5 +102,39 @@ export const EVENTS = Object.freeze({
 
   // ── Coordinate Format ───────────────────────────────────────
   /** Fired when the user changes coordinate display format. */
-  COORD_FORMAT_CHANGED: 'jmars:coord-format-changed'
+  COORD_FORMAT_CHANGED: 'jmars:coord-format-changed',
+
+  // ── Time & Mars Calendar ────────────────────────────────────
+  /** Fired when global Mars time or solar longitude changes. */
+  TIME_CHANGED: 'jmars:time-changed',
+
+  // ── KRC Thermal Model ───────────────────────────────────────
+  /** Fired to trigger a KRC thermal calculation. */
+  KRC_RUN: 'jmars:krc-run',
+  /** Fired when KRC simulation results are ready. */
+  KRC_RESULT: 'jmars:krc-result',
+
+  // ── Mars Climate Database (MCD) ─────────────────────────────
+  /** Fired to query atmospheric profile. */
+  MCD_RUN: 'jmars:mcd-run',
+  /** Fired when MCD atmospheric profile results are ready. */
+  MCD_RESULT: 'jmars:mcd-result',
+
+  // ── 3D View (WebGL) ─────────────────────────────────────────
+  /** Fired when 3D terrain viewer is toggled. */
+  THREED_TOGGLED: 'jmars:threed-toggled',
+  /** Fired when 3D view camera/parameters change. */
+  THREED_VIEW_UPDATED: 'jmars:threed-view-updated',
+
+  // ── CSFD Crater Dating ──────────────────────────────────────
+  /** Fired when CSFD distribution or isochron fits are calculated. */
+  CSFD_UPDATED: 'jmars:csfd-updated',
+
+  // ── Spectral Band Math ──────────────────────────────────────
+  /** Fired when a spectral band ratio/index is computed. */
+  BAND_MATH_APPLIED: 'jmars:band-math-applied',
+
+  // ── Map Projections ─────────────────────────────────────────
+  /** Fired when projection mode changes (Cylindrical / North Polar / South Polar). */
+  PROJECTION_CHANGED: 'jmars:projection-changed'
 });

@@ -111,6 +111,17 @@ export class StatusBar {
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
       this.currentBody = e?.detail?.body || 'mars';
     });
+
+    // Listen for coordinate format changes from ProjectionManager
+    document.addEventListener(EVENTS.COORD_FORMAT_CHANGED, (e) => {
+      if (e.detail?.lonFormat) {
+        const found = this.formats.findIndex(f => f.lonFormat === e.detail.lonFormat);
+        if (found !== -1) {
+          this.formatIndex = found;
+          this.formatBtn.textContent = this.formats[found].label;
+        }
+      }
+    });
   }
 
   /**

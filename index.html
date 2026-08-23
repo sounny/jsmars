@@ -13,6 +13,7 @@
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 
 <body>
@@ -43,6 +44,7 @@
       <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;" />
       <div id="body-selector-container" style="margin-top: 10px;"></div>
       <div id="quick-actions-container" style="margin-top: 12px;"></div>
+      <div id="time-slider-container" style="margin-top: 12px; text-align: left;"></div>
       <div style="margin-top: 5px;">
         <a href="about.html" target="_blank" style="color: #aaa; text-decoration: none; font-size: 12px;">About</a>
       </div>
@@ -76,6 +78,7 @@
       <div class="accordion-content">
         <div style="padding: 10px;">
           <div id="search-bar-container" style="margin-bottom: 15px;"></div>
+          <div id="projection-panel-container" style="margin-bottom: 15px;"></div>
           <div id="bookmarks-tool-container" style="margin-top: 10px;"></div>
           <div id="fixed-overlays"></div>
         </div>
@@ -324,6 +327,54 @@
               <button id="custom-geotiff-btn" class="tool-btn">Choose File</button>
             </div>
           </div>
+
+          <!-- KRC Thermal Model -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Run the KRC 1D thermal model for Mars surface and subsurface diurnal/seasonal temperatures.">
+              <span class="layer-title">KRC Thermal Model</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="krc-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- 3D Terrain & Globe -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="View 3D terrain mesh displaced by MOLA DEM elevation and 3D globe with solar lighting.">
+              <span class="layer-title">3D Terrain & Globe</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="threed-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Mars Climate Database (MCD) -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Vertical atmospheric profiler: temperature, pressure, density, dust, and wind up to 50 km.">
+              <span class="layer-title">MCD Atmospheric Profiler</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="mcd-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Spectral Band Math -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Compute spectral mineral parameter indices (BD530, BD1900, BD1500, D2300) and custom band ratios.">
+              <span class="layer-title">Spectral Band Math</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="bandmath-panel-container"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -375,6 +426,12 @@
     import { ContourLayer } from './src/features/contour/ContourLayer.js';
     import { ContourPanel } from './src/features/contour/ContourPanel.js';
     import { CustomMapManager } from './src/features/custom-map/CustomMapManager.js';
+    import { TimeSlider } from './src/features/slider/TimeSlider.js';
+    import { KRCPanel } from './src/features/krc/KRCPanel.js';
+    import { MCDPanel } from './src/features/mcd/MCDPanel.js';
+    import { ThreeDPanel } from './src/features/threed/ThreeDPanel.js';
+    import { BandMathPanel } from './src/features/bands/BandMathPanel.js';
+    import { ProjectionManager } from './src/features/projections/ProjectionManager.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -555,6 +612,32 @@
       }
       e.target.value = ''; // Reset so the same file can be re-selected
     });
+
+    // -- NEW: Mars Time & Solar Longitude Slider --
+    const timeSlider = new TimeSlider('time-slider-container');
+
+    // -- NEW: Projection & Viewpoint Manager --
+    const projectionManager = new ProjectionManager('projection-panel-container', jmars.map);
+
+    // -- NEW: KRC Mars Thermal Model Panel --
+    const krcPanel = new KRCPanel(
+      document.getElementById('krc-panel-container'), jmars.map
+    );
+
+    // -- NEW: 3D Terrain & Globe Panel --
+    const threedPanel = new ThreeDPanel(
+      document.getElementById('threed-panel-container'), jmars.map
+    );
+
+    // -- NEW: Mars Climate Database (MCD) Profiler --
+    const mcdPanel = new MCDPanel(
+      document.getElementById('mcd-panel-container'), jmars.map
+    );
+
+    // -- NEW: Spectral Band Math & Mineralogy Panel --
+    const bandMathPanel = new BandMathPanel(
+      document.getElementById('bandmath-panel-container'), jmars.map
+    );
 
     const resetProfileButtons = () => {
       profileBtn.textContent = 'Radial Profile';

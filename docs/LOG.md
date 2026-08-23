@@ -21,11 +21,23 @@ This log captures the reasoning and actions taken while expanding the agent guid
 - Noted that configuration is still Mars-only and does not yet expose multiple planetary bodies or authenticated services.
 
 ### Missing JMARS features to queue up
-- [ ] Layer reordering and grouping to match JMARS' stack management and composite order controls.
-- [ ] ROI/shapes tooling (draw, edit, style presets) with import/export of JMARS ROI formats and GeoJSON.
-- [ ] Measurement utilities (distance, area, elevation sampling) that mirror JMARS analysis tools.
-- [ ] Saved sessions/workspaces so users can persist layer selections, map extents, and annotations between visits.
-- [ ] Enhanced search (places, features, layers) akin to JMARS' search windows, including jump-to coordinates.
-- [ ] Time-aware layers and profile plotting for instruments with temporal coverage.
-- [ ] Multi-body support with distinct projections and defaults (e.g., Mars, Moon) instead of Mars-only configs.
-- [ ] 3D/globe-style visualization pathway to approximate JMARS' 3D view modes.
+- [x] Layer reordering and grouping to match JMARS' stack management and composite order controls.
+- [x] ROI/shapes tooling (draw, edit, style presets) with import/export of JMARS ROI formats and GeoJSON.
+- [x] Measurement utilities (distance, area, elevation sampling) that mirror JMARS analysis tools.
+- [x] Saved sessions/workspaces so users can persist layer selections, map extents, and annotations between visits.
+- [x] Enhanced search (places, features, layers) akin to JMARS' search windows, including jump-to coordinates.
+- [x] Time-aware layers and profile plotting for instruments with temporal coverage.
+- [x] Multi-body support with distinct projections and defaults (e.g., Mars, Moon) instead of Mars-only configs.
+- [x] 3D/globe-style visualization pathway to approximate JMARS' 3D view modes.
+
+## 2026-08-23 Session Notes (Phase 7 - Planetary Science & 3D Parity)
+- Implemented **KRC Mars 1D Thermal Model** (`src/features/krc/`): Numerical heat diffusion solver, diurnal and seasonal temperature curve generation, depth temperature profile, map probe location mode, and CSV export.
+- Implemented **Mars Time & Solar Longitude ($L_s$) Calendar** (`src/features/slider/`): Real-time conversion between Earth UTC, Mars Sol Date (MSD), Mars Year (MY), and $L_s$, with interactive scrubbing and playback engine.
+- Implemented **3D Terrain & Globe Viewer** (`src/features/threed/`): WebGL 3D regional mesh with MOLA DEM elevation displacement, active solar lighting, orbit controls, and vertical exaggeration.
+- Implemented **Mars Climate Database (MCD) Atmospheric Profiler** (`src/features/mcd/`): Vertical profiles of temperature, pressure, density, dust, and wind up to 50 km.
+- Implemented **Crater Counting CSFD & Isochron Age Dating** (`src/features/crater-counting/`): Log-log cumulative size-frequency distribution ($N(>D)/\text{km}^2$) with Hartmann & Neukum isochrons ($10\text{ Ma} - 4.3\text{ Ga}$) and surface age estimation.
+- Implemented **Spectral Band Math & Mineralogy** (`src/features/bands/`): Standard mineral indices (BD530, BD1900, BD1500, D2300, Olivine) with colormaps.
+- Implemented **Map Projections & Viewpoints** (`src/features/projections/`): Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) views.
+- Expanded automated unit test suite to 24 passing Mocha/Chai tests covering all science models.
+- Set up standing recurring cron tasks (every 15 minutes for iterative development and every 4 hours for automated test verification and push).
+

@@ -1,5 +1,51 @@
 # JSMARS Release Notes
 
+## v0.6.0 - Planetary Science & 3D Parity Push
+**Date:** 2026-08-23
+
+### New Features
+
+#### KRC Mars 1D Thermal Model
+- Client-side 1D heat conduction finite difference solver based on Hugh Kieffer's KRC model.
+- Diurnal surface and subsurface temperature curves ($T(t)$ from 0 to 24h LTST).
+- Subsurface depth temperature profile ($T(z)$ from 0 to 1 m, 24 layers).
+- Seasonal orbital temperature curves ($T(L_s)$ from 0° to 360°).
+- Interactive parameter controls: Thermal Inertia, Albedo, Dust Optical Depth ($\tau$), Elevation, Latitude.
+- Map click probe to simulate any Martian coordinate.
+- Multi-mode canvas chart and CSV export.
+
+#### Mars Time & Solar Longitude ($L_s$) Calendar Slider
+- Real-time astronomical calculations: Earth UTC <-> Mars Sol Date (MSD) <-> Mars Year (MY) <-> Solar Longitude ($L_s$) <-> Subsolar point.
+- Interactive scrubbing slider and playback engine (1x, 5x, 20x).
+- Global event synchronization (`jmars:time-changed`) driving thermal, atmospheric, and 3D lighting models.
+
+#### 3D Terrain & Globe Viewer (WebGL)
+- Real-time 3D planetary mesh displaced by MOLA DEM topography.
+- Solar illumination angle computed from active $L_s$ and local solar time.
+- Orbit camera controls (drag to rotate, wheel to zoom).
+- Vertical exaggeration slider (1x to 20x) and wireframe mode.
+
+#### Mars Climate Database (MCD) Atmospheric Profiler
+- Vertical atmospheric structure from surface to 50 km altitude.
+- Temperature $T(z)$, Pressure $P(z)$ (log scale), Density $\rho(z)$, and horizontal wind speed $u(z), v(z)$.
+- Scale height and surface boundary conditions calculation.
+- Interactive canvas profile chart and CSV export.
+
+#### Crater Counting CSFD & Isochron Dating
+- Real-time Cumulative Size-Frequency Distribution ($N(>D)/\text{km}^2$) log-log chart.
+- Hartmann & Neukum isochron models (10 Ma to 4.3 Ga) and geological epoch boundaries (Noachian, Hesperian, Amazonian).
+- Surface model age estimation.
+
+#### Spectral Band Math & Mineralogy Indices
+- Standard Martian remote sensing mineral indices (BD530 Ferric iron, BD1900 Hydrated minerals, BD1500 Water ice, D2300 Smectite, THEMIS Olivine ratio).
+- Custom formula parser and colormaps (Viridis, Magma, Coolwarm, Jet, Rainbow, Grayscale).
+
+#### Map Viewpoints & Polar Projections
+- Switch between Global Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) views.
+- Planetocentric vs Planetographic latitude and East 360° / East 180° / West 360° longitude formatting.
+
+---
+
 ## v0.5.0 - Feature Parity Push (P1/P2)
 **Date:** 2026-06-13
 

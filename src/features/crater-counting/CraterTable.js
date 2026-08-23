@@ -7,13 +7,13 @@
  * {@link EVENTS.CRATER_REMOVE} and {@link EVENTS.CRATER_CLEAR} events.
  */
 import { EVENTS } from '../../constants.js';
+import { CSFDEngine } from './CSFDEngine.js';
+import { CSFDChart } from './CSFDChart.js';
 
 /**
  * @class CraterTable
  * @description Renders a sortable table of crater measurements with toolbar
- * buttons for CSV export, GeoJSON export, and bulk clearing. Each row shows
- * a short ID, latitude, longitude, and diameter in kilometers, plus a delete
- * button for individual removal.
+ * buttons for CSV export, GeoJSON export, bulk clearing, and real-time CSFD isochron dating.
  */
 export class CraterTable {
     /**
@@ -23,6 +23,7 @@ export class CraterTable {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.craters = [];
+        this.csfdChart = null;
 
         if (!this.container) {
             console.warn('CraterTable container not found');
@@ -34,6 +35,13 @@ export class CraterTable {
         // Listen for updates
         document.addEventListener(EVENTS.CRATER_ADDED, (e) => {
             this.addCrater(e.detail);
+            this.updateCSFD();
+        });
+
+        document.addEventListener(EVENTS.CRATER_CLEAR, () => {
+            this.craters = [];
+            if (this.tbody) this.tbody.innerHTML = '';
+            this.updateCSFD();
         });
     }
 
@@ -49,7 +57,7 @@ export class CraterTable {
         <button id="crater-export-json-btn" class="crater-action-btn" style="background: #333;">Export GeoJSON</button>
         <button id="crater-clear-btn" class="crater-action-btn" style="background: #500; border-color: #700;">Clear All</button>
       </div>
-      <div class="crater-table-container">
+      <div class="crater-table-container" style="max-height: 120px; overflow-y: auto;">
         <table class="crater-table">
           <thead>
             <tr>
@@ -64,12 +72,21 @@ export class CraterTable {
           </tbody>
         </table>
       </div>
+      <div id="crater-csfd-container" style="margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px;"></div>
     `;
         this.tbody = this.container.querySelector('#crater-table-body');
+        this.csfdChart = new CSFDChart(this.container.querySelector('#crater-csfd-container'));
 
         this.container.querySelector('#crater-export-btn').addEventListener('click', () => this.exportCSV());
         this.container.querySelector('#crater-export-json-btn').addEventListener('click', () => this.exportGeoJSON());
         this.container.querySelector('#crater-clear-btn').addEventListener('click', () => this.clearAll());
+    }
+
+    updateCSFD() {
+        if (!this.csfdChart) return;
+        const csfd = CSFDEngine.computeCSFD(this.craters);
+        this.csfdChart.setCSFD(csfd);
+        document.dispatchEvent(new CustomEvent(EVENTS.CSFD_UPDATED, { detail: csfd }));
     }
 
     /**
@@ -99,7 +116,7 @@ export class CraterTable {
     `;
 
         tr.querySelector('.delete-crater-btn').addEventListener('click', (e) => {
-            const id = parseInt(e.target.dataset.id);
+            const id = parseInt(e.target.dataset.id) || e.target.dataset.id;
             this.removeCrater(id);
         });
 
@@ -109,16 +126,18 @@ export class CraterTable {
     /**
      * Removes a single crater by id from the table and internal list,
      * then dispatches a {@link EVENTS.CRATER_REMOVE} event.
-     * @param {number} id - The crater id to remove.
+     * @param {number|string} id - The crater id to remove.
      * @returns {void}
      */
     removeCrater(id) {
         // Remove from local list
-        this.craters = this.craters.filter(c => c.id !== id);
+        this.craters = this.craters.filter(c => c.id != id);
 
         // Remove from DOM
         const row = this.tbody.querySelector(`#crater-row-${id}`);
         if (row) row.remove();
+
+        this.updateCSFD();
 
         // Dispatch removal event
         const event = new CustomEvent(EVENTS.CRATER_REMOVE, { detail: { id } });
@@ -135,6 +154,7 @@ export class CraterTable {
 
         this.craters = [];
         this.tbody.innerHTML = '';
+        this.updateCSFD();
 
         // Dispatch clear event
         const event = new CustomEvent(EVENTS.CRATER_CLEAR);

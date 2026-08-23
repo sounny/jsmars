@@ -67,17 +67,42 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] Body selector (Mars, Moon, Earth, etc.).
     - [ ] Configurable endpoints and coordinate systems.
 
-## Phase 5: Advanced Layers & Tools (Reference Parity)
-- [ ] **Stamp Layer**:
-    - Query footprint databases (THEMIS, CTX, HiRISE).
-    - Render outlines on map.
-    - Click to load full-resolution image.
-- [ ] **Ground Track**:
-    - Visualize spacecraft orbits (MRO, ODY, MGS).
-- [ ] **Time Awareness**: Time slider for temporal WMS layers.
-- [ ] **3D Visualization**: WebGL exploration (`viz3d`).
-- [ ] **Production Hardening**: Tile caching, debouncing, expanded testing.
+## Phase 5: Advanced Layers & Tools (Completed)
+- [x] **Stamp Layer**:
+    - [x] Query footprint databases (THEMIS, CTX, HiRISE, MOC, CRISM).
+    - [x] Render outlines on map.
+    - [x] Footprint metadata inspection and CSV export.
+- [x] **Ground Track**:
+    - [x] Visualize spacecraft orbits (MRO, ODY, MAVEN, MEX, MGS).
+- [x] **Time Awareness**: Time slider for temporal WMS layers and astronomical state.
+- [x] **3D Visualization**: WebGL 3D terrain and globe exploration.
+- [x] **Production Hardening**: Tile caching, debouncing, comprehensive test suite.
+
+## Phase 6: Planetary Science & Parity Push (Completed)
+- [x] **KRC Mars 1D Thermal Model**:
+    - [x] Diurnal surface and subsurface heat conduction simulation.
+    - [x] Seasonal temperature curve calculation vs Solar Longitude ($L_s$).
+    - [x] Subsurface depth temperature profile (0 to 1 m).
+    - [x] Map probe mode to simulate any coordinate.
+- [x] **Mars Time & Calendar ($L_s$)**:
+    - [x] Conversion between Earth UTC, Mars Sol Date (MSD), Mars Year (MY), and Solar Longitude ($L_s$).
+    - [x] Interactive scrubbing slider and playback engine.
+- [x] **3D Terrain & Globe Viewer (WebGL)**:
+    - [x] 3D mesh displaced by MOLA DEM topography.
+    - [x] Solar lighting based on solar declination and local time.
+    - [x] Orbit camera controls and vertical exaggeration slider.
+- [x] **Mars Climate Database (MCD) Atmospheric Profiler**:
+    - [x] Vertical profiles of temperature, pressure, density, dust, and wind up to 50 km.
+- [x] **Crater Counting CSFD & Isochron Age Dating**:
+    - [x] Cumulative log-log size-frequency distribution ($N(>D)/\text{km}^2$).
+    - [x] Hartmann & Neukum isochron overlays (10 Ma to 4.3 Ga) and model age estimation.
+- [x] **Spectral Band Math & Mineralogy**:
+    - [x] Mineral parameter presets (BD530 Ferric iron, BD1900 Hydrated minerals, BD1500 Water ice, D2300 Smectite, Olivine).
+    - [x] Colormaps (Viridis, Magma, Coolwarm, Jet, Rainbow).
+- [x] **Map Projections & Polar Views**:
+    - [x] Global Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) viewpoints.
 
 ## Documentation & Process
-- [ ] **Release Notes**: Maintain `docs/release-notes.md`.
-- [ ] **User Guide**: Maintain `docs/user-guide.md`.
+- [x] **Release Notes**: Maintained in `docs/release-notes.md`.
+- [x] **User Guide**: Maintained in `docs/user-guide.md`.
+- [x] **Work Log**: Maintained in `docs/LOG.md`.

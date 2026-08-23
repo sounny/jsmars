@@ -205,10 +205,28 @@ export class ProfileChart {
         ctx.lineTo(w - pad, h - pad); // X axis
         ctx.stroke();
 
-        // Draw Profiles
+        // Draw Profiles with terrain fill
         filteredProfiles.forEach(p => {
-            ctx.strokeStyle = p.color;
-            ctx.lineWidth = 1.5;
+            if (p.data.length < 2) return;
+
+            // Gradient terrain fill
+            const grad = ctx.createLinearGradient(0, pad, 0, h - pad);
+            grad.addColorStop(0, 'rgba(74, 222, 128, 0.35)');
+            grad.addColorStop(1, 'rgba(74, 222, 128, 0.02)');
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(scaleX(p.data[0].dist), h - pad);
+            p.data.forEach((d) => {
+                ctx.lineTo(scaleX(d.dist), scaleY(d.elev));
+            });
+            ctx.lineTo(scaleX(p.data[p.data.length - 1].dist), h - pad);
+            ctx.closePath();
+            ctx.fill();
+
+            // Profile stroke line
+            ctx.strokeStyle = p.color || '#4ade80';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             p.data.forEach((d, i) => {
                 const x = scaleX(d.dist);
@@ -219,14 +237,38 @@ export class ProfileChart {
             ctx.stroke();
         });
 
+        // Compute slope metrics on first profile
+        if (filteredProfiles[0]?.data?.length > 1) {
+            const data = filteredProfiles[0].data;
+            let sumSqSlope = 0;
+            let maxSlopeDeg = 0;
+            for (let i = 1; i < data.length; i++) {
+                const dx = data[i].dist - data[i-1].dist;
+                const dz = data[i].elev - data[i-1].elev;
+                if (dx > 0) {
+                    const slope = Math.abs(dz / dx);
+                    const slopeDeg = Math.atan(slope) * (180 / Math.PI);
+                    if (slopeDeg > maxSlopeDeg) maxSlopeDeg = slopeDeg;
+                    sumSqSlope += slope * slope;
+                }
+            }
+            const rmsSlopeDeg = Math.atan(Math.sqrt(sumSqSlope / (data.length - 1))) * (180 / Math.PI);
+            const relief = Math.round(maxElev - minElev);
+
+            ctx.fillStyle = '#aaa';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Relief: ${relief}m | RMS Slope: ${rmsSlopeDeg.toFixed(1)}°`, pad + 5, pad + 12);
+        }
+
         // Labels
         ctx.fillStyle = '#fff';
         ctx.font = '10px sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(Math.round(maxElev), pad - 2, pad + 10);
-        ctx.fillText(Math.round(minElev), pad - 2, h - pad);
+        ctx.fillText(`${Math.round(maxElev)}m`, pad - 2, pad + 10);
+        ctx.fillText(`${Math.round(minElev)}m`, pad - 2, h - pad);
 
         ctx.textAlign = 'center';
-        ctx.fillText(`${(maxDist/1000).toFixed(0)} km`, w - pad, h - 5);
+        ctx.fillText(`${(maxDist/1000).toFixed(1)} km`, w - pad, h - 5);
     }
 }

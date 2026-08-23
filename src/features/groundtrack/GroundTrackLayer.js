@@ -17,46 +17,51 @@ export class GroundTrackLayer {
 
     /**
      * Approximate orbital parameters for Mars orbiters.
-     * period in minutes, inclination in degrees, altitude in km
+     * period in minutes, inclination in degrees, altitude in km, swath in km
      */
     this.spacecraft = {
       'MRO': {
-        name: 'Mars Reconnaissance Orbiter',
+        name: 'Mars Reconnaissance Orbiter (CTX/HiRISE)',
         period: 112,
         inclination: 92.65,
         altitude: 250,
+        swathKm: 30,
         color: '#4dabf7',
         active: true
       },
       'ODY': {
-        name: 'Mars Odyssey',
+        name: 'Mars Odyssey (THEMIS)',
         period: 118.5,
         inclination: 93.06,
         altitude: 400,
+        swathKm: 32,
         color: '#51cf66',
         active: true
       },
       'MAVEN': {
-        name: 'MAVEN',
+        name: 'MAVEN (IUVS)',
         period: 270,
         inclination: 75,
         altitude: 6200,
+        swathKm: 120,
         color: '#ffd43b',
         active: true
       },
       'MEX': {
-        name: 'Mars Express',
+        name: 'Mars Express (HRSC)',
         period: 420,
         inclination: 86.35,
         altitude: 10530,
+        swathKm: 52,
         color: '#ff922b',
         active: true
       },
       'MGS': {
-        name: 'Mars Global Surveyor',
+        name: 'Mars Global Surveyor (MOC)',
         period: 117.65,
         inclination: 92.96,
         altitude: 370,
+        swathKm: 30,
         color: '#da77f2',
         active: false  // Mission ended 2006
       }
@@ -150,18 +155,40 @@ export class GroundTrackLayer {
     }
     if (currentSegment.length > 1) tracks.push(currentSegment);
 
-    // Create polylines
-    const polylines = tracks.map(segment => {
-      return L.polyline(segment, {
+    // Create polylines and swath corridors
+    const layers = [];
+    tracks.forEach(segment => {
+      // Swath footprint corridor (translucent background buffer)
+      const swath = L.polyline(segment, {
         color: sc.color,
-        weight: 1.5,
-        opacity: 0.7,
+        weight: Math.max(6, Math.min(24, (sc.swathKm || 30) / 4)),
+        opacity: 0.15,
+        lineCap: 'round',
+        className: 'groundtrack-swath'
+      });
+      this.trackGroup.addLayer(swath);
+      layers.push(swath);
+
+      // Track centerline
+      const pl = L.polyline(segment, {
+        color: sc.color,
+        weight: 2,
+        opacity: 0.85,
         dashArray: '6,4',
         className: 'groundtrack-line'
       });
+      pl.bindPopup(`
+        <div style="font-family:sans-serif; font-size:11px;">
+          <b>${sc.name}</b><br>
+          Altitude: ${sc.altitude} km<br>
+          Period: ${sc.period} min<br>
+          Inclination: ${sc.inclination}°<br>
+          Instrument Swath: ~${sc.swathKm || 30} km
+        </div>
+      `);
+      this.trackGroup.addLayer(pl);
+      layers.push(pl);
     });
-
-    polylines.forEach(pl => this.trackGroup.addLayer(pl));
 
     // Add orbit label at the midpoint
     if (tracks.length > 0 && tracks[0].length > 2) {
@@ -170,16 +197,16 @@ export class GroundTrackLayer {
       const label = L.marker(midPoint, {
         icon: L.divIcon({
           className: 'groundtrack-label',
-          html: `<span style="color:${sc.color}; font-size:10px; font-weight:bold; text-shadow: 0 0 3px #000">${scId}</span>`,
-          iconSize: [40, 14],
-          iconAnchor: [20, 7]
+          html: `<span style="color:${sc.color}; font-size:10px; font-weight:bold; text-shadow: 0 0 3px #000; background: rgba(0,0,0,0.5); padding: 1px 4px; border-radius: 2px;">🛰️ ${scId}</span>`,
+          iconSize: [60, 16],
+          iconAnchor: [30, 8]
         })
       });
-      polylines.push(label);
+      layers.push(label);
       this.trackGroup.addLayer(label);
     }
 
-    this.activeTracks.set(scId, polylines);
+    this.activeTracks.set(scId, layers);
 
     document.dispatchEvent(new CustomEvent(EVENTS.GROUNDTRACK_LOADED, {
       detail: { spacecraft: scId, segments: tracks.length }

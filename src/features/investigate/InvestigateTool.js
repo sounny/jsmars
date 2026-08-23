@@ -2,11 +2,15 @@ import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
 import { molaDem } from '../../util/mola-dem.js';
+import { MarsTime } from '../slider/MarsTime.js';
+import { KRCEngine } from '../krc/KRCEngine.js';
+import { MCDEngine } from '../mcd/MCDEngine.js';
+import { formatLatLon } from '../../util/geo.js';
 
 /**
  * @module InvestigateTool
- * @description Click-to-query tool that probes WMS layers and
- * displays pixel values, elevation, and metadata in a popup.
+ * @description Click-to-query tool that probes WMS layers, elevation,
+ * Mars astronomical state, KRC thermal simulation, and MCD atmosphere.
  */
 export class InvestigateTool {
     /**
@@ -16,7 +20,7 @@ export class InvestigateTool {
     constructor(map) {
         this.map = map;
         this.isActive = false;
-        this.popup = L.popup({ maxWidth: 300 });
+        this.popup = L.popup({ maxWidth: 320, className: 'investigate-popup' });
         
         this.onClick = this.onClick.bind(this);
 
@@ -60,17 +64,24 @@ export class InvestigateTool {
         const lat = e.latlng.lat;
         let lng = e.latlng.lng;
         // Normalize display Lng (0-360)
-        const displayLng = lng < 0 ? lng + 360 : lng;
+        const displayLng360 = ((lng % 360) + 360) % 360;
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
 
-        // 1. Show Popup with coords immediately
+        // 1. Show Popup with initial template
         let content = `
-            <div style="font-family: monospace; font-size: 12px;">
-                <b>Coordinates</b><br>
-                Lat: ${lat.toFixed(4)}<br>
-                Lon: ${displayLng.toFixed(4)} E<br>
-                Elev: <span id="investigate-elevation">Loading...</span><br>
-                <hr style="margin: 5px 0; border: 0; border-top: 1px solid #ccc;">
-                <div id="investigate-loading">Querying layers...</div>
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; line-height: 1.4; color: #eee; background: #1a1a1a; padding: 4px; border-radius: 4px;">
+                <div style="font-weight: 700; color: #38bdf8; margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 2px;">
+                    📍 Planetary Probe
+                </div>
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 2px 6px;">
+                    <span style="color:#aaa;">Lat / Lon:</span>
+                    <span><b>${lat.toFixed(4)}°</b>, <b>${displayLng360.toFixed(4)}°E</b></span>
+                    <span style="color:#aaa;">Elevation:</span>
+                    <span id="investigate-elevation" style="color:#4ade80;">Sampling...</span>
+                </div>
+                <div id="investigate-planet-diagnostics" style="margin-top: 6px; border-top: 1px solid #333; padding-top: 4px;"></div>
+                <hr style="margin: 6px 0; border: 0; border-top: 1px solid #333;">
+                <div id="investigate-loading" style="color: #999; font-style: italic;">Querying active map layers...</div>
                 <div id="investigate-results"></div>
             </div>
         `;
@@ -80,8 +91,8 @@ export class InvestigateTool {
             .setContent(content)
             .openOn(this.map);
 
-        // Elevation (best-effort, Mars only for now)
-        this.loadElevation(e.latlng);
+        // Load elevation and planetary diagnostics
+        this.loadDiagnostics(lat, displayLng360, body);
 
         // 2. Query WMS Layers
         const results = await this.queryLayers(e.latlng, e.containerPoint);
@@ -89,25 +100,62 @@ export class InvestigateTool {
     }
 
     /**
-     * Load elevation for the clicked point (Mars only, via MOLA DEM).
-     * @param {L.LatLng} latlng - Clicked coordinates.
+     * Load elevation and planetary state for the clicked point.
      */
-    async loadElevation(latlng) {
-        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+    async loadDiagnostics(lat, lng360, body) {
         const elevationEl = document.getElementById('investigate-elevation');
-        if (!elevationEl) return;
+        const diagEl = document.getElementById('investigate-planet-diagnostics');
+        if (!elevationEl || !diagEl) return;
 
         if (body !== 'mars') {
-            elevationEl.textContent = 'N/A';
+            elevationEl.textContent = 'N/A (Mars only)';
             return;
         }
 
         try {
-            const values = await molaDem.sampleElevations([{ lat: latlng.lat, lng: latlng.lng }]);
+            const values = await molaDem.sampleElevations([{ lat, lng: lng360 }]);
             const elev = values[0];
-            elevationEl.textContent = Number.isFinite(elev) ? `${Math.round(elev)} m` : 'No data';
+            const elevMeters = Number.isFinite(elev) ? Math.round(elev) : 0;
+            elevationEl.textContent = Number.isFinite(elev) ? `${elevMeters} m (${(elevMeters/1000).toFixed(2)} km)` : 'No data';
+
+            // Astronomical state
+            const marsState = MarsTime.computeState(new Date());
+            const ltst = MarsTime.computeLTST(marsState.Ls, marsState.MTC, lng360);
+            const ltstHours = Math.floor(ltst);
+            const ltstMins = Math.floor((ltst - ltstHours) * 60);
+            const ltstStr = `${String(ltstHours).padStart(2, '0')}:${String(ltstMins).padStart(2, '0')}`;
+            const zenith = MarsTime.getSolarZenith(lat, marsState.subSolarLat, ltst);
+
+            // Thermal Simulation
+            const krc = KRCEngine.simulateDiurnal({
+                lat,
+                Ls: marsState.Ls,
+                elevation: elevMeters / 1000,
+                thermalInertia: 280,
+                albedo: 0.22
+            });
+
+            // MCD Atmospheric Profile
+            const mcd = MCDEngine.computeProfile({
+                lat,
+                lon: lng360,
+                elevation: elevMeters / 1000,
+                Ls: marsState.Ls,
+                localHour: ltst
+            });
+
+            diagEl.innerHTML = `
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 2px 6px; font-size: 10px;">
+                    <span style="color:#aaa;">Local Time:</span>
+                    <span><b>${ltstStr} LTST</b> (${zenith.isDay ? '☀️ Day' : '🌙 Night'})</span>
+                    <span style="color:#aaa;">Est. Temp:</span>
+                    <span style="color:#fb923c;"><b>${krc.summary.meanTemp.toFixed(1)} K</b> [${krc.summary.minTemp.toFixed(0)} to ${krc.summary.maxTemp.toFixed(0)} K]</span>
+                    <span style="color:#aaa;">Atmosphere:</span>
+                    <span style="color:#38bdf8;">${mcd.surface.pressurePa.toFixed(0)} Pa (${mcd.surface.temperatureK.toFixed(0)} K)</span>
+                </div>
+            `;
         } catch (err) {
-            console.warn('Investigate elevation failed', err);
+            console.warn('Investigate diagnostics failed', err);
             elevationEl.textContent = 'Error';
         }
     }

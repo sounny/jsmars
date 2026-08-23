@@ -34,19 +34,28 @@ a browser-based planetary GIS application inspired by the JMARS Java desktop app
   data/
     landing-sites.json          # Mars + Moon landing site coordinates
   features/
+    bands/                      # BandMathEngine, BandMathPanel (Mineral Indices)
     bookmarks/BookmarksTool.js
-    crater-counting/            # CraterLayer, CraterTable
+    contour/                    # ContourLayer, ContourPanel
+    crater-counting/            # CraterLayer, CraterTable, CSFDEngine, CSFDChart (Isochrons)
+    custom-map/                 # CustomMapManager (GeoTIFF)
     export/ExportTool.js        # PNG/JPEG/world file export
     groundtrack/                # GroundTrackLayer, GroundTrackPanel
+    hillshade/                  # HillshadeLayer, HillshadePanel
     investigate/InvestigateTool.js
+    krc/                        # KRCEngine, KRCPanel, KRCChart (1D Thermal Model)
     landing/LandingSitesLayer.js
+    mcd/                        # MCDEngine, MCDPanel, MCDChart (Atmospheric Profiler)
     measure/MeasureTool.js, MeasurementTable.js
     nomenclature/NomenclatureTool.js
     places/PlacesManager.js     # Bookmark places, search
     profile/                    # RadialProfileTool, EnhancedProfileTool
+    projections/                # ProjectionManager (Polar & Coordinate Views)
     sampling/SamplingTool.js, SampleTable.js
     shapes/                     # ShapeLayer, ShapeTable, ShapeIO, StyleEditor
+    slider/                     # MarsTime, TimeSlider (Ls, MY, Sol Calendar)
     stamp/                      # StampLayer, StampQueryPanel (ODE API)
+    threed/                     # ThreeDViewer, ThreeDPanel (WebGL Terrain/Globe)
   layers/
     index.js                    # Layer registry + createLeafletLayer()
     GraticuleLayer.js           # Lat/lon grid overlay

@@ -11,22 +11,28 @@ This project adheres to a **"No-Build"** philosophy: it uses standard ES Modules
 - **Multi-Body Maps**: View Mars, Moon, and Earth with WMS-discovered layers
 - **WMS Integration**: Auto-discovers layers from USGS, OpenPlanetary, and NASA GIBS
 - **Layer Management**: Toggle, reorder (drag), opacity, settings modal, filter
+- **Mars Time & Calendar**: Real-time Solar Longitude ($L_s$), Mars Sol Date (MSD), Mars Year (MY), and time scrubbing
+- **KRC Mars 1D Thermal Model**: Diurnal surface/subsurface thermal simulation, seasonal temperature curves, CO2 frost detection
+- **3D Terrain & Globe Viewer**: Interactive WebGL 3D terrain displaced by MOLA DEM with solar lighting and vertical exaggeration
+- **MCD Atmospheric Profiler**: Vertical profiles of temperature, pressure, density, dust, and wind up to 50 km
+- **Crater Counting & CSFD Dating**: Interactive crater digitization with log-log CSFD plots, Hartmann & Neukum isochrons, and model ages
+- **Spectral Band Math & Mineralogy**: CRISM/THEMIS mineral parameter indices (BD530, BD1900, BD1500, D2300, Olivine) with colormap stretch
 - **Stamp Layer**: Browse THEMIS, CTX, HiRISE, MOC, CRISM footprints via USGS ODE REST API
 - **Advanced Shapes**: Draw (point, line, polygon, circle, rectangle), edit attributes, style with presets
 - **Import/Export**: GeoJSON, CSV, KML file support with drag-and-drop import
-- **Crater Counting**: Interactive crater sizing and logging
 - **Elevation Profiles**: Linear and radial profiles from MOLA DEM
 - **Measurements**: Distance, area with azimuth and great-circle calculations
 - **Landing Sites**: Mars rovers/landers + Moon landing sites with mission info
-- **Ground Tracks**: Approximate spacecraft orbit visualization (MRO, Odyssey, MAVEN, etc.)
+- **Ground Tracks**: Spacecraft orbit visualization (MRO, Odyssey, MAVEN, etc.)
+- **Map Projections**: Equirectangular global view, North Polar (Planum Boreum) and South Polar (Planum Australe) viewpoints
 - **Map Export**: PNG, JPEG, and georeferenced world file (.pgw/.jgw)
 - **Nomenclature**: IAU feature labels (craters, mons, valles, planitia)
-- **Investigate**: WMS GetFeatureInfo point queries
-- **Sampling**: Point and area data collection
+- **Investigate & Sampling**: WMS GetFeatureInfo point queries and area sampling
 - **Session Save/Load**: Full state persistence as JSON
-- **Bookmarks & Places**: Location bookmarks with coordinate parsing
 - **Lightweight**: No Webpack, no Vite, no `npm install`. Runs on GitHub Pages.
 
+## Reference Source
+The original Java-based JMARS application source code is available in the `jmars/` directory at the repository root as the reference truth.
 
 ## Roadmap
 - [x] **Phase 1**: WMS Layer Support, Basic Map
@@ -35,7 +41,7 @@ This project adheres to a **"No-Build"** philosophy: it uses standard ES Modules
 - [x] **Phase 4**: Crater Counting, Profiles, Measurements, Nomenclature
 - [x] **Phase 5**: Search, Bookmarks, Session Saving, Sampling
 - [x] **Phase 6 (v0.5.0)**: Stamp Layer, Shapes, Landing Sites, Ground Track, Export
-- [ ] **Phase 7**: KRC Thermal Model, Time Slider, 3D View (WebGL)
+- [x] **Phase 7 (v0.6.0)**: KRC 1D Thermal Model, Mars Time & $L_s$ Slider, 3D Terrain & Globe Viewer, MCD Atmospheric Profiler, CSFD Isochron Crater Dating, Spectral Band Math, Polar Projections
 
 See [docs/jsmars-roadmap.md](docs/jsmars-roadmap.md) for the detailed plan.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for project architecture.
