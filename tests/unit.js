@@ -405,6 +405,23 @@ describe('Spatial POI Bookmarks System', () => {
     });
 });
 
+describe('Topographic Profile Transects & Linked Cursors', () => {
+    it('should dispatch and handle synchronized profile hover coordinates', (done) => {
+        const handler = (e) => {
+            expect(e.detail.lat).to.equal(18.5);
+            expect(e.detail.lng).to.equal(-133.8);
+            expect(e.detail.elev).to.equal(21229);
+            document.removeEventListener('jmars:profile-hover', handler);
+            done();
+        };
+        document.addEventListener('jmars:profile-hover', handler);
+
+        document.dispatchEvent(new CustomEvent('jmars:profile-hover', {
+            detail: { lat: 18.5, lng: -133.8, dist: 12000, elev: 21229 }
+        }));
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

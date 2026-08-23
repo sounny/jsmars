@@ -60,7 +60,10 @@ export class ProfileChart {
 
         // Interaction
         this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
-        this.canvas.addEventListener('mouseleave', () => this.draw(this.lastProfiles)); // Redraw clean
+        this.canvas.addEventListener('mouseleave', () => {
+            this.draw(this.lastProfiles);
+            document.dispatchEvent(new CustomEvent('jmars:profile-hover', { detail: { clear: true } }));
+        });
 
         // Initial text
         this.ctx.fillStyle = '#666';
@@ -126,13 +129,19 @@ export class ProfileChart {
             this.ctx.stroke();
 
             // Tooltip
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
             this.ctx.fillRect(nearest.px + 10, nearest.py - 30, 120, 40);
             this.ctx.fillStyle = '#fff';
             this.ctx.textAlign = 'left';
             this.ctx.font = '10px monospace';
             this.ctx.fillText(`Dist: ${Math.round(nearest.dist)}m`, nearest.px + 15, nearest.py - 20);
             this.ctx.fillText(`Elev: ${Math.round(nearest.elev)}m`, nearest.px + 15, nearest.py - 8);
+
+            if (Number.isFinite(nearest.lat) && Number.isFinite(nearest.lng)) {
+                document.dispatchEvent(new CustomEvent('jmars:profile-hover', {
+                    detail: { lat: nearest.lat, lng: nearest.lng, dist: nearest.dist, elev: nearest.elev }
+                }));
+            }
         }
     }
 

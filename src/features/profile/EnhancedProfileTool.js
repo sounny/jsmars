@@ -45,6 +45,31 @@ export class EnhancedProfileTool {
         
         this.onDrawCreated = this.onDrawCreated.bind(this);
         this.onDrawStop = this.onDrawStop.bind(this);
+        this.hoverMarker = null;
+
+        // Synchronize chart mouse hovering with map cursor position
+        document.addEventListener('jmars:profile-hover', (e) => {
+            const detail = e.detail;
+            if (detail?.clear) {
+                if (this.hoverMarker) {
+                    this.featureGroup.removeLayer(this.hoverMarker);
+                    this.hoverMarker = null;
+                }
+            } else if (detail && Number.isFinite(detail.lat) && Number.isFinite(detail.lng)) {
+                if (!this.hoverMarker) {
+                    this.hoverMarker = L.circleMarker([detail.lat, detail.lng], {
+                        radius: 6,
+                        color: '#ffffff',
+                        weight: 2,
+                        fillColor: '#38bdf8',
+                        fillOpacity: 0.9
+                    });
+                    this.featureGroup.addLayer(this.hoverMarker);
+                } else {
+                    this.hoverMarker.setLatLng([detail.lat, detail.lng]);
+                }
+            }
+        });
         
         // Listen to external events if necessary
         document.addEventListener(EVENTS.BODY_CHANGED, () => this.deactivate());
