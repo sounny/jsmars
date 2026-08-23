@@ -422,6 +422,24 @@ describe('Topographic Profile Transects & Linked Cursors', () => {
     });
 });
 
+describe('Mars Orbital Mechanics & Time System', () => {
+    it('should map Solar Longitude (Ls) back to approximate Earth Date', () => {
+        // Ls = 0 in MY 37 corresponds to early 2023
+        const date = MarsTime.lsToDate(0, 37);
+        expect(date).to.be.instanceOf(Date);
+        expect(date.getUTCFullYear()).to.be.within(2022, 2024);
+    });
+
+    it('should calculate surface mission sols for rovers and landers', () => {
+        // Perseverance landed 2021-02-18
+        const date = new Date('2021-02-19T00:00:00Z');
+        const solObj = MarsTime.getMissionSol(date, 'perseverance');
+        expect(solObj.mission).to.include('Perseverance');
+        expect(solObj.sol).to.be.within(0, 2);
+        expect(solObj.active).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -45,7 +45,7 @@ export class MarsTime {
    * @returns {number} Mars Sol Date.
    */
   static jdTTToMSD(jdTT) {
-    return (jdTT - 2405522.0028779) / 1.027491252 + 44796.0 - 0.00096;
+    return (jdTT - 2451549.5) / 1.027491252 + 44796.0 - 0.00096;
   }
 
   /**
@@ -113,9 +113,9 @@ export class MarsTime {
     // Sub-solar longitude (East)
     const subSolarLon = ((alpha_FMS - mtc * 15) % 360 + 360) % 360;
 
-    // Mars Year calculation (MY 1 started on 1955-04-11, MSD ~ 28352.0)
+    // Mars Year calculation (MY 1 started on 1955-04-11, MSD 28945.0)
     // Approximate Mars year duration = 668.6 sols
-    const MY = Math.floor((msd - 28352.0) / 668.6) + 1;
+    const MY = Math.floor((msd - 28945.0) / 668.6) + 1;
 
     // Season description
     const season = this.getSeason(Ls);
@@ -188,6 +188,63 @@ export class MarsTime {
       cosZ: Math.max(0, cosZ),
       zenithAngleDeg,
       isDay: cosZ > 0
+    };
+  }
+
+  /**
+   * Approximate Earth Date from Mars Year and Solar Longitude (Ls).
+   * Solves Kepler orbit iteratively.
+   * @param {number} Ls - Solar Longitude (0-360 deg).
+   * @param {number} [marsYear=37] - Mars Year number (e.g. MY 37).
+   * @returns {Date} Earth Date approximation.
+   */
+  static lsToDate(Ls, marsYear = 37) {
+    // MY 1 start: MSD = 28945.0 (1955-04-11)
+    // Mean orbital period of Mars = 668.6 sols
+    const myStartMsd = 28945.0 + (marsYear - 1) * 668.6;
+
+    // Approximate fractional sol offset using non-uniform orbital speed
+    const Ls_rad = Ls * Math.PI / 180;
+    const e = this.ECCENTRICITY;
+    // Mean anomaly approx from Ls
+    const M_rad = Ls_rad - (2 * e - (Math.pow(e, 3) / 4)) * Math.sin(Ls_rad);
+    const fraction = (M_rad / (2 * Math.PI) + 1.0) % 1.0;
+    const msd = myStartMsd + fraction * 668.6;
+
+    // Convert MSD to JD TT => JD UT => epoch ms
+    const jdTT = (msd - 44796.0 + 0.00096) * 1.027491252 + 2451549.5;
+    const jd = jdTT - (69.184 / 86400);
+    const epochMs = (jd - 2440587.5) * 86400000;
+    return new Date(epochMs);
+  }
+
+  /**
+   * Calculate Mission Sol number for major Mars surface missions.
+   * @param {Date|number} date
+   * @param {string} [mission='perseverance']
+   * @returns {{mission: string, sol: number, active: boolean}}
+   */
+  static getMissionSol(date, mission = 'perseverance') {
+    const MISSIONS = {
+      'perseverance': { name: 'Perseverance (Mars 2020)', landingMsd: 52303.88 },
+      'curiosity': { name: 'Curiosity (MSL)', landingMsd: 49268.22 },
+      'insight': { name: 'InSight Lander', landingMsd: 51511.83 },
+      'opportunity': { name: 'Opportunity (MER-B)', landingMsd: 46216.0 },
+      'spirit': { name: 'Spirit (MER-A)', landingMsd: 46195.0 },
+      'viking1': { name: 'Viking 1', landingMsd: 36440.0 },
+      'viking2': { name: 'Viking 2', landingMsd: 36484.0 }
+    };
+
+    const target = MISSIONS[mission.toLowerCase()] || MISSIONS.perseverance;
+    const jd = this.dateToJD(date);
+    const jdTT = this.jdToJdTT(jd);
+    const currentMsd = this.jdTTToMSD(jdTT);
+
+    const sol = Math.floor(currentMsd - target.landingMsd);
+    return {
+      mission: target.name,
+      sol,
+      active: sol >= 0
     };
   }
 

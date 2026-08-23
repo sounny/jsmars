@@ -53,3 +53,20 @@ TEST FAILURE: Unit test suite failed (1 failures):
     at JMARSState.emit (http://127.0.0.1:51945/src/jmars-state.js:167:29)
     at JMARSState.addLayer (http://127.0.0.1:51945/src/jmars-state.js:78:10)
     at n.<anonymous> (unit.js:283:20)
+
+
+### Automated 4-Hour Check Alert [2026-08-23 23:45:22 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should map Solar Longitude (Ls) back to approximate Earth Date
+?: AssertionError: expected 1895 to be within 2022..2024
+    at n.<anonymous> (unit.js:430:45)
+- should calculate surface mission sols for rovers and landers
+?: AssertionError: expected 44796 to be within 0..2
+    at n.<anonymous> (unit.js:438:34)
+
+
+### Automated 4-Hour Check Alert [2026-08-23 23:45:42 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should map Solar Longitude (Ls) back to approximate Earth Date
+?: AssertionError: expected 2021 to be within 2022..2024
+    at n.<anonymous> (unit.js:430:45)
