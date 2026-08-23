@@ -10,6 +10,7 @@ import { StampLayer } from '../src/features/stamp/StampLayer.js';
 import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
 import { GridLayer } from '../src/features/grid/GridLayer.js';
 import { PlanetaryScaleBar } from '../src/ui/PlanetaryScaleBar.js';
+import { RadarSounderEngine } from '../src/features/radar/RadarSounderEngine.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -362,6 +363,31 @@ describe('Planetary Graphic Scale Bar', () => {
 
         const d3 = PlanetaryScaleBar.getFriendlyDistance(850000);
         expect(d3.text).to.equal('500 km');
+    });
+});
+
+describe('Mars Subsurface Radar Sounder (SHARAD/MARSIS)', () => {
+    it('should convert two-way travel time (TWT) to depth using dielectric constant', () => {
+        // In pure water ice (eps = 3.15), v ≈ 1.689e8 m/s
+        // 10 microsecond TWT => z = v * 10e-6 / 2 ≈ 844.6 meters
+        const depth = RadarSounderEngine.twtToDepth(10, 3.15);
+        expect(depth).to.be.closeTo(844.6, 5);
+
+        const twt = RadarSounderEngine.depthToTwt(depth, 3.15);
+        expect(twt).to.be.closeTo(10, 0.05);
+    });
+
+    it('should simulate 1D A-scope trace with subsurface horizons and attenuation', () => {
+        const trace = RadarSounderEngine.simulateTrace('boreum');
+        expect(trace.twt).to.be.an('array').with.length.greaterThan(50);
+        expect(trace.powerDb).to.be.an('array').with.lengthOf(trace.twt.length);
+        expect(trace.horizons).to.be.an('array').with.length.greaterThan(2);
+    });
+
+    it('should simulate 2D B-scope radargram along ground tracks', () => {
+        const radargram = RadarSounderEngine.simulateRadargram('australe', 100, 30);
+        expect(radargram.grid).to.be.an('array').with.lengthOf(30);
+        expect(radargram.distances).to.be.an('array').with.lengthOf(30);
     });
 });
 

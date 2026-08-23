@@ -389,6 +389,18 @@
               <div id="bandmath-panel-container"></div>
             </div>
           </div>
+
+          <!-- Subsurface Radar Sounder (SHARAD / MARSIS) -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Simulate and visualize Mars subsurface radar sounding radargrams, polar ice stratigraphy, and dielectric interfaces (SHARAD / MARSIS).">
+              <span class="layer-title">Subsurface Radar Sounder</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="radar-panel-container"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -450,6 +462,7 @@
     import { GridPanel } from './src/features/grid/GridPanel.js';
     import { NorthArrow } from './src/ui/NorthArrow.js';
     import { PlanetaryScaleBar } from './src/ui/PlanetaryScaleBar.js';
+    import { RadarPanel } from './src/features/radar/RadarPanel.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -671,6 +684,11 @@
     // -- NEW: Spectral Band Math & Mineralogy Panel --
     const bandMathPanel = new BandMathPanel(
       document.getElementById('bandmath-panel-container'), jmars.map
+    );
+
+    // -- NEW: Subsurface Radar Sounder (SHARAD / MARSIS) --
+    const radarPanel = new RadarPanel(
+      document.getElementById('radar-panel-container'), jmars.map
     );
 
     const resetProfileButtons = () => {
