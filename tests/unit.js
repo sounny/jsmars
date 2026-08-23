@@ -9,6 +9,7 @@ import { CraterTable } from '../src/features/crater-counting/CraterTable.js';
 import { StampLayer } from '../src/features/stamp/StampLayer.js';
 import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
 import { GridLayer } from '../src/features/grid/GridLayer.js';
+import { PlanetaryScaleBar } from '../src/ui/PlanetaryScaleBar.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -334,6 +335,33 @@ describe('Planetary Graticule Grid Layer', () => {
         dummyMap.getZoom = () => 7;
         const zoom7 = grid.getAdaptiveSpacing();
         expect(zoom7.major).to.equal(1);
+    });
+});
+
+describe('Planetary Graphic Scale Bar', () => {
+    it('should calculate accurate planetary meters-per-pixel accounting for planetary radii and latitude', () => {
+        // Equator at zoom 0 on Mars (R=3389.5 km)
+        const mppMars = PlanetaryScaleBar.getMetersPerPixel(0, 0, 'mars');
+        expect(mppMars).to.be.closeTo(83187, 100);
+
+        // Equator at zoom 0 on Moon (R=1737.4 km)
+        const mppMoon = PlanetaryScaleBar.getMetersPerPixel(0, 0, 'moon');
+        expect(mppMoon).to.be.closeTo(42646, 100);
+
+        // High latitude cosine scaling
+        const mppMars60 = PlanetaryScaleBar.getMetersPerPixel(60, 0, 'mars');
+        expect(mppMars60).to.be.closeTo(mppMars * 0.5, 100);
+    });
+
+    it('should select human-friendly metric step intervals', () => {
+        const d1 = PlanetaryScaleBar.getFriendlyDistance(450);
+        expect(d1.text).to.equal('200 m');
+
+        const d2 = PlanetaryScaleBar.getFriendlyDistance(12500);
+        expect(d2.text).to.equal('10 km');
+
+        const d3 = PlanetaryScaleBar.getFriendlyDistance(850000);
+        expect(d3.text).to.equal('500 km');
     });
 });
 
