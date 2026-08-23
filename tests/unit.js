@@ -11,6 +11,7 @@ import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
 import { GridLayer } from '../src/features/grid/GridLayer.js';
 import { PlanetaryScaleBar } from '../src/ui/PlanetaryScaleBar.js';
 import { RadarSounderEngine } from '../src/features/radar/RadarSounderEngine.js';
+import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -388,6 +389,19 @@ describe('Mars Subsurface Radar Sounder (SHARAD/MARSIS)', () => {
         const radargram = RadarSounderEngine.simulateRadargram('australe', 100, 30);
         expect(radargram.grid).to.be.an('array').with.lengthOf(30);
         expect(radargram.distances).to.be.an('array').with.lengthOf(30);
+    });
+});
+
+describe('Spatial POI Bookmarks System', () => {
+    it('should provide default scientific POI presets across Mars and Moon', () => {
+        expect(BookmarksTool.DEFAULT_POIS).to.be.an('array').with.length.greaterThan(5);
+        const olympus = BookmarksTool.DEFAULT_POIS.find(p => p.id === 'poi-olympus');
+        expect(olympus).to.exist;
+        expect(olympus.body).to.equal('mars');
+
+        const apollo = BookmarksTool.DEFAULT_POIS.find(p => p.id === 'poi-apollo11');
+        expect(apollo).to.exist;
+        expect(apollo.body).to.equal('moon');
     });
 });
 
