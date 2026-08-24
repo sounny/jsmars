@@ -161,3 +161,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate maximum radar signal penetration depth
 ?: AssertionError: expected 415.2 to be below 200
     at n.<anonymous> (unit.js:1664:35)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 18:30:25 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute solar elevation angle above surface horizon
+?: AssertionError: expected 1.73 to be close to 0 +/- 0.01
+    at n.<anonymous> (unit.js:1767:35)

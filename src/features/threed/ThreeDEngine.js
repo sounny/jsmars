@@ -183,6 +183,108 @@ export class ThreeDEngine {
       polarNightLat: parseFloat(polarNightBoundary.toFixed(2))
     };
   }
+
+  // --- 3D Ellipsoidal Geodesy & Coordinate Transformations ---
+
+  /**
+   * Convert Geographic coordinates (lat, lon, altitude) to 3D Cartesian coordinates on planetary ellipsoid.
+   * @param {number} latDeg - Planetocentric / Geodetic latitude (-90 to +90)
+   * @param {number} lonDeg - Longitude (0 to 360 East)
+   * @param {number} [altKm=0] - Altitude above reference ellipsoid in km
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{x: number, y: number, z: number, radiusKm: number}}
+   */
+  static geographicToCartesian(latDeg, lonDeg, altKm = 0, body = 'mars') {
+    const isMars = body.toLowerCase() === 'mars';
+    const a = isMars ? 3396.19 : (body.toLowerCase() === 'moon' ? 1737.4 : 6378.14);
+    const b = isMars ? 3376.20 : (body.toLowerCase() === 'moon' ? 1737.4 : 6356.75);
+
+    const f = (a - b) / a;
+    const e2 = 2 * f - f * f;
+
+    const phi = latDeg * Math.PI / 180.0;
+    const lambda = lonDeg * Math.PI / 180.0;
+
+    const sinPhi = Math.sin(phi);
+    const cosPhi = Math.cos(phi);
+    const sinLam = Math.sin(lambda);
+    const cosLam = Math.cos(lambda);
+
+    const N = a / Math.sqrt(1.0 - e2 * sinPhi * sinPhi);
+
+    const x = (N + altKm) * cosPhi * cosLam;
+    const y = (N + altKm) * cosPhi * sinLam;
+    const z = (N * (1.0 - e2) + altKm) * sinPhi;
+    const radius = Math.hypot(x, y, z);
+
+    return {
+      x: parseFloat(x.toFixed(3)),
+      y: parseFloat(y.toFixed(3)),
+      z: parseFloat(z.toFixed(3)),
+      radiusKm: parseFloat(radius.toFixed(3))
+    };
+  }
+
+  /**
+   * Convert 3D Cartesian coordinates to Geographic (lat, lon, alt) on planetary ellipsoid via Bowring's method.
+   * @param {number} x - Cartesian X in km
+   * @param {number} y - Cartesian Y in km
+   * @param {number} z - Cartesian Z in km
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{lat: number, lon: number, altKm: number}}
+   */
+  static cartesianToGeographic(x, y, z, body = 'mars') {
+    const isMars = body.toLowerCase() === 'mars';
+    const a = isMars ? 3396.19 : (body.toLowerCase() === 'moon' ? 1737.4 : 6378.14);
+    const b = isMars ? 3376.20 : (body.toLowerCase() === 'moon' ? 1737.4 : 6356.75);
+
+    const f = (a - b) / a;
+    const e2 = 2 * f - f * f;
+    const ePrime2 = (a * a - b * b) / (b * b);
+
+    const p = Math.hypot(x, y);
+    if (p < 1e-6) {
+      return {
+        lat: z >= 0 ? 90.0 : -90.0,
+        lon: 0.0,
+        altKm: parseFloat((Math.abs(z) - b).toFixed(3))
+      };
+    }
+
+    let lon = Math.atan2(y, x) * 180.0 / Math.PI;
+    if (lon < 0) lon += 360.0;
+
+    const theta = Math.atan2(z * a, p * b);
+    const phi = Math.atan2(
+      z + ePrime2 * b * Math.pow(Math.sin(theta), 3),
+      p - e2 * a * Math.pow(Math.cos(theta), 3)
+    );
+
+    const sinPhi = Math.sin(phi);
+    const N = a / Math.sqrt(1.0 - e2 * sinPhi * sinPhi);
+    const alt = p / Math.cos(phi) - N;
+
+    return {
+      lat: parseFloat((phi * 180.0 / Math.PI).toFixed(4)),
+      lon: parseFloat(lon.toFixed(4)),
+      altKm: parseFloat(alt.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate solar elevation angle (altitude above horizon) in degrees.
+   * @param {number} latDeg - Surface latitude
+   * @param {number} lonDeg - Surface longitude
+   * @param {number} subSolarLatDeg - Subsolar point latitude
+   * @param {number} subSolarLonDeg - Subsolar point longitude
+   * @returns {number} Solar elevation angle in degrees (-90 to +90)
+   */
+  static computeSolarHorizonElevation(latDeg, lonDeg, subSolarLatDeg, subSolarLonDeg) {
+    const inc = this.computeSolarIncidenceAngle(latDeg, lonDeg, subSolarLatDeg, subSolarLonDeg);
+    const elevation = 90.0 - inc.incidenceAngleDeg;
+    return parseFloat(elevation.toFixed(2));
+  }
 }
+
 
 

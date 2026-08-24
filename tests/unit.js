@@ -1739,6 +1739,35 @@ describe('Entry, Descent & Landing (EDL) Aerodynamics (LandingSitesLayer)', () =
     });
 });
 
+describe('3D Planetary Ellipsoidal Geodesy & Solar Elevation (ThreeDEngine)', () => {
+    it('should convert between Geographic and 3D Cartesian coordinates on Martian ellipsoid', () => {
+        // Mars Equator (0 lat, 0 lon, 0 alt) -> X = a = 3396.19 km, Y = 0, Z = 0
+        const ptEquator = ThreeDEngine.geographicToCartesian(0, 0, 0, 'mars');
+        expect(ptEquator.x).to.be.closeTo(3396.19, 0.1);
+        expect(ptEquator.y).to.be.closeTo(0, 0.01);
+        expect(ptEquator.z).to.be.closeTo(0, 0.01);
+
+        // Mars North Pole (90 lat, 0 lon, 0 alt) -> X = 0, Y = 0, Z = b = 3376.20 km
+        const ptPole = ThreeDEngine.geographicToCartesian(90, 0, 0, 'mars');
+        expect(ptPole.x).to.be.closeTo(0, 0.01);
+        expect(ptPole.z).to.be.closeTo(3376.20, 0.1);
+
+        // Invert 3D Cartesian back to Geographic via Bowring's method
+        const geo = ThreeDEngine.cartesianToGeographic(ptPole.x, ptPole.y, ptPole.z, 'mars');
+        expect(geo.lat).to.be.closeTo(90.0, 0.01);
+    });
+
+    it('should compute solar elevation angle above surface horizon', () => {
+        // Subsolar point directly overhead (lat = 10, lon = 100) -> Solar elevation = 90 deg (zenith)
+        const elevZenith = ThreeDEngine.computeSolarHorizonElevation(10, 100, 10, 100);
+        expect(elevZenith).to.be.closeTo(90.0, 0.01);
+
+        // Horizon position on equator (90 deg away) -> Solar elevation = 0 deg
+        const elevHorizon = ThreeDEngine.computeSolarHorizonElevation(0, 90, 0, 0);
+        expect(elevHorizon).to.be.closeTo(0.0, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
