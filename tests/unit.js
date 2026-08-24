@@ -1442,6 +1442,34 @@ describe('Subsurface Radar Sounding & Dielectric Inversion (RadarSounderEngine)'
     });
 });
 
+describe('Keplerian Orbit Propagation & Astrodynamics (TrajectoryEngine)', () => {
+    it('should solve Kepler equation and compute true anomaly from eccentric anomaly', () => {
+        // Circular orbit (e = 0): M = E = nu = 45 deg = 0.785398 rad
+        const mCir = 45 * Math.PI / 180;
+        const eCir = TrajectoryEngine.solveKeplersEquation(mCir, 0.0);
+        expect(eCir).to.be.closeTo(mCir, 1e-6);
+
+        const nuCir = TrajectoryEngine.computeTrueAnomaly(eCir, 0.0);
+        expect(nuCir).to.be.closeTo(45.0, 0.01);
+
+        // Elliptical orbit (e = 0.5, M = 90 deg)
+        const mEll = 90 * Math.PI / 180;
+        const eEll = TrajectoryEngine.solveKeplersEquation(mEll, 0.5);
+        expect(eEll).to.be.greaterThan(mEll);
+
+        const nuEll = TrajectoryEngine.computeTrueAnomaly(eEll, 0.5);
+        expect(nuEll).to.be.greaterThan(90.0);
+    });
+
+    it('should compute 3D Cartesian position and velocity state vectors', () => {
+        // Low Mars circular orbit at 250 km altitude (a = 3639.5 km, e = 0, i = 90)
+        const state = TrajectoryEngine.computeOrbitalStateVector(3639.5, 0.0, 90.0, 0.0, 0.0, 0.0, 'mars');
+        expect(state.radiusKm).to.be.closeTo(3639.5, 0.1);
+        expect(state.speedKmS).to.be.closeTo(3.43, 0.05);
+        expect(state.positionKm.x).to.be.closeTo(3639.5, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

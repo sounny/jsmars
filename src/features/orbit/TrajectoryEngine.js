@@ -232,5 +232,117 @@ export class TrajectoryEngine {
       speedKmS
     };
   }
+
+  // --- Keplerian Orbital Propagation & Astrodynamics Solvers ---
+
+  /**
+   * Solve Kepler's Equation M = E - e * sin(E) for Eccentric Anomaly (E) via Newton-Raphson.
+   * @param {number} meanAnomalyRad - Mean anomaly in radians (M)
+   * @param {number} eccentricity - Orbital eccentricity (0 <= e < 1)
+   * @param {number} [tolerance=1e-8] - Convergence threshold
+   * @returns {number} Eccentric anomaly in radians (E)
+   */
+  static solveKeplersEquation(meanAnomalyRad, eccentricity, tolerance = 1e-8) {
+    const e = Math.max(0, Math.min(0.999, eccentricity));
+    let E = meanAnomalyRad; // Initial guess
+
+    for (let iter = 0; iter < 50; iter++) {
+      const f = E - e * Math.sin(E) - meanAnomalyRad;
+      const fPrime = 1.0 - e * Math.cos(E);
+      const delta = f / fPrime;
+      E -= delta;
+      if (Math.abs(delta) < tolerance) break;
+    }
+
+    return E;
+  }
+
+  /**
+   * Compute True Anomaly (nu) from Eccentric Anomaly (E) and eccentricity.
+   * @param {number} eccentricAnomalyRad - Eccentric anomaly in radians (E)
+   * @param {number} eccentricity - Orbit eccentricity (e)
+   * @returns {number} True anomaly in degrees (0 to 360)
+   */
+  static computeTrueAnomaly(eccentricAnomalyRad, eccentricity) {
+    const e = Math.max(0, Math.min(0.999, eccentricity));
+    const E = eccentricAnomalyRad;
+
+    const y = Math.sqrt(1.0 + e) * Math.sin(E / 2.0);
+    const x = Math.sqrt(1.0 - e) * Math.cos(E / 2.0);
+    let nuRad = 2.0 * Math.atan2(y, x);
+    if (nuRad < 0) nuRad += 2.0 * Math.PI;
+
+    return parseFloat((nuRad * 180.0 / Math.PI).toFixed(4));
+  }
+
+  /**
+   * Compute 3D Cartesian position and velocity in planetary inertial coordinate frame.
+   * @param {number} aKm - Semi-major axis in km
+   * @param {number} e - Eccentricity
+   * @param {number} iDeg - Inclination in degrees
+   * @param {number} raanDeg - Right ascension of ascending node (Omega) in degrees
+   * @param {number} argPeriDeg - Argument of periapsis (omega) in degrees
+   * @param {number} trueAnomalyDeg - True anomaly (nu) in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{positionKm: {x: number, y: number, z: number}, velocityKmS: {vx: number, vy: number, vz: number}, radiusKm: number, speedKmS: number}}
+   */
+  static computeOrbitalStateVector(aKm, e, iDeg, raanDeg, argPeriDeg, trueAnomalyDeg, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+
+    const nuRad = trueAnomalyDeg * Math.PI / 180.0;
+    const iRad = iDeg * Math.PI / 180.0;
+    const raanRad = raanDeg * Math.PI / 180.0;
+    const argPeriRad = argPeriDeg * Math.PI / 180.0;
+
+    // Perifocal coordinates
+    const p = aKm * (1.0 - e * e); // Semi-latus rectum
+    const r = p / (1.0 + e * Math.cos(nuRad));
+
+    const r_pqw = {
+      x: r * Math.cos(nuRad),
+      y: r * Math.sin(nuRad),
+      z: 0
+    };
+
+    const v_factor = Math.sqrt(mu / p);
+    const v_pqw = {
+      vx: -v_factor * Math.sin(nuRad),
+      vy: v_factor * (e + Math.cos(nuRad)),
+      vz: 0
+    };
+
+    // Rotation from Perifocal (PQW) to Inertial (ECI/MCI) frame
+    // R = Rz(-Omega) * Rx(-i) * Rz(-omega)
+    const cosO = Math.cos(raanRad), sinO = Math.sin(raanRad);
+    const cosi = Math.cos(iRad),    sini = Math.sin(iRad);
+    const cosw = Math.cos(argPeriRad), sinw = Math.sin(argPeriRad);
+
+    const Px = cosO * cosw - sinO * sinw * cosi;
+    const Py = sinO * cosw + cosO * sinw * cosi;
+    const Pz = sinw * sini;
+
+    const Qx = -cosO * sinw - sinO * cosw * cosi;
+    const Qy = -sinO * sinw + cosO * cosw * cosi;
+    const Qz = cosw * sini;
+
+    const x = r_pqw.x * Px + r_pqw.y * Qx;
+    const y = r_pqw.x * Py + r_pqw.y * Qy;
+    const z = r_pqw.x * Pz + r_pqw.y * Qz;
+
+    const vx = v_pqw.vx * Px + v_pqw.vy * Qx;
+    const vy = v_pqw.vx * Py + v_pqw.vy * Qy;
+    const vz = v_pqw.vx * Pz + v_pqw.vy * Qz;
+
+    const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
+
+    return {
+      positionKm: { x: parseFloat(x.toFixed(2)), y: parseFloat(y.toFixed(2)), z: parseFloat(z.toFixed(2)) },
+      velocityKmS: { vx: parseFloat(vx.toFixed(4)), vy: parseFloat(vy.toFixed(4)), vz: parseFloat(vz.toFixed(4)) },
+      radiusKm: parseFloat(r.toFixed(2)),
+      speedKmS: parseFloat(speed.toFixed(4))
+    };
+  }
 }
+
 
