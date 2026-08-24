@@ -1,5 +1,48 @@
 # JSMARS Release Notes
 
+## v0.8.0 - Planetary Geodesy, Astrodynamics & Cartography Milestone
+**Date:** 2026-08-24
+
+### New Features
+
+#### Astrodynamics & Interplanetary Trajectories (`TrajectoryEngine.js`, `TrajectoryPanel.js`)
+- Heliocentric Hohmann transfer orbit solver between Earth, Mars, Venus, and Jupiter.
+- Computes Trans-Mars Injection ($\Delta v_1$), Mars Orbit Insertion ($\Delta v_2$), $C_3$ launch energy, departure phase angle, and flight duration in days/months.
+- Upcoming Earth-Mars synodic launch window schedule generator and mission plan CSV export.
+
+#### Planetary Hypsometric Tinting Engine (`ColorRampEngine.js`)
+- Multi-stop scientific colormap generator (`mola_rainbow`, `viridis`, `magma`, `coolwarm`, `topographic`, `grayscale`).
+- 256-step RGB Lookup Table (LUT) compilation and direct numerical array-to-RGBA image buffer colorization for real-time elevation and thermal rendering.
+
+#### Topographic Slope & Landing Site Hazard Analysis (`ContourLayer.js`)
+- Central difference numerical gradient estimator calculating terrain slope angles ($\theta^\circ$) and cardinal aspect facing directions ($\alpha^\circ$).
+- Automated spatial safety categorization for lander/rover site certification ($< 5^\circ$ Safe, $5^\circ-15^\circ$ Moderate, $15^\circ-25^\circ$ Steep, $> 25^\circ$ Critical / Escarpment).
+
+#### GIS Georeferencing World File Engine (`ExportTool.js`)
+- Standard 6-line affine transformation world file generator and parser (`.pgw` / `.jgw`) enabling direct export of map views into QGIS, ArcGIS, GDAL, and WebGIS workflows.
+
+#### GIS Vector Well-Known Text (WKT) Support (`ShapeIO.js`)
+- Full WKT geometry serialization (`toWKT`) and parser (`parseWKT`) for Points, Linestrings, Polygons, and MultiPolygons.
+
+#### Spatial Proximity Search & Planetary Geodesy (`geo.js`, `PlacesManager.js`)
+- Nearest-feature spatial proximity search querying planetary landmarks within distance radius $R\text{ km}$.
+- Forward destination point calculation (`computeDestinationPoint`) and analytical cross-track / along-track distance solvers.
+- Multi-segment geodesic polyline length and closed polygon perimeter estimation.
+
+---
+
+## v0.7.0 - Subsurface Geophysics & Planetary Graticules
+**Date:** 2026-08-24
+
+### New Features
+- **Subsurface Radar Sounder (SHARAD/MARSIS)**: 1D A-scope power trace and 2D B-scope radargram simulations across Planum Boreum, Planum Australe, Medusae Fossae, and Utopia Planitia with dielectric permittivity and loss tangent tuning.
+- **Planetary Lat/Lon Graticule Grid Layer**: Adaptive zoom spacing ($30^\circ \to 0.05^\circ$), major/minor subdivisions, edge coordinate annotations, and multi-format coordinate labeling ($0^\circ-360^\circ\text{ E}$, $\pm 180^\circ$, $0^\circ-360^\circ\text{ W}$).
+- **Comprehensive IAU Planetary Nomenclature**: Multi-body gazetteer dataset for Mars and Moon across 9 morphological classes with instant search.
+- **Planetary Graphic Scale Bar Control**: Accurate planet-aware scale calculation using exact planetary radii ($R_{\text{Mars}} = 3389.5\text{ km}, R_{\text{Moon}} = 1737.4\text{ km}$) and latitude cosine distortion.
+- **Topographic Transect & Linked Cursor Synchronization**: Interactive elevation transect chart with bi-directional cursor linking driving a real-time crosshair marker on the map.
+
+---
+
 ## v0.6.0 - Planetary Science & 3D Parity Push
 **Date:** 2026-08-23
 

@@ -1,5 +1,16 @@
 # Change Log
 
+## [0.8.0] - 2026-08-24
+
+### Added
+- **Astrodynamics & Interplanetary Trajectories (`TrajectoryEngine.js`)**: Heliocentric Hohmann transfer orbit solver, TMI/MOI Delta-V budgets, $C_3$ launch energy, flight duration, and Earth-Mars synodic launch window schedules.
+- **Planetary Hypsometric Tinting Engine (`ColorRampEngine.js`)**: Multi-stop scientific colormap generator (`mola_rainbow`, `viridis`, `magma`, `coolwarm`, `topographic`, `grayscale`), 256-step RGB LUTs, and array-to-RGBA colorization.
+- **Topographic Slope & Landing Site Hazard Analysis (`ContourLayer.js`)**: Numerical central difference gradient estimator calculating slope ($\theta^\circ$), aspect ($\alpha^\circ$), and landing site hazard ratios.
+- **GIS Georeferencing World File Engine (`ExportTool.js`)**: Standard 6-line affine transformation world file generator and parser (`.pgw` / `.jgw`) for QGIS/ArcGIS/GDAL interoperability.
+- **GIS Vector Well-Known Text (WKT) Support (`ShapeIO.js`)**: WKT geometry serializer and parser for Points, Linestrings, Polygons, and MultiPolygons.
+- **Spatial Proximity Search & Planetary Geodesy (`geo.js`, `PlacesManager.js`)**: Nearest-feature spatial proximity search, forward destination point calculation (`computeDestinationPoint`), cross-track distance, and geodesic path metrics.
+- **Test Suite & CI/CD**: Expanded to 67 automated Mocha/Chai unit tests with 100% passing verification.
+
 ## [0.7.0] - 2026-08-24
 
 ### Added
