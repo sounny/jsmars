@@ -164,4 +164,77 @@ export class CSFDEngine {
       epoch
     };
   }
+
+  // --- Planetary Geological R-Plots & Saturation Analysis ---
+
+  /**
+   * Compute standard Planetary Relative (R) Plot bins: R = (D_m^3 * N) / (A * deltaD).
+   * @param {Array<{diameter: number}>} craters - Array of crater objects with diameter in meters
+   * @param {number} [countAreaKm2=1e6] - Total counting area in km^2
+   * @returns {Array<{dMin: number, dMax: number, dMean: number, count: number, rValue: number}>}
+   */
+  static computeRPlot(craters = [], countAreaKm2 = 1e6) {
+    if (!craters || craters.length === 0) return [];
+
+    const diametersKm = craters
+      .map(c => (typeof c.diameter === 'number' ? c.diameter / 1000 : 1.0))
+      .filter(d => d > 0);
+
+    // Standard sqrt(2) diameter bins: [0.1, 0.141, 0.2, 0.282, 0.4, 0.565, 0.8, 1.13, 1.6, ...]
+    const rBins = [];
+    const factor = Math.SQRT2;
+    let dMin = 0.1;
+
+    for (let b = 0; b < 12; b++) {
+      const dMax = dMin * factor;
+      const dMean = Math.sqrt(dMin * dMax);
+      const deltaD = dMax - dMin;
+
+      const inBin = diametersKm.filter(d => d >= dMin && d < dMax).length;
+      const rValue = inBin > 0 ? (Math.pow(dMean, 3) * inBin) / (countAreaKm2 * deltaD) : 0;
+
+      rBins.push({
+        dMin: parseFloat(dMin.toFixed(3)),
+        dMax: parseFloat(dMax.toFixed(3)),
+        dMean: parseFloat(dMean.toFixed(3)),
+        count: inBin,
+        rValue: parseFloat(rValue.toExponential(4)),
+        rRaw: rValue
+      });
+
+      dMin = dMax;
+    }
+
+    return rBins;
+  }
+
+  /**
+   * Calculate Trask / Hartmann geometric crater saturation equilibrium density.
+   * @param {number} diameterKm - Crater diameter in km
+   * @returns {number} Saturation cumulative density N(>D) per km^2
+   */
+  static computeSaturationLimit(diameterKm) {
+    const safeD = Math.max(0.01, diameterKm);
+    return 0.15 * Math.pow(safeD, -2);
+  }
+
+  /**
+   * Classify crater degradation / freshness state based on depth-to-diameter ratio.
+   * @param {number} depthMeters - Crater depth in meters
+   * @param {number} diameterMeters - Crater diameter in meters
+   * @returns {{freshnessClass: number, name: string, ratio: number}}
+   */
+  static classifyCraterFreshness(depthMeters, diameterMeters) {
+    if (diameterMeters <= 0) return { freshnessClass: 3, name: 'Eroded / Ghost', ratio: 0 };
+    const ratio = depthMeters / diameterMeters;
+
+    if (ratio >= 0.15) {
+      return { freshnessClass: 1, name: 'Pristine / Fresh (Sharp Rim & Rays)', ratio: parseFloat(ratio.toFixed(3)) };
+    } else if (ratio >= 0.08) {
+      return { freshnessClass: 2, name: 'Moderate / Degraded (Rounded Rim)', ratio: parseFloat(ratio.toFixed(3)) };
+    } else {
+      return { freshnessClass: 3, name: 'Severely Eroded / Infilled Ghost Crater', ratio: parseFloat(ratio.toFixed(3)) };
+    }
+  }
 }
+

@@ -237,6 +237,34 @@ describe('Crater Counting CSFD & Isochron Dating', () => {
         expect(isochron).to.be.an('array').with.length.greaterThan(20);
         expect(isochron[0].cumulativeN).to.be.greaterThan(isochron[isochron.length - 1].cumulativeN);
     });
+
+    it('should compute Planetary Relative (R) plots, saturation limits, and crater freshness', () => {
+        const mockCraters = [
+            { diameter: 2000 },
+            { diameter: 5000 },
+            { diameter: 12000 }
+        ];
+
+        // R-plot calculation
+        const rBins = CSFDEngine.computeRPlot(mockCraters, 1e6);
+        expect(rBins).to.be.an('array').with.lengthOf(12);
+        const nonEmptyBin = rBins.find(b => b.count > 0);
+        expect(nonEmptyBin).to.exist;
+        expect(nonEmptyBin.rValue).to.be.greaterThan(0);
+
+        // Saturation limit at 10 km (0.15 * 10^-2 = 0.0015)
+        const satLimit10km = CSFDEngine.computeSaturationLimit(10);
+        expect(satLimit10km).to.be.closeTo(0.0015, 0.0001);
+
+        // Crater freshness classification (depth = 600m, diam = 3000m -> ratio = 0.20 -> Fresh)
+        const fresh = CSFDEngine.classifyCraterFreshness(600, 3000);
+        expect(fresh.freshnessClass).to.equal(1);
+        expect(fresh.name).to.include('Pristine');
+
+        // Eroded crater (depth = 100m, diam = 3000m -> ratio = 0.033 -> Eroded)
+        const eroded = CSFDEngine.classifyCraterFreshness(100, 3000);
+        expect(eroded.freshnessClass).to.equal(3);
+    });
 });
 
 describe('Spectral Band Math & Mineralogy', () => {
