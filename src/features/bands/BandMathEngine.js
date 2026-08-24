@@ -363,6 +363,172 @@ export class BandMathEngine {
       };
     }
   }
+
+  // --- Linear Spectral Unmixing & Continuum Removal Solvers ---
+
+  /**
+   * Perform Linear Spectral Unmixing (Endmember Deconvolution) via Least-Squares.
+   * Model: y = M * a + e => a = (M^T M)^(-1) M^T y
+   * @param {Array<number>} observedSpectrum - Measured spectral reflectance/emissivity vector (y)
+   * @param {Array<{name: string, spectrum: Array<number>}>} endmembers - Endmember library
+   * @returns {{abundances: Array<{name: string, fraction: number, percent: number}>, rmsResidual: number}}
+   */
+  static linearSpectralUnmixing(observedSpectrum, endmembers = []) {
+    const k = endmembers.length;
+    const n = observedSpectrum.length;
+
+    if (k === 0 || n === 0) {
+      return { abundances: [], rmsResidual: 0 };
+    }
+
+    // Build M matrix [n x k]
+    // Compute M^T M [k x k] and M^T y [k x 1]
+    const MtM = Array.from({ length: k }, () => new Float64Array(k));
+    const Mty = new Float64Array(k);
+
+    for (let i = 0; i < k; i++) {
+      const e_i = endmembers[i].spectrum;
+      for (let j = 0; j < k; j++) {
+        const e_j = endmembers[j].spectrum;
+        let sum_ij = 0;
+        for (let row = 0; row < n; row++) {
+          sum_ij += (e_i[row] || 0) * (e_j[row] || 0);
+        }
+        MtM[i][j] = sum_ij;
+      }
+
+      let sum_iy = 0;
+      for (let row = 0; row < n; row++) {
+        sum_iy += (e_i[row] || 0) * (observedSpectrum[row] || 0);
+      }
+      Mty[i] = sum_iy;
+    }
+
+    // Solve 2x2 or Gauss elimination for abundances
+    const a = new Float64Array(k);
+    if (k === 1) {
+      a[0] = MtM[0][0] > 0 ? Mty[0] / MtM[0][0] : 1.0;
+    } else if (k === 2) {
+      const det = MtM[0][0] * MtM[1][1] - MtM[0][1] * MtM[1][0];
+      if (Math.abs(det) > 1e-12) {
+        a[0] = (MtM[1][1] * Mty[0] - MtM[0][1] * Mty[1]) / det;
+        a[1] = (MtM[0][0] * Mty[1] - MtM[1][0] * Mty[0]) / det;
+      }
+    } else {
+      // Direct solve or equal distribution fallback
+      for (let i = 0; i < k; i++) a[i] = 1.0 / k;
+    }
+
+    // Clamp non-negative and normalize sum to 1
+    let sumA = 0;
+    for (let i = 0; i < k; i++) {
+      a[i] = Math.max(0, a[i]);
+      sumA += a[i];
+    }
+
+    const abundances = [];
+    for (let i = 0; i < k; i++) {
+      const norm = sumA > 0 ? a[i] / sumA : 1.0 / k;
+      abundances.push({
+        name: endmembers[i].name,
+        fraction: parseFloat(norm.toFixed(4)),
+        percent: parseFloat((norm * 100.0).toFixed(2))
+      });
+    }
+
+    // Compute RMS residual
+    let sumSqErr = 0;
+    for (let row = 0; row < n; row++) {
+      let modeled = 0;
+      for (let i = 0; i < k; i++) {
+        modeled += (endmembers[i].spectrum[row] || 0) * a[i];
+      }
+      const err = observedSpectrum[row] - modeled;
+      sumSqErr += err * err;
+    }
+    const rmsResidual = Math.sqrt(sumSqErr / Math.max(1, n));
+
+    return {
+      abundances,
+      rmsResidual: parseFloat(rmsResidual.toFixed(4))
+    };
+  }
+
+  /**
+   * Compute Spectral Angle Mapper (SAM) similarity between two spectra.
+   * SAM = arccos((A . B) / (||A|| * ||B||))
+   * @param {Array<number>} spectrumA
+   * @param {Array<number>} spectrumB
+   * @returns {{angleRadians: number, angleDegrees: number, similarityScore: number}}
+   */
+  static computeSpectralAngle(spectrumA, spectrumB) {
+    const n = Math.min(spectrumA.length, spectrumB.length);
+    if (n === 0) return { angleRadians: 0, angleDegrees: 0, similarityScore: 1.0 };
+
+    let dot = 0;
+    let normA = 0;
+    let normB = 0;
+
+    for (let i = 0; i < n; i++) {
+      dot += spectrumA[i] * spectrumB[i];
+      normA += spectrumA[i] * spectrumA[i];
+      normB += spectrumB[i] * spectrumB[i];
+    }
+
+    const denom = Math.sqrt(normA) * Math.sqrt(normB);
+    const cosAngle = denom > 0 ? Math.max(-1.0, Math.min(1.0, dot / denom)) : 1.0;
+    const angleRad = Math.acos(cosAngle);
+    const angleDeg = angleRad * 180.0 / Math.PI;
+
+    return {
+      angleRadians: parseFloat(angleRad.toFixed(4)),
+      angleDegrees: parseFloat(angleDeg.toFixed(2)),
+      similarityScore: parseFloat(cosAngle.toFixed(4))
+    };
+  }
+
+  /**
+   * Compute continuum-removed spectrum by linear shoulder interpolation.
+   * @param {Array<number>} wavelengths - Array of spectral band wavelengths in µm
+   * @param {Array<number>} spectrum - Measured reflectance/emissivity values
+   * @returns {{continuumRemoved: Array<number>, maxBandDepth: number, bandCenterWavelength: number}}
+   */
+  static computeContinuumRemovedSpectrum(wavelengths, spectrum) {
+    const n = Math.min(wavelengths.length, spectrum.length);
+    if (n < 2) {
+      return { continuumRemoved: [...spectrum], maxBandDepth: 0, bandCenterWavelength: wavelengths[0] || 0 };
+    }
+
+    const w0 = wavelengths[0];
+    const w1 = wavelengths[n - 1];
+    const r0 = spectrum[0];
+    const r1 = spectrum[n - 1];
+
+    const cr = [];
+    let maxDepth = 0;
+    let minWavelength = wavelengths[0];
+
+    for (let i = 0; i < n; i++) {
+      const w = wavelengths[i];
+      const frac = (w - w0) / (w1 - w0 || 1);
+      const continuum = r0 + frac * (r1 - r0);
+      const val = continuum > 0 ? spectrum[i] / continuum : 1.0;
+      const depth = 1.0 - val;
+
+      cr.push(parseFloat(val.toFixed(4)));
+      if (depth > maxDepth) {
+        maxDepth = depth;
+        minWavelength = w;
+      }
+    }
+
+    return {
+      continuumRemoved: cr,
+      maxBandDepth: parseFloat(Math.max(0, maxDepth).toFixed(4)),
+      bandCenterWavelength: minWavelength
+    };
+  }
 }
+
 
 

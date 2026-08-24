@@ -2053,6 +2053,38 @@ describe('Crater Saturation Equilibrium & Asteroid Impactor Scaling (CSFDEngine)
     });
 });
 
+describe('Linear Spectral Unmixing & Continuum Removal (BandMathEngine)', () => {
+    it('should deconvolve endmember fractional abundances via least-squares', () => {
+        // Two endmembers: Pyroxene [0.8, 0.4] and Olivine [0.2, 0.9]
+        // 50/50 mixture -> [0.5, 0.65]
+        const endmembers = [
+            { name: 'Pyroxene', spectrum: [0.8, 0.4] },
+            { name: 'Olivine', spectrum: [0.2, 0.9] }
+        ];
+        const mixed = [0.5, 0.65];
+
+        const unmixed = BandMathEngine.linearSpectralUnmixing(mixed, endmembers);
+        expect(unmixed.abundances.length).to.equal(2);
+        expect(unmixed.abundances[0].fraction).to.be.closeTo(0.5, 0.05);
+        expect(unmixed.abundances[1].fraction).to.be.closeTo(0.5, 0.05);
+        expect(unmixed.rmsResidual).to.be.lessThan(0.01);
+    });
+
+    it('should compute SAM spectral angle and continuum-removed absorption depth', () => {
+        // Identical spectra -> SAM angle = 0 deg, similarity = 1.0
+        const sam = BandMathEngine.computeSpectralAngle([0.2, 0.5, 0.8], [0.2, 0.5, 0.8]);
+        expect(sam.angleDegrees).to.equal(0);
+        expect(sam.similarityScore).to.equal(1.0);
+
+        // Continuum removal for absorption feature at 1.9 µm
+        const wavelengths = [1.8, 1.9, 2.0];
+        const spectrum = [0.5, 0.4, 0.5]; // 20% absorption dip at 1.9 µm
+        const cr = BandMathEngine.computeContinuumRemovedSpectrum(wavelengths, spectrum);
+        expect(cr.maxBandDepth).to.be.closeTo(0.2, 0.01);
+        expect(cr.bandCenterWavelength).to.equal(1.9);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
