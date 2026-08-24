@@ -1977,6 +1977,31 @@ describe('Binary Shapefile Polygon Serialization & Spatial BBox Overlap (ShapeIO
     });
 });
 
+describe('Tissot Indicatrix Distortion Ellipses & Antipodes (ProjectionManager)', () => {
+    it('should compute Tissot indicatrix distortion ellipse axes and area scale', () => {
+        // Mercator at 60 deg lat: sec(60) = 2 -> a = b = 2, area scale = 4, angular distortion = 0
+        const tissotMerc = ProjectionManager.computeTissotIndicatrix(60, 'mercator');
+        expect(tissotMerc.a).to.be.closeTo(2.0, 0.05);
+        expect(tissotMerc.areaScale).to.be.closeTo(4.0, 0.05);
+        expect(tissotMerc.maxAngularDistortionDeg).to.equal(0);
+
+        // Sinusoidal is strictly equal area (areaScale = 1.0)
+        const tissotSin = ProjectionManager.computeTissotIndicatrix(45, 'sinusoidal');
+        expect(tissotSin.areaScale).to.be.closeTo(1.0, 0.01);
+    });
+
+    it('should compute planetary antipode coordinates and true ground resolution', () => {
+        // Olympus Mons ~ (18.65 N, 226.2 E) -> Antipode ~ (-18.65 S, 46.2 E)
+        const anti = ProjectionManager.computeAntipode(18.65, 226.2);
+        expect(anti.lat).to.equal(-18.65);
+        expect(anti.lon).to.equal(46.2);
+
+        // 100 m/pixel nominal scale at equator -> at 60 deg lat: 100 * cos(60) = 50 m/pixel
+        const trueScale = ProjectionManager.computeTrueScaleAtLatitude(100, 60);
+        expect(trueScale).to.equal(50);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

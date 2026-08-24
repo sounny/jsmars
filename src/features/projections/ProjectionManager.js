@@ -503,7 +503,85 @@ export class ProjectionManager {
       return parseFloat(east360.toFixed(4));
     }
   }
+
+  // --- Tissot's Indicatrix, Antipodal Points & True Map Scale Solvers ---
+
+  /**
+   * Calculate Tissot's Indicatrix distortion ellipse parameters (a, b, s, 2*theta).
+   * @param {number} latDeg - Latitude in degrees
+   * @param {string} [projName='mercator'] - Projection name ('mercator', 'equirectangular', 'stereographic', 'sinusoidal')
+   * @returns {{a: number, b: number, areaScale: number, maxAngularDistortionDeg: number}}
+   */
+  static computeTissotIndicatrix(latDeg, projName = 'mercator') {
+    const phi = Math.abs(latDeg) * Math.PI / 180.0;
+    const name = projName.toLowerCase();
+
+    let h = 1.0;
+    let k = 1.0;
+
+    if (name === 'mercator') {
+      const secPhi = 1.0 / Math.max(0.01, Math.cos(phi));
+      h = secPhi;
+      k = secPhi;
+    } else if (name === 'equirectangular' || name === 'cylindrical') {
+      h = 1.0;
+      k = 1.0 / Math.max(0.01, Math.cos(phi));
+    } else if (name === 'stereographic' || name === 'polar') {
+      const scale = 2.0 / (1.0 + Math.sin(phi));
+      h = scale;
+      k = scale;
+    } else if (name === 'sinusoidal' || name === 'mollweide' || name === 'laea') {
+      // Equal area: a * b = 1.0
+      const secPhi = 1.0 / Math.max(0.01, Math.cos(phi));
+      h = Math.cos(phi);
+      k = secPhi;
+    }
+
+    const a = Math.max(h, k);
+    const b = Math.min(h, k);
+    const areaScale = h * k;
+
+    // Maximum angular distortion 2*theta = 2 * asin((a - b) / (a + b))
+    const sinTheta = (a - b) / (a + b);
+    const maxAngularDistortionDeg = 2.0 * Math.asin(Math.max(0, Math.min(1.0, sinTheta))) * 180.0 / Math.PI;
+
+    return {
+      a: parseFloat(a.toFixed(4)),
+      b: parseFloat(b.toFixed(4)),
+      areaScale: parseFloat(areaScale.toFixed(4)),
+      maxAngularDistortionDeg: parseFloat(maxAngularDistortionDeg.toFixed(2))
+    };
+  }
+
+  /**
+   * Compute exact planetary antipode coordinates.
+   * @param {number} latDeg - Input latitude (-90 to +90)
+   * @param {number} lonDeg - Input longitude (0 to 360 East)
+   * @returns {{lat: number, lon: number}} Antipodal coordinates
+   */
+  static computeAntipode(latDeg, lonDeg) {
+    const antiLat = -latDeg;
+    const antiLon = (lonDeg + 180.0) % 360.0;
+
+    return {
+      lat: parseFloat(antiLat.toFixed(4)),
+      lon: parseFloat(antiLon.toFixed(4))
+    };
+  }
+
+  /**
+   * Compute local true ground pixel resolution at given latitude.
+   * @param {number} nominalScaleMPerPixel - Scale at equator in m/pixel
+   * @param {number} latDeg - Latitude in degrees
+   * @returns {number} True scale in meters/pixel
+   */
+  static computeTrueScaleAtLatitude(nominalScaleMPerPixel, latDeg) {
+    const phi = Math.abs(latDeg) * Math.PI / 180.0;
+    const trueScale = nominalScaleMPerPixel * Math.cos(phi);
+    return parseFloat(trueScale.toFixed(2));
+  }
 }
+
 
 
 
