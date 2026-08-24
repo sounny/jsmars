@@ -18,6 +18,7 @@ import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
 import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js';
 import { ProjectionManager } from '../src/features/projections/ProjectionManager.js';
 import { ContourLayer } from '../src/features/contour/ContourLayer.js';
+import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -638,6 +639,32 @@ describe('Terrain Slope & Aspect Topographic Analysis (ContourLayer)', () => {
         const rampRes = ContourLayer.computeTerrainSlopeAndAspect(rampGrid, 5, 5, 100);
         expect(rampRes.meanSlopeDeg).to.be.closeTo(45.0, 0.1);
         expect(rampRes.hazardRatio.critical).to.equal(1.0);
+    });
+});
+
+describe('Planetary Hypsometric Tinting & Colormaps (ColorRampEngine)', () => {
+    it('should generate 256-step RGB lookup tables for scientific colormaps', () => {
+        const lut = ColorRampEngine.generateLUT('mola_rainbow', 256);
+        expect(lut).to.be.instanceOf(Uint8Array);
+        expect(lut.length).to.equal(256 * 3);
+        // First entry should be deep blue
+        expect(lut[0]).to.equal(20);
+        expect(lut[1]).to.equal(30);
+        expect(lut[2]).to.equal(140);
+        // Last entry should be white (255, 255, 255)
+        expect(lut[255 * 3]).to.equal(255);
+        expect(lut[255 * 3 + 1]).to.equal(255);
+        expect(lut[255 * 3 + 2]).to.equal(255);
+    });
+
+    it('should colorize an elevation array into RGBA pixel buffers', () => {
+        const elevs = [-8000, 0, 21000];
+        const rgba = ColorRampEngine.colorizeArray(elevs, -8000, 21000, 'mola_rainbow', 255);
+        expect(rgba).to.be.instanceOf(Uint8ClampedArray);
+        expect(rgba.length).to.equal(3 * 4);
+        expect(rgba[3]).to.equal(255); // Alpha
+        expect(rgba[7]).to.equal(255);
+        expect(rgba[11]).to.equal(255);
     });
 });
 
