@@ -868,6 +868,25 @@ describe('Terrain Slope & Aspect Topographic Analysis (ContourLayer)', () => {
         expect(rampRes.meanSlopeDeg).to.be.closeTo(45.0, 0.1);
         expect(rampRes.hazardRatio.critical).to.equal(1.0);
     });
+
+    it('should compute Topographic Roughness Index (TRI), Hypsometric Integral, and contour volume', () => {
+        // Flat grid TRI should be 0
+        const flatGrid = new Float32Array(25).fill(2000);
+        const flatTRI = ContourLayer.computeTopographicRoughnessIndex(flatGrid, 5, 5);
+        expect(flatTRI.meanTRI).to.equal(0);
+
+        // Hypsometric Integral for linear ramp (0, 250, 500, 750, 1000) -> HI = 0.5 (Mature)
+        const ramp = new Float32Array([0, 250, 500, 750, 1000]);
+        const hi = ContourLayer.computeHypsometricIntegral(ramp);
+        expect(hi.hi).to.be.closeTo(0.5, 0.01);
+        expect(hi.stage).to.include('Mature');
+
+        // Contour volume above datum 0 meters: (1000 m * 10000 m^2) = 1e7 m^3
+        const singleCell = new Float32Array([1000]);
+        const vol = ContourLayer.computeContourVolume(singleCell, 0, 10000);
+        expect(vol.volumeM3).to.equal(10000000);
+        expect(vol.volumeKm3).to.be.closeTo(0.01, 0.001);
+    });
 });
 
 describe('Planetary Hypsometric Tinting & Colormaps (ColorRampEngine)', () => {

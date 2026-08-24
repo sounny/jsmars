@@ -291,4 +291,115 @@ export class ContourLayer {
       }
     };
   }
+
+  // --- Terrain Morphometrics & Topographic Roughness ---
+
+  /**
+   * Compute Riley (1999) Topographic Roughness Index (TRI) from an elevation grid.
+   * @param {Float32Array|Array<number>} elevGrid - Elevation grid in meters
+   * @param {number} width - Grid width
+   * @param {number} height - Grid height
+   * @returns {{meanTRI: number, maxTRI: number, triGrid: Float32Array}}
+   */
+  static computeTopographicRoughnessIndex(elevGrid, width, height) {
+    const size = width * height;
+    const triGrid = new Float32Array(size);
+    let sumTRI = 0;
+    let maxTRI = 0;
+    let valid = 0;
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = y * width + x;
+        const z0 = elevGrid[idx];
+
+        let sumDiffSq = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const neighbor = elevGrid[(y + dy) * width + (x + dx)];
+            const diff = neighbor - z0;
+            sumDiffSq += diff * diff;
+          }
+        }
+
+        const tri = Math.sqrt(sumDiffSq / 8.0);
+        triGrid[idx] = tri;
+        sumTRI += tri;
+        if (tri > maxTRI) maxTRI = tri;
+        valid++;
+      }
+    }
+
+    return {
+      meanTRI: valid > 0 ? sumTRI / valid : 0,
+      maxTRI,
+      triGrid
+    };
+  }
+
+  /**
+   * Calculate Hypsometric Integral (HI) and geomorphic maturity stage.
+   * @param {Float32Array|Array<number>} elevGrid
+   * @returns {{hi: number, minElev: number, maxElev: number, meanElev: number, stage: string}}
+   */
+  static computeHypsometricIntegral(elevGrid) {
+    if (!elevGrid || elevGrid.length === 0) {
+      return { hi: 0, minElev: 0, maxElev: 0, meanElev: 0, stage: 'Unknown' };
+    }
+
+    let min = Infinity;
+    let max = -Infinity;
+    let sum = 0;
+
+    for (let i = 0; i < elevGrid.length; i++) {
+      const z = elevGrid[i];
+      if (z < min) min = z;
+      if (z > max) max = z;
+      sum += z;
+    }
+
+    const mean = sum / elevGrid.length;
+    const range = max - min;
+    const hi = range > 1e-4 ? (mean - min) / range : 0.5;
+
+    let stage = 'Mature Landscape';
+    if (hi >= 0.6) stage = 'Youthful / Inequilibrated (Volcanic / Cratered)';
+    else if (hi <= 0.35) stage = 'Peneplain / Monadnock / Highly Eroded';
+
+    return {
+      hi: parseFloat(hi.toFixed(3)),
+      minElev: min,
+      maxElev: max,
+      meanElev: mean,
+      stage
+    };
+  }
+
+  /**
+   * Calculate positive terrain volume above a reference datum.
+   * @param {Float32Array|Array<number>} elevGrid - Elevation grid in meters
+   * @param {number} datumMeters - Datum height in meters
+   * @param {number} pixelAreaM2 - Surface area of one cell in m^2
+   * @returns {{volumeM3: number, volumeKm3: number, areaAboveM2: number}}
+   */
+  static computeContourVolume(elevGrid, datumMeters, pixelAreaM2) {
+    let volumeM3 = 0;
+    let areaAboveM2 = 0;
+
+    for (let i = 0; i < elevGrid.length; i++) {
+      const diff = elevGrid[i] - datumMeters;
+      if (diff > 0) {
+        volumeM3 += diff * pixelAreaM2;
+        areaAboveM2 += pixelAreaM2;
+      }
+    }
+
+    return {
+      volumeM3,
+      volumeKm3: volumeM3 / 1e9,
+      areaAboveM2
+    };
+  }
 }
+
