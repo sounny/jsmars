@@ -374,7 +374,89 @@ export class CSFDEngine {
       areaExpansionFactor: parseFloat((1.0 / cosSlope).toFixed(4))
     };
   }
+
+  // --- Saturation Fraction & Impactor Scaling Solvers ---
+
+  /**
+   * Calculate cumulative saturation equilibrium fraction relative to Hartmann/Gault 1% geometric limit.
+   * @param {Array<{diameter: number}>} craters - Array of crater objects with diameter in meters
+   * @param {number} [countAreaKm2=1e6] - Total counting area in km^2
+   * @param {number} [diameterThresholdKm=1.0] - Crater diameter threshold
+   * @returns {{observedDensityPerKm2: number, saturationDensityPerKm2: number, saturationPercent: number, isSaturated: boolean}}
+   */
+  static computeCumulativeSaturationFraction(craters = [], countAreaKm2 = 1e6, diameterThresholdKm = 1.0) {
+    const countAbove = craters
+      .map(c => (typeof c.diameter === 'number' ? c.diameter / 1000.0 : 1.0))
+      .filter(d => d >= diameterThresholdKm).length;
+
+    const observedDensity = countAbove / Math.max(1, countAreaKm2);
+    const saturationDensity = this.computeSaturationLimit(diameterThresholdKm);
+    const fraction = observedDensity / Math.max(1e-9, saturationDensity);
+
+    return {
+      observedDensityPerKm2: parseFloat(observedDensity.toExponential(4)),
+      saturationDensityPerKm2: parseFloat(saturationDensity.toExponential(4)),
+      saturationPercent: parseFloat((fraction * 100.0).toFixed(2)),
+      isSaturated: fraction >= 1.0
+    };
+  }
+
+  /**
+   * Estimate parent asteroid impactor diameter using Schmidt-Holsapple planetary gravity-regime scaling.
+   * @param {number} craterDiameterKm - Final crater diameter in km
+   * @param {number} [impactVelocityKmS=10.0] - Asteroid impact velocity in km/s (typical Mars ~ 10 km/s)
+   * @param {number} [targetDensityKgM3=2900] - Mars basaltic target rock density (kg/m^3)
+   * @param {number} [impactorDensityKgM3=2500] - Chondritic impactor density (kg/m^3)
+   * @returns {{impactorDiameterMeters: number, impactEnergyJoules: number, impactEnergyMegatonsTNT: number}}
+   */
+  static computeCraterScalingImpactorSize(craterDiameterKm, impactVelocityKmS = 10.0, targetDensityKgM3 = 2900, impactorDensityKgM3 = 2500) {
+    const dCraterMeters = Math.max(10, craterDiameterKm * 1000.0);
+    const gMars = 3.72076; // m/s^2
+    const vMps = impactVelocityKmS * 1000.0;
+
+    // Transient diameter D_t ~ 0.8 * D_final for simple/complex craters
+    const dTransient = 0.8 * dCraterMeters;
+
+    // Schmidt-Holsapple (1987) scaling in gravity regime:
+    // D_t = 1.161 * (rho_i / rho_t)^0.333 * (g / v^2)^(-0.22) * d_i^0.78
+    // => d_i = [ D_t / (1.161 * (rho_i / rho_t)^0.333 * (g / v^2)^(-0.22)) ]^(1 / 0.78)
+    const densityRatio = impactorDensityKgM3 / targetDensityKgM3;
+    const gravityVelocityTerm = Math.pow(gMars / (vMps * vMps), -0.22);
+    const coeff = 1.161 * Math.pow(densityRatio, 0.333) * gravityVelocityTerm;
+
+    const dImpactorMeters = Math.pow(dTransient / coeff, 1.0 / 0.78);
+
+    // Kinetic Energy = 0.5 * m * v^2 = 0.5 * (4/3 * pi * (d/2)^3 * rho_i) * v^2
+    const radiusM = dImpactorMeters / 2.0;
+    const massKg = (4.0 / 3.0) * Math.PI * Math.pow(radiusM, 3) * impactorDensityKgM3;
+    const energyJoules = 0.5 * massKg * Math.pow(vMps, 2);
+    const energyMegatons = energyJoules / 4.184e15;
+
+    return {
+      impactorDiameterMeters: parseFloat(dImpactorMeters.toFixed(1)),
+      impactEnergyJoules: parseFloat(energyJoules.toExponential(4)),
+      impactEnergyMegatonsTNT: parseFloat(energyMegatons.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate multi-event chronostratigraphic resurfacing retention correction.
+   * @param {number} targetObservedAgeGa - Apparent crater retention age
+   * @param {number} resurfacingEventAgeGa - Age of major volcanic or fluvial resurfacing event
+   * @returns {{correctedPreEventAgeGa: number, resurfacingFraction: number}}
+   */
+  static computeResurfacingCorrection(targetObservedAgeGa, resurfacingEventAgeGa = 2.0) {
+    const maxAge = Math.max(targetObservedAgeGa, resurfacingEventAgeGa);
+    const minAge = Math.min(targetObservedAgeGa, resurfacingEventAgeGa);
+    const retainedFraction = minAge / Math.max(0.01, maxAge);
+
+    return {
+      correctedPreEventAgeGa: parseFloat(maxAge.toFixed(3)),
+      resurfacingFraction: parseFloat((1.0 - retainedFraction).toFixed(3))
+    };
+  }
 }
+
 
 
 

@@ -2025,6 +2025,34 @@ describe('Surface Clutter Simulation & CRIM Porosity Inversion (RadarSounderEngi
     });
 });
 
+describe('Crater Saturation Equilibrium & Asteroid Impactor Scaling (CSFDEngine)', () => {
+    it('should compute cumulative saturation fraction relative to Gault/Hartmann limit', () => {
+        const craters = [
+            { diameter: 2000 },
+            { diameter: 3000 },
+            { diameter: 5000 }
+        ];
+
+        const sat = CSFDEngine.computeCumulativeSaturationFraction(craters, 1e4, 1.0);
+        expect(sat.observedDensityPerKm2).to.be.greaterThan(0);
+        expect(sat.saturationDensityPerKm2).to.equal(0.15); // 0.15 * 1^-2
+        expect(sat.isSaturated).to.be.false;
+    });
+
+    it('should estimate asteroid impactor projectile size from crater scaling', () => {
+        // 10 km complex Martian crater at 10 km/s impact velocity
+        const scaling = CSFDEngine.computeCraterScalingImpactorSize(10.0, 10.0, 2900, 2500);
+        expect(scaling.impactorDiameterMeters).to.be.greaterThan(200);
+        expect(scaling.impactorDiameterMeters).to.be.lessThan(1000);
+        expect(scaling.impactEnergyMegatonsTNT).to.be.greaterThan(100);
+
+        // Superposition resurfacing correction: 3.5 Ga surface resurfaced at 1.0 Ga
+        const res = CSFDEngine.computeResurfacingCorrection(3.5, 1.0);
+        expect(res.correctedPreEventAgeGa).to.equal(3.5);
+        expect(res.resurfacingFraction).to.be.closeTo(0.714, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
