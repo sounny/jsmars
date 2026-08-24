@@ -140,3 +140,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute Keplerian orbital period and velocity
 ?: AssertionError: expected 111.1 to be close to 111.9 +/- 0.5
     at n.<anonymous> (unit.js:1237:43)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 10:15:37 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute single-pixel Horn hillshade illumination and slope angle
+?: AssertionError: expected 104 to be above 180
+    at n.<anonymous> (unit.js:1271:36)

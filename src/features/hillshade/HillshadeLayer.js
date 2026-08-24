@@ -272,4 +272,68 @@ export class HillshadeLayer {
     });
     return `${this.demWmsUrl}&${params.toString()}`;
   }
+
+  // --- Hillshade Photometry & Multidirectional Shading Solvers ---
+
+  /**
+   * Compute single-cell Horn hillshade illumination (0-255).
+   * @param {number} dzdx - Partial x-derivative (rate of elevation change)
+   * @param {number} dzdy - Partial y-derivative
+   * @param {number} [azimuthDeg=315] - Light source compass direction in degrees
+   * @param {number} [altitudeDeg=45] - Light source elevation angle above horizon
+   * @param {number} [zFactor=1.0] - Vertical exaggeration
+   * @returns {number} Shading value (0-255)
+   */
+  static computeSinglePixelHillshade(dzdx, dzdy, azimuthDeg = 315, altitudeDeg = 45, zFactor = 1.0) {
+    const azRad = (360 - azimuthDeg + 90) * Math.PI / 180;
+    const altRad = Math.max(0, Math.min(90, altitudeDeg)) * Math.PI / 180;
+
+    const zx = dzdx * zFactor;
+    const zy = dzdy * zFactor;
+
+    const slope = Math.atan(Math.sqrt(zx * zx + zy * zy));
+    const aspect = Math.atan2(zy, -zx);
+
+    let val = Math.cos(altRad) * Math.sin(slope) * Math.cos(azRad - aspect) +
+              Math.sin(altRad) * Math.cos(slope);
+
+    return Math.max(0, Math.min(255, Math.round(val * 255)));
+  }
+
+  /**
+   * Compute multidirectional Swiss hillshade combining 4 illumination azimuths (225°, 270°, 315°, 360°).
+   * Eliminates shadowing bias in craters and canyon walls.
+   * @param {number} dzdx - Partial x-derivative
+   * @param {number} dzdy - Partial y-derivative
+   * @param {number} [altitudeDeg=45] - Light source elevation
+   * @param {number} [zFactor=1.0] - Vertical exaggeration
+   * @returns {number} Multidirectional shaded relief (0-255)
+   */
+  static computeMultidirectionalHillshade(dzdx, dzdy, altitudeDeg = 45, zFactor = 1.0) {
+    const azimuths = [225, 270, 315, 360];
+    const weights = [0.25, 0.25, 0.25, 0.25];
+
+    let combined = 0;
+    for (let i = 0; i < azimuths.length; i++) {
+      const shade = this.computeSinglePixelHillshade(dzdx, dzdy, azimuths[i], altitudeDeg, zFactor);
+      combined += shade * weights[i];
+    }
+
+    return Math.max(0, Math.min(255, Math.round(combined)));
+  }
+
+  /**
+   * Calculate topographic surface slope angle in degrees.
+   * @param {number} dzdx - Partial x-derivative
+   * @param {number} dzdy - Partial y-derivative
+   * @param {number} [zFactor=1.0] - Vertical exaggeration
+   * @returns {number} Slope in degrees (0 to 90)
+   */
+  static computeSlopeDegrees(dzdx, dzdy, zFactor = 1.0) {
+    const zx = dzdx * zFactor;
+    const zy = dzdy * zFactor;
+    const slopeRad = Math.atan(Math.sqrt(zx * zx + zy * zy));
+    return parseFloat((slopeRad * 180 / Math.PI).toFixed(2));
+  }
 }
+

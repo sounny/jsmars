@@ -23,6 +23,7 @@ import { LandingSitesLayer } from '../src/features/landing/LandingSitesLayer.js'
 import { RadialProfileTool } from '../src/features/profile/RadialProfileTool.js';
 import { MeasureTool } from '../src/features/measure/MeasureTool.js';
 import { GroundTrackLayer } from '../src/features/groundtrack/GroundTrackLayer.js';
+import { HillshadeLayer } from '../src/features/hillshade/HillshadeLayer.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
@@ -1252,6 +1253,28 @@ describe('Spacecraft Ground Tracks & Orbital Mechanics (GroundTrackLayer)', () =
         expect(repeat.orbitsPerSol).to.be.closeTo(13.19, 0.1);
         expect(repeat.driftDegPerOrbit).to.be.closeTo(27.29, 0.5);
         expect(repeat.groundTrackShiftKm).to.be.greaterThan(1000);
+    });
+});
+
+describe('Dynamic Hillshade & Multidirectional Relief (HillshadeLayer)', () => {
+    it('should compute single-pixel Horn hillshade illumination and slope angle', () => {
+        // Flat terrain (dzdx = 0, dzdy = 0) at altitude 45 deg -> shade = 255 * sin(45) = 180
+        const flatShade = HillshadeLayer.computeSinglePixelHillshade(0, 0, 315, 45);
+        expect(flatShade).to.be.closeTo(180, 2);
+
+        // Slope of 1:1 gradient -> slope = 45 deg (for dzdx = 1, dzdy = 0)
+        const slope = HillshadeLayer.computeSlopeDegrees(1, 0);
+        expect(slope).to.equal(45.0);
+
+        // Illumination from NW (315 deg) facing an illuminated slope (dzdx = 1, dzdy = 1) -> bright illumination (~251)
+        const nwSlopeShade = HillshadeLayer.computeSinglePixelHillshade(1, 1, 315, 45);
+        expect(nwSlopeShade).to.be.greaterThan(flatShade);
+    });
+
+    it('should compute multidirectional Swiss shaded relief', () => {
+        const multiShade = HillshadeLayer.computeMultidirectionalHillshade(0.5, 0.5, 45, 1.0);
+        expect(multiShade).to.be.within(0, 255);
+        expect(multiShade).to.be.greaterThan(50);
     });
 });
 
