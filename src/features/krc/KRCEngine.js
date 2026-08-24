@@ -259,5 +259,79 @@ export class KRCEngine {
     const cVol = density * specificHeat;
     return (thermalInertia * thermalInertia) / cVol;
   }
+
+  // --- Seasonal Thermal Penetration & Grain Size Classification ---
+
+  /**
+   * Calculate seasonal/annual thermal skin depth across Martian year (668.6 sols).
+   * @param {number} thermalInertia - Thermal inertia in J m^-2 K^-1 s^-1/2
+   * @param {number} [solsPerYear=668.6] - Number of sols in Mars year
+   * @returns {{annualSkinDepthMeters: number, annualSkinDepthCm: number, diurnalSkinDepthMeters: number}}
+   */
+  static computeAnnualSkinDepth(thermalInertia, solsPerYear = 668.6) {
+    const diurnal = this.computeSkinDepth(thermalInertia);
+    const annualMeters = diurnal.skinDepthMeters * Math.sqrt(solsPerYear);
+
+    return {
+      annualSkinDepthMeters: parseFloat(annualMeters.toFixed(3)),
+      annualSkinDepthCm: parseFloat((annualMeters * 100).toFixed(1)),
+      diurnalSkinDepthMeters: parseFloat(diurnal.skinDepthMeters.toFixed(3))
+    };
+  }
+
+  /**
+   * Classify Martian regolith physical state and estimated grain size from thermal inertia (TI).
+   * @param {number} thermalInertia - Thermal inertia in tiu
+   * @returns {{classification: string, grainSizeEstimate: string, description: string}}
+   */
+  static classifyRegolithGrainSize(thermalInertia) {
+    const ti = Math.max(1, thermalInertia);
+
+    if (ti < 100) {
+      return {
+        classification: 'Fine Atmospheric Dust Mantle',
+        grainSizeEstimate: '< 40 µm (Silt / Micron Dust)',
+        description: 'Thick settling mantles of airfall dust (e.g. Tharsis, Arabia Terra)'
+      };
+    } else if (ti < 250) {
+      return {
+        classification: 'Fine to Medium Eolian Sand',
+        grainSizeEstimate: '100 - 250 µm (Active Dunes)',
+        description: 'Saltating sand sheets, ripples, and dune fields'
+      };
+    } else if (ti < 500) {
+      return {
+        classification: 'Coarse Sand & Indurated Duricrust',
+        grainSizeEstimate: '300 µm - 2 mm + Cemented Clasts',
+        description: 'Coarse sand drifts and salt-cemented regolith crusts'
+      };
+    } else if (ti < 1200) {
+      return {
+        classification: 'Rocky Regolith / Cobbles / Patchy Rock',
+        grainSizeEstimate: '> 5 mm + Bedrock Clasts',
+        description: 'Gravel pavements, rocky impact ejecta, and fragmented duricrust'
+      };
+    } else {
+      return {
+        classification: 'Massive Bedrock / Pure Water Ice',
+        grainSizeEstimate: 'Continuous Solid Rock / Ice',
+        description: 'Intact volcanic basalt lava flows or dense polar ice sheet'
+      };
+    }
+  }
+
+  /**
+   * Compute emitted thermal infrared radiance using Stefan-Boltzmann law.
+   * @param {number} temperatureK - Surface temperature in Kelvin
+   * @param {number} [emissivity=0.95] - Surface broadband emissivity
+   * @returns {number} Emitted thermal flux in W / m^2
+   */
+  static computeStefanBoltzmannFlux(temperatureK, emissivity = 0.95) {
+    const eps = Math.max(0.01, Math.min(1.0, emissivity));
+    const t = Math.max(0, temperatureK);
+    const flux = eps * KRCEngine.STEFAN_BOLTZMANN * Math.pow(t, 4);
+    return parseFloat(flux.toFixed(2));
+  }
 }
+
 

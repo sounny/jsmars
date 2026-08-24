@@ -1493,6 +1493,31 @@ describe('Atmospheric Scale Height & Radiative Dust Extinction (MCDEngine)', () 
     });
 });
 
+describe('1D Planetary Thermal Model & Seasonal Skin Depth (KRCEngine)', () => {
+    it('should compute diurnal and seasonal thermal skin depths', () => {
+        // Sand regolith (TI = 250 tiu): diurnal skin depth ~ 3.5 cm, annual ~ 90 cm
+        const annual = KRCEngine.computeAnnualSkinDepth(250, 668.6);
+        expect(annual.diurnalSkinDepthMeters).to.be.closeTo(0.035, 0.01);
+        expect(annual.annualSkinDepthMeters).to.be.closeTo(0.90, 0.1);
+        expect(annual.annualSkinDepthCm).to.be.greaterThan(50);
+    });
+
+    it('should classify regolith grain size and calculate Stefan-Boltzmann flux', () => {
+        const dust = KRCEngine.classifyRegolithGrainSize(50);
+        expect(dust.classification).to.include('Dust');
+
+        const sand = KRCEngine.classifyRegolithGrainSize(200);
+        expect(sand.classification).to.include('Sand');
+
+        const rock = KRCEngine.classifyRegolithGrainSize(1500);
+        expect(rock.classification).to.include('Bedrock');
+
+        // Stefan-Boltzmann flux at 250 K with eps = 0.95: 0.95 * 5.67037e-8 * 250^4 = 210.42 W/m^2
+        const flux = KRCEngine.computeStefanBoltzmannFlux(250, 0.95);
+        expect(flux).to.be.closeTo(210.42, 1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
