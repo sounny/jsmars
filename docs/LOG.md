@@ -154,3 +154,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute seasonal sol durations and Mars Sol Date conversions
 ?: AssertionError: expected 44791.62022 to be close to 44796 +/- 1
     at n.<anonymous> (unit.js:1540:36)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 17:30:24 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate maximum radar signal penetration depth
+?: AssertionError: expected 415.2 to be below 200
+    at n.<anonymous> (unit.js:1664:35)

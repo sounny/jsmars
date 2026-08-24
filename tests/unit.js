@@ -1653,6 +1653,27 @@ describe('Geodetic Latitude & Longitude Transformation (ProjectionManager)', () 
     });
 });
 
+describe('Radar Signal Penetration & Uncertainty Propagation (RadarSounderEngine)', () => {
+    it('should calculate maximum radar signal penetration depth', () => {
+        // Pure ice (eps = 3.15, loss tan = 0.001) at 20 MHz with 60 dB dynamic range -> depth > 1000m
+        const depthIce = RadarSounderEngine.computeSignalPenetrationDepth(60, 20e6, 0.001, 3.15);
+        expect(depthIce).to.be.greaterThan(1000);
+
+        // Lossy basalt (eps = 7.0, loss tan = 0.015) -> depth ~ 415m, significantly less than pure ice
+        const depthBasalt = RadarSounderEngine.computeSignalPenetrationDepth(60, 20e6, 0.015, 7.0);
+        expect(depthBasalt).to.be.closeTo(415.2, 5.0);
+        expect(depthBasalt).to.be.lessThan(depthIce);
+    });
+
+    it('should propagate statistical uncertainty to radar depth estimation', () => {
+        // Two-way travel time = 10 μs in ice (eps = 3.15) -> nominal depth ~ 844.5 m
+        const unc = RadarSounderEngine.computeDepthUncertainty(10.0, 3.15, 0.05, 0.2);
+        expect(unc.nominalDepthMeters).to.be.closeTo(844.5, 2.0);
+        expect(unc.sigmaDepthMeters).to.be.greaterThan(0);
+        expect(unc.relativeUncertaintyPercent).to.be.within(1.0, 10.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

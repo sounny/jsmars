@@ -332,6 +332,54 @@ export class RadarSounderEngine {
     const rFresnel = Math.sqrt(lambda0 * totalDist / 2.0);
     return parseFloat(rFresnel.toFixed(1));
   }
+
+  // --- Penetration Depth & Uncertainty Solvers ---
+
+  /**
+   * Calculate maximum radar signal penetration depth given instrument dynamic range and dielectric loss.
+   * @param {number} [dynamicRangeDb=60] - Instrument dynamic range (dB)
+   * @param {number} [freqHz=20e6] - Radar center frequency (Hz)
+   * @param {number} [lossTangent=0.001] - Subsurface medium loss tangent
+   * @param {number} [epsR=3.15] - Dielectric permittivity
+   * @returns {number} Maximum penetration depth in meters
+   */
+  static computeSignalPenetrationDepth(dynamicRangeDb = 60, freqHz = 20e6, lossTangent = 0.001, epsR = 3.15) {
+    const alpha = this.computeAttenuationRate(freqHz, lossTangent, epsR);
+    if (alpha <= 0) return Infinity;
+    // Two-way attenuation = 2 * alpha * z <= dynamicRangeDb => z <= dynamicRangeDb / (2 * alpha)
+    const maxDepth = dynamicRangeDb / (2.0 * alpha);
+    return parseFloat(maxDepth.toFixed(1));
+  }
+
+  /**
+   * Propagate statistical uncertainty in radar depth estimation from uncertainties in TWT and permittivity.
+   * @param {number} twtMicroseconds - Two-way travel time (μs)
+   * @param {number} [epsR=3.15] - Relative dielectric permittivity
+   * @param {number} [sigmaTwtMicroseconds=0.05] - Standard error in TWT (μs)
+   * @param {number} [sigmaEps=0.2] - Standard error in permittivity
+   * @returns {{nominalDepthMeters: number, sigmaDepthMeters: number, relativeUncertaintyPercent: number}}
+   */
+  static computeDepthUncertainty(twtMicroseconds, epsR = 3.15, sigmaTwtMicroseconds = 0.05, sigmaEps = 0.2) {
+    const zNominal = this.twtToDepth(twtMicroseconds, epsR);
+    const twtSec = twtMicroseconds * 1e-6;
+    const sigmaTwtSec = sigmaTwtMicroseconds * 1e-6;
+
+    // Partial derivatives:
+    // dz/dt = c / (2 * sqrt(eps))
+    // dz/deps = - c * t / (4 * eps^(3/2)) = - z / (2 * eps)
+    const dz_dt = RadarSounderEngine.C / (2.0 * Math.sqrt(epsR));
+    const dz_deps = - zNominal / (2.0 * epsR);
+
+    const varZ = Math.pow(dz_dt * sigmaTwtSec, 2) + Math.pow(dz_deps * sigmaEps, 2);
+    const sigmaZ = Math.sqrt(varZ);
+
+    return {
+      nominalDepthMeters: parseFloat(zNominal.toFixed(2)),
+      sigmaDepthMeters: parseFloat(sigmaZ.toFixed(2)),
+      relativeUncertaintyPercent: parseFloat(((sigmaZ / Math.max(1, zNominal)) * 100).toFixed(2))
+    };
+  }
 }
+
 
 
