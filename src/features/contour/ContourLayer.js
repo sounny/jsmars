@@ -476,6 +476,87 @@ export class ContourLayer {
     const majorInterval = interval * indexFactor;
     return Math.abs(elevation % majorInterval) < 1e-3;
   }
+
+  // --- Bilinear Sub-Pixel Interpolation & Dynamic Contour Intervals ---
+
+  /**
+   * Evaluate sub-pixel continuous elevation on DEM grid via Bilinear Interpolation.
+   * @param {Float32Array|Array<number>} elevGrid - 1D elevation array
+   * @param {number} width - Grid width
+   * @param {number} height - Grid height
+   * @param {number} x - Float X coordinate (0 to width - 1)
+   * @param {number} y - Float Y coordinate (0 to height - 1)
+   * @returns {number} Interpolated elevation in meters
+   */
+  static bilinearInterpolateElevation(elevGrid, width, height, x, y) {
+    const x0 = Math.max(0, Math.min(width - 2, Math.floor(x)));
+    const y0 = Math.max(0, Math.min(height - 2, Math.floor(y)));
+    const x1 = x0 + 1;
+    const y1 = y0 + 1;
+
+    const u = x - x0;
+    const v = y - y0;
+
+    const z00 = elevGrid[y0 * width + x0];
+    const z10 = elevGrid[y0 * width + x1];
+    const z01 = elevGrid[y1 * width + x0];
+    const z11 = elevGrid[y1 * width + x1];
+
+    const z = (1 - u) * (1 - v) * z00 +
+              u * (1 - v) * z10 +
+              (1 - u) * v * z01 +
+              u * v * z11;
+
+    return parseFloat(z.toFixed(2));
+  }
+
+  /**
+   * Determine optimal cartographic contour interval given local terrain relief span.
+   * @param {number} minElevation - Minimum elevation in meters
+   * @param {number} maxElevation - Maximum elevation in meters
+   * @param {number} [targetLevels=10] - Desired number of contour levels
+   * @returns {{interval: number, numLevels: number, baseLevel: number}}
+   */
+  static computeOptimalContourInterval(minElevation, maxElevation, targetLevels = 10) {
+    const span = Math.max(1, maxElevation - minElevation);
+    const rawStep = span / Math.max(2, targetLevels);
+
+    // Standard 1-2-2.5-5 nice numbers
+    const exponent = Math.floor(Math.log10(rawStep));
+    const fraction = rawStep / Math.pow(10, exponent);
+
+    let niceFraction;
+    if (fraction <= 1.5) niceFraction = 1;
+    else if (fraction <= 2.2) niceFraction = 2;
+    else if (fraction <= 3.5) niceFraction = 2.5;
+    else if (fraction <= 7.5) niceFraction = 5;
+    else niceFraction = 10;
+
+    const interval = niceFraction * Math.pow(10, exponent);
+    const baseLevel = Math.floor(minElevation / interval) * interval;
+    const numLevels = Math.ceil((maxElevation - baseLevel) / interval);
+
+    return {
+      interval: parseFloat(interval.toFixed(1)),
+      numLevels,
+      baseLevel: parseFloat(baseLevel.toFixed(1))
+    };
+  }
+
+  /**
+   * Generate standard MOLA rainbow hypsometric hex color for any elevation.
+   * @param {number} elevation - Elevation in meters
+   * @param {number} [minElev=-8000] - Mars datum low (Hellas Basin)
+   * @param {number} [maxElev=21000] - Mars summit (Olympus Mons)
+   * @returns {string} Hex color string (e.g. #38bdf8)
+   */
+  static generateElevationColor(elevation, minElev = -8000, maxElev = 21000) {
+    const norm = Math.max(0, Math.min(1.0, (elevation - minElev) / (maxElev - minElev)));
+    // Hue from 240 (blue) to 0 (red/magenta)
+    const hue = (1.0 - norm) * 240.0;
+    return `hsl(${hue.toFixed(1)}, 85%, 50%)`;
+  }
 }
+
 
 

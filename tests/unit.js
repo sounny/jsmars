@@ -1914,6 +1914,29 @@ describe('Martian Solar Coordinates & Apsidal Precession (MarsTime)', () => {
     });
 });
 
+describe('DEM Bilinear Interpolation & Hypsometric Intervals (ContourLayer)', () => {
+    it('should evaluate sub-pixel continuous elevation via bilinear interpolation', () => {
+        // 2x2 grid: (0,0)=100, (1,0)=200, (0,1)=300, (1,1)=400
+        const grid = new Float32Array([100, 200, 300, 400]);
+        const zCenter = ContourLayer.bilinearInterpolateElevation(grid, 2, 2, 0.5, 0.5);
+        expect(zCenter).to.equal(250);
+
+        const z00 = ContourLayer.bilinearInterpolateElevation(grid, 2, 2, 0, 0);
+        expect(z00).to.equal(100);
+    });
+
+    it('should compute optimal cartographic contour intervals and elevation colors', () => {
+        // Relief from -4000 m to +6000 m (span = 10,000 m, 10 levels) -> nice step = 1000 m
+        const opt = ContourLayer.computeOptimalContourInterval(-4000, 6000, 10);
+        expect(opt.interval).to.equal(1000);
+        expect(opt.baseLevel).to.equal(-4000);
+        expect(opt.numLevels).to.equal(10);
+
+        const color = ContourLayer.generateElevationColor(0, -8000, 21000);
+        expect(color).to.include('hsl');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
