@@ -76,4 +76,57 @@ export class ThreeDEngine {
       nz: -dz / len
     };
   }
+
+  // --- Planetary Photometry & Shaded Relief Rendering ---
+
+  /**
+   * Compute Lambertian shaded relief intensity (0.0 to 1.0).
+   * @param {{nx: number, ny: number, nz: number}} normal - Surface normal vector
+   * @param {{x: number, y: number, z: number}} sunVector - Solar illumination unit vector
+   * @param {number} [ambient=0.15] - Ambient light coefficient
+   * @returns {number} Shaded illumination intensity in [0, 1]
+   */
+  static computeHillshade(normal, sunVector, ambient = 0.15) {
+    const dot = normal.nx * sunVector.x + normal.ny * sunVector.y + normal.nz * sunVector.z;
+    const direct = Math.max(0, dot);
+    return ambient + (1.0 - ambient) * direct;
+  }
+
+  /**
+   * Compute Lommel-Seeliger scattering reflectance for low-albedo regolith.
+   * @param {number} cosIncidence - Cosine of incidence angle (mu0 = cos(i))
+   * @param {number} cosEmission - Cosine of emission/view angle (mu = cos(e))
+   * @returns {number} Relative reflectance
+   */
+  static computeLommelSeeligerReflectance(cosIncidence, cosEmission) {
+    const mu0 = Math.max(0, cosIncidence);
+    const mu = Math.max(0, cosEmission);
+    if (mu0 + mu === 0) return 0;
+    return mu0 / (mu0 + mu);
+  }
+
+  /**
+   * Compute Minnaert photometric function for planetary disk rendering.
+   * @param {number} cosIncidence - Cosine of incidence angle (mu0)
+   * @param {number} cosEmission - Cosine of emission angle (mu)
+   * @param {number} [k=0.65] - Minnaert limb-darkening exponent for Mars
+   * @returns {number} Minnaert reflectance
+   */
+  static computeMinnaertReflectance(cosIncidence, cosEmission, k = 0.65) {
+    const mu0 = Math.max(1e-4, cosIncidence);
+    const mu = Math.max(1e-4, cosEmission);
+    return Math.pow(mu0, k) * Math.pow(mu, k - 1.0);
+  }
+
+  /**
+   * Compute Ground Field of View (GFOV) diameter from camera altitude and FOV angle.
+   * @param {number} altitudeKm - Camera altitude in km
+   * @param {number} fovDegrees - Camera Field of View in degrees
+   * @returns {number} GFOV ground footprint in km
+   */
+  static computeGroundFOV(altitudeKm, fovDegrees = 45) {
+    const fovRad = fovDegrees * Math.PI / 180;
+    return 2.0 * Math.max(0, altitudeKm) * Math.tan(fovRad / 2.0);
+  }
 }
+

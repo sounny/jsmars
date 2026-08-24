@@ -584,6 +584,27 @@ describe('3D Planetary Terrain & Solar Illumination (ThreeDEngine)', () => {
         expect(length).to.be.closeTo(1.0, 0.01);
         expect(normal.ny).to.be.greaterThan(0); // Upward facing
     });
+
+    it('should compute hillshade illumination, Lommel-Seeliger / Minnaert reflectance, and camera GFOV', () => {
+        // Flat normal pointing upward (0, 1, 0) and sun at zenith (0, 1, 0)
+        const flatNormal = { nx: 0, ny: 1, nz: 0 };
+        const sunZenith = { x: 0, y: 1, z: 0 };
+        const hillshade = ThreeDEngine.computeHillshade(flatNormal, sunZenith, 0.15);
+        expect(hillshade).to.equal(1.0);
+
+        // Lommel-Seeliger scattering (i=0, e=0 -> mu0=1, mu=1 -> 1 / (1+1) = 0.5)
+        const ls = ThreeDEngine.computeLommelSeeligerReflectance(1.0, 1.0);
+        expect(ls).to.equal(0.5);
+
+        // Minnaert photometric reflectance
+        const minnaert = ThreeDEngine.computeMinnaertReflectance(0.8, 0.9, 0.65);
+        expect(minnaert).to.be.greaterThan(0.5);
+
+        // Ground FOV at 400 km altitude with 45 deg FOV
+        // GFOV = 2 * 400 * tan(22.5 deg) ≈ 2 * 400 * 0.4142 ≈ 331.37 km
+        const gfov = ThreeDEngine.computeGroundFOV(400, 45);
+        expect(gfov).to.be.closeTo(331.4, 2.0);
+    });
 });
 
 describe('Astrodynamics & Interplanetary Trajectories (TrajectoryEngine)', () => {
