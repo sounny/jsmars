@@ -379,7 +379,90 @@ export class RadarSounderEngine {
       relativeUncertaintyPercent: parseFloat(((sigmaZ / Math.max(1, zNominal)) * 100).toFixed(2))
     };
   }
+
+  // --- Surface Clutter, CRIM Porosity Inversion & Basal Contacts ---
+
+  /**
+   * Calculate off-nadir topographic surface clutter round-trip travel time.
+   * tau_clutter = (2 * sqrt(H^2 + d^2)) / c
+   * @param {number} orbitAltitudeKm - Spacecraft orbit altitude in km (e.g. 250 km for MRO)
+   * @param {number} crossTrackDistanceKm - Perpendicular distance to off-nadir topographic feature (e.g. crater rim)
+   * @returns {{nadirTwtMicrosec: number, clutterTwtMicrosec: number, excessDelayMicrosec: number, apparentDepthMetersInIce: number}}
+   */
+  static computeSurfaceClutterDelay(orbitAltitudeKm, crossTrackDistanceKm) {
+    const hM = orbitAltitudeKm * 1000.0;
+    const dM = crossTrackDistanceKm * 1000.0;
+
+    const slantRange = Math.hypot(hM, dM);
+    const nadirTwtSec = (2.0 * hM) / RadarSounderEngine.C;
+    const clutterTwtSec = (2.0 * slantRange) / RadarSounderEngine.C;
+    const excessDelaySec = clutterTwtSec - nadirTwtSec;
+
+    // Apparent false subsurface depth if interpreted as an in-nadir subsurface ice reflector (eps = 3.15)
+    const vIce = RadarSounderEngine.getVelocity(3.15);
+    const apparentDepthM = (vIce * excessDelaySec) / 2.0;
+
+    return {
+      nadirTwtMicrosec: parseFloat((nadirTwtSec * 1e6).toFixed(3)),
+      clutterTwtMicrosec: parseFloat((clutterTwtSec * 1e6).toFixed(3)),
+      excessDelayMicrosec: parseFloat((excessDelaySec * 1e6).toFixed(3)),
+      apparentDepthMetersInIce: parseFloat(apparentDepthM.toFixed(1))
+    };
+  }
+
+  /**
+   * Estimate volumetric regolith porosity using the Complex Refractive Index Model (CRIM).
+   * sqrt(eps_bulk) = (1 - phi) * sqrt(eps_matrix) + phi * sqrt(eps_pore)
+   * @param {number} bulkEps - Measured bulk relative permittivity (e.g. 2.9 for Medusae Fossae)
+   * @param {number} [matrixEps=7.5] - Solid rock grain permittivity (basalt ~ 7.5)
+   * @param {number} [poreEps=1.0] - Pore filler permittivity (vacuum/gas = 1.0, water ice = 3.15)
+   * @returns {{porosityFraction: number, porosityPercent: number}}
+   */
+  static estimatePorosityFromPermittivity(bulkEps, matrixEps = 7.5, poreEps = 1.0) {
+    const sqrtBulk = Math.sqrt(Math.max(1, bulkEps));
+    const sqrtMatrix = Math.sqrt(Math.max(1, matrixEps));
+    const sqrtPore = Math.sqrt(Math.max(1, poreEps));
+
+    const denom = sqrtPore - sqrtMatrix;
+    if (Math.abs(denom) < 1e-4) return { porosityFraction: 0, porosityPercent: 0 };
+
+    const phi = (sqrtBulk - sqrtMatrix) / denom;
+    const clampedPhi = Math.max(0, Math.min(1.0, phi));
+
+    return {
+      porosityFraction: parseFloat(clampedPhi.toFixed(4)),
+      porosityPercent: parseFloat((clampedPhi * 100.0).toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate normal-incidence Fresnel reflectivity at sub-ice basal contacts.
+   * @param {number} [epsIce=3.15] - Dielectric permittivity of overlying ice
+   * @param {number} [epsBasement=7.5] - Dielectric permittivity of underlying basement
+   * @returns {{reflectivityPower: number, reflectivityDb: number, contactType: string}}
+   */
+  static computeBasalInterfaceReflectivity(epsIce = 3.15, epsBasement = 7.5) {
+    const fresnel = this.computeFresnelReflectivity(epsIce, epsBasement);
+    let contactType = 'Basaltic Bedrock';
+
+    if (epsBasement > 40) {
+      contactType = 'Subglacial Liquid Water / Brine Body';
+    } else if (epsBasement > 12) {
+      contactType = 'Hydrated Smectite Clay / Saline Permafrost';
+    } else if (epsBasement >= 6) {
+      contactType = 'Dry Basaltic Basement Floor';
+    } else {
+      contactType = 'Basal Sediment / Porous Ash';
+    }
+
+    return {
+      reflectivityPower: parseFloat(fresnel.reflectivityLinear.toFixed(4)),
+      reflectivityDb: parseFloat(fresnel.reflectivityDb.toFixed(2)),
+      contactType
+    };
+  }
 }
+
 
 
 

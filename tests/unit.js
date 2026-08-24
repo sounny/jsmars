@@ -2002,6 +2002,29 @@ describe('Tissot Indicatrix Distortion Ellipses & Antipodes (ProjectionManager)'
     });
 });
 
+describe('Surface Clutter Simulation & CRIM Porosity Inversion (RadarSounderEngine)', () => {
+    it('should compute off-nadir topographic surface clutter delay and apparent depth', () => {
+        // MRO orbit H = 250 km, crater rim at cross-track d = 25 km
+        const clutter = RadarSounderEngine.computeSurfaceClutterDelay(250, 25);
+        expect(clutter.nadirTwtMicrosec).to.be.closeTo(1667.8, 1.0);
+        expect(clutter.clutterTwtMicrosec).to.be.greaterThan(clutter.nadirTwtMicrosec);
+        expect(clutter.excessDelayMicrosec).to.be.closeTo(8.3, 0.5);
+        expect(clutter.apparentDepthMetersInIce).to.be.greaterThan(500);
+    });
+
+    it('should estimate volumetric porosity from dielectric permittivity via CRIM', () => {
+        // Medusae Fossae bulk permittivity eps = 2.9, basalt matrix eps = 7.5 -> porosity ~ 60%
+        const porous = RadarSounderEngine.estimatePorosityFromPermittivity(2.9, 7.5, 1.0);
+        expect(porous.porosityPercent).to.be.closeTo(59.9, 1.0);
+        expect(porous.porosityFraction).to.be.closeTo(0.60, 0.02);
+
+        // Basal contact reflectivity: pure ice (3.15) over basalt (7.5) -> linear ~ 0.045 (-13.5 dB)
+        const basal = RadarSounderEngine.computeBasalInterfaceReflectivity(3.15, 7.5);
+        expect(basal.reflectivityPower).to.be.closeTo(0.045, 0.01);
+        expect(basal.contactType).to.include('Basaltic');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
