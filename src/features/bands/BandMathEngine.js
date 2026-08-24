@@ -43,6 +43,24 @@ export class BandMathEngine {
       max: 0.12
     },
     {
+      id: 'bd2100_sulfates',
+      name: 'BD2100 (Monohydrated Sulfates / Kieserite)',
+      description: 'Band depth at 2.1 µm diagnostic of crystalline monohydrated magnesium/iron sulfates.',
+      formula: '1.0 - (B2100 / (0.5 * (B1930 + B2250)))',
+      colormap: 'magma',
+      min: 0.0,
+      max: 0.18
+    },
+    {
+      id: 'hcp_pyroxene',
+      name: 'HCPINDEX (High-Calcium Pyroxene / Clinopyroxene)',
+      description: 'Pyroxene 2 µm band asymmetry diagnostic of augite/diopside in basaltic crust.',
+      formula: '(B2120 - B2140) / (B2120 + B2140)',
+      colormap: 'viridis',
+      min: -0.05,
+      max: 0.15
+    },
+    {
       id: 'themis_olivine',
       name: 'THEMIS Thermal Olivine Index',
       description: 'Thermal infrared emissivity band ratio (Band 8 / Band 5) for identifying olivine-rich basalts.',
@@ -52,6 +70,63 @@ export class BandMathEngine {
       max: 1.08
     }
   ];
+
+  /**
+   * Evaluate a mineral parameter index on a set of discrete band values.
+   * @param {string} indexId - Preset ID (e.g. 'bd530_hematite', 'bd1900_hydrated', 'bd1500_water_ice')
+   * @param {object} bands - Map of band IDs to reflectance/emissivity values
+   * @returns {number} Computed index value
+   */
+  static evaluateBandIndex(indexId, bands = {}) {
+    switch (indexId) {
+      case 'bd530_hematite': {
+        const b530 = bands.B530 ?? 0.2;
+        const b440 = bands.B440 ?? 0.15;
+        const b600 = bands.B600 ?? 0.25;
+        const cont = 0.5 * (b440 + b600);
+        return cont > 0 ? 1.0 - (b530 / cont) : 0;
+      }
+      case 'bd1900_hydrated': {
+        const b1930 = bands.B1930 ?? 0.18;
+        const b1815 = bands.B1815 ?? 0.22;
+        const b2130 = bands.B2130 ?? 0.21;
+        const cont = 0.55 * b1815 + 0.45 * b2130;
+        return cont > 0 ? 1.0 - (b1930 / cont) : 0;
+      }
+      case 'bd1500_water_ice': {
+        const b1500 = bands.B1500 ?? 0.12;
+        const b1400 = bands.B1400 ?? 0.24;
+        const b1750 = bands.B1750 ?? 0.22;
+        const cont = 0.6 * b1400 + 0.4 * b1750;
+        return cont > 0 ? 1.0 - (b1500 / cont) : 0;
+      }
+      case 'themis_olivine': {
+        const b8 = bands.B8 ?? 0.98;
+        const b5 = bands.B5 ?? 0.96;
+        return b5 > 0 ? b8 / b5 : 1.0;
+      }
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Generate an RGB color triplet for multi-band composite visualization.
+   * @param {number} rVal - Red channel value
+   * @param {number} gVal - Green channel value
+   * @param {number} bVal - Blue channel value
+   * @param {[number, number]} [rRange=[0, 1]]
+   * @param {[number, number]} [gRange=[0, 1]]
+   * @param {[number, number]} [bRange=[0, 1]]
+   * @returns {[number, number, number]} [R, G, B] values in 0-255
+   */
+  static generateFalseColorRGB(rVal, gVal, bVal, rRange = [0, 1], gRange = [0, 1], bRange = [0, 1]) {
+    const norm = (v, min, max) => Math.max(0, Math.min(1, (v - min) / (max - min || 1)));
+    const r = Math.round(norm(rVal, rRange[0], rRange[1]) * 255);
+    const g = Math.round(norm(gVal, gRange[0], gRange[1]) * 255);
+    const b = Math.round(norm(bVal, bRange[0], bRange[1]) * 255);
+    return [r, g, b];
+  }
 
   /**
    * Colormap palette generator (0.0 to 1.0 -> RGBA)

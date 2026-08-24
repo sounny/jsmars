@@ -218,6 +218,20 @@ describe('Spectral Band Math & Mineralogy', () => {
         expect(viridis1).to.have.lengthOf(4);
         expect(viridis0[3]).to.equal(255);
     });
+
+    it('should evaluate multi-spectral mineral parameter indices and false color RGB composites', () => {
+        // BD530 hematite index: 1.0 - (0.16 / (0.5 * (0.14 + 0.26))) = 1 - 0.16/0.2 = 0.20
+        const hematiteVal = BandMathEngine.evaluateBandIndex('bd530_hematite', { B530: 0.16, B440: 0.14, B600: 0.26 });
+        expect(hematiteVal).to.be.closeTo(0.20, 0.001);
+
+        // BD1900 hydrated index: 1.0 - (0.18 / (0.55 * 0.20 + 0.45 * 0.20)) = 1 - 0.18/0.20 = 0.10
+        const hydratedVal = BandMathEngine.evaluateBandIndex('bd1900_hydrated', { B1930: 0.18, B1815: 0.20, B2130: 0.20 });
+        expect(hydratedVal).to.be.closeTo(0.10, 0.001);
+
+        // False color RGB synthesis
+        const rgb = BandMathEngine.generateFalseColorRGB(0.5, 0.8, 0.2, [0, 1], [0, 1], [0, 1]);
+        expect(rgb).to.deep.equal([128, 204, 51]);
+    });
 });
 
 describe('Geographic Utilities & Projections', () => {
