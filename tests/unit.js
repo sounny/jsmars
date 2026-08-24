@@ -536,6 +536,34 @@ describe('Spatial POI Bookmarks System', () => {
         expect(apollo).to.exist;
         expect(apollo.body).to.equal('moon');
     });
+
+    it('should export and parse GeoJSON FeatureCollections and compute ROI bounding boxes', () => {
+        const pois = [
+            { id: 'poi-1', name: 'Jezero Delta', lat: 18.38, lng: 77.58, zoom: 9, body: 'mars' },
+            { id: 'poi-2', name: 'Gale Crater', lat: -5.4, lng: 137.8, zoom: 8, body: 'mars' }
+        ];
+
+        // Export to GeoJSON
+        const geojson = BookmarksTool.exportGeoJSON(pois);
+        expect(geojson.type).to.equal('FeatureCollection');
+        expect(geojson.features).to.have.lengthOf(2);
+        expect(geojson.features[0].geometry.coordinates).to.deep.equal([77.58, 18.38]);
+
+        // Parse from GeoJSON
+        const parsed = BookmarksTool.parseGeoJSON(geojson);
+        expect(parsed).to.have.lengthOf(2);
+        expect(parsed[0].name).to.equal('Jezero Delta');
+        expect(parsed[0].lat).to.equal(18.38);
+        expect(parsed[0].lng).to.equal(77.58);
+
+        // Bounding box
+        const bbox = BookmarksTool.computeBoundingBox(pois);
+        expect(bbox.minLat).to.equal(-5.4);
+        expect(bbox.maxLat).to.equal(18.38);
+        expect(bbox.minLng).to.equal(77.58);
+        expect(bbox.maxLng).to.equal(137.8);
+        expect(bbox.centerLat).to.be.closeTo(6.49, 0.01);
+    });
 });
 
 describe('Topographic Profile Transects & Linked Cursors', () => {

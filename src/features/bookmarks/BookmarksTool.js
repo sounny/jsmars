@@ -208,4 +208,80 @@ export class BookmarksTool {
       this.render();
     }
   }
+
+  // --- GIS Serialization & Spatial Analysis ---
+
+  /**
+   * Convert bookmarks array to a GeoJSON FeatureCollection.
+   * @param {Array<object>} [bookmarks] - Bookmarks list (defaults to instance bookmarks)
+   * @returns {object} GeoJSON FeatureCollection
+   */
+  static exportGeoJSON(bookmarks = []) {
+    return {
+      type: 'FeatureCollection',
+      features: bookmarks.map(b => ({
+        type: 'Feature',
+        id: b.id,
+        geometry: {
+          type: 'Point',
+          coordinates: [b.lng, b.lat]
+        },
+        properties: {
+          name: b.name,
+          zoom: b.zoom,
+          body: b.body || 'mars'
+        }
+      }))
+    };
+  }
+
+  /**
+   * Parse a GeoJSON FeatureCollection into bookmarks array.
+   * @param {object} geojson - GeoJSON FeatureCollection or Feature
+   * @returns {Array<object>} Array of bookmark objects
+   */
+  static parseGeoJSON(geojson) {
+    if (!geojson) return [];
+    const features = geojson.type === 'FeatureCollection' ? (geojson.features || []) : [geojson];
+
+    return features
+      .filter(f => f?.geometry?.type === 'Point' && Array.isArray(f.geometry.coordinates))
+      .map(f => ({
+        id: f.id || crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        name: f.properties?.name || 'Imported ROI',
+        lat: f.geometry.coordinates[1],
+        lng: f.geometry.coordinates[0],
+        zoom: f.properties?.zoom || 6,
+        body: f.properties?.body || 'mars'
+      }));
+  }
+
+  /**
+   * Compute geographic bounding box [minLat, minLon, maxLat, maxLon] for a set of bookmarks.
+   * @param {Array<object>} bookmarks
+   * @returns {{minLat: number, minLng: number, maxLat: number, maxLng: number, centerLat: number, centerLng: number}}
+   */
+  static computeBoundingBox(bookmarks = []) {
+    if (!bookmarks || bookmarks.length === 0) {
+      return { minLat: 0, minLng: 0, maxLat: 0, maxLng: 0, centerLat: 0, centerLng: 0 };
+    }
+
+    const lats = bookmarks.map(b => b.lat);
+    const lngs = bookmarks.map(b => b.lng);
+
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    return {
+      minLat,
+      minLng,
+      maxLat,
+      maxLng,
+      centerLat: (minLat + maxLat) / 2.0,
+      centerLng: (minLng + maxLng) / 2.0
+    };
+  }
 }
+
