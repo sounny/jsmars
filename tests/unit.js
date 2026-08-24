@@ -1391,6 +1391,36 @@ describe('CRISM/OMEGA Hyperspectral Indices & Band Math (BandMathEngine)', () =>
     });
 });
 
+describe('3D Solar Ephemeris & Day/Night Terminator Solvers (ThreeDEngine)', () => {
+    it('should compute solar declination and terminator polar boundaries from Ls', () => {
+        // Northern summer solstice: Ls = 90 deg -> subsolar lat = +25.19 deg
+        const declSummer = ThreeDEngine.computeSolarDeclination(90, 25.19);
+        expect(declSummer).to.be.closeTo(25.19, 0.05);
+
+        // Northern winter solstice: Ls = 270 deg -> subsolar lat = -25.19 deg
+        const declWinter = ThreeDEngine.computeSolarDeclination(270, 25.19);
+        expect(declWinter).to.be.closeTo(-25.19, 0.05);
+
+        // Terminator boundaries during solstice: Polar day > 64.81 N, Polar night < -64.81 S
+        const bounds = ThreeDEngine.computeTerminatorLatitudes(declSummer);
+        expect(bounds.polarDayLat).to.be.closeTo(64.81, 0.1);
+        expect(bounds.polarNightLat).to.be.closeTo(-64.81, 0.1);
+    });
+
+    it('should calculate solar incidence angle and daytime illumination state', () => {
+        // Subsolar point (10 N, 45 E) -> at exactly (10 N, 45 E), incidence angle = 0 deg
+        const zenith = ThreeDEngine.computeSolarIncidenceAngle(10, 45, 10, 45);
+        expect(zenith.incidenceAngleDeg).to.equal(0);
+        expect(zenith.cosIncidence).to.equal(1.0);
+        expect(zenith.isSunlit).to.be.true;
+
+        // Antipodal point (10 S, 225 E) -> incidence angle = 180 deg (night)
+        const night = ThreeDEngine.computeSolarIncidenceAngle(-10, 225, 10, 45);
+        expect(night.incidenceAngleDeg).to.equal(180);
+        expect(night.isSunlit).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

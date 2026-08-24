@@ -128,5 +128,61 @@ export class ThreeDEngine {
     const fovRad = fovDegrees * Math.PI / 180;
     return 2.0 * Math.max(0, altitudeKm) * Math.tan(fovRad / 2.0);
   }
+
+  // --- Solar Ephemeris, Incidence & Day/Night Terminator Solvers ---
+
+  /**
+   * Compute subsolar latitude (solar declination) from Solar Longitude (Ls).
+   * @param {number} solarLongitudeLs - Solar longitude in degrees (0-360)
+   * @param {number} [obliquityDeg=25.19] - Planetary axial tilt (25.19° for Mars)
+   * @returns {number} Subsolar latitude in degrees (-obliquity to +obliquity)
+   */
+  static computeSolarDeclination(solarLongitudeLs, obliquityDeg = 25.19) {
+    const oblRad = obliquityDeg * Math.PI / 180;
+    const lsRad = solarLongitudeLs * Math.PI / 180;
+    const declRad = Math.asin(Math.sin(oblRad) * Math.sin(lsRad));
+    return parseFloat((declRad * 180 / Math.PI).toFixed(3));
+  }
+
+  /**
+   * Compute solar incidence angle (i) at a surface coordinate.
+   * @param {number} latDeg - Surface latitude
+   * @param {number} lonDeg - Surface longitude
+   * @param {number} subSolarLatDeg - Subsolar point latitude
+   * @param {number} subSolarLonDeg - Subsolar point longitude
+   * @returns {{incidenceAngleDeg: number, cosIncidence: number, isSunlit: boolean}}
+   */
+  static computeSolarIncidenceAngle(latDeg, lonDeg, subSolarLatDeg, subSolarLonDeg) {
+    const phi = latDeg * Math.PI / 180;
+    const delta = subSolarLatDeg * Math.PI / 180;
+    const dLon = (lonDeg - subSolarLonDeg) * Math.PI / 180;
+
+    const cosI = Math.sin(phi) * Math.sin(delta) + Math.cos(phi) * Math.cos(delta) * Math.cos(dLon);
+    const clampedCos = Math.max(-1.0, Math.min(1.0, cosI));
+    const incDeg = Math.acos(clampedCos) * 180 / Math.PI;
+
+    return {
+      incidenceAngleDeg: parseFloat(incDeg.toFixed(2)),
+      cosIncidence: parseFloat(clampedCos.toFixed(4)),
+      isSunlit: incDeg <= 90.0
+    };
+  }
+
+  /**
+   * Compute polar day/night terminator boundary latitudes for a given solar declination.
+   * @param {number} subSolarLatDeg - Solar declination in degrees
+   * @returns {{polarDayLat: number, polarNightLat: number}}
+   */
+  static computeTerminatorLatitudes(subSolarLatDeg) {
+    const absDecl = Math.abs(subSolarLatDeg);
+    const polarDayBoundary = 90.0 - absDecl;
+    const polarNightBoundary = -polarDayBoundary;
+
+    return {
+      polarDayLat: parseFloat(polarDayBoundary.toFixed(2)),
+      polarNightLat: parseFloat(polarNightBoundary.toFixed(2))
+    };
+  }
 }
+
 
