@@ -155,4 +155,68 @@ export class ShapeIO {
       }
     });
   }
+
+  // --- Static GIS Serialization & WKT Solvers ---
+
+  /**
+   * Convert GeoJSON geometry or coordinate array to Well-Known Text (WKT).
+   * @param {object} geojson - { type, coordinates }
+   * @returns {string} WKT representation
+   */
+  static toWKT(geojson) {
+    if (!geojson || !geojson.type) return '';
+    const type = geojson.type.toUpperCase();
+    const coords = geojson.coordinates;
+
+    switch (type) {
+      case 'POINT':
+        return `POINT(${coords[0]} ${coords[1]})`;
+      case 'LINESTRING':
+        return `LINESTRING(${coords.map(p => `${p[0]} ${p[1]}`).join(', ')})`;
+      case 'POLYGON':
+        return `POLYGON((${coords[0].map(p => `${p[0]} ${p[1]}`).join(', ')}))`;
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * Parse a Well-Known Text (WKT) string into a GeoJSON geometry object.
+   * @param {string} wkt - WKT string
+   * @returns {{type: string, coordinates: any}|null}
+   */
+  static parseWKT(wkt) {
+    if (!wkt || typeof wkt !== 'string') return null;
+    const clean = wkt.trim();
+    const match = clean.match(/^([A-Za-z]+)\s*\((.*)\)$/s);
+    if (!match) return null;
+
+    const type = match[1].toUpperCase();
+    const body = match[2].trim();
+
+    if (type === 'POINT') {
+      const parts = body.split(/\s+/).map(Number);
+      return { type: 'Point', coordinates: [parts[0], parts[1]] };
+    }
+
+    if (type === 'LINESTRING') {
+      const coords = body.split(',').map(pair => {
+        const parts = pair.trim().split(/\s+/).map(Number);
+        return [parts[0], parts[1]];
+      });
+      return { type: 'LineString', coordinates: coords };
+    }
+
+    if (type === 'POLYGON') {
+      const ringBody = body.replace(/^\(/, '').replace(/\)$/, '').trim();
+      const coords = ringBody.split(',').map(pair => {
+        const parts = pair.trim().split(/\s+/).map(Number);
+        return [parts[0], parts[1]];
+      });
+      return { type: 'Polygon', coordinates: [coords] };
+    }
+
+    return null;
+  }
 }
+

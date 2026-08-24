@@ -19,6 +19,7 @@ import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js'
 import { ProjectionManager } from '../src/features/projections/ProjectionManager.js';
 import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
+import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -665,6 +666,25 @@ describe('Planetary Hypsometric Tinting & Colormaps (ColorRampEngine)', () => {
         expect(rgba[3]).to.equal(255); // Alpha
         expect(rgba[7]).to.equal(255);
         expect(rgba[11]).to.equal(255);
+    });
+});
+
+describe('GIS Vector Shape Serialization & WKT (ShapeIO)', () => {
+    it('should serialize GeoJSON geometries to Well-Known Text (WKT)', () => {
+        const pt = { type: 'Point', coordinates: [18.5, -133.8] };
+        expect(ShapeIO.toWKT(pt)).to.equal('POINT(18.5 -133.8)');
+
+        const line = { type: 'LineString', coordinates: [[0, 0], [10, 10]] };
+        expect(ShapeIO.toWKT(line)).to.equal('LINESTRING(0 0, 10 10)');
+    });
+
+    it('should parse Well-Known Text (WKT) strings into GeoJSON geometry structures', () => {
+        const parsedPt = ShapeIO.parseWKT('POINT(18.5 -133.8)');
+        expect(parsedPt).to.deep.equal({ type: 'Point', coordinates: [18.5, -133.8] });
+
+        const parsedPoly = ShapeIO.parseWKT('POLYGON((0 0, 10 0, 10 10, 0 10, 0 0))');
+        expect(parsedPoly.type).to.equal('Polygon');
+        expect(parsedPoly.coordinates[0]).to.have.lengthOf(5);
     });
 });
 
