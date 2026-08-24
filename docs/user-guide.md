@@ -58,17 +58,40 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 3. Choose a colormap (**Viridis**, **Magma**, **Coolwarm**, **Jet**, **Rainbow**) and adjust color stretch.
 4. Click **Apply Color Stretch** to evaluate mineral indices on the active layer.
 
+### Subsurface Radar Sounder (SHARAD / MARSIS)
+1. Open the **Subsurface Radar Sounder** section under Tools.
+2. Choose a sounder ground track across Planum Boreum, Planum Australe, Medusae Fossae, or Utopia Planitia.
+3. Configure target dielectric permittivity ($\varepsilon_r$) and loss tangent ($\tan\delta$).
+4. Toggle between the **2D B-Scope Radargram** cross-section and the **1D A-Scope Power Trace** to detect subsurface interfaces and ice stratigraphy.
+5. Export radargram data tables via **Export Radargram CSV**.
+
+### Interplanetary Trajectory & Astrodynamics Planner
+1. Open the **Interplanetary Trajectory** section under Tools.
+2. Select origin body (Earth, Mars, Venus) and destination body.
+3. Click **Calculate Transfer Budget** to compute heliocentric Hohmann transfer orbits, Trans-Mars Injection ($\Delta v_1$), Mars Orbit Insertion ($\Delta v_2$), $C_3$ launch energy, and flight duration in days/months.
+4. Inspect upcoming Earth-Mars synodic launch opportunities and export mission plans to CSV.
+
+## Planetary Cartography & Overlays
+
+### Planetary Lat/Lon Graticule Grid
+- Toggle the **Lat/Lon Grid** in the sidebar to overlay adaptive planetary coordinate graticule lines.
+- Customize line color, opacity, major/minor divisions, and coordinate notation formats ($0^\circ-360^\circ\text{ E}$, $\pm 180^\circ$, $0^\circ-360^\circ\text{ W}$).
+
+### Publication Cartography & GIS World File Export
+- Under **Map Export**, export high-resolution publication-ready maps with neatline borders, coordinate tick labels, scale bars, and titles.
+- Click **Export World File** to download `.pgw` or `.jgw` georeferencing sidecar files for direct import into QGIS, ArcGIS, and GDAL.
+
 ## Drawing Shapes (ROIs)
 1. Look for the **Shapes** section or the toolbar on the map.
 2. Select a tool: Point, Line, Polygon, Circle, Rectangle.
-3. Edit attributes in the shape table, change fill/stroke colors, and import/export GeoJSON, CSV, or KML files.
+3. Edit attributes in the shape table, change fill/stroke colors, and import/export GeoJSON, CSV, KML, or WKT (Well-Known Text) files.
 
 ## Navigation
 - **Pan:** Click and drag the map.
 - **Zoom:** Use the +/- buttons or your mouse wheel.
 - **Coordinates:** View current Latitude/Longitude in the bottom-left corner. Click the format button to cycle between $E180$, $E360$, and $DMS$.
 - **Map Viewpoints:** Use the Map Options panel to jump between Global Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) views.
-- **North Arrow:** Use the sidebar toggle under "Fixed Overlays" to show/hide the compass rose. Click "Reset view" inside the control to recenter on the default position.
+- **North Arrow & Planetary Scale Bar:** View real-time physical scale bars calibrated to true planetary radii ($R_{\text{Mars}} = 3389.5\text{ km}$, $R_{\text{Moon}} = 1737.4\text{ km}$) with cosine latitude distortion.
 
 ## Troubleshooting
 - **"Loading map data..." stuck?** The map server might be slow or down. Try refreshing the page.
