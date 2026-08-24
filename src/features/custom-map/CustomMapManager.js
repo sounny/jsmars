@@ -113,4 +113,91 @@ export class CustomMapManager {
       await loadScript('https://unpkg.com/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js');
     }
   }
+
+  // --- GIS Tile Coordinates & WMS Helpers ---
+
+  /**
+   * Convert between TMS and Slippy XYZ tile Y coordinates.
+   * @param {number} tileY - Tile Y coordinate
+   * @param {number} zoom - Map zoom level
+   * @returns {number} Inverted Y coordinate
+   */
+  static tmsToXyz(tileY, zoom) {
+    const numTiles = Math.pow(2, zoom);
+    return numTiles - 1 - tileY;
+  }
+
+  /**
+   * Convert tile coordinate (x, y, zoom) to a Quadkey string.
+   * @param {number} tileX
+   * @param {number} tileY
+   * @param {number} zoom
+   * @returns {string} Quadkey string (e.g. "03201")
+   */
+  static tileToQuadkey(tileX, tileY, zoom) {
+    let quadkey = '';
+    for (let i = zoom; i > 0; i--) {
+      let digit = 0;
+      const mask = 1 << (i - 1);
+      if ((tileX & mask) !== 0) digit += 1;
+      if ((tileY & mask) !== 0) digit += 2;
+      quadkey += digit.toString();
+    }
+    return quadkey;
+  }
+
+  /**
+   * Convert Quadkey string to tile coordinates (x, y, zoom).
+   * @param {string} quadkey
+   * @returns {{tileX: number, tileY: number, zoom: number}}
+   */
+  static quadkeyToTile(quadkey) {
+    let tileX = 0;
+    let tileY = 0;
+    const zoom = quadkey.length;
+
+    for (let i = zoom; i > 0; i--) {
+      const mask = 1 << (i - 1);
+      const digit = parseInt(quadkey[zoom - i], 10);
+
+      if (digit === 1) tileX |= mask;
+      else if (digit === 2) tileY |= mask;
+      else if (digit === 3) {
+        tileX |= mask;
+        tileY |= mask;
+      }
+    }
+
+    return { tileX, tileY, zoom };
+  }
+
+  /**
+   * Build an OGC WMS GetCapabilities request URL.
+   * @param {string} baseUrl - Base WMS endpoint
+   * @param {string} [version='1.3.0'] - WMS protocol version
+   * @returns {string} Fully qualified GetCapabilities URL
+   */
+  static buildWmsCapabilitiesUrl(baseUrl, version = '1.3.0') {
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}SERVICE=WMS&REQUEST=GetCapabilities&VERSION=${encodeURIComponent(version)}`;
+  }
+
+  /**
+   * Validate tile URL template placeholders.
+   * @param {string} url - Template string
+   * @returns {{valid: boolean, hasZ: boolean, hasX: boolean, hasY: boolean}}
+   */
+  static validateTileUrlTemplate(url) {
+    if (typeof url !== 'string') return { valid: false, hasZ: false, hasX: false, hasY: false };
+    const hasZ = url.includes('{z}');
+    const hasX = url.includes('{x}');
+    const hasY = url.includes('{y}') || url.includes('{-y}');
+    return {
+      valid: hasZ && hasX && hasY,
+      hasZ,
+      hasX,
+      hasY
+    };
+  }
 }
+

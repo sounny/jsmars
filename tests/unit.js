@@ -18,6 +18,7 @@ import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
 import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js';
 import { ProjectionManager } from '../src/features/projections/ProjectionManager.js';
 import { ContourLayer } from '../src/features/contour/ContourLayer.js';
+import { CustomMapManager } from '../src/features/custom-map/CustomMapManager.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
@@ -971,6 +972,40 @@ describe('GIS Georeferencing & World Files (ExportTool)', () => {
         expect(parsed.pixelHeight).to.be.closeTo(-0.1, 0.0001);
         expect(parsed.originX).to.be.closeTo(-179.95, 0.001);
         expect(parsed.originY).to.be.closeTo(89.95, 0.001);
+    });
+});
+
+describe('Custom Tile Layers & WMS Protocol (CustomMapManager)', () => {
+    it('should convert between TMS and XYZ tile coordinates', () => {
+        // At zoom 3 (8x8 grid, 0..7)
+        const xyzY = CustomMapManager.tmsToXyz(0, 3);
+        expect(xyzY).to.equal(7);
+
+        const tmsY = CustomMapManager.tmsToXyz(7, 3);
+        expect(tmsY).to.equal(0);
+    });
+
+    it('should convert between tile coordinates and Bing Quadkeys', () => {
+        // Tile (3, 5) at zoom 3
+        const quadkey = CustomMapManager.tileToQuadkey(3, 5, 3);
+        expect(quadkey).to.be.a('string').with.lengthOf(3);
+
+        const tile = CustomMapManager.quadkeyToTile(quadkey);
+        expect(tile.tileX).to.equal(3);
+        expect(tile.tileY).to.equal(5);
+        expect(tile.zoom).to.equal(3);
+    });
+
+    it('should build OGC WMS GetCapabilities URLs and validate tile templates', () => {
+        const wmsUrl = CustomMapManager.buildWmsCapabilitiesUrl('https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map');
+        expect(wmsUrl).to.include('SERVICE=WMS');
+        expect(wmsUrl).to.include('REQUEST=GetCapabilities');
+
+        const validTemplate = CustomMapManager.validateTileUrlTemplate('https://example.com/tiles/{z}/{x}/{y}.png');
+        expect(validTemplate.valid).to.be.true;
+
+        const invalidTemplate = CustomMapManager.validateTileUrlTemplate('https://example.com/tiles/{z}/{x}.png');
+        expect(invalidTemplate.valid).to.be.false;
     });
 });
 
