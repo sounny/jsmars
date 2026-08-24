@@ -1163,6 +1163,43 @@ describe('Planetary Probe Diagnostics & Geophysics (InvestigateTool)', () => {
     });
 });
 
+describe('Planetary Places, Mars Chart Quadrants & Gazetteer (PlacesManager)', () => {
+    it('should determine Mars Chart (MC) quadrants correctly', () => {
+        // Olympus Mons (18.65 N, 226.2 E -> lonWest = 133.8 W) -> MC-09 Tharsis
+        const mcTharsis = PlacesManager.getMarsChartQuadrant(18.65, 226.2);
+        expect(mcTharsis.code).to.equal('MC-09');
+        expect(mcTharsis.name).to.equal('Tharsis');
+
+        // North pole (80 N) -> MC-01 Mare Boreum
+        const mcNorth = PlacesManager.getMarsChartQuadrant(80, 0);
+        expect(mcNorth.code).to.equal('MC-01');
+        expect(mcNorth.name).to.equal('Mare Boreum');
+
+        // South pole (-75 S) -> MC-30 Mare Australe
+        const mcSouth = PlacesManager.getMarsChartQuadrant(-75, 0);
+        expect(mcSouth.code).to.equal('MC-30');
+        expect(mcSouth.name).to.equal('Mare Australe');
+    });
+
+    it('should classify planetary landmark morphology and export GeoJSON', () => {
+        const volcano = PlacesManager.classifyFeatureType('Olympus Mons');
+        expect(volcano.type).to.equal('Mountain / Volcano');
+
+        const canyon = PlacesManager.classifyFeatureType('Valles Marineris');
+        expect(canyon.type).to.equal('Canyon / Trough');
+
+        const crater = PlacesManager.classifyFeatureType('Gale Crater');
+        expect(crater.type).to.equal('Impact Crater');
+
+        const geojson = PlacesManager.toGeoJSON([
+            { name: 'Olympus Mons', lat: 18.65, lon: 226.2, body: 'mars' }
+        ]);
+        expect(geojson.type).to.equal('FeatureCollection');
+        expect(geojson.features).to.have.lengthOf(1);
+        expect(geojson.features[0].geometry.coordinates[0]).to.equal(226.2);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

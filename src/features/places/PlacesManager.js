@@ -240,4 +240,127 @@ export class PlacesManager {
       console.warn('Could not save places:', err);
     }
   }
+
+  // --- Mars Chart (MC) Quadrant & Landmark Classification ---
+
+  /**
+   * Determine the official USGS Mars Chart (MC-01 through MC-30) quadrant for a coordinate.
+   * @param {number} lat - Latitude in degrees (-90 to +90)
+   * @param {number} lon - Longitude in degrees (East 0..360 or -180..180)
+   * @returns {{code: string, name: string, latRange: string, lonWestRange: string}}
+   */
+  static getMarsChartQuadrant(lat, lon) {
+    const lon360E = ((lon % 360) + 360) % 360;
+    const lon360W = (360 - lon360E) % 360;
+
+    // North Polar
+    if (lat >= 65) {
+      return { code: 'MC-01', name: 'Mare Boreum', latRange: '65N to 90N', lonWestRange: '0W to 360W' };
+    }
+    // South Polar
+    if (lat <= -65) {
+      return { code: 'MC-30', name: 'Mare Australe', latRange: '65S to 90S', lonWestRange: '0W to 360W' };
+    }
+
+    // North Mid-Latitude: 30N to 65N (8 charts, 45 deg wide)
+    if (lat >= 30) {
+      if (lon360W >= 120 && lon360W < 180) return { code: 'MC-02', name: 'Diacria', latRange: '30N to 65N', lonWestRange: '120W to 180W' };
+      if (lon360W >= 60 && lon360W < 120) return { code: 'MC-03', name: 'Arcadia', latRange: '30N to 65N', lonWestRange: '60W to 120W' };
+      if (lon360W >= 0 && lon360W < 60) return { code: 'MC-04', name: 'Mare Acidalium', latRange: '30N to 65N', lonWestRange: '0W to 60W' };
+      if (lon360W >= 300 && lon360W < 360) return { code: 'MC-05', name: 'Ismenius Lacus', latRange: '30N to 65N', lonWestRange: '300W to 360W' };
+      if (lon360W >= 240 && lon360W < 300) return { code: 'MC-06', name: 'Casius', latRange: '30N to 65N', lonWestRange: '240W to 300W' };
+      if (lon360W >= 180 && lon360W < 240) return { code: 'MC-07', name: 'Cebrenia', latRange: '30N to 65N', lonWestRange: '180W to 240W' };
+      return { code: 'MC-03', name: 'Arcadia', latRange: '30N to 65N', lonWestRange: '60W to 120W' };
+    }
+
+    // Equatorial: 0 to 30N (8 charts, 45 deg wide)
+    if (lat >= 0) {
+      if (lon360W >= 135 && lon360W < 180) return { code: 'MC-08', name: 'Amazonis', latRange: '0N to 30N', lonWestRange: '135W to 180W' };
+      if (lon360W >= 90 && lon360W < 135) return { code: 'MC-09', name: 'Tharsis', latRange: '0N to 30N', lonWestRange: '90W to 135W' };
+      if (lon360W >= 45 && lon360W < 90) return { code: 'MC-10', name: 'Lunae Palus', latRange: '0N to 30N', lonWestRange: '45W to 90W' };
+      if (lon360W >= 0 && lon360W < 45) return { code: 'MC-11', name: 'Oxia Palus', latRange: '0N to 30N', lonWestRange: '0W to 45W' };
+      if (lon360W >= 315 && lon360W < 360) return { code: 'MC-12', name: 'Arabia', latRange: '0N to 30N', lonWestRange: '315W to 360W' };
+      if (lon360W >= 270 && lon360W < 315) return { code: 'MC-13', name: 'Syrtis Major', latRange: '0N to 30N', lonWestRange: '270W to 315W' };
+      if (lon360W >= 225 && lon360W < 270) return { code: 'MC-14', name: 'Elysium', latRange: '0N to 30N', lonWestRange: '225W to 270W' };
+      if (lon360W >= 180 && lon360W < 225) return { code: 'MC-15', name: 'Aeolis', latRange: '0N to 30N', lonWestRange: '180W to 225W' };
+      return { code: 'MC-09', name: 'Tharsis', latRange: '0N to 30N', lonWestRange: '90W to 135W' };
+    }
+
+    // South Equatorial: -30S to 0 (8 charts, 45 deg wide)
+    if (lat >= -30) {
+      if (lon360W >= 135 && lon360W < 180) return { code: 'MC-16', name: 'Memnonia', latRange: '30S to 0S', lonWestRange: '135W to 180W' };
+      if (lon360W >= 90 && lon360W < 135) return { code: 'MC-17', name: 'Phoenicis Lacus', latRange: '30S to 0S', lonWestRange: '90W to 135W' };
+      if (lon360W >= 45 && lon360W < 90) return { code: 'MC-18', name: 'Coprates', latRange: '30S to 0S', lonWestRange: '45W to 90W' };
+      if (lon360W >= 0 && lon360W < 45) return { code: 'MC-19', name: 'Margaritifer Sinus', latRange: '30S to 0S', lonWestRange: '0W to 45W' };
+      if (lon360W >= 315 && lon360W < 360) return { code: 'MC-20', name: 'Sinus Sabaeus', latRange: '30S to 0S', lonWestRange: '315W to 360W' };
+      if (lon360W >= 270 && lon360W < 315) return { code: 'MC-21', name: 'Iapygia', latRange: '30S to 0S', lonWestRange: '270W to 315W' };
+      if (lon360W >= 225 && lon360W < 270) return { code: 'MC-22', name: 'Mare Tyrrhenum', latRange: '30S to 0S', lonWestRange: '225W to 270W' };
+      if (lon360W >= 180 && lon360W < 225) return { code: 'MC-23', name: 'Aeolis/Eridania', latRange: '30S to 0S', lonWestRange: '180W to 225W' };
+      return { code: 'MC-18', name: 'Coprates', latRange: '30S to 0S', lonWestRange: '45W to 90W' };
+    }
+
+    // South Mid-Latitude: -65S to -30S (6 charts, 60 deg wide)
+    if (lon360W >= 120 && lon360W < 180) return { code: 'MC-24', name: 'Phaethontis', latRange: '65S to 30S', lonWestRange: '120W to 180W' };
+    if (lon360W >= 60 && lon360W < 120) return { code: 'MC-25', name: 'Thaumasia', latRange: '65S to 30S', lonWestRange: '60W to 120W' };
+    if (lon360W >= 0 && lon360W < 60) return { code: 'MC-26', name: 'Argyre', latRange: '65S to 30S', lonWestRange: '0W to 60W' };
+    if (lon360W >= 300 && lon360W < 360) return { code: 'MC-27', name: 'Noachis', latRange: '65S to 30S', lonWestRange: '300W to 360W' };
+    if (lon360W >= 240 && lon360W < 300) return { code: 'MC-28', name: 'Hellas', latRange: '65S to 30S', lonWestRange: '240W to 300W' };
+    if (lon360W >= 180 && lon360W < 240) return { code: 'MC-29', name: 'Eridania', latRange: '65S to 30S', lonWestRange: '180W to 240W' };
+
+    return { code: 'MC-28', name: 'Hellas', latRange: '65S to 30S', lonWestRange: '240W to 300W' };
+  }
+
+  /**
+   * Classify planetary feature geomorphology from IAU nomenclature term.
+   * @param {string} name - Feature name (e.g. 'Olympus Mons', 'Valles Marineris')
+   * @returns {{type: string, description: string, icon: string}}
+   */
+  static classifyFeatureType(name = '') {
+    const lower = name.toLowerCase();
+    if (lower.includes('mons') || lower.includes('montes') || lower.includes('mountain') || lower.includes('tholus')) {
+      return { type: 'Mountain / Volcano', description: 'Volcanic construct or tectonic relief', icon: '🌋' };
+    }
+    if (lower.includes('valles') || lower.includes('chasma') || lower.includes('canyon') || lower.includes('fossa') || lower.includes('fossae')) {
+      return { type: 'Canyon / Trough', description: 'Extensional graben or fluvial outflow channel', icon: '🏜️' };
+    }
+    if (lower.includes('planitia') || lower.includes('planum') || lower.includes('plain')) {
+      return { type: 'Plains / Lowland', description: 'Smooth basaltic plain or sedimentary basin', icon: '🏞️' };
+    }
+    if (lower.includes('crater') || lower.includes('basin')) {
+      return { type: 'Impact Crater', description: 'Hypervelocity impact structure', icon: '☄️' };
+    }
+    if (lower.includes('terra')) {
+      return { type: 'Highland Crust', description: 'Ancient cratered highland terrain', icon: '🏔️' };
+    }
+    if (lower.includes('labyrinthus')) {
+      return { type: 'Labyrinth', description: 'Complex intersecting canyon network', icon: '🧭' };
+    }
+    return { type: 'Surface Feature', description: 'Named planetary landmark', icon: '📍' };
+  }
+
+  /**
+   * Convert places list into standard GeoJSON FeatureCollection.
+   * @param {Array<object>} places
+   * @returns {object} GeoJSON FeatureCollection
+   */
+  static toGeoJSON(places = []) {
+    return {
+      type: 'FeatureCollection',
+      features: places.map(p => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [p.lon || p.lng || 0, p.lat || 0]
+        },
+        properties: {
+          name: p.name || 'Unnamed Place',
+          body: p.body || 'mars',
+          description: p.description || '',
+          zoom: p.zoom || 8,
+          created: p.created || new Date().toISOString()
+        }
+      }))
+    };
+  }
 }
+
