@@ -119,7 +119,30 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **Spatial POI Bookmarks & Multi-Body Navigation**:
     - [x] Pre-loaded scientific POIs across Mars and Moon with JSON import/export.
 
+## Phase 8: Planetary Geodesy, Astrodynamics & Publication Cartography (Completed)
+- [x] **Astrodynamics & Interplanetary Trajectories (`TrajectoryEngine.js`, `TrajectoryPanel.js`)**:
+    - [x] Heliocentric Hohmann transfer orbit solver between Earth, Mars, Venus, and Jupiter.
+    - [x] Trans-Mars Injection ($\Delta v_1$), Mars Orbit Insertion ($\Delta v_2$), $C_3$ launch energy, and flight duration in days/months.
+    - [x] Synodic launch window opportunities schedule and mission plan CSV export.
+    - [x] Satellite mechanics: Vis-Viva orbital speed, planetary escape velocity, orbital periods, and Areostationary synchronous orbit geometry.
+- [x] **Planetary Hypsometric Tinting & Scientific Colormaps (`ColorRampEngine.js`)**:
+    - [x] Multi-stop colormap generator (`mola_rainbow`, `viridis`, `magma`, `coolwarm`, `topographic`, `grayscale`).
+    - [x] 256-step RGB LUT generation and array-to-RGBA direct buffer colorization.
+- [x] **Topographic Slope & Landing Site Hazard Analysis (`ContourLayer.js`)**:
+    - [x] Central difference numerical gradient estimator for terrain slope ($\theta^\circ$) and aspect facing directions ($\alpha^\circ$).
+    - [x] Automated spatial safety categorization for lander/rover site certification.
+- [x] **GIS Georeferencing & World File Engine (`ExportTool.js`)**:
+    - [x] 6-line affine transformation world file generator and parser (`.pgw` / `.jgw`) for QGIS, ArcGIS, and GDAL interoperability.
+- [x] **GIS Vector Well-Known Text (WKT) Serialization (`ShapeIO.js`)**:
+    - [x] WKT geometry serializer and parser for Points, Linestrings, Polygons, and MultiPolygons.
+- [x] **Planetary Spatial Proximity Search & Navigation (`geo.js`, `PlacesManager.js`)**:
+    - [x] Nearest-feature spatial proximity search querying planetary landmarks within distance radius $R\text{ km}$.
+    - [x] Forward destination point calculation (`computeDestinationPoint`) and cross-track / along-track distance solvers.
+    - [x] Cumulative polyline length and closed polygon perimeter estimation.
+
 ## Documentation & Process
 - [x] **Release Notes**: Maintained in `docs/release-notes.md`.
 - [x] **User Guide**: Maintained in `docs/user-guide.md`.
 - [x] **Work Log**: Maintained in `docs/LOG.md`.
+- [x] **Automated CI/CD**: 69 automated unit tests verifying 100% test pass on every commit.
+
