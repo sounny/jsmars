@@ -1371,6 +1371,26 @@ describe('Crater Isochron Age Fitting & Poisson Errors (CSFDEngine)', () => {
     });
 });
 
+describe('CRISM/OMEGA Hyperspectral Indices & Band Math (BandMathEngine)', () => {
+    it('should compute continuum-removed band depths and olivine indices', () => {
+        // Absorption band at Rc = 0.16 with shoulders RL = 0.20, RR = 0.20 -> BD = 1 - (0.16 / 0.20) = 0.20
+        const bd = BandMathEngine.computeBandDepth(0.16, 0.20, 0.20);
+        expect(bd).to.equal(0.2);
+
+        // OLINDEX3 for olivine absorption
+        const olIndex = BandMathEngine.computeCRISMOlivineIndex(0.18, 0.19, 0.24, 0.26);
+        expect(olIndex).to.be.greaterThan(0);
+    });
+
+    it('should calculate pyroxene band asymmetry and classify mineralogy', () => {
+        const pyx = BandMathEngine.computePyroxeneIndex(0.15, 0.25, 0.22, 0.17);
+        expect(pyx.pyroxeneIndex).to.be.greaterThan(0);
+        expect(pyx.bd1000).to.be.greaterThan(0);
+        expect(pyx.bd2000).to.be.greaterThan(0);
+        expect(pyx.mineralogy).to.be.a('string');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

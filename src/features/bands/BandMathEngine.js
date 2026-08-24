@@ -213,4 +213,66 @@ export class BandMathEngine {
 
     return imgData;
   }
+
+  // --- CRISM & OMEGA Hyperspectral Mineral Parameter Solvers ---
+
+  /**
+   * Compute normalized continuum-removed absorption band depth.
+   * @param {number} rCenter - Reflectance at absorption center (Rc)
+   * @param {number} rLeft - Reflectance at left continuum shoulder (RL)
+   * @param {number} rRight - Reflectance at right continuum shoulder (RR)
+   * @param {number} [weightLeft=0.5] - Left continuum interpolation weight (a)
+   * @returns {number} Band depth (0.0 to 1.0)
+   */
+  static computeBandDepth(rCenter, rLeft, rRight, weightLeft = 0.5) {
+    const continuum = weightLeft * rLeft + (1.0 - weightLeft) * rRight;
+    if (continuum <= 0) return 0;
+    const depth = 1.0 - (rCenter / continuum);
+    return parseFloat(depth.toFixed(4));
+  }
+
+  /**
+   * Compute CRISM OLINDEX3 (Olivine 1 µm broad absorption parameter).
+   * @param {number} r1050 - Reflectance at 1.05 µm
+   * @param {number} r1210 - Reflectance at 1.21 µm
+   * @param {number} r1330 - Reflectance at 1.33 µm
+   * @param {number} r1470 - Reflectance at 1.47 µm
+   * @returns {number} Olivine index value
+   */
+  static computeCRISMOlivineIndex(r1050, r1210, r1330, r1470) {
+    const shoulder = 0.6 * r1330 + 0.4 * r1470;
+    const center = 0.5 * (r1050 + r1210);
+    if (shoulder <= 0) return 0;
+    const index = (shoulder - center) / shoulder;
+    return parseFloat(index.toFixed(4));
+  }
+
+  /**
+   * Compute Pyroxene band asymmetry parameter (HCP vs LCP distinction).
+   * @param {number} r1050 - Band 1 µm
+   * @param {number} r1500 - Continuum peak
+   * @param {number} r1815 - 2 µm shoulder
+   * @param {number} r2060 - 2 µm absorption center
+   * @returns {{pyroxeneIndex: number, mineralogy: string}}
+   */
+  static computePyroxeneIndex(r1050, r1500, r1815, r2060) {
+    const bd1000 = this.computeBandDepth(r1050, r1500, r1815, 0.5);
+    const bd2000 = this.computeBandDepth(r2060, r1815, r1500, 0.6);
+    const ratio = bd2000 > 0 ? bd1000 / bd2000 : 0;
+
+    let mineralogy = 'Basaltic / Unclassified';
+    if (ratio > 1.2) {
+      mineralogy = 'High-Calcium Pyroxene (Augite / Diopside)';
+    } else if (ratio > 0.6) {
+      mineralogy = 'Low-Calcium Pyroxene (Enstatite / Pigeonite)';
+    }
+
+    return {
+      pyroxeneIndex: parseFloat(ratio.toFixed(3)),
+      bd1000,
+      bd2000,
+      mineralogy
+    };
+  }
 }
+
