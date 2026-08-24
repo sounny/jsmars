@@ -1596,6 +1596,34 @@ describe('ESRI Shapefile Binary Parser & Generator (ShapeIO)', () => {
         expect(features[0].geometry.coordinates[0]).to.be.closeTo(226.2, 0.01);
         expect(features[0].geometry.coordinates[1]).to.be.closeTo(18.65, 0.01);
     });
+
+    it('should create and parse binary dBASE III (.dbf) attribute tables', () => {
+        const fields = [
+            { name: 'NAME', type: 'C', length: 16, decimals: 0 },
+            { name: 'ELEV_M', type: 'N', length: 8, decimals: 1 },
+            { name: 'IS_VOLCANO', type: 'L', length: 1, decimals: 0 }
+        ];
+
+        const records = [
+            { NAME: 'Olympus Mons', ELEV_M: 21287.4, IS_VOLCANO: true },
+            { NAME: 'Gale Crater', ELEV_M: -4500.0, IS_VOLCANO: false }
+        ];
+
+        const dbfBuffer = ShapeIO.createDBFBuffer(fields, records);
+        expect(dbfBuffer.byteLength).to.be.greaterThan(100);
+
+        const parsedHeader = ShapeIO.parseDBFHeader(dbfBuffer);
+        expect(parsedHeader.version).to.equal(3);
+        expect(parsedHeader.recordCount).to.equal(2);
+        expect(parsedHeader.fields).to.have.lengthOf(3);
+        expect(parsedHeader.fields[0].name).to.equal('NAME');
+
+        const parsedRecords = ShapeIO.parseDBFRecords(dbfBuffer);
+        expect(parsedRecords).to.have.lengthOf(2);
+        expect(parsedRecords[0].NAME).to.equal('Olympus Mons');
+        expect(parsedRecords[0].ELEV_M).to.be.closeTo(21287.4, 0.1);
+        expect(parsedRecords[0].IS_VOLCANO).to.be.true;
+    });
 });
 
 if (typeof mocha !== 'undefined') {

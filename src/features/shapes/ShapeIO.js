@@ -369,6 +369,172 @@ export class ShapeIO {
 
     return buffer;
   }
+
+  // --- dBASE III (.dbf) Binary Attribute Table Parsing & Serialization ---
+
+  /**
+   * Parse the header and field descriptor table of a dBASE III (.dbf) file.
+   * @param {ArrayBuffer} buffer
+   * @returns {{version: number, recordCount: number, headerLength: number, recordLength: number, fields: Array<{name: string, type: string, length: number, decimals: number}>}}
+   */
+  static parseDBFHeader(buffer) {
+    if (!buffer || buffer.byteLength < 32) {
+      throw new Error('Invalid DBF: buffer too small');
+    }
+
+    const view = new DataView(buffer);
+    const version = view.getUint8(0);
+    const recordCount = view.getInt32(4, true);
+    const headerLength = view.getInt16(8, true);
+    const recordLength = view.getInt16(10, true);
+
+    const fields = [];
+    let offset = 32;
+
+    while (offset < headerLength - 1 && view.getUint8(offset) !== 0x0D) {
+      let name = '';
+      for (let i = 0; i < 11; i++) {
+        const charCode = view.getUint8(offset + i);
+        if (charCode === 0) break;
+        name += String.fromCharCode(charCode);
+      }
+
+      const type = String.fromCharCode(view.getUint8(offset + 11));
+      const length = view.getUint8(offset + 16);
+      const decimals = view.getUint8(offset + 17);
+
+      fields.push({ name: name.trim(), type, length, decimals });
+      offset += 32;
+    }
+
+    return {
+      version,
+      recordCount,
+      headerLength,
+      recordLength,
+      fields
+    };
+  }
+
+  /**
+   * Parse all attribute rows from a dBASE III (.dbf) ArrayBuffer.
+   * @param {ArrayBuffer} buffer
+   * @returns {Array<object>} Array of record property objects
+   */
+  static parseDBFRecords(buffer) {
+    const header = this.parseDBFHeader(buffer);
+    const view = new DataView(buffer);
+    const records = [];
+    let offset = header.headerLength;
+
+    const decoder = new TextDecoder('utf-8');
+
+    for (let r = 0; r < header.recordCount; r++) {
+      if (offset + header.recordLength > buffer.byteLength) break;
+
+      const deletionFlag = String.fromCharCode(view.getUint8(offset));
+      if (deletionFlag === '*') {
+        // Record marked for deletion
+        offset += header.recordLength;
+        continue;
+      }
+
+      const row = {};
+      let fieldOffset = offset + 1; // Skip deletion flag byte
+
+      for (const field of header.fields) {
+        const fieldBytes = new Uint8Array(buffer, fieldOffset, field.length);
+        const rawStr = decoder.decode(fieldBytes).trim();
+
+        if (field.type === 'N' || field.type === 'F') {
+          row[field.name] = rawStr === '' ? null : Number(rawStr);
+        } else if (field.type === 'L') {
+          row[field.name] = (rawStr === 'T' || rawStr === 'Y' || rawStr === 't' || rawStr === 'y');
+        } else {
+          row[field.name] = rawStr;
+        }
+
+        fieldOffset += field.length;
+      }
+
+      records.push(row);
+      offset += header.recordLength;
+    }
+
+    return records;
+  }
+
+  /**
+   * Create a binary dBASE III (.dbf) buffer from field definitions and record rows.
+   * @param {Array<{name: string, type: string, length: number, decimals: number}>} fields
+   * @param {Array<object>} records
+   * @returns {ArrayBuffer} Valid binary DBF buffer
+   */
+  static createDBFBuffer(fields, records = []) {
+    const numFields = fields.length;
+    const headerLength = 32 + numFields * 32 + 1; // +1 for 0x0D header terminator
+    let recordLength = 1; // Deletion flag byte
+
+    fields.forEach(f => {
+      recordLength += f.length;
+    });
+
+    const totalBytes = headerLength + records.length * recordLength + 1; // +1 for 0x1A EOF marker
+    const buffer = new ArrayBuffer(totalBytes);
+    const view = new DataView(buffer);
+    const uint8 = new Uint8Array(buffer);
+
+    const now = new Date();
+    view.setUint8(0, 0x03); // dBASE III without memo
+    view.setUint8(1, now.getFullYear() % 100);
+    view.setUint8(2, now.getMonth() + 1);
+    view.setUint8(3, now.getDate());
+    view.setInt32(4, records.length, true);
+    view.setInt16(8, headerLength, true);
+    view.setInt16(10, recordLength, true);
+
+    // Write Field Descriptors
+    let fieldOffset = 32;
+    fields.forEach(f => {
+      for (let i = 0; i < 11; i++) {
+        view.setUint8(fieldOffset + i, i < f.name.length ? f.name.charCodeAt(i) : 0);
+      }
+      view.setUint8(fieldOffset + 11, f.type.charCodeAt(0));
+      view.setUint8(fieldOffset + 16, f.length);
+      view.setUint8(fieldOffset + 17, f.decimals || 0);
+      fieldOffset += 32;
+    });
+
+    // Terminator
+    view.setUint8(fieldOffset, 0x0D);
+
+    // Write Records
+    let rowOffset = headerLength;
+    records.forEach(rec => {
+      view.setUint8(rowOffset, 0x20); // Space = not deleted
+      let colOffset = rowOffset + 1;
+
+      fields.forEach(f => {
+        const val = rec[f.name] != null ? String(rec[f.name]) : '';
+        const padded = (f.type === 'N' || f.type === 'F')
+          ? val.padStart(f.length, ' ')
+          : val.padEnd(f.length, ' ');
+
+        for (let i = 0; i < f.length; i++) {
+          view.setUint8(colOffset + i, i < padded.length ? padded.charCodeAt(i) : 0x20);
+        }
+        colOffset += f.length;
+      });
+
+      rowOffset += recordLength;
+    });
+
+    // End-of-file marker
+    view.setUint8(rowOffset, 0x1A);
+
+    return buffer;
+  }
 }
+
 
 
