@@ -343,6 +343,66 @@ export class TrajectoryEngine {
       speedKmS: parseFloat(speed.toFixed(4))
     };
   }
+
+  // --- Astrodynamics Energy, Plane Change & Synodic Period Solvers ---
+
+  /**
+   * Calculate specific orbital energy (Epsilon) and instantaneous orbital speed from vis-viva equation.
+   * @param {number} rKm - Radial distance from planet center (km)
+   * @param {number} aKm - Semi-major axis of orbit (km)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{specificEnergyKm2S2: number, speedKmS: number, orbitType: string}}
+   */
+  static computeOrbitalEnergyAndSpeed(rKm, aKm, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+
+    const specificEnergy = -mu / (2.0 * aKm);
+    const speed = Math.sqrt(Math.max(0, mu * (2.0 / rKm - 1.0 / aKm)));
+
+    let orbitType = 'Elliptical';
+    if (Math.abs(rKm - aKm) < 1e-3) orbitType = 'Circular';
+    else if (aKm < 0) orbitType = 'Hyperbolic';
+
+    return {
+      specificEnergyKm2S2: parseFloat(specificEnergy.toFixed(4)),
+      speedKmS: parseFloat(speed.toFixed(4)),
+      orbitType
+    };
+  }
+
+  /**
+   * Calculate Delta-V requirement for a pure orbital inclination / plane change maneuver.
+   * DeltaV = 2 * v * sin(Delta_i / 2)
+   * @param {number} orbitalSpeedKmS - Current orbital speed in km/s (v)
+   * @param {number} deltaIncDeg - Inclination change in degrees (Delta i)
+   * @returns {number} Required Delta-V in km/s
+   */
+  static computePlaneChangeDeltaV(orbitalSpeedKmS, deltaIncDeg) {
+    const deltaIRad = deltaIncDeg * Math.PI / 180.0;
+    const deltaV = 2.0 * orbitalSpeedKmS * Math.sin(deltaIRad / 2.0);
+    return parseFloat(deltaV.toFixed(4));
+  }
+
+  /**
+   * Calculate exact synodic period between any two planetary orbits.
+   * @param {string} [body1='earth'] - First planet
+   * @param {string} [body2='mars'] - Second planet
+   * @returns {{synodicDays: number, synodicMonths: number, synodicYears: number}}
+   */
+  static computeInterplanetarySynodicPeriod(body1 = 'earth', body2 = 'mars') {
+    const p1 = TrajectoryEngine.ORBITS[body1.toLowerCase()]?.periodDays || 365.256;
+    const p2 = TrajectoryEngine.ORBITS[body2.toLowerCase()]?.periodDays || 686.980;
+
+    const synodicDays = Math.abs(1.0 / (1.0 / p1 - 1.0 / p2));
+
+    return {
+      synodicDays: parseFloat(synodicDays.toFixed(2)),
+      synodicMonths: parseFloat((synodicDays / 30.4375).toFixed(2)),
+      synodicYears: parseFloat((synodicDays / 365.256).toFixed(3))
+    };
+  }
 }
+
 
 

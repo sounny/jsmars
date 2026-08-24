@@ -1674,6 +1674,27 @@ describe('Radar Signal Penetration & Uncertainty Propagation (RadarSounderEngine
     });
 });
 
+describe('Orbital Energy, Plane Changes & Synodic Periods (TrajectoryEngine)', () => {
+    it('should compute specific orbital energy and vis-viva speed', () => {
+        // Circular orbit at 250 km altitude around Mars (r = a = 3639.5 km)
+        const orb = TrajectoryEngine.computeOrbitalEnergyAndSpeed(3639.5, 3639.5, 'mars');
+        expect(orb.orbitType).to.equal('Circular');
+        expect(orb.specificEnergyKm2S2).to.be.closeTo(-5.8838, 0.05);
+        expect(orb.speedKmS).to.be.closeTo(3.43, 0.05);
+    });
+
+    it('should calculate orbital plane change Delta-V and interplanetary synodic periods', () => {
+        // 5 degree plane change at 3.43 km/s speed -> DeltaV = 2 * 3.43 * sin(2.5 deg) ~ 0.299 km/s
+        const deltaV = TrajectoryEngine.computePlaneChangeDeltaV(3.43, 5.0);
+        expect(deltaV).to.be.closeTo(0.299, 0.01);
+
+        // Earth-Mars synodic period ~ 779.9 days (~2.135 years / 25.6 months)
+        const syn = TrajectoryEngine.computeInterplanetarySynodicPeriod('earth', 'mars');
+        expect(syn.synodicDays).to.be.closeTo(779.94, 2.0);
+        expect(syn.synodicYears).to.be.closeTo(2.135, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
