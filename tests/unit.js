@@ -15,7 +15,7 @@ import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -504,6 +504,33 @@ describe('Color Stretch & Image Processing (ColorStretchControl)', () => {
         expect(parsed.saturation).to.equal(150);
         expect(parsed.hueRotate).to.equal(45);
         expect(parsed.invert).to.be.true;
+    });
+});
+
+describe('Spatial Geometry Analysis & Containment', () => {
+    it('should test point-in-polygon containment accurately', () => {
+        const square = [
+            [10, 10],
+            [10, 20],
+            [20, 20],
+            [20, 10],
+            [10, 10]
+        ];
+
+        expect(isPointInPolygon(15, 15, square)).to.be.true; // Inside
+        expect(isPointInPolygon(5, 15, square)).to.be.false; // Outside
+        expect(isPointInPolygon(25, 25, square)).to.be.false; // Outside
+    });
+
+    it('should compute bounding box and center coordinate for coordinate sets', () => {
+        const coords = [[-10, 120], [20, 140], [5, 130]];
+        const bbox = computeBoundingBox(coords);
+        expect(bbox.minLat).to.equal(-10);
+        expect(bbox.maxLat).to.equal(20);
+        expect(bbox.centerLat).to.equal(5);
+        expect(bbox.minLon).to.equal(120);
+        expect(bbox.maxLon).to.equal(140);
+        expect(bbox.centerLon).to.equal(130);
     });
 });
 

@@ -357,3 +357,66 @@ export function computeBufferPolygon(coords, radiusKm, bodyName = 'mars') {
 
   return bufferPoly;
 }
+
+/**
+ * Test whether a geographic point is inside a closed polygon (Ray-casting PIP algorithm).
+ * @param {number} lat - Point latitude
+ * @param {number} lon - Point longitude
+ * @param {Array<[number, number]>} polygonCoords - Array of [lat, lon] coordinates
+ * @returns {boolean} True if point is contained inside polygon
+ */
+export function isPointInPolygon(lat, lon, polygonCoords) {
+  if (!polygonCoords || polygonCoords.length < 3) return false;
+
+  let inside = false;
+  const x = to180(lon);
+  const y = lat;
+
+  for (let i = 0, j = polygonCoords.length - 1; i < polygonCoords.length; j = i++) {
+    const xi = to180(polygonCoords[i][1]);
+    const yi = polygonCoords[i][0];
+    const xj = to180(polygonCoords[j][1]);
+    const yj = polygonCoords[j][0];
+
+    const intersect = ((yi > y) !== (yj > y)) &&
+      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+/**
+ * Compute bounding box from a collection of coordinates.
+ * @param {Array<[number, number]>} coords - Array of [lat, lon]
+ * @returns {{minLat: number, maxLat: number, minLon: number, maxLon: number, centerLat: number, centerLon: number}}
+ */
+export function computeBoundingBox(coords) {
+  if (!coords || coords.length === 0) {
+    return { minLat: 0, maxLat: 0, minLon: 0, maxLon: 0, centerLat: 0, centerLon: 0 };
+  }
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+
+  coords.forEach(p => {
+    const lat = p[0];
+    const lon = to180(p[1]);
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lon < minLon) minLon = lon;
+    if (lon > maxLon) maxLon = lon;
+  });
+
+  return {
+    minLat,
+    maxLat,
+    minLon,
+    maxLon,
+    centerLat: (minLat + maxLat) / 2,
+    centerLon: (minLon + maxLon) / 2
+  };
+}
+
