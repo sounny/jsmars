@@ -230,7 +230,7 @@ export function computeMidpoint(lat1, lon1, lat2, lon2) {
 
 /**
  * Calculate area of a polygon on a sphere (spherical excess formula).
- * @param {Array<{lat: number, lng: number}>} points - Array of lat/lng points
+ * @param {Array<{lat: number, lng: number}|[number, number]>} points - Array of lat/lng points
  * @param {string} body - Body key
  * @returns {number} - Area in square kilometers
  */
@@ -239,17 +239,61 @@ export function sphericalPolygonArea(points, body = 'mars') {
   const n = points.length;
   if (n < 3) return 0;
 
+  const normalizePoint = p => Array.isArray(p) ? { lat: p[0], lng: p[1] } : p;
+
   let sum = 0;
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    const lat1 = points[i].lat * Math.PI / 180;
-    const lon1 = points[i].lng * Math.PI / 180;
-    const lat2 = points[j].lat * Math.PI / 180;
-    const lon2 = points[j].lng * Math.PI / 180;
+    const p1 = normalizePoint(points[i]);
+    const p2 = normalizePoint(points[j]);
+
+    const lat1 = p1.lat * Math.PI / 180;
+    const lon1 = p1.lng * Math.PI / 180;
+    const lat2 = p2.lat * Math.PI / 180;
+    const lon2 = p2.lng * Math.PI / 180;
     sum += (lon2 - lon1) * (2 + Math.sin(lat1) + Math.sin(lat2));
   }
 
   return Math.abs(sum * R * R / 2);
+}
+
+/**
+ * Calculate cumulative geodesic distance of a polyline.
+ * @param {Array<{lat: number, lng: number}|[number, number]>} points
+ * @param {string} [body='mars']
+ * @returns {number} Total distance in kilometers
+ */
+export function computePolylineLength(points, body = 'mars') {
+  if (!points || points.length < 2) return 0;
+  const normalizePoint = p => Array.isArray(p) ? { lat: p[0], lng: p[1] } : p;
+
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = normalizePoint(points[i]);
+    const p2 = normalizePoint(points[i + 1]);
+    total += haversineDistance(p1.lat, p1.lng, p2.lat, p2.lng, body);
+  }
+  return total;
+}
+
+/**
+ * Calculate perimeter of a closed polygon.
+ * @param {Array<{lat: number, lng: number}|[number, number]>} points
+ * @param {string} [body='mars']
+ * @returns {number} Total perimeter in kilometers
+ */
+export function computePolygonPerimeter(points, body = 'mars') {
+  if (!points || points.length < 3) return 0;
+  const normalizePoint = p => Array.isArray(p) ? { lat: p[0], lng: p[1] } : p;
+
+  let total = 0;
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const p1 = normalizePoint(points[i]);
+    const p2 = normalizePoint(points[(i + 1) % n]);
+    total += haversineDistance(p1.lat, p1.lng, p2.lat, p2.lng, body);
+  }
+  return total;
 }
 
 /**

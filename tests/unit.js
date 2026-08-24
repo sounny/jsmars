@@ -20,7 +20,7 @@ import { ProjectionManager } from '../src/features/projections/ProjectionManager
 import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -685,6 +685,23 @@ describe('GIS Vector Shape Serialization & WKT (ShapeIO)', () => {
         const parsedPoly = ShapeIO.parseWKT('POLYGON((0 0, 10 0, 10 10, 0 10, 0 0))');
         expect(parsedPoly.type).to.equal('Polygon');
         expect(parsedPoly.coordinates[0]).to.have.lengthOf(5);
+    });
+});
+
+describe('Geodesic Path Metrics & Polygon Perimeter', () => {
+    it('should compute cumulative geodesic length of multi-segment polylines', () => {
+        // Equator track on Mars from (0, 0) to (0, 10) to (0, 20)
+        // 20 deg longitude at Equator = 20 * PI/180 * 3389.5 ≈ 1183.2 km
+        const line = [[0, 0], [0, 10], [0, 20]];
+        const len = computePolylineLength(line, 'mars');
+        expect(len).to.be.closeTo(1183.2, 5.0);
+    });
+
+    it('should compute closed geodesic perimeter for polygons', () => {
+        // Equatorial square (0,0) -> (10,0) -> (10,10) -> (0,10)
+        const poly = [[0, 0], [10, 0], [10, 10], [0, 10]];
+        const perim = computePolygonPerimeter(poly, 'mars');
+        expect(perim).to.be.greaterThan(2000);
     });
 });
 
