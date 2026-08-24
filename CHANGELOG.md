@@ -1,5 +1,16 @@
 # Change Log
 
+## [0.7.0] - 2026-08-24
+
+### Added
+- **Subsurface Radar Sounder (SHARAD / MARSIS)**: 1D A-scope power trace and 2D B-scope radargram simulations across Planum Boreum, Planum Australe, Medusae Fossae, and Utopia Planitia with dielectric permittivity and loss tangent tuning.
+- **Planetary Lat/Lon Graticule Grid Layer**: Adaptive zoom spacing ($30^\circ \to 0.05^\circ$), major/minor subdivisions, edge coordinate annotations, and multi-format coordinate labeling ($0^\circ-360^\circ\text{ E}$, $\pm 180^\circ$, $0^\circ-360^\circ\text{ W}$).
+- **Comprehensive IAU Planetary Nomenclature**: Multi-body gazetteer dataset for Mars and Moon across 9 morphological classes with instant search, category filtering, and rich popup info.
+- **Planetary Graphic Scale Bar Control**: Accurate planet-aware scale calculation using exact planetary radii ($R_{\text{Mars}} = 3389.5\text{ km}, R_{\text{Moon}} = 1737.4\text{ km}$) and latitude cosine distortion.
+- **Topographic Transect & Linked Cursor Synchronization**: Interactive elevation transect chart with bi-directional cursor linking driving a real-time crosshair marker on the map.
+- **Spatial POI Bookmarks & Multi-Body Navigation**: Cross-body planetary bookmarks with pre-loaded scientific POIs and JSON import/export.
+- **Test Suite & CI/CD**: Expanded to 44 automated Mocha/Chai unit tests with 100% passing verification.
+
 ## [0.6.0] - 2026-08-23
 
 ### Added

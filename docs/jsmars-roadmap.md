@@ -102,6 +102,23 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **Map Projections & Polar Views**:
     - [x] Global Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) viewpoints.
 
+## Phase 7: Subsurface Geophysics & Advanced Cartography (Completed)
+- [x] **Subsurface Radar Sounder (SHARAD / MARSIS)**:
+    - [x] 1D A-scope power trace and 2D B-scope radargram simulations.
+    - [x] Polar ice stratigraphy and dielectric interface detection.
+    - [x] Radargram CSV export and track camera fly-to.
+- [x] **Planetary Graticule Grid Layer**:
+    - [x] Adaptive zoom spacing ($30^\circ \to 0.05^\circ$), major/minor subdivisions, edge labels.
+    - [x] Multi-format coordinate labeling ($0^\circ-360^\circ\text{ E}$, $\pm 180^\circ$, $0^\circ-360^\circ\text{ W}$).
+- [x] **Comprehensive IAU Planetary Nomenclature**:
+    - [x] Multi-body gazetteer dataset for Mars and Moon across 9 morphological classes with instant search.
+- [x] **Planetary Scale Bar & North Arrow**:
+    - [x] Exact planetary physical distance calculation accounting for body radii and latitude distortion.
+- [x] **Topographic Transect & Linked Map Cursor**:
+    - [x] Bi-directional cursor linking driving synchronized crosshair marker on map track.
+- [x] **Spatial POI Bookmarks & Multi-Body Navigation**:
+    - [x] Pre-loaded scientific POIs across Mars and Moon with JSON import/export.
+
 ## Documentation & Process
 - [x] **Release Notes**: Maintained in `docs/release-notes.md`.
 - [x] **User Guide**: Maintained in `docs/user-guide.md`.
