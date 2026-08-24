@@ -448,6 +448,23 @@ describe('Mars Orbital Mechanics & Time System', () => {
         expect(solObj.sol).to.be.within(0, 2);
         expect(solObj.active).to.be.true;
     });
+
+    it('should calculate solar position, elevation, and daylight duration', () => {
+        // At equator at solar noon (hour = 12, Ls = 0, lat = 0)
+        const pos = MarsTime.getSolarPosition(0, 0, 0, 12);
+        expect(pos.altitudeDeg).to.be.closeTo(90.0, 0.5);
+        expect(pos.isDay).to.be.true;
+
+        // North pole in summer (lat = 85, Ls = 90) -> Polar Day (24h sun)
+        const dayLenSummer = MarsTime.getMartianDayLength(85, 90);
+        expect(dayLenSummer.daylightHours).to.equal(24.0);
+        expect(dayLenSummer.state).to.include('Polar Day');
+
+        // North pole in winter (lat = 85, Ls = 270) -> Polar Night (0h sun)
+        const dayLenWinter = MarsTime.getMartianDayLength(85, 270);
+        expect(dayLenWinter.daylightHours).to.equal(0.0);
+        expect(dayLenWinter.state).to.include('Polar Night');
+    });
 });
 
 describe('3D Planetary Terrain & Solar Illumination (ThreeDEngine)', () => {

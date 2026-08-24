@@ -260,4 +260,74 @@ export class MarsTime {
     const s = Math.floor((mFloat - m) * 60);
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
+
+  /**
+   * Calculate full solar position (elevation, azimuth, shadow factor) for any Martian surface point.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude (East degrees)
+   * @param {number} Ls - Solar Longitude (degrees)
+   * @param {number} localSolarHour - Local solar time (0-24 h)
+   * @returns {{altitudeDeg: number, azimuthDeg: number, zenithDeg: number, isDay: boolean, shadowFactor: number}}
+   */
+  static getSolarPosition(lat, lon, Ls, localSolarHour) {
+    const latRad = lat * Math.PI / 180;
+    const deltaRad = Math.asin(Math.sin(this.OBLIQUITY * Math.PI / 180) * Math.sin(Ls * Math.PI / 180));
+    const omegaRad = (localSolarHour - 12) * 15 * Math.PI / 180;
+
+    // Solar elevation angle sin(alpha)
+    const sinAlt = Math.sin(latRad) * Math.sin(deltaRad) + Math.cos(latRad) * Math.cos(deltaRad) * Math.cos(omegaRad);
+    const altRad = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+    const altitudeDeg = altRad * 180 / Math.PI;
+    const zenithDeg = 90 - altitudeDeg;
+
+    // Solar azimuth angle cos(Az)
+    const cosAlt = Math.cos(altRad);
+    let azimuthDeg = 180;
+
+    if (cosAlt > 1e-6) {
+      const cosAz = (Math.sin(deltaRad) * Math.cos(latRad) - Math.cos(deltaRad) * Math.sin(latRad) * Math.cos(omegaRad)) / cosAlt;
+      const sinAz = -Math.cos(deltaRad) * Math.sin(omegaRad) / cosAlt;
+      azimuthDeg = (Math.atan2(sinAz, cosAz) * 180 / Math.PI + 360) % 360;
+    }
+
+    const isDay = altitudeDeg > 0;
+    const shadowFactor = isDay ? 1 / Math.tan(Math.max(0.01, altRad)) : Infinity;
+
+    return {
+      altitudeDeg,
+      azimuthDeg,
+      zenithDeg,
+      isDay,
+      shadowFactor
+    };
+  }
+
+  /**
+   * Calculate daylight duration in decimal hours for any Martian latitude and season.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} Ls - Solar Longitude (0-360 deg)
+   * @returns {{daylightHours: number, state: string}}
+   */
+  static getMartianDayLength(lat, Ls) {
+    const latRad = lat * Math.PI / 180;
+    const deltaRad = Math.asin(Math.sin(this.OBLIQUITY * Math.PI / 180) * Math.sin(Ls * Math.PI / 180));
+
+    const tanProduct = Math.tan(latRad) * Math.tan(deltaRad);
+    const cosOmega0 = -tanProduct;
+
+    if (cosOmega0 <= -1) {
+      return { daylightHours: 24.0, state: 'Polar Day (24h Sun)' };
+    }
+    if (cosOmega0 >= 1) {
+      return { daylightHours: 0.0, state: 'Polar Night (24h Dark)' };
+    }
+
+    const omega0Rad = Math.acos(cosOmega0);
+    const daylightHours = 24.0 * (omega0Rad / Math.PI);
+
+    return {
+      daylightHours,
+      state: 'Normal Day/Night Cycle'
+    };
+  }
 }
