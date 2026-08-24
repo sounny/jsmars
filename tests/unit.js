@@ -1129,6 +1129,40 @@ describe('Spatial Measurement Geodesy & WKT (MeasureTool)', () => {
     });
 });
 
+describe('Planetary Probe Diagnostics & Geophysics (InvestigateTool)', () => {
+    it('should compute barometric atmospheric pressure and gravity at elevation', () => {
+        // Datum elevation (0m) -> P = 610 Pa
+        const pDatum = InvestigateTool.computeBarometricPressure(0);
+        expect(pDatum).to.equal(610);
+
+        // Hellas basin (-7000m) -> higher pressure
+        const pHellas = InvestigateTool.computeBarometricPressure(-7000);
+        expect(pHellas).to.be.greaterThan(1000);
+
+        // Olympus Mons summit (+21287m) -> low pressure
+        const pOlympus = InvestigateTool.computeBarometricPressure(21287);
+        expect(pOlympus).to.be.lessThan(100);
+
+        // Local surface gravity
+        const gMars = InvestigateTool.computeLocalGravity(0, 'mars');
+        expect(gMars).to.be.closeTo(3.72, 0.01);
+
+        const gMoon = InvestigateTool.computeLocalGravity(0, 'moon');
+        expect(gMoon).to.be.closeTo(1.62, 0.01);
+    });
+
+    it('should classify regolith thermal regimes accurately', () => {
+        const dust = InvestigateTool.classifyThermalRegime(80, 0.28);
+        expect(dust.regime).to.equal('High Dust Mantle');
+
+        const sand = InvestigateTool.classifyThermalRegime(200, 0.15);
+        expect(sand.regime).to.equal('Fine-to-Medium Sand');
+
+        const rock = InvestigateTool.classifyThermalRegime(900, 0.12);
+        expect(rock.regime).to.equal('Solid Bedrock / Massive Ice');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

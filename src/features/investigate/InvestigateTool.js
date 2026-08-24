@@ -343,4 +343,69 @@ export class InvestigateTool {
             mcd: mcdSummary
         };
     }
+
+    // --- Planetary Geophysics & Regolith Classification ---
+
+    /**
+     * Compute isothermal barometric atmospheric pressure at probed elevation.
+     * @param {number} elevationMeters - Elevation relative to Mars areoid datum (m)
+     * @param {number} [p0=610] - Datum surface pressure in Pa
+     * @param {number} [scaleHeightM=11100] - Mars atmospheric scale height in meters
+     * @returns {number} Pressure in Pascals (Pa)
+     */
+    static computeBarometricPressure(elevationMeters, p0 = 610, scaleHeightM = 11100) {
+        const p = p0 * Math.exp(-elevationMeters / Math.max(1, scaleHeightM));
+        return parseFloat(p.toFixed(1));
+    }
+
+    /**
+     * Compute local gravitational acceleration at elevation z.
+     * @param {number} elevationMeters - Elevation in meters
+     * @param {string} [body='mars'] - Planetary body name
+     * @returns {number} Gravitational acceleration (m/s^2)
+     */
+    static computeLocalGravity(elevationMeters, body = 'mars') {
+        const bodyLow = body.toLowerCase();
+        const g0 = bodyLow === 'moon' ? 1.62 : bodyLow === 'earth' ? 9.80665 : 3.72076;
+        const R = (bodyLow === 'moon' ? 1737.4 : bodyLow === 'earth' ? 6371.0 : 3389.5) * 1000;
+        const rRatio = R / (R + elevationMeters);
+        const g = g0 * (rRatio * rRatio);
+        return parseFloat(g.toFixed(4));
+    }
+
+    /**
+     * Classify regolith material from thermal inertia and visual albedo.
+     * @param {number} thermalInertia - Thermal inertia (J m^-2 K^-1 s^-1/2)
+     * @param {number} albedo - Visual Bond/Bolometric albedo (0..1)
+     * @returns {{regime: string, description: string, dustCover: string}}
+     */
+    static classifyThermalRegime(thermalInertia, albedo = 0.2) {
+        const ti = Math.max(0, thermalInertia);
+        let regime, description, dustCover;
+
+        if (ti < 120) {
+            regime = 'High Dust Mantle';
+            description = 'Thick airfall dust deposits / low thermal conductivity fine particles';
+            dustCover = 'Heavy (Tharsis / Arabia Terra type)';
+        } else if (ti < 250) {
+            regime = 'Fine-to-Medium Sand';
+            description = 'Active or semi-stabilized eolian sand sheets and dune fields';
+            dustCover = 'Moderate to Low';
+        } else if (ti < 450) {
+            regime = 'Duricrust / Coarse Sand / Pebbles';
+            description = 'Indurated soil crusts, cementation, coarse lag gravels';
+            dustCover = 'Low / Scoured';
+        } else if (ti < 800) {
+            regime = 'Rocky Regolith / Fractured Bedrock';
+            description = 'High rock fraction, crater ejecta blankets, blocky lava flows';
+            dustCover = 'Minimal / High Rock Abundance';
+        } else {
+            regime = 'Solid Bedrock / Massive Ice';
+            description = 'Exposed basaltic basement or polar water ice cap ice sheet';
+            dustCover = 'None / Clean Exposed Substrate';
+        }
+
+        return { regime, description, dustCover, thermalInertia: ti, albedo };
+    }
 }
+
