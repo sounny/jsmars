@@ -15,7 +15,7 @@ import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -531,6 +531,27 @@ describe('Spatial Geometry Analysis & Containment', () => {
         expect(bbox.minLon).to.equal(120);
         expect(bbox.maxLon).to.equal(140);
         expect(bbox.centerLon).to.equal(130);
+    });
+});
+
+describe('Planetary 3D Coordinates & Great Circle Interpolation', () => {
+    it('should convert spherical to 3D Cartesian coordinates and back', () => {
+        // North Pole on Mars (lat=90, lon=0, R=3389.5 km)
+        const pole = sphericalToCartesian(90, 0, 0, 'mars');
+        expect(pole.x).to.be.closeTo(0, 0.01);
+        expect(pole.y).to.be.closeTo(0, 0.01);
+        expect(pole.z).to.be.closeTo(3389.5, 0.01);
+
+        const sphere = cartesianToSpherical(pole.x, pole.y, pole.z, 'mars');
+        expect(sphere.lat).to.be.closeTo(90, 0.01);
+        expect(sphere.altKm).to.be.closeTo(0, 0.01);
+    });
+
+    it('should interpolate along great circle and compute exact midpoint', () => {
+        // Equator from 0 to 90 deg E
+        const mid = computeMidpoint(0, 0, 0, 90);
+        expect(mid.lat).to.be.closeTo(0, 0.01);
+        expect(mid.lon).to.be.closeTo(45, 0.01);
     });
 });
 

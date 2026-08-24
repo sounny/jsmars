@@ -144,6 +144,91 @@ export function toDMS(dd, isLat) {
 }
 
 /**
+ * Convert planetary spherical coordinates (lat, lon) to 3D Cartesian coordinates (X, Y, Z) in km.
+ * @param {number} lat - Latitude in degrees
+ * @param {number} lon - Longitude in degrees
+ * @param {number} [altKm=0] - Altitude above mean radius
+ * @param {string} [body='mars'] - Target planetary body
+ * @returns {{x: number, y: number, z: number}} Cartesian coordinates in km
+ */
+export function sphericalToCartesian(lat, lon, altKm = 0, body = 'mars') {
+  const R = (BODIES[body]?.meanRadius || 3389.5) + altKm;
+  const phi = lat * Math.PI / 180;
+  const lambda = lon * Math.PI / 180;
+
+  const x = R * Math.cos(phi) * Math.cos(lambda);
+  const y = R * Math.cos(phi) * Math.sin(lambda);
+  const z = R * Math.sin(phi);
+
+  return { x, y, z };
+}
+
+/**
+ * Convert 3D Cartesian coordinates (X, Y, Z) in km to planetary spherical coordinates (lat, lon, altKm).
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ * @param {string} [body='mars']
+ * @returns {{lat: number, lon: number, altKm: number}}
+ */
+export function cartesianToSpherical(x, y, z, body = 'mars') {
+  const R_mean = BODIES[body]?.meanRadius || 3389.5;
+  const r = Math.sqrt(x * x + y * y + z * z);
+  const altKm = r - R_mean;
+
+  const lat = Math.asin(z / r) * 180 / Math.PI;
+  const lon = Math.atan2(y, x) * 180 / Math.PI;
+
+  return { lat, lon: to180(lon), altKm };
+}
+
+/**
+ * Interpolate along the great circle between two points (Spherical Linear Interpolation).
+ * @param {number} lat1 - Point 1 latitude
+ * @param {number} lon1 - Point 1 longitude
+ * @param {number} lat2 - Point 2 latitude
+ * @param {number} lon2 - Point 2 longitude
+ * @param {number} fraction - Fraction between 0 (pt1) and 1 (pt2)
+ * @returns {{lat: number, lon: number}} Interpolated coordinate
+ */
+export function interpolateGreatCircle(lat1, lon1, lat2, lon2, fraction) {
+  const phi1 = lat1 * Math.PI / 180;
+  const lambda1 = lon1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const lambda2 = lon2 * Math.PI / 180;
+
+  // Angular distance d between points
+  const cosD = Math.sin(phi1) * Math.sin(phi2) + Math.cos(phi1) * Math.cos(phi2) * Math.cos(lambda2 - lambda1);
+  const d = Math.acos(Math.max(-1, Math.min(1, cosD)));
+
+  if (d === 0) return { lat: lat1, lon: to180(lon1) };
+
+  const A = Math.sin((1 - fraction) * d) / Math.sin(d);
+  const B = Math.sin(fraction * d) / Math.sin(d);
+
+  const x = A * Math.cos(phi1) * Math.cos(lambda1) + B * Math.cos(phi2) * Math.cos(lambda2);
+  const y = A * Math.cos(phi1) * Math.sin(lambda1) + B * Math.cos(phi2) * Math.sin(lambda2);
+  const z = A * Math.sin(phi1) + B * Math.sin(phi2);
+
+  const lat = Math.atan2(z, Math.sqrt(x * x + y * y)) * 180 / Math.PI;
+  const lon = Math.atan2(y, x) * 180 / Math.PI;
+
+  return { lat, lon: to180(lon) };
+}
+
+/**
+ * Compute the great-circle midpoint between two geographic coordinates.
+ * @param {number} lat1
+ * @param {number} lon1
+ * @param {number} lat2
+ * @param {number} lon2
+ * @returns {{lat: number, lon: number}}
+ */
+export function computeMidpoint(lat1, lon1, lat2, lon2) {
+  return interpolateGreatCircle(lat1, lon1, lat2, lon2, 0.5);
+}
+
+/**
  * Calculate area of a polygon on a sphere (spherical excess formula).
  * @param {Array<{lat: number, lng: number}>} points - Array of lat/lng points
  * @param {string} body - Body key
@@ -222,7 +307,7 @@ export function formatLatLon(lat, lon, options = {}) {
  * @param {number} numPoints - Number of intermediate points
  * @returns {Array<{lat: number, lng: number}>} - Array of interpolated points
  */
-export function interpolateGreatCircle(lat1, lon1, lat2, lon2, numPoints = 100) {
+export function interpolateGreatCirclePath(lat1, lon1, lat2, lon2, numPoints = 100) {
   const phi1 = lat1 * Math.PI / 180;
   const lambda1 = lon1 * Math.PI / 180;
   const phi2 = lat2 * Math.PI / 180;
