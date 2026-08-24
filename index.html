@@ -284,6 +284,18 @@
             </div>
           </div>
 
+          <!-- Interplanetary Trajectory & Delta-V -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Compute Hohmann transfer orbits, C3 launch energy, TMI/MOI Delta-V budgets, and Earth-Mars launch windows.">
+              <span class="layer-title">Interplanetary Trajectory</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="trajectory-panel-container"></div>
+            </div>
+          </div>
+
           <!-- Map Export -->
           <div class="layer-section">
             <div class="layer-section-header"
@@ -463,6 +475,7 @@
     import { NorthArrow } from './src/ui/NorthArrow.js';
     import { PlanetaryScaleBar } from './src/ui/PlanetaryScaleBar.js';
     import { RadarPanel } from './src/features/radar/RadarPanel.js';
+    import { TrajectoryPanel } from './src/features/orbit/TrajectoryPanel.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
@@ -584,6 +597,11 @@
     const groundTrackLayer = new GroundTrackLayer(jmars.map);
     const groundTrackPanel = new GroundTrackPanel(
       document.getElementById('groundtrack-panel-container'), groundTrackLayer
+    );
+
+    // -- NEW: Interplanetary Trajectory & Delta-V --
+    const trajectoryPanel = new TrajectoryPanel(
+      document.getElementById('trajectory-panel-container')
     );
 
     // -- NEW: Export Tool --

@@ -13,6 +13,7 @@ import { PlanetaryScaleBar } from '../src/ui/PlanetaryScaleBar.js';
 import { RadarSounderEngine } from '../src/features/radar/RadarSounderEngine.js';
 import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
+import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -463,6 +464,25 @@ describe('3D Planetary Terrain & Solar Illumination (ThreeDEngine)', () => {
         const length = Math.sqrt(normal.nx * normal.nx + normal.ny * normal.ny + normal.nz * normal.nz);
         expect(length).to.be.closeTo(1.0, 0.01);
         expect(normal.ny).to.be.greaterThan(0); // Upward facing
+    });
+});
+
+describe('Astrodynamics & Interplanetary Trajectories (TrajectoryEngine)', () => {
+    it('should compute Earth-Mars Hohmann transfer Delta-V budget and flight duration', () => {
+        const sol = TrajectoryEngine.computeHohmannTransfer('earth', 'mars', 300, 300);
+        expect(sol.tofDays).to.be.closeTo(258.9, 5.0); // ~8.5 months
+        expect(sol.deltaVDepartKmS).to.be.closeTo(3.61, 0.2); // TMI ~3.6 km/s
+        expect(sol.deltaVArriveKmS).to.be.closeTo(2.09, 0.2); // MOI ~2.1 km/s
+        expect(sol.totalDeltaVKmS).to.be.closeTo(5.70, 0.3); // Total ~5.7 km/s
+        expect(sol.c3LaunchEnergy).to.be.closeTo(8.67, 1.0); // C3 ~8.7 km^2/s^2
+        expect(sol.synodicPeriodDays).to.be.closeTo(779.9, 5.0); // ~26 months
+    });
+
+    it('should compute Earth-Mars upcoming synodic launch opportunities', () => {
+        const windows = TrajectoryEngine.getUpcomingMarsLaunchWindows(2024, 4);
+        expect(windows).to.be.an('array').with.lengthOf(4);
+        expect(windows[0].flightDurationDays).to.equal(259);
+        expect(windows[0].departureDate).to.be.a('string');
     });
 });
 
