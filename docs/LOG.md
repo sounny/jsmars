@@ -126,3 +126,10 @@ Below is a rendering of the page up to the first error.
 TEST FAILURE: Browser console errors encountered during UI interaction:
 [error] WMS capabilities XML parse error: This page contains the following errors:error on line 5 at column 76: xmlParseEntityRef: no name
 Below is a rendering of the page up to the first error.
+
+
+### Automated 4-Hour Check Alert [2026-08-24 09:00:35 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute minimum enclosing circle and export WKT
+?: AssertionError: expected 'POLYGON ((0 0, 1 0, 1 1, 0 0))' to include 'POLYGON (((0 0, 1 0, 1 1, 0 0)))'
+    at n.<anonymous> (unit.js:1128:28)

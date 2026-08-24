@@ -446,4 +446,134 @@ export class MeasureTool {
 
         this.notifyUpdate();
     }
+
+    // --- Spatial Measurement Analytics & Geodesy ---
+
+    /**
+     * Compute detailed segment-by-segment distance, cumulative path, and azimuth bearings.
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Polyline vertex coordinates
+     * @param {string} [body='mars'] - Planetary body name
+     * @returns {Array<{segment: number, from: [number, number], to: [number, number], distanceKm: number, cumulativeKm: number, bearingDeg: number, turnAngleDeg: number}>}
+     */
+    static computeSegmentMetrics(latlngs = [], body = 'mars') {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length < 2) return [];
+
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const segments = [];
+        let cumDist = 0;
+        let prevBearing = null;
+
+        for (let i = 0; i < coords.length - 1; i++) {
+            const p1 = coords[i];
+            const p2 = coords[i + 1];
+
+            const lat1 = p1[0] * Math.PI / 180;
+            const lon1 = p1[1] * Math.PI / 180;
+            const lat2 = p2[0] * Math.PI / 180;
+            const lon2 = p2[1] * Math.PI / 180;
+
+            // Haversine
+            const dLat = lat2 - lat1;
+            const dLon = lon2 - lon1;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
+            const segDist = R * c;
+            cumDist += segDist;
+
+            // Forward azimuth
+            const y = Math.sin(dLon) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+            let bearing = Math.atan2(y, x) * 180 / Math.PI;
+            bearing = (bearing + 360) % 360;
+
+            let turnAngle = 0;
+            if (prevBearing !== null) {
+                let diff = bearing - prevBearing;
+                while (diff > 180) diff -= 360;
+                while (diff < -180) diff += 360;
+                turnAngle = diff;
+            }
+            prevBearing = bearing;
+
+            segments.push({
+                segment: i + 1,
+                from: [parseFloat(p1[0].toFixed(4)), parseFloat(p1[1].toFixed(4))],
+                to: [parseFloat(p2[0].toFixed(4)), parseFloat(p2[1].toFixed(4))],
+                distanceKm: parseFloat(segDist.toFixed(3)),
+                cumulativeKm: parseFloat(cumDist.toFixed(3)),
+                bearingDeg: parseFloat(bearing.toFixed(1)),
+                turnAngleDeg: parseFloat(turnAngle.toFixed(1))
+            });
+        }
+
+        return segments;
+    }
+
+    /**
+     * Compute the minimum enclosing circle / bounding radius around a set of coordinates.
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Coordinates
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{centerLat: number, centerLon: number, radiusKm: number}}
+     */
+    static computeMinimumEnclosingCircle(latlngs = [], body = 'mars') {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length === 0) return { centerLat: 0, centerLon: 0, radiusKm: 0 };
+
+        const sumLat = coords.reduce((acc, p) => acc + p[0], 0);
+        const sumLon = coords.reduce((acc, p) => acc + p[1], 0);
+        const centerLat = sumLat / coords.length;
+        const centerLon = sumLon / coords.length;
+
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        let maxRadiusKm = 0;
+
+        coords.forEach(p => {
+            const lat1 = centerLat * Math.PI / 180;
+            const lon1 = centerLon * Math.PI / 180;
+            const lat2 = p[0] * Math.PI / 180;
+            const lon2 = p[1] * Math.PI / 180;
+
+            const dLat = lat2 - lat1;
+            const dLon = lon2 - lon1;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
+            const dist = R * c;
+
+            if (dist > maxRadiusKm) maxRadiusKm = dist;
+        });
+
+        return {
+            centerLat: parseFloat(centerLat.toFixed(4)),
+            centerLon: parseFloat(centerLon.toFixed(4)),
+            radiusKm: parseFloat(maxRadiusKm.toFixed(3))
+        };
+    }
+
+    /**
+     * Convert measurement geometry to Well-Known Text (WKT) string.
+     * @param {string} type - 'Line' or 'Area'
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Coordinate array
+     * @returns {string} WKT representation
+     */
+    static toWKT(type, latlngs = []) {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length === 0) return '';
+
+        if (type.toLowerCase() === 'line' || type.toLowerCase() === 'polyline') {
+            const pairs = coords.map(p => `${p[1]} ${p[0]}`).join(', ');
+            return `LINESTRING (${pairs})`;
+        } else {
+            // Close polygon ring if not already closed
+            const ring = [...coords];
+            if (ring.length > 0 && (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1])) {
+                ring.push(ring[0]);
+            }
+            const pairs = ring.map(p => `${p[1]} ${p[0]}`).join(', ');
+            return `POLYGON ((${pairs}))`;
+        }
+    }
 }
+

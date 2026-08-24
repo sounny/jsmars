@@ -21,6 +21,7 @@ import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { CustomMapManager } from '../src/features/custom-map/CustomMapManager.js';
 import { LandingSitesLayer } from '../src/features/landing/LandingSitesLayer.js';
 import { RadialProfileTool } from '../src/features/profile/RadialProfileTool.js';
+import { MeasureTool } from '../src/features/measure/MeasureTool.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
@@ -1096,6 +1097,35 @@ describe('Radial Topographic Profiles & Crater Morphometry (RadialProfileTool)',
         const cavity = RadialProfileTool.computeCavityVolume(synthProfile, 2000);
         expect(cavity.cavityVolumeM3).to.be.greaterThan(0);
         expect(cavity.cavityVolumeKm3).to.be.greaterThan(0);
+    });
+});
+
+describe('Spatial Measurement Geodesy & WKT (MeasureTool)', () => {
+    it('should compute segment-by-segment path metrics and turn angles', () => {
+        // Path: (0, 0) -> (0, 10) -> (10, 10) on Mars
+        const path = [[0, 0], [0, 10], [10, 10]];
+        const segments = MeasureTool.computeSegmentMetrics(path, 'mars');
+        expect(segments).to.have.lengthOf(2);
+        expect(segments[0].segment).to.equal(1);
+        expect(segments[0].bearingDeg).to.be.closeTo(90, 1.0); // Heading East
+        expect(segments[1].bearingDeg).to.be.closeTo(0, 1.0); // Heading North
+        expect(segments[1].turnAngleDeg).to.be.closeTo(-90, 1.0); // 90-degree left turn
+        expect(segments[1].cumulativeKm).to.be.greaterThan(segments[0].distanceKm);
+    });
+
+    it('should compute minimum enclosing circle and export WKT', () => {
+        const polyCoords = [[0, 0], [0, 2], [2, 2], [2, 0]];
+        const circle = MeasureTool.computeMinimumEnclosingCircle(polyCoords, 'mars');
+        expect(circle.centerLat).to.equal(1.0);
+        expect(circle.centerLon).to.equal(1.0);
+        expect(circle.radiusKm).to.be.greaterThan(0);
+
+        // WKT Line and Polygon
+        const lineWkt = MeasureTool.toWKT('Line', [[0, 0], [1, 1]]);
+        expect(lineWkt).to.equal('LINESTRING (0 0, 1 1)');
+
+        const polyWkt = MeasureTool.toWKT('Area', [[0, 0], [0, 1], [1, 1]]);
+        expect(polyWkt).to.equal('POLYGON ((0 0, 1 0, 1 1, 0 0))');
     });
 });
 
