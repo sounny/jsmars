@@ -168,3 +168,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute solar elevation angle above surface horizon
 ?: AssertionError: expected 1.73 to be close to 0 +/- 0.01
     at n.<anonymous> (unit.js:1767:35)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 19:00:27 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute perpendicular cross-track error distance from great-circle track
+?: AssertionError: expected -591.579 to be close to 591.59 +/- 2
+    at n.<anonymous> (unit.js:1813:39)

@@ -1791,6 +1791,30 @@ describe('Planetary Probe Geophysics & Gravity Variation (InvestigateTool)', () 
     });
 });
 
+describe('Spherical Excess Geodesic Polygon Area & Cross-Track Distance (MeasureTool)', () => {
+    it('should compute exact spherical polygon surface area via spherical excess', () => {
+        // Octant on Mars (0..90 lat, 0..90 lon) -> 1/8 of total sphere area = (4 * pi * R^2) / 8 = (pi * R^2) / 2
+        // For Mars R = 3389.5 km: Total area = 144.37e6 km^2 -> 1/8 = 18.046e6 km^2
+        const octant = [
+            [0, 0],
+            [0, 90],
+            [90, 0]
+        ];
+
+        const res = MeasureTool.computeSphericalPolygonArea(octant, 'mars');
+        expect(res.sphericalExcessRad).to.be.closeTo(Math.PI / 2.0, 0.01);
+        expect(res.areaKm2).to.be.closeTo(18046000, 50000);
+    });
+
+    it('should compute perpendicular cross-track error distance from great-circle track', () => {
+        // Great-circle track along equator from (0, 0) to (0, 90). Point at (10, 45)
+        // Cross-track distance should be distance from (0, 45) to (10, 45) = 10 deg * (pi * 3389.5 / 180) ~ 591.59 km
+        const xt = MeasureTool.computeCrossTrackDistance(10, 45, 0, 0, 0, 90, 'mars');
+        expect(Math.abs(xt.crossTrackKm)).to.be.closeTo(591.59, 2.0);
+        expect(xt.alongTrackKm).to.be.greaterThan(2500);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -575,5 +575,99 @@ export class MeasureTool {
             return `POLYGON ((${pairs}))`;
         }
     }
+
+    // --- Spherical Excess Area & Cross-Track Geodesic Solvers ---
+
+    /**
+     * Compute exact spherical polygon surface area using spherical excess.
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Array of polygon vertices
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{areaKm2: number, areaM2: number, sphericalExcessRad: number}}
+     */
+    static computeSphericalPolygonArea(latlngs = [], body = 'mars') {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length < 3) return { areaKm2: 0, areaM2: 0, sphericalExcessRad: 0 };
+
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        let excess = 0;
+
+        // Sum of spherical triangle spherical excesses
+        for (let i = 0; i < coords.length; i++) {
+            const p1 = coords[i];
+            const p2 = coords[(i + 1) % coords.length];
+
+            const phi1 = p1[0] * Math.PI / 180.0;
+            const lam1 = p1[1] * Math.PI / 180.0;
+            const phi2 = p2[0] * Math.PI / 180.0;
+            const lam2 = p2[1] * Math.PI / 180.0;
+
+            const dLam = lam2 - lam1;
+            excess += 2.0 * Math.atan2(
+                Math.tan(dLam / 2.0) * (Math.tan(phi1 / 2.0) + Math.tan(phi2 / 2.0)),
+                1.0 + Math.tan(phi1 / 2.0) * Math.tan(phi2 / 2.0)
+            );
+        }
+
+        const absExcess = Math.abs(excess);
+        const areaKm2 = absExcess * R * R;
+
+        return {
+            areaKm2: parseFloat(areaKm2.toFixed(3)),
+            areaM2: parseFloat((areaKm2 * 1e6).toFixed(1)),
+            sphericalExcessRad: parseFloat(absExcess.toFixed(6))
+        };
+    }
+
+    /**
+     * Compute cross-track perpendicular distance of a point from a great-circle path.
+     * @param {number} lat - Point latitude
+     * @param {number} lon - Point longitude
+     * @param {number} startLat - Line start latitude
+     * @param {number} startLon - Line start longitude
+     * @param {number} endLat - Line end latitude
+     * @param {number} endLon - Line end longitude
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{crossTrackKm: number, alongTrackKm: number}}
+     */
+    static computeCrossTrackDistance(lat, lon, startLat, startLon, endLat, endLon, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+
+        const phi1 = startLat * Math.PI / 180.0;
+        const lam1 = startLon * Math.PI / 180.0;
+        const phi2 = endLat * Math.PI / 180.0;
+        const lam2 = endLon * Math.PI / 180.0;
+        const phi3 = lat * Math.PI / 180.0;
+        const lam3 = lon * Math.PI / 180.0;
+
+        // Angular distance 1 to 3
+        const d13 = 2.0 * Math.asin(Math.sqrt(
+            Math.pow(Math.sin((phi3 - phi1) / 2.0), 2) +
+            Math.cos(phi1) * Math.cos(phi3) * Math.pow(Math.sin((lam3 - lam1) / 2.0), 2)
+        ));
+
+        // Initial bearing 1 to 2
+        const y12 = Math.sin(lam2 - lam1) * Math.cos(phi2);
+        const x12 = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(lam2 - lam1);
+        const theta12 = Math.atan2(y12, x12);
+
+        // Initial bearing 1 to 3
+        const y13 = Math.sin(lam3 - lam1) * Math.cos(phi3);
+        const x13 = Math.cos(phi1) * Math.sin(phi3) - Math.sin(phi1) * Math.cos(phi3) * Math.cos(lam3 - lam1);
+        const theta13 = Math.atan2(y13, x13);
+
+        // Cross-track angular distance
+        const dxtRad = Math.asin(Math.sin(d13) * Math.sin(theta13 - theta12));
+        const crossTrackKm = dxtRad * R;
+
+        // Along-track angular distance
+        const datRad = Math.acos(Math.cos(d13) / Math.cos(dxtRad));
+        const alongTrackKm = datRad * R;
+
+        return {
+            crossTrackKm: parseFloat(crossTrackKm.toFixed(3)),
+            alongTrackKm: parseFloat(alongTrackKm.toFixed(3))
+        };
+    }
 }
+
 
