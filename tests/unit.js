@@ -1863,6 +1863,33 @@ describe('Regolith Gas-Pore Conduction & CO2 Frost Point (KRCEngine)', () => {
     });
 });
 
+describe('Planetary Atmospheric Dynamics & Optical Air Mass (MCDEngine)', () => {
+    it('should compute Coriolis parameter across Martian latitudes', () => {
+        // Equator (0 deg) -> f = 0
+        const fEq = MCDEngine.computeCoriolisParameter(0);
+        expect(fEq).to.equal(0);
+
+        // 45 deg N -> f = 2 * 7.0882e-5 * sin(45) ~ 1.002e-4 s^-1
+        const f45 = MCDEngine.computeCoriolisParameter(45);
+        expect(f45).to.be.closeTo(1.002e-4, 1e-6);
+    });
+
+    it('should calculate thermal wind shear and Kasten-Young spherical air mass', () => {
+        // Meridional gradient of 10 K / 1000 km at 45 deg lat, T = 210 K
+        const tw = MCDEngine.computeThermalWindShear(10.0, 210, 45);
+        expect(tw.windShearMsPerKm).to.be.greaterThan(0.1);
+        expect(tw.windShearMsPerKm).to.be.lessThan(5.0);
+
+        // Zenith angle 0 deg -> Air mass = 1.0
+        const amZenith = MCDEngine.computeAirMass(0);
+        expect(amZenith).to.be.closeTo(1.0, 0.05);
+
+        // Zenith angle 60 deg -> Air mass ~ 2.0
+        const am60 = MCDEngine.computeAirMass(60);
+        expect(am60).to.be.closeTo(2.0, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

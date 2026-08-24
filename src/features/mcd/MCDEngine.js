@@ -221,6 +221,57 @@ export class MCDEngine {
       };
     }
   }
+
+  // --- Atmospheric Dynamics, Coriolis & Optical Air Mass Solvers ---
+
+  /**
+   * Calculate planetary Coriolis parameter f = 2 * Omega * sin(lat).
+   * @param {number} latitudeDeg - Latitude in degrees (-90 to +90)
+   * @param {number} [rotationRateRadS=7.0882e-5] - Mars sidereal rotation rate (rad/s)
+   * @returns {number} Coriolis parameter in s^-1
+   */
+  static computeCoriolisParameter(latitudeDeg, rotationRateRadS = 7.0882e-5) {
+    const phiRad = latitudeDeg * Math.PI / 180.0;
+    const f = 2.0 * rotationRateRadS * Math.sin(phiRad);
+    return parseFloat(f.toExponential(4));
+  }
+
+  /**
+   * Compute vertical thermal wind shear (du/dz) from meridional temperature gradient.
+   * du/dz = -(g / (f * T)) * (dT/dy)
+   * @param {number} meridionalTempGradKPerKm - North-South temperature gradient in K / 1000 km
+   * @param {number} [meanTemperatureK=210] - Mean atmospheric layer temperature (K)
+   * @param {number} [latitudeDeg=45] - Latitude in degrees
+   * @returns {{windShearMsPerKm: number, coriolisF: number}}
+   */
+  static computeThermalWindShear(meridionalTempGradKPerKm, meanTemperatureK = 210, latitudeDeg = 45) {
+    const f = Math.abs(2.0 * 7.0882e-5 * Math.sin(latitudeDeg * Math.PI / 180.0));
+    if (f < 1e-6) return { windShearMsPerKm: 0, coriolisF: 0 };
+
+    // Convert dT/dy to K / m
+    const dTDy = (meridionalTempGradKPerKm / 1000.0) / 1000.0;
+    const shearPerMeter = (MCDEngine.G_MARS / (f * Math.max(10, meanTemperatureK))) * dTDy;
+    const shearPerKm = shearPerMeter * 1000.0;
+
+    return {
+      windShearMsPerKm: parseFloat(shearPerKm.toFixed(3)),
+      coriolisF: parseFloat(f.toExponential(4))
+    };
+  }
+
+  /**
+   * Compute spherical planetary optical air mass (Kasten & Young 1989 formulation).
+   * M(theta) = 1 / (cos(theta) + 0.50572 * (96.07995 - theta)^-1.6364)
+   * @param {number} solarZenithDeg - Solar zenith angle in degrees (0 to 90+)
+   * @returns {number} Relative optical air mass
+   */
+  static computeAirMass(solarZenithDeg) {
+    const theta = Math.min(89.9, Math.max(0, solarZenithDeg));
+    const cosTheta = Math.cos(theta * Math.PI / 180.0);
+    const denom = cosTheta + 0.50572 * Math.pow(96.07995 - theta, -1.6364);
+    return parseFloat((1.0 / denom).toFixed(3));
+  }
 }
+
 
 
