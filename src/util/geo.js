@@ -505,3 +505,76 @@ export function computeBoundingBox(coords) {
   };
 }
 
+/**
+ * Calculate destination coordinate given a start coordinate, distance, and bearing.
+ * @param {number} lat - Start latitude (degrees)
+ * @param {number} lon - Start longitude (degrees)
+ * @param {number} distanceKm - Geodesic distance (km)
+ * @param {number} bearingDeg - Azimuth bearing (degrees, clockwise from north)
+ * @param {string} [body='mars'] - Target planetary body
+ * @returns {{lat: number, lon: number}} Destination coordinate
+ */
+export function computeDestinationPoint(lat, lon, distanceKm, bearingDeg, body = 'mars') {
+  const R = BODIES[body]?.meanRadius || 3389.5;
+  const delta = distanceKm / R; // angular distance in radians
+  const theta = bearingDeg * Math.PI / 180;
+
+  const phi1 = lat * Math.PI / 180;
+  const lambda1 = lon * Math.PI / 180;
+
+  const sinPhi2 = Math.sin(phi1) * Math.cos(delta) + Math.cos(phi1) * Math.sin(delta) * Math.cos(theta);
+  const phi2 = Math.asin(Math.max(-1, Math.min(1, sinPhi2)));
+
+  const y = Math.sin(theta) * Math.sin(delta) * Math.cos(phi1);
+  const x = Math.cos(delta) - Math.sin(phi1) * Math.sin(phi2);
+  const lambda2 = lambda1 + Math.atan2(y, x);
+
+  return {
+    lat: phi2 * 180 / Math.PI,
+    lon: to180(lambda2 * 180 / Math.PI)
+  };
+}
+
+/**
+ * Calculate cross-track distance (perpendicular distance from a point to a great-circle path).
+ * @param {number} lat - Point latitude
+ * @param {number} lon - Point longitude
+ * @param {number} pathLat1 - Path start latitude
+ * @param {number} pathLon1 - Path start longitude
+ * @param {number} pathLat2 - Path end latitude
+ * @param {number} pathLon2 - Path end longitude
+ * @param {string} [body='mars']
+ * @returns {number} Cross-track distance in kilometers (positive = right of track, negative = left)
+ */
+export function computeCrossTrackDistance(lat, lon, pathLat1, pathLon1, pathLat2, pathLon2, body = 'mars') {
+  const R = BODIES[body]?.meanRadius || 3389.5;
+  const d13 = haversineDistance(pathLat1, pathLon1, lat, lon, body) / R;
+  const theta13 = azimuth(pathLat1, pathLon1, lat, lon) * Math.PI / 180;
+  const theta12 = azimuth(pathLat1, pathLon1, pathLat2, pathLon2) * Math.PI / 180;
+
+  const dXt = Math.asin(Math.sin(d13) * Math.sin(theta13 - theta12));
+  return dXt * R;
+}
+
+/**
+ * Calculate along-track distance from path start to projection of point onto path.
+ * @param {number} lat - Point latitude
+ * @param {number} lon - Point longitude
+ * @param {number} pathLat1 - Path start latitude
+ * @param {number} pathLon1 - Path start longitude
+ * @param {number} pathLat2 - Path end latitude
+ * @param {number} pathLon2 - Path end longitude
+ * @param {string} [body='mars']
+ * @returns {number} Along-track distance in kilometers
+ */
+export function computeAlongTrackDistance(lat, lon, pathLat1, pathLon1, pathLat2, pathLon2, body = 'mars') {
+  const R = BODIES[body]?.meanRadius || 3389.5;
+  const d13 = haversineDistance(pathLat1, pathLon1, lat, lon, body) / R;
+  const dXt = computeCrossTrackDistance(lat, lon, pathLat1, pathLon1, pathLat2, pathLon2, body) / R;
+
+  const cosAt = Math.cos(d13) / Math.cos(dXt);
+  const dAt = Math.acos(Math.max(-1, Math.min(1, cosAt)));
+  return dAt * R;
+}
+
+

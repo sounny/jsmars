@@ -15,7 +15,7 @@ import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -552,6 +552,23 @@ describe('Planetary 3D Coordinates & Great Circle Interpolation', () => {
         const mid = computeMidpoint(0, 0, 0, 90);
         expect(mid.lat).to.be.closeTo(0, 0.01);
         expect(mid.lon).to.be.closeTo(45, 0.01);
+    });
+});
+
+describe('Geodesic Navigation & Cross-Track Distance', () => {
+    it('should compute destination point given start coordinate, distance, and bearing', () => {
+        // From (0, 0) heading North (0 deg) for 500 km on Mars (R=3389.5 km)
+        // 500 / 3389.5 * (180 / PI) ≈ 8.452 deg N
+        const dest = computeDestinationPoint(0, 0, 500, 0, 'mars');
+        expect(dest.lat).to.be.closeTo(8.452, 0.05);
+        expect(dest.lon).to.be.closeTo(0, 0.01);
+    });
+
+    it('should compute cross-track perpendicular distance from a great-circle path', () => {
+        // Path along Equator from (0, -45) to (0, 45)
+        // Point at (10, 0) is 10 deg North ≈ 10 * PI/180 * 3389.5 ≈ 591.6 km
+        const xtDist = computeCrossTrackDistance(10, 0, 0, -45, 0, 45, 'mars');
+        expect(Math.abs(xtDist)).to.be.closeTo(591.6, 5.0);
     });
 });
 
