@@ -228,4 +228,67 @@ export class ContourLayer {
     });
     return `${this.demWmsUrl}&${params.toString()}`;
   }
+
+  /**
+   * Compute numerical terrain slope (deg), aspect (deg), and hazard classification from elevation grid.
+   * @param {Float32Array|Array<number>} elevGrid - 1D array of elevation values in meters
+   * @param {number} width - Grid columns
+   * @param {number} height - Grid rows
+   * @param {number} [pixelSizeMeters=100] - Physical spacing between grid samples in meters
+   * @returns {{meanSlopeDeg: number, maxSlopeDeg: number, slopeGrid: Float32Array, aspectGrid: Float32Array, hazardRatio: object}}
+   */
+  static computeTerrainSlopeAndAspect(elevGrid, width, height, pixelSizeMeters = 100) {
+    const size = width * height;
+    const slopeGrid = new Float32Array(size);
+    const aspectGrid = new Float32Array(size);
+
+    let sumSlope = 0;
+    let maxSlope = 0;
+    let validCount = 0;
+
+    let safeCount = 0;
+    let moderateCount = 0;
+    let steepCount = 0;
+    let criticalCount = 0;
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = y * width + x;
+
+        // Sobel / Central differences
+        const dz_dx = (elevGrid[idx + 1] - elevGrid[idx - 1]) / (2 * pixelSizeMeters);
+        const dz_dy = (elevGrid[idx + width] - elevGrid[idx - width]) / (2 * pixelSizeMeters);
+
+        const grad = Math.sqrt(dz_dx * dz_dx + dz_dy * dz_dy);
+        const slopeDeg = Math.atan(grad) * 180 / Math.PI;
+        let aspectDeg = (Math.atan2(dz_dy, -dz_dx) * 180 / Math.PI + 360) % 360;
+
+        slopeGrid[idx] = slopeDeg;
+        aspectGrid[idx] = aspectDeg;
+
+        sumSlope += slopeDeg;
+        if (slopeDeg > maxSlope) maxSlope = slopeDeg;
+        validCount++;
+
+        if (slopeDeg < 5) safeCount++;
+        else if (slopeDeg < 15) moderateCount++;
+        else if (slopeDeg < 25) steepCount++;
+        else criticalCount++;
+      }
+    }
+
+    const total = validCount || 1;
+    return {
+      meanSlopeDeg: validCount > 0 ? sumSlope / validCount : 0,
+      maxSlopeDeg: maxSlope,
+      slopeGrid,
+      aspectGrid,
+      hazardRatio: {
+        safe: safeCount / total,
+        moderate: moderateCount / total,
+        steep: steepCount / total,
+        critical: criticalCount / total
+      }
+    };
+  }
 }

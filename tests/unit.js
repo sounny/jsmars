@@ -17,6 +17,7 @@ import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
 import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js';
 import { ProjectionManager } from '../src/features/projections/ProjectionManager.js';
+import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -616,6 +617,27 @@ describe('Planetary Map Projections (ProjectionManager)', () => {
         const inv = ProjectionManager.inverseSinusoidal(fwd.x, fwd.y, 0, 'mars');
         expect(inv.lat).to.be.closeTo(-15, 0.001);
         expect(inv.lon).to.be.closeTo(60, 0.001);
+    });
+});
+
+describe('Terrain Slope & Aspect Topographic Analysis (ContourLayer)', () => {
+    it('should compute numerical terrain slope, aspect, and hazard categorization from elevation grid', () => {
+        // Flat 5x5 plane
+        const flatGrid = new Float32Array(25).fill(1000);
+        const flatRes = ContourLayer.computeTerrainSlopeAndAspect(flatGrid, 5, 5, 100);
+        expect(flatRes.meanSlopeDeg).to.be.closeTo(0, 0.001);
+        expect(flatRes.hazardRatio.safe).to.equal(1.0);
+
+        // 45-degree ramp in X direction: dz = dx (100 m rise per 100 m run)
+        const rampGrid = new Float32Array(25);
+        for (let y = 0; y < 5; y++) {
+            for (let x = 0; x < 5; x++) {
+                rampGrid[y * 5 + x] = x * 100;
+            }
+        }
+        const rampRes = ContourLayer.computeTerrainSlopeAndAspect(rampGrid, 5, 5, 100);
+        expect(rampRes.meanSlopeDeg).to.be.closeTo(45.0, 0.1);
+        expect(rampRes.hazardRatio.critical).to.equal(1.0);
     });
 });
 
