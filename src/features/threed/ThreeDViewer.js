@@ -1,4 +1,5 @@
 import { MarsTime } from '../slider/MarsTime.js';
+import { ThreeDEngine } from './ThreeDEngine.js';
 import { EventBus } from '../../core/EventBus.js';
 import { EVENTS } from '../../constants.js';
 
@@ -122,22 +123,8 @@ export class ThreeDViewer {
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
         const z = pos.getZ(i);
-        // Realistic topographic synthesis: impact crater + volcanic slope + fractal roughness
-        const r = Math.sqrt(x * x + z * z);
-        let elev = 0;
-
-        // Central volcanic caldera or impact crater morphology
-        if (r < 18) {
-          elev = -4 * Math.cos((r / 18) * Math.PI * 0.5); // Crater floor
-        } else if (r < 24) {
-          elev = 3 * Math.sin(((r - 18) / 6) * Math.PI); // Raised rim
-        }
-
-        // Add multi-scale fractal roughness
-        elev += 1.5 * Math.sin(x * 0.2 + center.lat * 0.1) * Math.cos(z * 0.2 + center.lng * 0.1);
-        elev += 0.6 * Math.sin(x * 0.5) * Math.sin(z * 0.5);
-
-        pos.setY(i, elev * (this.exaggeration * 0.3));
+        const elev = ThreeDEngine.synthesizeTerrainElevation(x, z, center.lat, center.lng, this.exaggeration);
+        pos.setY(i, elev);
       }
 
       geometry.computeVertexNormals();

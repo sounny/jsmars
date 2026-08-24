@@ -12,6 +12,7 @@ import { GridLayer } from '../src/features/grid/GridLayer.js';
 import { PlanetaryScaleBar } from '../src/ui/PlanetaryScaleBar.js';
 import { RadarSounderEngine } from '../src/features/radar/RadarSounderEngine.js';
 import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
+import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -437,6 +438,31 @@ describe('Mars Orbital Mechanics & Time System', () => {
         expect(solObj.mission).to.include('Perseverance');
         expect(solObj.sol).to.be.within(0, 2);
         expect(solObj.active).to.be.true;
+    });
+});
+
+describe('3D Planetary Terrain & Solar Illumination (ThreeDEngine)', () => {
+    it('should compute unit sun position vector from subsolar coordinates', () => {
+        const sun = ThreeDEngine.computeSunVector(0, 0);
+        expect(sun.x).to.be.closeTo(1.0, 0.001);
+        expect(sun.y).to.be.closeTo(0.0, 0.001);
+        expect(sun.z).to.be.closeTo(0.0, 0.001);
+
+        const sunNorth = ThreeDEngine.computeSunVector(90, 0);
+        expect(sunNorth.y).to.be.closeTo(1.0, 0.001);
+    });
+
+    it('should synthesize multi-scale terrain elevation displacement with vertical exaggeration', () => {
+        const elev1 = ThreeDEngine.synthesizeTerrainElevation(0, 0, 18.5, -133.8, 1.0);
+        const elev5 = ThreeDEngine.synthesizeTerrainElevation(0, 0, 18.5, -133.8, 5.0);
+        expect(elev5).to.be.closeTo(elev1 * 5.0, 0.01);
+    });
+
+    it('should compute valid unit surface normal vectors on displaced terrain', () => {
+        const normal = ThreeDEngine.computeSurfaceNormal(10, 10, 0, 0, 3.0);
+        const length = Math.sqrt(normal.nx * normal.nx + normal.ny * normal.ny + normal.nz * normal.nz);
+        expect(length).to.be.closeTo(1.0, 0.01);
+        expect(normal.ny).to.be.greaterThan(0); // Upward facing
     });
 });
 
