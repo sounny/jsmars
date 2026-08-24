@@ -1568,6 +1568,36 @@ describe('Marching Squares Isocontour Generation (ContourLayer)', () => {
     });
 });
 
+describe('ESRI Shapefile Binary Parser & Generator (ShapeIO)', () => {
+    it('should create and parse binary ESRI Shapefile header and Point records', () => {
+        // Create a binary Shapefile containing 3 Martian landing sites
+        const pts = [
+            [226.2, 18.65],  // Olympus Mons
+            [137.8, -5.4],   // Gale Crater
+            [300.8, -14.0]   // Valles Marineris
+        ];
+
+        const buffer = ShapeIO.createShapefilePointBuffer(pts);
+        expect(buffer.byteLength).to.equal(100 + 3 * 28); // 100-byte header + 3 * 28 bytes per Point
+
+        // Parse header
+        const header = ShapeIO.parseShapefileHeader(buffer);
+        expect(header.fileCode).to.equal(9994);
+        expect(header.version).to.equal(1000);
+        expect(header.shapeType).to.equal(1);
+        expect(header.shapeTypeName).to.equal('Point');
+        expect(header.bbox.xMin).to.be.closeTo(137.8, 0.01);
+        expect(header.bbox.xMax).to.be.closeTo(300.8, 0.01);
+
+        // Parse Point records into GeoJSON features
+        const features = ShapeIO.parsePointRecords(buffer);
+        expect(features).to.have.lengthOf(3);
+        expect(features[0].geometry.type).to.equal('Point');
+        expect(features[0].geometry.coordinates[0]).to.be.closeTo(226.2, 0.01);
+        expect(features[0].geometry.coordinates[1]).to.be.closeTo(18.65, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
