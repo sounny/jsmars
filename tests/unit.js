@@ -1200,6 +1200,35 @@ describe('Planetary Places, Mars Chart Quadrants & Gazetteer (PlacesManager)', (
     });
 });
 
+describe('Polar Stereographic & Map Projection Solvers (ProjectionManager)', () => {
+    it('should compute forward and inverse Polar Stereographic projections', () => {
+        // North Pole (90 N, 0 E) -> (0, 0)
+        const northPole = ProjectionManager.forwardPolarStereographic(90, 0, 'north');
+        expect(northPole.x).to.be.closeTo(0, 0.1);
+        expect(northPole.y).to.be.closeTo(0, 0.1);
+        expect(northPole.scaleFactor).to.equal(1.0);
+
+        // Point near North Pole (80 N, 45 E)
+        const pt = ProjectionManager.forwardPolarStereographic(80, 45, 'north');
+        expect(pt.x).to.be.greaterThan(0);
+
+        // Invert back to geodetic coordinates
+        const inv = ProjectionManager.inversePolarStereographic(pt.x, pt.y, 'north');
+        expect(inv.lat).to.be.closeTo(80, 0.05);
+        expect(inv.lon).to.be.closeTo(45, 0.05);
+    });
+
+    it('should calculate projection areal distortion metrics', () => {
+        // Equal-area projections have distortion ratio = 1.0 everywhere
+        expect(ProjectionManager.computeArealDistortion(0, 'sinusoidal')).to.equal(1.0);
+        expect(ProjectionManager.computeArealDistortion(60, 'mollweide')).to.equal(1.0);
+        expect(ProjectionManager.computeArealDistortion(80, 'laea')).to.equal(1.0);
+
+        // Cylindrical equirectangular expands toward poles: 1 / cos(60) = 2.0
+        expect(ProjectionManager.computeArealDistortion(60, 'equirectangular')).to.be.closeTo(2.0, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

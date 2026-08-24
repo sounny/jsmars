@@ -340,6 +340,103 @@ export class ProjectionManager {
       lon: to180(lambda * 180 / Math.PI)
     };
   }
+
+  // --- Polar Stereographic & Cartographic Distortion Solvers ---
+
+  /**
+   * Forward Polar Stereographic (Conformal) projection.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {'north'|'south'} [hemisphere='north'] - Target polar aspect
+   * @param {number} [lon0=0] - Central meridian
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{x: number, y: number, scaleFactor: number}} Coordinates in km
+   */
+  static forwardPolarStereographic(lat, lon, hemisphere = 'north', lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const isNorth = hemisphere.toLowerCase() === 'north';
+
+    const phi = Math.abs(lat) * Math.PI / 180;
+    const dLambda = to180(lon - lon0) * Math.PI / 180;
+
+    // Rho = 2 * R * tan(pi/4 - phi/2)
+    const rho = 2 * R * Math.tan(Math.PI / 4 - phi / 2);
+    const k = 2 / (1 + Math.sin(phi)); // Conformal scale factor
+
+    let x, y;
+    if (isNorth) {
+      x = rho * Math.sin(dLambda);
+      y = -rho * Math.cos(dLambda);
+    } else {
+      x = rho * Math.sin(dLambda);
+      y = rho * Math.cos(dLambda);
+    }
+
+    return {
+      x: parseFloat(x.toFixed(3)),
+      y: parseFloat(y.toFixed(3)),
+      scaleFactor: parseFloat(k.toFixed(4))
+    };
+  }
+
+  /**
+   * Inverse Polar Stereographic projection.
+   * @param {number} x - Projected x in km
+   * @param {number} y - Projected y in km
+   * @param {'north'|'south'} [hemisphere='north'] - Target polar aspect
+   * @param {number} [lon0=0] - Central meridian
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{lat: number, lon: number}}
+   */
+  static inversePolarStereographic(x, y, hemisphere = 'north', lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const isNorth = hemisphere.toLowerCase() === 'north';
+
+    const rho = Math.hypot(x, y);
+    if (rho < 1e-7) {
+      return { lat: isNorth ? 90 : -90, lon: to180(lon0) };
+    }
+
+    const phi = Math.PI / 2 - 2 * Math.atan(rho / (2 * R));
+    let lambda;
+    if (isNorth) {
+      lambda = lon0 + Math.atan2(x, -y) * 180 / Math.PI;
+    } else {
+      lambda = lon0 + Math.atan2(x, y) * 180 / Math.PI;
+    }
+
+    return {
+      lat: parseFloat(((isNorth ? phi : -phi) * 180 / Math.PI).toFixed(4)),
+      lon: parseFloat(to180(lambda).toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate local areal distortion ratio for given projection.
+   * @param {number} lat - Latitude in degrees
+   * @param {string} projName - 'sinusoidal', 'mollweide', 'laea', 'equirectangular', 'stereographic'
+   * @returns {number} Areal distortion ratio (1.0 = equal-area)
+   */
+  static computeArealDistortion(lat, projName = 'sinusoidal') {
+    const name = projName.toLowerCase();
+    if (name === 'sinusoidal' || name === 'mollweide' || name === 'laea' || name === 'lambert') {
+      return 1.0; // Strictly equal-area projections
+    }
+
+    const phi = Math.abs(lat) * Math.PI / 180;
+    if (name === 'equirectangular' || name === 'cylindrical') {
+      // Area scale = 1 / cos(phi)
+      return parseFloat((1 / Math.max(0.01, Math.cos(phi))).toFixed(3));
+    }
+    if (name === 'stereographic' || name === 'polar') {
+      // Area scale = k^2 = [2 / (1 + sin(phi))]^2
+      const k = 2 / (1 + Math.sin(phi));
+      return parseFloat((k * k).toFixed(3));
+    }
+
+    return 1.0;
+  }
 }
+
 
 
