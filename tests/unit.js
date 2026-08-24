@@ -16,6 +16,7 @@ import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
 import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js';
+import { ProjectionManager } from '../src/features/projections/ProjectionManager.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -591,6 +592,30 @@ describe('Planetary Multi-Layer Probe (InvestigateTool)', () => {
         expect(diag.krc.meanTemp).to.be.within(150, 300);
         expect(diag.mcd).to.not.be.null;
         expect(diag.mcd.pressurePa).to.be.greaterThan(0);
+    });
+});
+
+describe('Planetary Map Projections (ProjectionManager)', () => {
+    it('should perform symmetric forward and inverse Equirectangular projection', () => {
+        const fwd = ProjectionManager.forwardEquirectangular(30, 45, 0, 0, 'mars');
+        const inv = ProjectionManager.inverseEquirectangular(fwd.x, fwd.y, 0, 0, 'mars');
+        expect(inv.lat).to.be.closeTo(30, 0.001);
+        expect(inv.lon).to.be.closeTo(45, 0.001);
+    });
+
+    it('should perform forward and inverse 3D Orthographic projection', () => {
+        const fwd = ProjectionManager.forwardOrthographic(20, -30, 0, 0, 'mars');
+        expect(fwd.visible).to.be.true;
+        const inv = ProjectionManager.inverseOrthographic(fwd.x, fwd.y, 0, 0, 'mars');
+        expect(inv.lat).to.be.closeTo(20, 0.01);
+        expect(inv.lon).to.be.closeTo(-30, 0.01);
+    });
+
+    it('should perform forward and inverse Sinusoidal equal-area projection', () => {
+        const fwd = ProjectionManager.forwardSinusoidal(-15, 60, 0, 'mars');
+        const inv = ProjectionManager.inverseSinusoidal(fwd.x, fwd.y, 0, 'mars');
+        expect(inv.lat).to.be.closeTo(-15, 0.001);
+        expect(inv.lon).to.be.closeTo(60, 0.001);
     });
 });
 

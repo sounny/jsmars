@@ -1,10 +1,12 @@
 import { EventBus } from '../../core/EventBus.js';
 import { EVENTS } from '../../constants.js';
+import { BODIES, to180 } from '../../util/geo.js';
 
 /**
  * @module ProjectionManager
  * @description Map projection viewpoints and coordinate system management for jsMars.
- * Supports standard Equirectangular (Cylindrical), North Polar Stereographic, and South Polar Stereographic viewpoints.
+ * Supports standard Equirectangular (Cylindrical), North/South Polar Stereographic,
+ * Orthographic (3D Globe), and Sinusoidal Equal-Area projections with forward/inverse transforms.
  */
 export class ProjectionManager {
   /**
@@ -14,7 +16,7 @@ export class ProjectionManager {
   constructor(container, map) {
     this.container = typeof container === 'string' ? document.getElementById(container) : container;
     this.map = map;
-    this.currentProjection = 'cylindrical'; // 'cylindrical', 'north_polar', 'south_polar'
+    this.currentProjection = 'cylindrical'; // 'cylindrical', 'north_polar', 'south_polar', 'orthographic', 'sinusoidal'
     this.latConvention = 'centric'; // 'centric' or 'graphic'
     this.lonConvention = 'east360'; // 'east360', 'east180', 'west360'
 
@@ -72,13 +74,11 @@ export class ProjectionManager {
 
     this.btnNorth.addEventListener('click', () => {
       this.setProjection('north_polar');
-      // Pan to Planum Boreum North Pole
       if (this.map) this.map.setView([85, 0], 5);
     });
 
     this.btnSouth.addEventListener('click', () => {
       this.setProjection('south_polar');
-      // Pan to Planum Australe South Pole
       if (this.map) this.map.setView([-85, 0], 5);
     });
 
@@ -109,4 +109,123 @@ export class ProjectionManager {
       lonFormat: this.lonConvention
     });
   }
+
+  // --- Forward & Inverse Map Projection Solvers ---
+
+  /**
+   * Forward Equirectangular (Plate Carrée) projection.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {number} [lat0=0] - Standard parallel in degrees
+   * @param {number} [lon0=0] - Central meridian in degrees
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{x: number, y: number}} Projected coordinates in km
+   */
+  static forwardEquirectangular(lat, lon, lat0 = 0, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180;
+    const phi0 = lat0 * Math.PI / 180;
+    const dLambda = (to180(lon - lon0)) * Math.PI / 180;
+
+    const x = R * dLambda * Math.cos(phi0);
+    const y = R * (phi - phi0);
+    return { x, y };
+  }
+
+  /**
+   * Inverse Equirectangular projection.
+   */
+  static inverseEquirectangular(x, y, lat0 = 0, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi0 = lat0 * Math.PI / 180;
+
+    const phi = phi0 + y / R;
+    const dLambda = x / (R * Math.cos(phi0));
+    return {
+      lat: phi * 180 / Math.PI,
+      lon: to180(lon0 + dLambda * 180 / Math.PI)
+    };
+  }
+
+  /**
+   * Forward Orthographic (3D View) projection.
+   * @param {number} lat
+   * @param {number} lon
+   * @param {number} [centerLat=0]
+   * @param {number} [centerLon=0]
+   * @param {string} [body='mars']
+   * @returns {{x: number, y: number, visible: boolean}}
+   */
+  static forwardOrthographic(lat, lon, centerLat = 0, centerLon = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180;
+    const lambda = lon * Math.PI / 180;
+    const phi0 = centerLat * Math.PI / 180;
+    const lambda0 = centerLon * Math.PI / 180;
+
+    const cosC = Math.sin(phi0) * Math.sin(phi) + Math.cos(phi0) * Math.cos(phi) * Math.cos(lambda - lambda0);
+    const visible = cosC >= 0;
+
+    const x = R * Math.cos(phi) * Math.sin(lambda - lambda0);
+    const y = R * (Math.cos(phi0) * Math.sin(phi) - Math.sin(phi0) * Math.cos(phi) * Math.cos(lambda - lambda0));
+    return { x, y, visible };
+  }
+
+  /**
+   * Inverse Orthographic projection.
+   */
+  static inverseOrthographic(x, y, centerLat = 0, centerLon = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const rho = Math.sqrt(x * x + y * y);
+    if (rho > R) return null; // Outside disk
+
+    const phi0 = centerLat * Math.PI / 180;
+    const lambda0 = centerLon * Math.PI / 180;
+
+    if (rho === 0) {
+      return { lat: centerLat, lon: to180(centerLon) };
+    }
+
+    const c = Math.asin(Math.min(1, rho / R));
+    const sinC = Math.sin(c);
+    const cosC = Math.cos(c);
+
+    const lat = Math.asin(cosC * Math.sin(phi0) + (y * sinC * Math.cos(phi0)) / rho);
+    const lon = lambda0 + Math.atan2(x * sinC, rho * Math.cos(phi0) * cosC - y * Math.sin(phi0) * sinC);
+
+    return {
+      lat: lat * 180 / Math.PI,
+      lon: to180(lon * 180 / Math.PI)
+    };
+  }
+
+  /**
+   * Forward Sinusoidal (Sanson-Flamsteed equal-area) projection.
+   */
+  static forwardSinusoidal(lat, lon, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180;
+    const dLambda = (to180(lon - lon0)) * Math.PI / 180;
+
+    const x = R * dLambda * Math.cos(phi);
+    const y = R * phi;
+    return { x, y };
+  }
+
+  /**
+   * Inverse Sinusoidal projection.
+   */
+  static inverseSinusoidal(x, y, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = y / R;
+    if (Math.abs(phi) > Math.PI / 2) return null;
+
+    const cosPhi = Math.cos(phi);
+    const dLambda = Math.abs(cosPhi) > 1e-7 ? x / (R * cosPhi) : 0;
+    return {
+      lat: phi * 180 / Math.PI,
+      lon: to180(lon0 + dLambda * 180 / Math.PI)
+    };
+  }
 }
+
