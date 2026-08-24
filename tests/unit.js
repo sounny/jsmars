@@ -177,6 +177,24 @@ describe('Mars Climate Database (MCD) Profiler', () => {
             expect(profile.layers[i].pressurePa).to.be.lessThan(profile.layers[i - 1].pressurePa);
         }
     });
+
+    it('should compute Mars atmospheric speed of sound, viscosity, mean free path, and column mass', () => {
+        // Speed of sound at 220 K in CO2 (~231 m/s)
+        const cs = MCDEngine.computeSpeedOfSound(220);
+        expect(cs).to.be.closeTo(231.5, 2.0);
+
+        // Dynamic viscosity at 220 K (~1.14e-5 Pa*s)
+        const mu = MCDEngine.computeDynamicViscosity(220);
+        expect(mu).to.be.closeTo(1.14e-5, 0.1e-5);
+
+        // Mean free path at 610 Pa and 220 K (~10.3 microns = 1.03e-5 m)
+        const lambda = MCDEngine.computeMeanFreePath(610, 220);
+        expect(lambda).to.be.closeTo(1.03e-5, 0.1e-5);
+
+        // Column mass at 610 Pa (~163.9 kg/m^2)
+        const colMass = MCDEngine.computeAtmosphericColumnMass(610);
+        expect(colMass).to.be.closeTo(163.9, 2.0);
+    });
 });
 
 describe('Crater Counting CSFD & Isochron Dating', () => {

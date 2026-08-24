@@ -112,4 +112,53 @@ export class MCDEngine {
       layers
     };
   }
+
+  // --- Atmospheric Thermodynamics & Aerodynamics ---
+
+  /**
+   * Calculate the local speed of sound in the Martian CO2 atmosphere.
+   * @param {number} temperatureK - Atmospheric temperature (K)
+   * @param {number} [gamma=1.29] - Adiabatic index for CO2
+   * @returns {number} Speed of sound in m/s
+   */
+  static computeSpeedOfSound(temperatureK, gamma = 1.29) {
+    return Math.sqrt(gamma * MCDEngine.R_SPECIFIC_CO2 * Math.max(1, temperatureK));
+  }
+
+  /**
+   * Calculate dynamic viscosity using Sutherland's law for CO2.
+   * @param {number} temperatureK - Temperature in K
+   * @returns {number} Dynamic viscosity in Pa*s (N*s/m^2)
+   */
+  static computeDynamicViscosity(temperatureK) {
+    const mu0 = 1.37e-5;
+    const T0 = 273.15;
+    const S = 222.0; // Sutherland constant for CO2 (K)
+
+    return mu0 * Math.pow(temperatureK / T0, 1.5) * ((T0 + S) / (temperatureK + S));
+  }
+
+  /**
+   * Calculate mean free path of CO2 molecules.
+   * @param {number} pressurePa - Pressure in Pa
+   * @param {number} temperatureK - Temperature in K
+   * @returns {number} Mean free path in meters
+   */
+  static computeMeanFreePath(pressurePa, temperatureK) {
+    const kB = 1.380649e-23; // Boltzmann constant (J/K)
+    const d = 3.3e-10; // Effective molecular collision diameter for CO2 (m)
+    const safeP = Math.max(0.001, pressurePa);
+
+    return (kB * temperatureK) / (Math.SQRT2 * Math.PI * d * d * safeP);
+  }
+
+  /**
+   * Calculate total atmospheric column mass per unit area.
+   * @param {number} surfacePressurePa - Surface pressure (Pa)
+   * @returns {number} Column mass in kg/m^2
+   */
+  static computeAtmosphericColumnMass(surfacePressurePa) {
+    return surfacePressurePa / MCDEngine.G_MARS;
+  }
 }
+
