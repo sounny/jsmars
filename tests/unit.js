@@ -14,6 +14,7 @@ import { RadarSounderEngine } from '../src/features/radar/RadarSounderEngine.js'
 import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
+import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -483,6 +484,26 @@ describe('Astrodynamics & Interplanetary Trajectories (TrajectoryEngine)', () =>
         expect(windows).to.be.an('array').with.lengthOf(4);
         expect(windows[0].flightDurationDays).to.equal(259);
         expect(windows[0].departureDate).to.be.a('string');
+    });
+});
+
+describe('Color Stretch & Image Processing (ColorStretchControl)', () => {
+    it('should build and parse CSS filter strings symmetrically', () => {
+        const opts = { brightness: 1.2, contrast: 1.4, saturation: 1.5, hueRotate: 45, invert: true };
+        const filterStr = ColorStretchControl.buildFilterString(opts);
+
+        expect(filterStr).to.include('brightness(1.2)');
+        expect(filterStr).to.include('contrast(1.4)');
+        expect(filterStr).to.include('saturate(1.5)');
+        expect(filterStr).to.include('hue-rotate(45deg)');
+        expect(filterStr).to.include('invert(1)');
+
+        const parsed = ColorStretchControl.parseFilterString(filterStr);
+        expect(parsed.brightness).to.equal(120);
+        expect(parsed.contrast).to.equal(140);
+        expect(parsed.saturation).to.equal(150);
+        expect(parsed.hueRotate).to.equal(45);
+        expect(parsed.invert).to.be.true;
     });
 });
 

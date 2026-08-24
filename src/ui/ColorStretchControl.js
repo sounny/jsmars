@@ -206,16 +206,13 @@ export class ColorStretchControl {
 
   /**
    * Parse a CSS filter string into slider-friendly numeric values.
-   * Falls back to defaults (100% brightness/contrast/saturation, 0 hue, no invert).
    * @param {string} filterStr - CSS filter property value
    * @returns {{brightness: number, contrast: number, saturation: number, hueRotate: number, invert: boolean}}
-   * @private
    */
-  _parseFilter(filterStr) {
+  static parseFilterString(filterStr) {
     const defaults = { brightness: 100, contrast: 100, saturation: 100, hueRotate: 0, invert: false };
     if (!filterStr) return defaults;
 
-    // Extract numeric value from a CSS filter function, e.g. "brightness(1.1)" => 1.1
     const extract = (name) => {
       const match = filterStr.match(new RegExp(`${name}\\(([\\d.]+)`));
       return match ? parseFloat(match[1]) : null;
@@ -233,5 +230,32 @@ export class ColorStretchControl {
       hueRotate: h !== null ? Math.round(h) : defaults.hueRotate,
       invert: filterStr.includes('invert(1)')
     };
+  }
+
+  /**
+   * Build CSS filter string from options.
+   * @param {object} opts
+   * @returns {string}
+   */
+  static buildFilterString(opts = {}) {
+    const b = opts.brightness !== undefined ? opts.brightness : 1.0;
+    const c = opts.contrast !== undefined ? opts.contrast : 1.0;
+    const s = opts.saturation !== undefined ? opts.saturation : 1.0;
+    const h = opts.hueRotate !== undefined ? opts.hueRotate : 0;
+    const inv = !!opts.invert;
+
+    const parts = [
+      `brightness(${b})`,
+      `contrast(${c})`,
+      `saturate(${s})`,
+      `hue-rotate(${h}deg)`
+    ];
+    if (inv) parts.push('invert(1)');
+
+    return parts.join(' ');
+  }
+
+  _parseFilter(filterStr) {
+    return ColorStretchControl.parseFilterString(filterStr);
   }
 }
