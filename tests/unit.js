@@ -1843,6 +1843,26 @@ describe('Differential Crater Distribution & Slope Correction (CSFDEngine)', () 
     });
 });
 
+describe('Regolith Gas-Pore Conduction & CO2 Frost Point (KRCEngine)', () => {
+    it('should compute pressure-dependent thermal conductivity and CO2 sublimation temperature', () => {
+        // Solid conductivity 0.02 W/(m K) at 610 Pa datum -> Effective conductivity > 0.02 W/(m K)
+        const kEff = KRCEngine.computePressureDependentConductivity(0.02, 610, 120, 0.015);
+        expect(kEff).to.be.greaterThan(0.02);
+        expect(kEff).to.be.closeTo(0.0225, 0.005);
+
+        // Clausius-Clapeyron CO2 frost point at 610 Pa Mars datum ~ 147.8 K
+        const tFrost = KRCEngine.computeCO2CondensationTemperature(610);
+        expect(tFrost).to.be.closeTo(147.8, 1.0);
+    });
+
+    it('should compute surface radiative cooling rate', () => {
+        // At 250 K with 1 cm top layer -> cooling rate in K/hour
+        const cooling = KRCEngine.computeRadiativeCoolingRate(250, 0.01, 0.95);
+        expect(cooling).to.be.greaterThan(50);
+        expect(cooling).to.be.lessThan(150);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -175,3 +175,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute perpendicular cross-track error distance from great-circle track
 ?: AssertionError: expected -591.579 to be close to 591.59 +/- 2
     at n.<anonymous> (unit.js:1813:39)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 19:31:40 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute pressure-dependent thermal conductivity and CO2 sublimation temperature
+?: AssertionError: expected 163 to be close to 147.8 +/- 1
+    at n.<anonymous> (unit.js:1855:30)

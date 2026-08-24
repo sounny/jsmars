@@ -332,6 +332,50 @@ export class KRCEngine {
     const flux = eps * KRCEngine.STEFAN_BOLTZMANN * Math.pow(t, 4);
     return parseFloat(flux.toFixed(2));
   }
+
+  // --- Atmospheric Pressure-Dependent Conduction & CO2 Sublimation ---
+
+  /**
+   * Calculate effective thermal conductivity accounting for Smoluchowski gas-pore conduction in Martian regolith.
+   * K_eff(P) = K_solid + (K_gas0 * (P / P_ref)) / (1 + P / P_trans)
+   * @param {number} kSolid - Solid particle contact conductivity (W/(m K))
+   * @param {number} pressurePa - Ambient atmospheric pressure in Pascals
+   * @param {number} [pTrans=120] - Transition Knudsen pressure in Pa
+   * @param {number} [kGas0=0.015] - CO2 gas thermal conductivity at 1 bar reference
+   * @returns {number} Effective bulk thermal conductivity in W / (m K)
+   */
+  static computePressureDependentConductivity(kSolid, pressurePa, pTrans = 120, kGas0 = 0.015) {
+    const p = Math.max(0, pressurePa);
+    const gasContribution = (kGas0 * (p / 610.0)) / (1.0 + p / pTrans);
+    return parseFloat((kSolid + gasContribution).toFixed(5));
+  }
+
+  /**
+   * Calculate CO2 frost/sublimation equilibrium temperature as a function of atmospheric pressure (Clausius-Clapeyron).
+   * T_frost = -3148.0 / ln(P / 1.055e12)
+   * @param {number} pressurePa - CO2 partial pressure in Pascals (e.g. 610 Pa datum)
+   * @returns {number} CO2 frost condensation temperature in Kelvin (~148.0 K at 610 Pa)
+   */
+  static computeCO2CondensationTemperature(pressurePa) {
+    const p = Math.max(0.01, pressurePa);
+    const tFrost = -3148.0 / Math.log(p / 1.055e12);
+    return parseFloat(tFrost.toFixed(2));
+  }
+
+  /**
+   * Compute surface radiative cooling rate in Kelvin per hour.
+   * @param {number} temperatureK - Current surface temperature
+   * @param {number} [layerThicknessMeters=0.01] - Top layer thickness (1 cm)
+   * @param {number} [emissivity=0.95] - Surface emissivity
+   * @returns {number} Radiative cooling rate in K/hour
+   */
+  static computeRadiativeCoolingRate(temperatureK, layerThicknessMeters = 0.01, emissivity = 0.95) {
+    const flux = this.computeStefanBoltzmannFlux(temperatureK, emissivity);
+    const cVol = KRCEngine.DENSITY * KRCEngine.SPECIFIC_HEAT;
+    const ratePerSec = flux / (cVol * layerThicknessMeters);
+    return parseFloat((ratePerSec * 3600.0).toFixed(2));
+  }
 }
+
 
 
