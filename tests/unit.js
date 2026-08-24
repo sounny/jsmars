@@ -25,6 +25,7 @@ import { MeasureTool } from '../src/features/measure/MeasureTool.js';
 import { GroundTrackLayer } from '../src/features/groundtrack/GroundTrackLayer.js';
 import { HillshadeLayer } from '../src/features/hillshade/HillshadeLayer.js';
 import { SamplingTool } from '../src/features/sampling/SamplingTool.js';
+import { NomenclatureTool } from '../src/features/nomenclature/NomenclatureTool.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
@@ -1305,6 +1306,43 @@ describe('Spatial Sampling Statistics & Grid Generation (SamplingTool)', () => {
         const grid = SamplingTool.generateRegularGridPoints(bbox, 500, 'mars');
         expect(grid.length).to.be.greaterThan(5);
         expect(grid[0]).to.be.an('array').with.lengthOf(2);
+    });
+});
+
+describe('IAU Planetary Gazetteer & Nomenclature Filtering (NomenclatureTool)', () => {
+    it('should filter planetary nomenclature by type, query, and diameter', () => {
+        const mockFeatures = [
+            { name: 'Olympus Mons', type: 'Mons', diameter: 624, lat: 18.65, lon: 226.2, origin: 'Mount Olympus' },
+            { name: 'Gale Crater', type: 'Crater', diameter: 154, lat: -5.4, lon: 137.8, origin: 'Walter F. Gale' },
+            { name: 'Valles Marineris', type: 'Valles', diameter: 4000, lat: -14.0, lon: 300.8, origin: 'Mariner 9' }
+        ];
+
+        // Search query
+        const searched = NomenclatureTool.filterFeatures(mockFeatures, { search: 'Olympus' });
+        expect(searched).to.have.lengthOf(1);
+        expect(searched[0].name).to.equal('Olympus Mons');
+
+        // Type filter
+        const craters = NomenclatureTool.filterFeatures(mockFeatures, { types: ['Crater'] });
+        expect(craters).to.have.lengthOf(1);
+        expect(craters[0].name).to.equal('Gale Crater');
+
+        // Hemisphere filter
+        const northern = NomenclatureTool.filterFeatures(mockFeatures, { hemisphere: 'north' });
+        expect(northern).to.have.lengthOf(1);
+        expect(northern[0].name).to.equal('Olympus Mons');
+    });
+
+    it('should extract metadata and compute feature spatial bounding box', () => {
+        const feature = { name: 'Gale Crater', type: 'Crater', diameter: 154, lat: -5.4, lon: 137.8, origin: 'Walter Gale' };
+        const meta = NomenclatureTool.extractFeatureMetadata(feature);
+        expect(meta.name).to.equal('Gale Crater');
+        expect(meta.diameterKm).to.equal(154);
+
+        const bbox = NomenclatureTool.computeFeatureBoundingBox(feature, 'mars');
+        expect(bbox.north).to.be.greaterThan(bbox.south);
+        expect(bbox.south).to.be.lessThan(-5.4);
+        expect(bbox.north).to.be.greaterThan(-5.4);
     });
 });
 
