@@ -330,4 +330,58 @@ export class MarsTime {
       state: 'Normal Day/Night Cycle'
     };
   }
+
+  // --- Equation of Time & Seasonal Sol Calendars ---
+
+  /**
+   * Compute the Equation of Time (EOT) on Mars in minutes and hours.
+   * Represents the difference between Local True Solar Time (LTST) and Local Mean Solar Time (LMST).
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @returns {{eotMinutes: number, eotHours: number, eotSeconds: number}}
+   */
+  static computeEquationOfTime(Ls) {
+    const LsRad = Ls * Math.PI / 180;
+    const eotHours = (2.861 * Math.sin(2 * LsRad) - 0.071 * Math.sin(4 * LsRad)) / 15.0;
+    const eotMinutes = eotHours * 60.0;
+    const eotSeconds = eotMinutes * 60.0;
+
+    return {
+      eotMinutes: parseFloat(eotMinutes.toFixed(2)),
+      eotHours: parseFloat(eotHours.toFixed(4)),
+      eotSeconds: parseFloat(eotSeconds.toFixed(1))
+    };
+  }
+
+  /**
+   * Get astronomical sol durations for the 4 Martian seasons (668.6 total sols).
+   * @returns {{springSols: number, summerSols: number, autumnSols: number, winterSols: number, totalSols: number}}
+   */
+  static computeSeasonalSolDurations() {
+    return {
+      springSols: 193.3, // Ls 0 to 90
+      summerSols: 178.5, // Ls 90 to 180 (Aphelion)
+      autumnSols: 142.7, // Ls 180 to 270
+      winterSols: 154.1, // Ls 270 to 360 (Perihelion)
+      totalSols: 668.6
+    };
+  }
+
+  /**
+   * Calculate precise Mars Sol Date (MSD) and MTC for a given Date.
+   * @param {Date|number} [date=new Date()]
+   * @returns {{msd: number, mtc: string, mtcHours: number}}
+   */
+  static computeMarsSolDate(date = new Date()) {
+    const jd = this.dateToJD(date);
+    const jdTT = this.jdToJdTT(jd);
+    const msd = this.jdTTToMSD(jdTT);
+    const mtcHours = this.msdToMTC(msd);
+
+    return {
+      msd: parseFloat(msd.toFixed(5)),
+      mtc: this.formatHours(mtcHours),
+      mtcHours: parseFloat(mtcHours.toFixed(4))
+    };
+  }
 }
+

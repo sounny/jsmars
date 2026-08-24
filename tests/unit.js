@@ -1518,6 +1518,30 @@ describe('1D Planetary Thermal Model & Seasonal Skin Depth (KRCEngine)', () => {
     });
 });
 
+describe('Mars Time, Equation of Time & Seasonal Calendars (MarsTime)', () => {
+    it('should compute Mars Equation of Time (EOT) from Solar Longitude', () => {
+        // At equinoxes (Ls = 0 deg and 180 deg), EOT ~ 0
+        const eot0 = MarsTime.computeEquationOfTime(0);
+        expect(eot0.eotMinutes).to.be.closeTo(0, 0.1);
+
+        // At Ls = 45 deg, EOT reaches positive peak (~11.4 min)
+        const eot45 = MarsTime.computeEquationOfTime(45);
+        expect(eot45.eotMinutes).to.be.closeTo(11.44, 0.2);
+    });
+
+    it('should compute seasonal sol durations and Mars Sol Date conversions', () => {
+        const seasons = MarsTime.computeSeasonalSolDurations();
+        expect(seasons.springSols).to.equal(193.3);
+        expect(seasons.totalSols).to.equal(668.6);
+
+        // J2000.0 epoch: 2000-01-01 12:00:00 UTC -> MSD ~ 44791.62
+        const j2000 = new Date('2000-01-01T12:00:00Z');
+        const msdState = MarsTime.computeMarsSolDate(j2000);
+        expect(msdState.msd).to.be.closeTo(44791.62, 0.5);
+        expect(msdState.mtc).to.be.a('string');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

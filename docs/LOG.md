@@ -147,3 +147,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute single-pixel Horn hillshade illumination and slope angle
 ?: AssertionError: expected 104 to be above 180
     at n.<anonymous> (unit.js:1271:36)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 12:45:26 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute seasonal sol durations and Mars Sol Date conversions
+?: AssertionError: expected 44791.62022 to be close to 44796 +/- 1
+    at n.<anonymous> (unit.js:1540:36)
