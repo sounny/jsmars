@@ -309,4 +309,137 @@ export class RadialProfileTool {
         const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
         return colors[index % colors.length];
     }
+
+    // --- Crater Morphometry & Radial Profile Analytics ---
+
+    /**
+     * Compute average radial profile and standard deviation across multi-azimuth spokes.
+     * @param {Array<{data: Array<{dist: number, elev: number}>}>} profiles
+     * @returns {Array<{dist: number, meanElev: number, minElev: number, maxElev: number, stdElev: number}>}
+     */
+    static computeAverageProfile(profiles = []) {
+        const validProfiles = profiles.filter(p => Array.isArray(p.data) && p.data.length > 0);
+        if (validProfiles.length === 0) return [];
+
+        const numSteps = validProfiles[0].data.length;
+        const avg = [];
+
+        for (let s = 0; s < numSteps; s++) {
+            const dist = validProfiles[0].data[s].dist;
+            const elevs = validProfiles
+                .map(p => p.data[s]?.elev)
+                .filter(v => typeof v === 'number' && Number.isFinite(v));
+
+            if (elevs.length === 0) {
+                avg.push({ dist, meanElev: 0, minElev: 0, maxElev: 0, stdElev: 0 });
+                continue;
+            }
+
+            const minElev = Math.min(...elevs);
+            const maxElev = Math.max(...elevs);
+            const sum = elevs.reduce((a, b) => a + b, 0);
+            const meanElev = sum / elevs.length;
+
+            const sumSqDiff = elevs.reduce((a, b) => a + (b - meanElev) * (b - meanElev), 0);
+            const stdElev = Math.sqrt(sumSqDiff / elevs.length);
+
+            avg.push({
+                dist: parseFloat(dist.toFixed(1)),
+                meanElev: parseFloat(meanElev.toFixed(1)),
+                minElev: parseFloat(minElev.toFixed(1)),
+                maxElev: parseFloat(maxElev.toFixed(1)),
+                stdElev: parseFloat(stdElev.toFixed(2))
+            });
+        }
+
+        return avg;
+    }
+
+    /**
+     * Detect crater rim crest, floor elevation, and apparent depth from a radial profile.
+     * @param {Array<{dist: number, meanElev: number}>} avgProfile
+     * @returns {{rimRadiusM: number, rimElevM: number, floorElevM: number, apparentDepthM: number, depthToDiameterRatio: number}}
+     */
+    static detectCraterRimAndDepth(avgProfile = []) {
+        if (!avgProfile || avgProfile.length < 3) {
+            return { rimRadiusM: 0, rimElevM: 0, floorElevM: 0, apparentDepthM: 0, depthToDiameterRatio: 0 };
+        }
+
+        let maxElev = -Infinity;
+        let rimIdx = 0;
+
+        for (let i = 0; i < avgProfile.length; i++) {
+            if (avgProfile[i].meanElev > maxElev) {
+                maxElev = avgProfile[i].meanElev;
+                rimIdx = i;
+            }
+        }
+
+        const rimRadiusM = avgProfile[rimIdx].dist;
+        const rimElevM = maxElev;
+
+        // Floor is lowest point inside rim radius
+        let minElev = Infinity;
+        for (let i = 0; i <= rimIdx; i++) {
+            if (avgProfile[i].meanElev < minElev) {
+                minElev = avgProfile[i].meanElev;
+            }
+        }
+
+        const floorElevM = minElev;
+        const apparentDepthM = Math.max(0, rimElevM - floorElevM);
+        const diameterM = rimRadiusM * 2.0;
+        const depthToDiameterRatio = diameterM > 0 ? apparentDepthM / diameterM : 0;
+
+        return {
+            rimRadiusM: parseFloat(rimRadiusM.toFixed(1)),
+            rimElevM: parseFloat(rimElevM.toFixed(1)),
+            floorElevM: parseFloat(floorElevM.toFixed(1)),
+            apparentDepthM: parseFloat(apparentDepthM.toFixed(1)),
+            depthToDiameterRatio: parseFloat(depthToDiameterRatio.toFixed(3))
+        };
+    }
+
+    /**
+     * Calculate 3D circular cavity volume deficit beneath the crater rim crest.
+     * @param {Array<{dist: number, meanElev: number}>} avgProfile
+     * @param {number} rimRadiusM
+     * @returns {{cavityVolumeM3: number, cavityVolumeKm3: number}}
+     */
+    static computeCavityVolume(avgProfile = [], rimRadiusM = 0) {
+        if (!avgProfile || avgProfile.length < 2) {
+            return { cavityVolumeM3: 0, cavityVolumeKm3: 0 };
+        }
+
+        const rim = this.detectCraterRimAndDepth(avgProfile);
+        const rMax = rimRadiusM > 0 ? rimRadiusM : rim.rimRadiusM;
+        const zRim = rim.rimElevM;
+
+        let totalVolM3 = 0;
+
+        for (let i = 0; i < avgProfile.length - 1; i++) {
+            const r1 = avgProfile[i].dist;
+            const r2 = avgProfile[i + 1].dist;
+            if (r1 >= rMax) break;
+
+            const clampedR2 = Math.min(r2, rMax);
+            const dr = clampedR2 - r1;
+            const rMid = (r1 + clampedR2) / 2.0;
+
+            const z1 = avgProfile[i].meanElev;
+            const z2 = avgProfile[i + 1].meanElev;
+            const zMid = (z1 + z2) / 2.0;
+
+            const depthDeficit = Math.max(0, zRim - zMid);
+            // Annular shell volume: dV = 2 * pi * r * depth * dr
+            const dV = 2 * Math.PI * rMid * depthDeficit * dr;
+            totalVolM3 += dV;
+        }
+
+        return {
+            cavityVolumeM3: totalVolM3,
+            cavityVolumeKm3: totalVolM3 / 1e9
+        };
+    }
 }
+

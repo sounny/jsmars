@@ -120,3 +120,9 @@ TEST FAILURE: Unit test suite failed (1 failures):
 TEST FAILURE: Browser console errors encountered during UI interaction:
 [error] WMS capabilities XML parse error: This page contains the following errors:error on line 5 at column 76: xmlParseEntityRef: no name
 Below is a rendering of the page up to the first error.
+
+
+### Automated 4-Hour Check Alert [2026-08-24 08:34:02 UTC]
+TEST FAILURE: Browser console errors encountered during UI interaction:
+[error] WMS capabilities XML parse error: This page contains the following errors:error on line 5 at column 76: xmlParseEntityRef: no name
+Below is a rendering of the page up to the first error.

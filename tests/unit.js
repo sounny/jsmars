@@ -20,6 +20,7 @@ import { ProjectionManager } from '../src/features/projections/ProjectionManager
 import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { CustomMapManager } from '../src/features/custom-map/CustomMapManager.js';
 import { LandingSitesLayer } from '../src/features/landing/LandingSitesLayer.js';
+import { RadialProfileTool } from '../src/features/profile/RadialProfileTool.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
@@ -1057,6 +1058,44 @@ describe('Spacecraft Landing Sites & EDL Aerodynamics (LandingSitesLayer)', () =
         const nearestMoon = LandingSitesLayer.findNearestLandingSite(0.0, 23.0, mockSites, 'moon');
         expect(nearestMoon).to.not.be.null;
         expect(nearestMoon.name).to.equal('Apollo 11');
+    });
+});
+
+describe('Radial Topographic Profiles & Crater Morphometry (RadialProfileTool)', () => {
+    it('should compute average radial profile and standard deviation envelope', () => {
+        const mockProfiles = [
+            { data: [{ dist: 0, elev: 100 }, { dist: 1000, elev: 200 }, { dist: 2000, elev: 500 }] },
+            { data: [{ dist: 0, elev: 120 }, { dist: 1000, elev: 210 }, { dist: 2000, elev: 520 }] }
+        ];
+
+        const avg = RadialProfileTool.computeAverageProfile(mockProfiles);
+        expect(avg).to.have.lengthOf(3);
+        expect(avg[0].meanElev).to.equal(110);
+        expect(avg[1].meanElev).to.equal(205);
+        expect(avg[2].meanElev).to.equal(510);
+        expect(avg[0].stdElev).to.be.closeTo(10, 0.1);
+    });
+
+    it('should detect crater rim crest, apparent depth, and cavity volume', () => {
+        // Synthetic crater profile: center (0m) = 100m elev, rim (2000m) = 600m elev, outside (3000m) = 400m
+        const synthProfile = [
+            { dist: 0, meanElev: 100 },
+            { dist: 1000, meanElev: 250 },
+            { dist: 2000, meanElev: 600 },
+            { dist: 3000, meanElev: 400 }
+        ];
+
+        const rim = RadialProfileTool.detectCraterRimAndDepth(synthProfile);
+        expect(rim.rimRadiusM).to.equal(2000);
+        expect(rim.rimElevM).to.equal(600);
+        expect(rim.floorElevM).to.equal(100);
+        expect(rim.apparentDepthM).to.equal(500); // 600 - 100 = 500 m
+        expect(rim.depthToDiameterRatio).to.be.closeTo(0.125, 0.005); // 500 / 4000 = 0.125
+
+        // Cavity volume beneath 600m rim
+        const cavity = RadialProfileTool.computeCavityVolume(synthProfile, 2000);
+        expect(cavity.cavityVolumeM3).to.be.greaterThan(0);
+        expect(cavity.cavityVolumeKm3).to.be.greaterThan(0);
     });
 });
 
