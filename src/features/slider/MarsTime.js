@@ -383,5 +383,70 @@ export class MarsTime {
       mtcHours: parseFloat(mtcHours.toFixed(4))
     };
   }
+
+  // --- Solar Hour Angle, Equatorial Coordinates & Precession Solvers ---
+
+  /**
+   * Calculate Solar Hour Angle (H) from Local True Solar Time (LTST).
+   * H = (LTST - 12) * 15 degrees (-180 to +180)
+   * @param {number} ltstHours - Local True Solar Time in decimal hours (0-24)
+   * @returns {number} Hour angle in degrees
+   */
+  static computeSolarHourAngle(ltstHours) {
+    let h = (ltstHours - 12.0) * 15.0;
+    while (h > 180) h -= 360;
+    while (h < -180) h += 360;
+    return parseFloat(h.toFixed(2));
+  }
+
+  /**
+   * Calculate exact solar altitude and azimuth from spherical celestial triangle.
+   * @param {number} latDeg - Surface latitude
+   * @param {number} LsDeg - Solar Longitude (0-360)
+   * @param {number} ltstHours - Local True Solar Time (0-24)
+   * @returns {{altitudeDeg: number, azimuthDeg: number, isDay: boolean}}
+   */
+  static computeSolarAzimuthAltitude(latDeg, LsDeg, ltstHours) {
+    const latRad = latDeg * Math.PI / 180.0;
+    const deltaRad = Math.asin(Math.sin(this.OBLIQUITY * Math.PI / 180.0) * Math.sin(LsDeg * Math.PI / 180.0));
+    const hRad = this.computeSolarHourAngle(ltstHours) * Math.PI / 180.0;
+
+    const sinAlt = Math.sin(latRad) * Math.sin(deltaRad) + Math.cos(latRad) * Math.cos(deltaRad) * Math.cos(hRad);
+    const altRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinAlt)));
+    const altitudeDeg = altRad * 180.0 / Math.PI;
+
+    const cosAlt = Math.cos(altRad);
+    let azimuthDeg = 180.0;
+
+    if (cosAlt > 1e-6) {
+      const cosAz = (Math.sin(deltaRad) * Math.cos(latRad) - Math.cos(deltaRad) * Math.sin(latRad) * Math.cos(hRad)) / cosAlt;
+      const sinAz = -Math.cos(deltaRad) * Math.sin(hRad) / cosAlt;
+      azimuthDeg = (Math.atan2(sinAz, cosAz) * 180.0 / Math.PI + 360.0) % 360.0;
+    }
+
+    return {
+      altitudeDeg: parseFloat(altitudeDeg.toFixed(2)),
+      azimuthDeg: parseFloat(azimuthDeg.toFixed(2)),
+      isDay: altitudeDeg > 0
+    };
+  }
+
+  /**
+   * Compute Mars orbital perihelion longitude (Ls_p) accounting for secular apsidal precession.
+   * Ls_perihelion approx 250.99° at J2000.0 with 0.00184°/yr precession.
+   * @param {number} [targetYear=2026] - Gregorian calendar year
+   * @returns {{perihelionLs: number, aphelionLs: number}}
+   */
+  static computeMartianApsidalPrecession(targetYear = 2026) {
+    const yearsSinceJ2000 = targetYear - 2000.0;
+    const perihelionLs = (250.99 + 0.00184 * yearsSinceJ2000) % 360.0;
+    const aphelionLs = (perihelionLs + 180.0) % 360.0;
+
+    return {
+      perihelionLs: parseFloat(perihelionLs.toFixed(3)),
+      aphelionLs: parseFloat(aphelionLs.toFixed(3))
+    };
+  }
 }
+
 

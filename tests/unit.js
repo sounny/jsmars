@@ -1890,6 +1890,30 @@ describe('Planetary Atmospheric Dynamics & Optical Air Mass (MCDEngine)', () => 
     });
 });
 
+describe('Martian Solar Coordinates & Apsidal Precession (MarsTime)', () => {
+    it('should compute solar hour angle and celestial altitude', () => {
+        // Solar noon (12h LTST) -> H = 0 deg
+        const hNoon = MarsTime.computeSolarHourAngle(12.0);
+        expect(hNoon).to.equal(0);
+
+        // 18h LTST -> H = +90 deg
+        const h18 = MarsTime.computeSolarHourAngle(18.0);
+        expect(h18).to.equal(90);
+
+        // Subsolar point on equator at equinox (Ls=0, lat=0, 12h LTST) -> altitude = 90 deg (zenith)
+        const solPos = MarsTime.computeSolarAzimuthAltitude(0, 0, 12.0);
+        expect(solPos.altitudeDeg).to.be.closeTo(90.0, 0.01);
+        expect(solPos.isDay).to.be.true;
+    });
+
+    it('should calculate secular orbital apsidal precession and perihelion longitude', () => {
+        // In 2026: Perihelion Ls ~ 251.04 deg (Northern winter / Southern summer)
+        const prec = MarsTime.computeMartianApsidalPrecession(2026);
+        expect(prec.perihelionLs).to.be.closeTo(251.038, 0.05);
+        expect(prec.aphelionLs).to.be.closeTo(71.038, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
