@@ -401,5 +401,81 @@ export class ContourLayer {
       areaAboveM2
     };
   }
+
+  // --- Marching Squares Isocontour Generation Solvers ---
+
+  /**
+   * Extract vector line segments for a specific isocontour level using Marching Squares.
+   * @param {Float32Array|Array<number>} elevGrid - 1D elevation array
+   * @param {number} width - Grid columns
+   * @param {number} height - Grid rows
+   * @param {number} isovalue - Elevation threshold to extract
+   * @returns {Array<[[number, number], [number, number]]>} Array of 2D line segments
+   */
+  static extractIsovalueSegments(elevGrid, width, height, isovalue) {
+    const segments = [];
+
+    // Helper: linear interpolation fraction
+    const interp = (v0, v1) => {
+      const denom = v1 - v0;
+      return denom === 0 ? 0.5 : Math.max(0, Math.min(1, (isovalue - v0) / denom));
+    };
+
+    for (let y = 0; y < height - 1; y++) {
+      for (let x = 0; x < width - 1; x++) {
+        const vTopLeft = elevGrid[y * width + x];
+        const vTopRight = elevGrid[y * width + (x + 1)];
+        const vBotRight = elevGrid[(y + 1) * width + (x + 1)];
+        const vBotLeft = elevGrid[(y + 1) * width + x];
+
+        // 4-bit square index: TopLeft(8), TopRight(4), BotRight(2), BotLeft(1)
+        let cellIndex = 0;
+        if (vTopLeft >= isovalue) cellIndex |= 8;
+        if (vTopRight >= isovalue) cellIndex |= 4;
+        if (vBotRight >= isovalue) cellIndex |= 2;
+        if (vBotLeft >= isovalue) cellIndex |= 1;
+
+        if (cellIndex === 0 || cellIndex === 15) continue; // All below or all above
+
+        // Edge crossing coordinates
+        const top = [x + interp(vTopLeft, vTopRight), y];
+        const right = [x + 1, y + interp(vTopRight, vBotRight)];
+        const bottom = [x + interp(vBotLeft, vBotRight), y + 1];
+        const left = [x, y + interp(vTopLeft, vBotLeft)];
+
+        switch (cellIndex) {
+          case 1:  case 14: segments.push([left, bottom]); break;
+          case 2:  case 13: segments.push([bottom, right]); break;
+          case 3:  case 12: segments.push([left, right]); break;
+          case 4:  case 11: segments.push([top, right]); break;
+          case 5:
+            segments.push([left, top]);
+            segments.push([bottom, right]);
+            break;
+          case 6:  case 9:  segments.push([top, bottom]); break;
+          case 7:  case 8:  segments.push([left, top]); break;
+          case 10:
+            segments.push([top, right]);
+            segments.push([left, bottom]);
+            break;
+        }
+      }
+    }
+
+    return segments;
+  }
+
+  /**
+   * Determine if an elevation is a major Index Contour line.
+   * @param {number} elevation - Elevation in meters
+   * @param {number} [interval=500] - Base contour interval
+   * @param {number} [indexFactor=5] - Index multiplier (e.g. every 5th contour)
+   * @returns {boolean} True if index contour
+   */
+  static isIndexContour(elevation, interval = 500, indexFactor = 5) {
+    const majorInterval = interval * indexFactor;
+    return Math.abs(elevation % majorInterval) < 1e-3;
+  }
 }
+
 

@@ -1542,6 +1542,32 @@ describe('Mars Time, Equation of Time & Seasonal Calendars (MarsTime)', () => {
     });
 });
 
+describe('Marching Squares Isocontour Generation (ContourLayer)', () => {
+    it('should extract vector isocontour line segments using Marching Squares', () => {
+        // 3x3 elevation grid with a central peak (1000m) surrounded by lowlands (0m)
+        const grid = new Float32Array([
+            0,    0,    0,
+            0, 1000,    0,
+            0,    0,    0
+        ]);
+
+        // Extract 500m contour line segments
+        const segments = ContourLayer.extractIsovalueSegments(grid, 3, 3, 500);
+        expect(segments.length).to.be.greaterThan(0);
+        expect(segments[0]).to.have.lengthOf(2); // start and end points
+        expect(segments[0][0][0]).to.be.within(0, 3);
+    });
+
+    it('should identify major index contour elevation lines', () => {
+        // With interval = 500m and index factor = 5 (major = 2500m)
+        expect(ContourLayer.isIndexContour(2500, 500, 5)).to.be.true;
+        expect(ContourLayer.isIndexContour(5000, 500, 5)).to.be.true;
+        expect(ContourLayer.isIndexContour(0, 500, 5)).to.be.true;
+        expect(ContourLayer.isIndexContour(1000, 500, 5)).to.be.false;
+        expect(ContourLayer.isIndexContour(1500, 500, 5)).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
