@@ -20,6 +20,7 @@ import { ProjectionManager } from '../src/features/projections/ProjectionManager
 import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
+import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -702,6 +703,29 @@ describe('Geodesic Path Metrics & Polygon Perimeter', () => {
         const poly = [[0, 0], [10, 0], [10, 10], [0, 10]];
         const perim = computePolygonPerimeter(poly, 'mars');
         expect(perim).to.be.greaterThan(2000);
+    });
+});
+
+describe('Planetary Spatial Proximity Search & Places (PlacesManager)', () => {
+    it('should find nearest planetary features within distance radius sorted by proximity', () => {
+        const features = [
+            { name: 'Olympus Mons', lat: 18.5, lon: -133.8 },
+            { name: 'Gale Crater', lat: -5.4, lon: 137.8 },
+            { name: 'Jezero Crater', lat: 18.38, lon: 77.58 }
+        ];
+
+        // Target point near Olympus Mons (19.0, -133.0)
+        const nearest = PlacesManager.findNearestFeatures(19.0, -133.0, features, 1000, 'mars');
+        expect(nearest).to.be.an('array').with.lengthOf(1);
+        expect(nearest[0].name).to.equal('Olympus Mons');
+        expect(nearest[0].distanceKm).to.be.lessThan(100);
+    });
+
+    it('should parse coordinate strings robustly', () => {
+        const coord = PlacesManager.parseCoordinateString('18.5, -133.8');
+        expect(coord).to.not.be.null;
+        expect(coord.lat).to.equal(18.5);
+        expect(coord.lon).to.equal(-133.8);
     });
 });
 

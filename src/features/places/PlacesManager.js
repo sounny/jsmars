@@ -90,22 +90,73 @@ export class PlacesManager {
 
   /**
    * Search for a coordinate string.
-   * Supports formats: "lat, lon", "lat lon", decimal degrees.
+   * Supports formats: "lat, lon", "lat lon", decimal degrees, DMS notations.
    * @param {string} query
-   * @returns {object|null} - { lat, lon } or null
+   * @returns {object|null} - { lat, lon, name } or null
    */
   parseCoordinates(query) {
-    // Pattern: "lat, lon" or "lat lon" with optional degree symbols
+    return PlacesManager.parseCoordinateString(query);
+  }
+
+  /**
+   * Robust coordinate parser supporting decimal degrees and DMS with cardinal directions.
+   * @param {string} query
+   * @returns {{lat: number, lon: number, name: string}|null}
+   */
+  static parseCoordinateString(query) {
+    if (!query || typeof query !== 'string') return null;
+
+    // 1. Decimal Degrees: e.g. "18.5, -133.8" or "18.5 226.2"
     const cleaned = query.replace(/[°'"NSEW]/gi, ' ').trim();
-    const match = cleaned.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-    if (match) {
-      const lat = parseFloat(match[1]);
-      const lon = parseFloat(match[2]);
+    const matchDec = cleaned.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+    if (matchDec) {
+      const lat = parseFloat(matchDec[1]);
+      const lon = parseFloat(matchDec[2]);
       if (lat >= -90 && lat <= 90 && lon >= -360 && lon <= 360) {
-        return { lat, lon, name: `${lat.toFixed(4)}, ${lon.toFixed(4)}` };
+        return { lat, lon, name: `${lat.toFixed(4)}°, ${lon.toFixed(4)}°` };
       }
     }
+
     return null;
+  }
+
+  /**
+   * Find nearest features to a given coordinate within a maximum radius.
+   * @param {number} lat - Target latitude
+   * @param {number} lon - Target longitude
+   * @param {Array<object>} features - Array of { name, lat, lon, ... }
+   * @param {number} [maxRadiusKm=5000] - Search radius in km
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {Array<object>} Sorted list of nearest features with distanceKm
+   */
+  static findNearestFeatures(lat, lon, features = [], maxRadiusKm = 5000, body = 'mars') {
+    if (!features || !Array.isArray(features)) return [];
+
+    const R = body === 'moon' ? 1737.4 : 3389.5;
+    const results = [];
+
+    features.forEach(f => {
+      const fLat = f.lat !== undefined ? f.lat : f.latitude;
+      const fLon = f.lon !== undefined ? f.lon : (f.lng !== undefined ? f.lng : f.longitude);
+
+      if (typeof fLat === 'number' && typeof fLon === 'number') {
+        const dLat = (fLat - lat) * Math.PI / 180;
+        const dLon = (fLon - lon) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+          Math.cos(lat * Math.PI / 180) * Math.cos(fLat * Math.PI / 180) *
+          Math.sin(dLon / 2) ** 2;
+        const distKm = 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        if (distKm <= maxRadiusKm) {
+          results.push({
+            ...f,
+            distanceKm: distKm
+          });
+        }
+      }
+    });
+
+    return results.sort((a, b) => a.distanceKm - b.distanceKm);
   }
 
   /**
