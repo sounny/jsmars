@@ -1937,6 +1937,46 @@ describe('DEM Bilinear Interpolation & Hypsometric Intervals (ContourLayer)', ()
     });
 });
 
+describe('Binary Shapefile Polygon Serialization & Spatial BBox Overlap (ShapeIO)', () => {
+    it('should create and decode binary Polygon (ShapeType 5) Shapefile buffers', () => {
+        // Create simple triangle polygon ring
+        const triangle = [
+            [0, 0],
+            [10, 0],
+            [5, 10],
+            [0, 0]
+        ];
+
+        const buffer = ShapeIO.createShapefilePolygonBuffer([triangle]);
+        expect(buffer.byteLength).to.be.greaterThan(100);
+
+        const header = ShapeIO.parseShapefileHeader(buffer);
+        expect(header.shapeType).to.equal(5);
+        expect(header.shapeTypeName).to.equal('Polygon');
+        expect(header.bbox.xMin).to.equal(0);
+        expect(header.bbox.xMax).to.equal(10);
+        expect(header.bbox.yMax).to.equal(10);
+
+        const polys = ShapeIO.parsePolygonRecords(buffer);
+        expect(polys.length).to.equal(1);
+        expect(polys[0].geometry.type).to.equal('Polygon');
+        expect(polys[0].geometry.coordinates[0].length).to.equal(4);
+    });
+
+    it('should calculate 2D bounding box spatial overlap and intersections', () => {
+        const b1 = { xMin: 0, yMin: 0, xMax: 10, yMax: 10 };
+        const b2 = { xMin: 5, yMin: 5, xMax: 15, yMax: 15 };
+        const overlap = ShapeIO.computeBBoxOverlap(b1, b2);
+        expect(overlap.intersects).to.be.true;
+        expect(overlap.overlapArea).to.equal(25); // 5 x 5
+
+        const b3 = { xMin: 20, yMin: 20, xMax: 30, yMax: 30 };
+        const disjoint = ShapeIO.computeBBoxOverlap(b1, b3);
+        expect(disjoint.intersects).to.be.false;
+        expect(disjoint.overlapArea).to.equal(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

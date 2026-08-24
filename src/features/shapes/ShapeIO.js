@@ -534,7 +534,166 @@ export class ShapeIO {
 
     return buffer;
   }
+
+  // --- Binary Shapefile Polygon Parsing & Spatial Intersections ---
+
+  /**
+   * Parse ShapeType 5 (Polygon) binary records from a Shapefile ArrayBuffer into GeoJSON Features.
+   * @param {ArrayBuffer} buffer - Shapefile buffer
+   * @returns {Array<object>} Array of GeoJSON Polygon feature objects
+   */
+  static parsePolygonRecords(buffer) {
+    const header = this.parseShapefileHeader(buffer);
+    if (header.shapeType !== 5 && header.shapeType !== 3) {
+      throw new Error(`Expected Polygon (Type 5) or Polyline (Type 3), got ${header.shapeTypeName} (Type ${header.shapeType})`);
+    }
+
+    const view = new DataView(buffer);
+    const features = [];
+    let offset = 100; // Header size is 100 bytes
+
+    while (offset + 8 <= buffer.byteLength) {
+      const recordNumber = view.getInt32(offset, false);
+      const contentLengthWords = view.getInt32(offset + 4, false);
+      const contentLengthBytes = contentLengthWords * 2;
+      offset += 8;
+
+      if (offset + contentLengthBytes > buffer.byteLength) break;
+
+      const recordShapeType = view.getInt32(offset, true);
+      if (recordShapeType === 5 || recordShapeType === 3) {
+        const numParts = view.getInt32(offset + 36, true);
+        const numPoints = view.getInt32(offset + 40, true);
+
+        const parts = [];
+        for (let p = 0; p < numParts; p++) {
+          parts.push(view.getInt32(offset + 44 + p * 4, true));
+        }
+
+        const pointsOffset = offset + 44 + numParts * 4;
+        const allPoints = [];
+        for (let pt = 0; pt < numPoints; pt++) {
+          const px = view.getFloat64(pointsOffset + pt * 16, true);
+          const py = view.getFloat64(pointsOffset + pt * 16 + 8, true);
+          allPoints.push([parseFloat(px.toFixed(6)), parseFloat(py.toFixed(6))]);
+        }
+
+        const rings = [];
+        for (let p = 0; p < numParts; p++) {
+          const start = parts[p];
+          const end = (p === numParts - 1) ? numPoints : parts[p + 1];
+          rings.push(allPoints.slice(start, end));
+        }
+
+        features.push({
+          type: 'Feature',
+          id: recordNumber,
+          geometry: {
+            type: recordShapeType === 5 ? 'Polygon' : 'MultiLineString',
+            coordinates: rings
+          },
+          properties: { recordNumber, numParts, numPoints }
+        });
+      }
+
+      offset += contentLengthBytes;
+    }
+
+    return features;
+  }
+
+  /**
+   * Create a binary ESRI Shapefile (.shp) buffer from an array of Polygon rings.
+   * @param {Array<Array<[number, number]>>} rings - Array of coordinate rings [[ [x, y], ... ]]
+   * @returns {ArrayBuffer} Valid 100-byte header + ShapeType 5 binary buffer
+   */
+  static createShapefilePolygonBuffer(rings = []) {
+    const numParts = rings.length;
+    let totalPoints = 0;
+    let xMin = Infinity, yMin = Infinity, xMax = -Infinity, yMax = -Infinity;
+
+    rings.forEach(ring => {
+      totalPoints += ring.length;
+      ring.forEach(([x, y]) => {
+        if (x < xMin) xMin = x;
+        if (y < yMin) yMin = y;
+        if (x > xMax) xMax = x;
+        if (y > yMax) yMax = y;
+      });
+    });
+
+    if (totalPoints === 0) {
+      xMin = 0; yMin = 0; xMax = 0; yMax = 0;
+    }
+
+    const recordHeaderBytes = 8;
+    const contentBytes = 44 + numParts * 4 + totalPoints * 16;
+    const totalRecordBytes = recordHeaderBytes + contentBytes;
+    const totalFileBytes = 100 + totalRecordBytes;
+
+    const buffer = new ArrayBuffer(totalFileBytes);
+    const view = new DataView(buffer);
+
+    // 100-byte Header
+    view.setInt32(0, 9994, false); // Magic code
+    view.setInt32(24, totalFileBytes / 2, false); // Length in words
+    view.setInt32(28, 1000, true); // Version
+    view.setInt32(32, 5, true); // ShapeType: Polygon
+    view.setFloat64(36, xMin, true);
+    view.setFloat64(44, yMin, true);
+    view.setFloat64(52, xMax, true);
+    view.setFloat64(60, yMax, true);
+
+    // Write Record
+    let offset = 100;
+    view.setInt32(offset, 1, false); // Record 1
+    view.setInt32(offset + 4, contentBytes / 2, false);
+    view.setInt32(offset + 8, 5, true); // Polygon
+    view.setFloat64(offset + 12, xMin, true);
+    view.setFloat64(offset + 20, yMin, true);
+    view.setFloat64(offset + 28, xMax, true);
+    view.setFloat64(offset + 36, yMax, true);
+    view.setInt32(offset + 44, numParts, true);
+    view.setInt32(offset + 48, totalPoints, true);
+
+    let partOffset = offset + 52;
+    let pointIndex = 0;
+    rings.forEach(ring => {
+      view.setInt32(partOffset, pointIndex, true);
+      partOffset += 4;
+      pointIndex += ring.length;
+    });
+
+    let ptOffset = partOffset;
+    rings.forEach(ring => {
+      ring.forEach(([x, y]) => {
+        view.setFloat64(ptOffset, x, true);
+        view.setFloat64(ptOffset + 8, y, true);
+        ptOffset += 16;
+      });
+    });
+
+    return buffer;
+  }
+
+  /**
+   * Calculate 2D Bounding Box spatial overlap and intersection test.
+   * @param {{xMin: number, yMin: number, xMax: number, yMax: number}} b1
+   * @param {{xMin: number, yMin: number, xMax: number, yMax: number}} b2
+   * @returns {{intersects: boolean, overlapArea: number}}
+   */
+  static computeBBoxOverlap(b1, b2) {
+    const xOverlap = Math.max(0, Math.min(b1.xMax, b2.xMax) - Math.max(b1.xMin, b2.xMin));
+    const yOverlap = Math.max(0, Math.min(b1.yMax, b2.yMax) - Math.max(b1.yMin, b2.yMin));
+    const overlapArea = xOverlap * yOverlap;
+
+    return {
+      intersects: overlapArea > 0,
+      overlapArea: parseFloat(overlapArea.toFixed(4))
+    };
+  }
 }
+
 
 
 
