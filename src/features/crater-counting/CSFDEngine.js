@@ -236,5 +236,85 @@ export class CSFDEngine {
       return { freshnessClass: 3, name: 'Severely Eroded / Infilled Ghost Crater', ratio: parseFloat(ratio.toFixed(3)) };
     }
   }
+
+  // --- Isochron Model Fitting & Poisson Uncertainty Solvers ---
+
+  /**
+   * Fit an empirical crater population to the Neukum Production Function to derive model age.
+   * @param {Array<{diameter: number}>} craters - Array of craters (diameter in meters)
+   * @param {number} [countAreaKm2=1e6] - Total counting area in km^2
+   * @param {number} [dMinKm=1.0] - Minimum fitting diameter (km)
+   * @param {number} [dMaxKm=50.0] - Maximum fitting diameter (km)
+   * @returns {{ageGa: number, ageErrorGa: number, minAgeGa: number, maxAgeGa: number, count: number, epoch: string}}
+   */
+  static fitIsochronAge(craters = [], countAreaKm2 = 1e6, dMinKm = 1.0, dMaxKm = 50.0) {
+    const validDiameters = craters
+      .map(c => (typeof c.diameter === 'number' ? c.diameter / 1000 : 1.0))
+      .filter(d => d >= dMinKm && d <= dMaxKm);
+
+    const N = validDiameters.length;
+    if (N === 0) {
+      return { ageGa: 0, ageErrorGa: 0, minAgeGa: 0, maxAgeGa: 0, count: 0, epoch: 'Undetermined' };
+    }
+
+    const nDensity = N / countAreaKm2;
+    const bestAgeGa = this.estimateAgeFromN1(nDensity);
+
+    // Poisson 1-sigma bounds: N +/- sqrt(N)
+    const sigmaN = Math.sqrt(N);
+    const nLow = Math.max(0, N - sigmaN) / countAreaKm2;
+    const nHigh = (N + sigmaN) / countAreaKm2;
+
+    const minAgeGa = this.estimateAgeFromN1(nLow);
+    const maxAgeGa = this.estimateAgeFromN1(nHigh);
+    const ageErrorGa = (maxAgeGa - minAgeGa) / 2.0;
+
+    return {
+      ageGa: parseFloat(bestAgeGa.toFixed(3)),
+      ageErrorGa: parseFloat(ageErrorGa.toFixed(3)),
+      minAgeGa: parseFloat(minAgeGa.toFixed(3)),
+      maxAgeGa: parseFloat(maxAgeGa.toFixed(3)),
+      count: N,
+      epoch: this.classifyEpoch(bestAgeGa)
+    };
+  }
+
+  /**
+   * Compute 1-sigma Poisson counting uncertainty for a crater population.
+   * @param {number} count - Observed crater count
+   * @param {number} [countAreaKm2=1e6] - Counting area in km^2
+   * @returns {{count: number, sigmaCount: number, density: number, sigmaDensity: number, fractionalError: number}}
+   */
+  static computePoissonUncertainty(count, countAreaKm2 = 1e6) {
+    const n = Math.max(0, count);
+    const sigmaN = Math.sqrt(n);
+    const density = n / countAreaKm2;
+    const sigmaDensity = sigmaN / countAreaKm2;
+    const fractionalError = n > 0 ? sigmaN / n : 0;
+
+    return {
+      count: n,
+      sigmaCount: parseFloat(sigmaN.toFixed(2)),
+      density: parseFloat(density.toExponential(4)),
+      sigmaDensity: parseFloat(sigmaDensity.toExponential(4)),
+      fractionalError: parseFloat(fractionalError.toFixed(4))
+    };
+  }
+
+  /**
+   * Classify planetary geological epoch based on model age.
+   * @param {number} ageGa - Surface age in Ga
+   * @returns {string} Geological epoch classification
+   */
+  static classifyEpoch(ageGa) {
+    if (ageGa >= 3.95) return 'Early Noachian (>3.95 Ga)';
+    if (ageGa >= 3.7) return 'Middle/Late Noachian (3.7 - 3.95 Ga)';
+    if (ageGa >= 3.4) return 'Early Hesperian (3.4 - 3.7 Ga)';
+    if (ageGa >= 3.0) return 'Late Hesperian (3.0 - 3.4 Ga)';
+    if (ageGa >= 2.0) return 'Early Amazonian (2.0 - 3.0 Ga)';
+    if (ageGa >= 0.3) return 'Middle Amazonian (0.3 - 2.0 Ga)';
+    return 'Late Amazonian (<0.3 Ga)';
+  }
 }
+
 

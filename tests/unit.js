@@ -1346,6 +1346,31 @@ describe('IAU Planetary Gazetteer & Nomenclature Filtering (NomenclatureTool)', 
     });
 });
 
+describe('Crater Isochron Age Fitting & Poisson Errors (CSFDEngine)', () => {
+    it('should fit crater populations to chronology function and derive model age with error bounds', () => {
+        // Population of craters in 10^6 km^2 counting area
+        const craters = Array(100).fill({ diameter: 2000 }); // 100 craters > 1km
+        const fit = CSFDEngine.fitIsochronAge(craters, 1e6, 1.0, 50.0);
+
+        expect(fit.count).to.equal(100);
+        expect(fit.ageGa).to.be.greaterThan(0);
+        expect(fit.maxAgeGa).to.be.greaterThan(fit.minAgeGa);
+        expect(fit.ageErrorGa).to.be.greaterThan(0);
+        expect(fit.epoch).to.be.a('string');
+    });
+
+    it('should compute Poisson uncertainty and classify geological epochs', () => {
+        const err = CSFDEngine.computePoissonUncertainty(25, 1e6);
+        expect(err.count).to.equal(25);
+        expect(err.sigmaCount).to.equal(5.0); // sqrt(25) = 5
+        expect(err.fractionalError).to.equal(0.2); // 5 / 25 = 0.2
+
+        expect(CSFDEngine.classifyEpoch(4.0)).to.include('Early Noachian');
+        expect(CSFDEngine.classifyEpoch(3.5)).to.include('Early Hesperian');
+        expect(CSFDEngine.classifyEpoch(1.0)).to.include('Middle Amazonian');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
