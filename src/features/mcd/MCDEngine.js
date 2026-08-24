@@ -160,5 +160,67 @@ export class MCDEngine {
   static computeAtmosphericColumnMass(surfacePressurePa) {
     return surfacePressurePa / MCDEngine.G_MARS;
   }
+
+  // --- Atmospheric Scale Height & Radiative Dust Extinction Solvers ---
+
+  /**
+   * Calculate atmospheric scale height H = (R_spec * T) / g.
+   * @param {number} temperatureK - Atmospheric temperature (K)
+   * @returns {number} Scale height in km
+   */
+  static computeAtmosphericScaleHeight(temperatureK) {
+    const hMeters = (MCDEngine.R_SPECIFIC_CO2 * Math.max(10, temperatureK)) / MCDEngine.G_MARS;
+    return parseFloat((hMeters / 1000).toFixed(3));
+  }
+
+  /**
+   * Compute vertical dust optical depth extinction and direct solar beam transmission.
+   * @param {number} altitudeKm - Altitude above surface in km
+   * @param {number} [tauSurface=0.3] - Column dust optical depth
+   * @param {number} [dustScaleHeightKm=10.0] - Dust vertical scale height in km
+   * @param {number} [solarZenithDeg=0] - Solar zenith angle in degrees
+   * @returns {{tauAbove: number, beamTransmission: number}}
+   */
+  static computeOpticalDepthExtinction(altitudeKm, tauSurface = 0.3, dustScaleHeightKm = 10.0, solarZenithDeg = 0) {
+    const z = Math.max(0, altitudeKm);
+    const tauAbove = tauSurface * Math.exp(-z / Math.max(1, dustScaleHeightKm));
+    const cosZ = Math.max(0.05, Math.cos(solarZenithDeg * Math.PI / 180));
+    const transmission = Math.exp(-tauAbove / cosZ);
+
+    return {
+      tauAbove: parseFloat(tauAbove.toFixed(4)),
+      beamTransmission: parseFloat(transmission.toFixed(4))
+    };
+  }
+
+  /**
+   * Classify Martian atmospheric dust opacity regime.
+   * @param {number} tau - Column dust optical depth (visible/IR equivalent)
+   * @returns {{scenario: string, description: string}}
+   */
+  static classifyDustScenario(tau) {
+    if (tau <= 0.2) {
+      return {
+        scenario: 'Clear / Low Dust',
+        description: 'Aphelion season low-opacity atmosphere (Ls = 0° - 140°)'
+      };
+    } else if (tau <= 0.6) {
+      return {
+        scenario: 'Climatic Mean Background Dust',
+        description: 'Standard baseline background dust opacity (MY24 Viking/MGS baseline)'
+      };
+    } else if (tau <= 1.5) {
+      return {
+        scenario: 'Regional Dust Storm',
+        description: 'Perihelion elevated dust activity and localized regional storm'
+      };
+    } else {
+      return {
+        scenario: 'Global Dust Storm (GDS)',
+        description: 'Planet-encircling global dust event with severe atmospheric heating (e.g. MY25 / MY34)'
+      };
+    }
+  }
 }
+
 

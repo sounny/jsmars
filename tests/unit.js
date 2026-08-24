@@ -1470,6 +1470,29 @@ describe('Keplerian Orbit Propagation & Astrodynamics (TrajectoryEngine)', () =>
     });
 });
 
+describe('Atmospheric Scale Height & Radiative Dust Extinction (MCDEngine)', () => {
+    it('should compute Mars atmospheric scale height as a function of temperature', () => {
+        // At mean temperature T = 220 K on Mars: H = (188.92 * 220) / 3.72076 = 11.17 km
+        const h220 = MCDEngine.computeAtmosphericScaleHeight(220);
+        expect(h220).to.be.closeTo(11.17, 0.1);
+
+        // At cold polar temperature T = 150 K: H = 7.62 km
+        const h150 = MCDEngine.computeAtmosphericScaleHeight(150);
+        expect(h150).to.be.closeTo(7.62, 0.1);
+    });
+
+    it('should calculate vertical dust extinction and direct beam transmission', () => {
+        // Surface dust tau = 0.5, altitude = 10 km, H_dust = 10 km -> tau_above = 0.5 * exp(-1) = 0.1839
+        const ext = MCDEngine.computeOpticalDepthExtinction(10, 0.5, 10.0, 0);
+        expect(ext.tauAbove).to.be.closeTo(0.1839, 0.01);
+        expect(ext.beamTransmission).to.be.closeTo(0.832, 0.02);
+
+        // Scenario classification
+        const gds = MCDEngine.classifyDustScenario(2.5);
+        expect(gds.scenario).to.include('Global Dust Storm');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
