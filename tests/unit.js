@@ -1626,6 +1626,33 @@ describe('ESRI Shapefile Binary Parser & Generator (ShapeIO)', () => {
     });
 });
 
+describe('Geodetic Latitude & Longitude Transformation (ProjectionManager)', () => {
+    it('should convert between planetocentric and planetographic latitudes', () => {
+        // At equator and poles, latCentric == latGraphic
+        expect(ProjectionManager.convertPlanetocentricToPlanetographic(0)).to.equal(0);
+        expect(ProjectionManager.convertPlanetocentricToPlanetographic(90)).to.equal(90);
+
+        // At 45 deg on Mars (f = 0.00589), latGraphic is slightly greater than latCentric (~45.34 deg)
+        const graphic45 = ProjectionManager.convertPlanetocentricToPlanetographic(45.0, 0.00589);
+        expect(graphic45).to.be.closeTo(45.34, 0.05);
+
+        // Invert back to planetocentric
+        const centric45 = ProjectionManager.convertPlanetographicToPlanetocentric(graphic45, 0.00589);
+        expect(centric45).to.be.closeTo(45.0, 0.01);
+    });
+
+    it('should convert across IAU Martian longitude conventions', () => {
+        // East 360 (240 deg) -> West 360 (120 deg W)
+        expect(ProjectionManager.convertLongitudeConvention(240, 'east360', 'west360')).to.equal(120);
+
+        // East 360 (240 deg) -> East 180 (-120 deg)
+        expect(ProjectionManager.convertLongitudeConvention(240, 'east360', 'east180')).to.equal(-120);
+
+        // West 360 (120 deg W) -> East 360 (240 deg E)
+        expect(ProjectionManager.convertLongitudeConvention(120, 'west360', 'east360')).to.equal(240);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

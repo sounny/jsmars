@@ -436,7 +436,75 @@ export class ProjectionManager {
 
     return 1.0;
   }
+
+  // --- Geodetic Latitude & Planetary Longitude Transformation Solvers ---
+
+  /**
+   * Convert Planetocentric Latitude to Planetographic Latitude on an oblate planetary ellipsoid.
+   * tan(phi_g) = tan(phi_c) / (1 - f)^2
+   * @param {number} latCentricDeg - Planetocentric latitude (-90 to +90)
+   * @param {number} [flattening=0.00589] - Planetary polar flattening f = (a - b) / a (Mars f ~ 0.00589)
+   * @returns {number} Planetographic latitude in degrees
+   */
+  static convertPlanetocentricToPlanetographic(latCentricDeg, flattening = 0.00589) {
+    if (Math.abs(latCentricDeg) >= 89.999) return latCentricDeg;
+
+    const phiC = latCentricDeg * Math.PI / 180;
+    const factor = 1.0 / Math.pow(1.0 - flattening, 2);
+    const tanPhiG = factor * Math.tan(phiC);
+    const phiG = Math.atan(tanPhiG) * 180 / Math.PI;
+
+    return parseFloat(phiG.toFixed(4));
+  }
+
+  /**
+   * Convert Planetographic Latitude to Planetocentric Latitude on an oblate planetary ellipsoid.
+   * tan(phi_c) = (1 - f)^2 * tan(phi_g)
+   * @param {number} latGraphicDeg - Planetographic latitude (-90 to +90)
+   * @param {number} [flattening=0.00589] - Planetary polar flattening
+   * @returns {number} Planetocentric latitude in degrees
+   */
+  static convertPlanetographicToPlanetocentric(latGraphicDeg, flattening = 0.00589) {
+    if (Math.abs(latGraphicDeg) >= 89.999) return latGraphicDeg;
+
+    const phiG = latGraphicDeg * Math.PI / 180;
+    const factor = Math.pow(1.0 - flattening, 2);
+    const tanPhiC = factor * Math.tan(phiG);
+    const phiC = Math.atan(tanPhiC) * 180 / Math.PI;
+
+    return parseFloat(phiC.toFixed(4));
+  }
+
+  /**
+   * Convert longitude between IAU Martian cartographic conventions ('east360', 'east180', 'west360').
+   * @param {number} lonDeg - Input longitude
+   * @param {'east360'|'east180'|'west360'} [fromConvention='east360']
+   * @param {'east360'|'east180'|'west360'} [toConvention='west360']
+   * @returns {number} Converted longitude in degrees
+   */
+  static convertLongitudeConvention(lonDeg, fromConvention = 'east360', toConvention = 'west360') {
+    // 1. Normalize input to standard East 360 [0, 360)
+    let east360 = lonDeg;
+    if (fromConvention === 'east180') {
+      east360 = (lonDeg % 360 + 360) % 360;
+    } else if (fromConvention === 'west360') {
+      east360 = (360 - (lonDeg % 360)) % 360;
+    } else {
+      east360 = (lonDeg % 360 + 360) % 360;
+    }
+
+    // 2. Convert from East 360 to target convention
+    if (toConvention === 'east180') {
+      return parseFloat((east360 > 180 ? east360 - 360 : east360).toFixed(4));
+    } else if (toConvention === 'west360') {
+      const west360 = (360 - east360) % 360;
+      return parseFloat(west360.toFixed(4));
+    } else {
+      return parseFloat(east360.toFixed(4));
+    }
+  }
 }
+
 
 
 
