@@ -274,5 +274,95 @@ export class BandMathEngine {
       mineralogy
     };
   }
+
+  // --- Multi-Spectral Sulfate, Phyllosilicate & Carbonate Solvers ---
+
+  /**
+   * Compute CRISM BD2100 Monohydrated Sulfate (kieserite/szomolnokite) absorption index.
+   * @param {number} r1930 - Left continuum shoulder reflectance
+   * @param {number} r2100 - Absorption band center reflectance
+   * @param {number} r2250 - Right continuum shoulder reflectance
+   * @returns {number} BD2100 band depth parameter
+   */
+  static computeCRISMSulfateIndex(r1930, r2100, r2250) {
+    const continuum = 0.5 * (r1930 + r2250);
+    if (continuum <= 0) return 0;
+    const depth = 1.0 - (r2100 / continuum);
+    return parseFloat(Math.max(0, depth).toFixed(4));
+  }
+
+  /**
+   * Compute CRISM D2300 Fe/Mg Phyllosilicate (smectite/chlorite/serpentine) absorption index.
+   * @param {number} r1815 - Left continuum baseline reflectance
+   * @param {number} r2300 - Absorption band center reflectance
+   * @param {number} r2360 - Right continuum shoulder reflectance
+   * @returns {number} D2300 band drop parameter
+   */
+  static computeCRISMPhyllosilicateIndex(r1815, r2300, r2360) {
+    const continuum = 0.5 * (r1815 + r2360);
+    if (continuum <= 0) return 0;
+    const drop = 1.0 - (r2300 / continuum);
+    return parseFloat(Math.max(0, drop).toFixed(4));
+  }
+
+  /**
+   * Compute CRISM BD2500 Carbonate (magnesite/calcite/siderite) absorption index.
+   * @param {number} r2300 - Left shoulder reflectance
+   * @param {number} r2500 - Carbonate absorption band center reflectance
+   * @param {number} r2600 - Right shoulder reflectance
+   * @returns {number} BD2500 band depth parameter
+   */
+  static computeCRISMCarbonateIndex(r2300, r2500, r2600) {
+    const continuum = 0.5 * (r2300 + r2600);
+    if (continuum <= 0) return 0;
+    const depth = 1.0 - (r2500 / continuum);
+    return parseFloat(Math.max(0, depth).toFixed(4));
+  }
+
+  /**
+   * Classify dominant mineral assemblage from multi-parameter hyperspectral indices.
+   * @param {{olindex?: number, bd1900?: number, d2300?: number, bd2100?: number, bd2500?: number}} indices
+   * @returns {{dominantMineral: string, era: string, description: string}}
+   */
+  static classifyMineralAssembly(indices = {}) {
+    const ol = indices.olindex ?? 0;
+    const bd19 = indices.bd1900 ?? 0;
+    const d23 = indices.d2300 ?? 0;
+    const bd21 = indices.bd2100 ?? 0;
+    const bd25 = indices.bd2500 ?? 0;
+
+    if (bd25 > 0.08) {
+      return {
+        dominantMineral: 'Carbonate Assemblage (Magnesite / Calcite)',
+        era: 'Noachian / Early Hesperian',
+        description: 'Neutral to alkaline aqueous conditions with dissolved atmospheric CO2'
+      };
+    } else if (d23 > 0.06 || bd19 > 0.08) {
+      return {
+        dominantMineral: 'Fe/Mg Phyllosilicates (Nontronite / Saponite Smectites)',
+        era: 'Early Noachian (Phyllocian Era)',
+        description: 'Pervasive aqueous alteration and high water-rock interaction in neutral pH'
+      };
+    } else if (bd21 > 0.05) {
+      return {
+        dominantMineral: 'Monohydrated Sulfates (Kieserite / Polyhydrated Sulfates)',
+        era: 'Hesperian (Theiikian Era)',
+        description: 'Evaporitic acidic aqueous environment with volcanic sulfur degassing'
+      };
+    } else if (ol > 0.10) {
+      return {
+        dominantMineral: 'Olivine-Rich Cumulate / Ultramafic Basalt',
+        era: 'Pre-Noachian / Noachian Basement',
+        description: 'Primitive mantle-derived volcanic flows or deep impact ejecta'
+      };
+    } else {
+      return {
+        dominantMineral: 'Anhydrous Mafic Crust (Plagioclase + Pyroxene Basalt)',
+        era: 'Amazonian (Siderikan Era)',
+        description: 'Dry eolian dust cover and unaltered volcanic bedrock'
+      };
+    }
+  }
 }
+
 

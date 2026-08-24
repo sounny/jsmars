@@ -1695,6 +1695,35 @@ describe('Orbital Energy, Plane Changes & Synodic Periods (TrajectoryEngine)', (
     });
 });
 
+describe('Hyperspectral Mineral Parameter Indices & Mineral Suites (BandMathEngine)', () => {
+    it('should compute CRISM sulfate, phyllosilicate, and carbonate band depths', () => {
+        // Monohydrated sulfate (kieserite): R(1.93μm)=0.25, R(2.1μm)=0.20, R(2.25μm)=0.25 -> continuum = 0.25 -> depth = 0.20
+        const bdSulfate = BandMathEngine.computeCRISMSulfateIndex(0.25, 0.20, 0.25);
+        expect(bdSulfate).to.be.closeTo(0.20, 0.01);
+
+        // Phyllosilicate: R(1.815μm)=0.30, R(2.3μm)=0.26, R(2.36μm)=0.30 -> depth ~ 0.1333
+        const dPhyllo = BandMathEngine.computeCRISMPhyllosilicateIndex(0.30, 0.26, 0.30);
+        expect(dPhyllo).to.be.closeTo(0.1333, 0.01);
+
+        // Carbonate: R(2.3μm)=0.28, R(2.5μm)=0.22, R(2.6μm)=0.28 -> depth ~ 0.2143
+        const bdCarb = BandMathEngine.computeCRISMCarbonateIndex(0.28, 0.22, 0.28);
+        expect(bdCarb).to.be.closeTo(0.2143, 0.01);
+    });
+
+    it('should classify planetary mineral assemblages and Martian geologic eras', () => {
+        const clay = BandMathEngine.classifyMineralAssembly({ d2300: 0.10, bd1900: 0.12 });
+        expect(clay.dominantMineral).to.include('Phyllosilicates');
+        expect(clay.era).to.include('Noachian');
+
+        const sulfate = BandMathEngine.classifyMineralAssembly({ bd2100: 0.08 });
+        expect(sulfate.dominantMineral).to.include('Sulfates');
+        expect(sulfate.era).to.include('Hesperian');
+
+        const carb = BandMathEngine.classifyMineralAssembly({ bd2500: 0.11 });
+        expect(carb.dominantMineral).to.include('Carbonate');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
