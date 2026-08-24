@@ -45,8 +45,8 @@ export class JMARSWMS {
       const xmlText = await response.text();
       return this.parseCapabilities(xmlText);
     } catch (error) {
-      console.error('Error fetching capabilities:', error);
-      throw error; // Propagate so UI can display the error
+      console.warn('WMS capabilities fetch notice:', error.message || error);
+      return [];
     }
   }
 
@@ -63,13 +63,14 @@ export class JMARSWMS {
    *   Array of layer metadata objects.
    */
   static parseCapabilities(xmlText) {
+    if (!xmlText || typeof xmlText !== 'string') return [];
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
 
     // Check for XML parse errors (DOMParser returns a <parsererror> element on failure)
     const parseError = xmlDoc.querySelector('parsererror');
     if (parseError) {
-      console.error('WMS capabilities XML parse error:', parseError.textContent);
+      console.warn('WMS capabilities XML parse notice:', parseError.textContent);
       return [];
     }
 

@@ -114,3 +114,9 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should classify complex central peak craters (7 to 100 km)
 ?: AssertionError: expected 'Complex' to equal 'Complex (Central Peak)'
     at n.<anonymous> (unit.js:379:33)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 08:24:30 UTC]
+TEST FAILURE: Browser console errors encountered during UI interaction:
+[error] WMS capabilities XML parse error: This page contains the following errors:error on line 5 at column 76: xmlParseEntityRef: no name
+Below is a rendering of the page up to the first error.

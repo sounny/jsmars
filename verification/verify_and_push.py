@@ -83,20 +83,60 @@ def run_tests():
             server.shutdown()
             return False, f"Unit test suite failed ({failures} failures):\n" + "\n".join(fail_msgs)
 
-        # 2. Main Web App Validation
-        print("[TESTS] Validating index.html app runtime...")
+        # 2. Main Web App Validation & Interactive UI Testing
+        print("[TESTS] Validating index.html app runtime & exercising UI panels...")
         page.goto(f"http://127.0.0.1:{port}/index.html")
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(2000)
+
+        # Dismiss welcome modal and exercise all panels & tools via browser context
+        page.evaluate("""() => {
+            const btn = document.getElementById('welcome-dismiss');
+            if (btn) btn.click();
+
+            // Expand all accordion sections
+            document.querySelectorAll('.layer-section-header').forEach(h => h.click());
+
+            // Switch body to moon and back to mars
+            const select = document.querySelector('select.body-selector-dropdown');
+            if (select) {
+                select.value = 'moon';
+                select.dispatchEvent(new Event('change'));
+                setTimeout(() => {
+                    select.value = 'mars';
+                    select.dispatchEvent(new Event('change'));
+                }, 150);
+            }
+
+            // Trigger KRC simulate
+            const krcBtn = document.getElementById('krc-simulate-btn');
+            if (krcBtn) krcBtn.click();
+
+            // Trigger Band Math preset
+            const bmSelect = document.getElementById('bm-preset-select');
+            if (bmSelect) {
+                bmSelect.value = 'bd1900_h2o';
+                bmSelect.dispatchEvent(new Event('change'));
+            }
+
+            // Trigger Radar preset
+            const radarSelect = document.getElementById('radar-preset-select');
+            if (radarSelect) {
+                radarSelect.value = 'australe';
+                radarSelect.dispatchEvent(new Event('change'));
+            }
+        }""")
+
+        page.wait_for_timeout(1500)
 
         if console_errors:
             browser.close()
             server.shutdown()
-            return False, "Browser console errors encountered:\n" + "\n".join(console_errors)
+            return False, "Browser console errors encountered during UI interaction:\n" + "\n".join(console_errors)
 
         browser.close()
         server.shutdown()
 
-    return True, f"All {passes} unit tests passed and app loaded cleanly."
+    return True, f"All {passes} unit tests passed and interactive app UI exercised cleanly with 0 console errors."
 
 def check_jmars_integrity():
     # Verify no files in jmars/ are modified
