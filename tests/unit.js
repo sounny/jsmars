@@ -24,6 +24,7 @@ import { RadialProfileTool } from '../src/features/profile/RadialProfileTool.js'
 import { MeasureTool } from '../src/features/measure/MeasureTool.js';
 import { GroundTrackLayer } from '../src/features/groundtrack/GroundTrackLayer.js';
 import { HillshadeLayer } from '../src/features/hillshade/HillshadeLayer.js';
+import { SamplingTool } from '../src/features/sampling/SamplingTool.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
@@ -1275,6 +1276,35 @@ describe('Dynamic Hillshade & Multidirectional Relief (HillshadeLayer)', () => {
         const multiShade = HillshadeLayer.computeMultidirectionalHillshade(0.5, 0.5, 45, 1.0);
         expect(multiShade).to.be.within(0, 255);
         expect(multiShade).to.be.greaterThan(50);
+    });
+});
+
+describe('Spatial Sampling Statistics & Grid Generation (SamplingTool)', () => {
+    it('should calculate sample statistical aggregates (mean, variance, stdDev, median, standardError)', () => {
+        const data = [10, 20, 30, 40, 50];
+        const stats = SamplingTool.computeSampleStatistics(data);
+        expect(stats.count).to.equal(5);
+        expect(stats.min).to.equal(10);
+        expect(stats.max).to.equal(50);
+        expect(stats.mean).to.equal(30);
+        expect(stats.median).to.equal(30);
+        expect(stats.variance).to.equal(250);
+        expect(stats.stdDev).to.be.closeTo(15.81, 0.05);
+        expect(stats.standardError).to.be.closeTo(7.07, 0.05);
+    });
+
+    it('should calculate Pearson linear correlation and generate regular sampling grids', () => {
+        // Perfectly correlated data: y = 2x + 1
+        const x = [1, 2, 3, 4, 5];
+        const y = [3, 5, 7, 9, 11];
+        const r = SamplingTool.computeCorrelationCoefficient(x, y);
+        expect(r).to.be.closeTo(1.0, 0.001);
+
+        // Regular grid within bounding box
+        const bbox = { south: -10, north: 10, west: 0, east: 20 };
+        const grid = SamplingTool.generateRegularGridPoints(bbox, 500, 'mars');
+        expect(grid.length).to.be.greaterThan(5);
+        expect(grid[0]).to.be.an('array').with.lengthOf(2);
     });
 });
 

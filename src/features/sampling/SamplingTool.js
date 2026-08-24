@@ -265,4 +265,115 @@ export class SamplingTool {
         link.click();
         document.body.removeChild(link);
     }
+
+    // --- Spatial Sampling Statistics & Grid Generation ---
+
+    /**
+     * Compute comprehensive statistical aggregation over an array of sample values.
+     * @param {Array<number>} values - Array of numeric values
+     * @returns {{count: number, min: number, max: number, mean: number, variance: number, stdDev: number, median: number, standardError: number}}
+     */
+    static computeSampleStatistics(values = []) {
+        const nums = values.filter(v => typeof v === 'number' && Number.isFinite(v));
+        if (nums.length === 0) {
+            return { count: 0, min: 0, max: 0, mean: 0, variance: 0, stdDev: 0, median: 0, standardError: 0 };
+        }
+
+        const count = nums.length;
+        const sorted = [...nums].sort((a, b) => a - b);
+        const min = sorted[0];
+        const max = sorted[count - 1];
+        const sum = nums.reduce((a, b) => a + b, 0);
+        const mean = sum / count;
+
+        const median = count % 2 === 0
+            ? (sorted[count / 2 - 1] + sorted[count / 2]) / 2
+            : sorted[Math.floor(count / 2)];
+
+        const sumSqDiff = nums.reduce((a, b) => a + (b - mean) * (b - mean), 0);
+        const variance = count > 1 ? sumSqDiff / (count - 1) : 0;
+        const stdDev = Math.sqrt(variance);
+        const standardError = count > 0 ? stdDev / Math.sqrt(count) : 0;
+
+        return {
+            count,
+            min: parseFloat(min.toFixed(3)),
+            max: parseFloat(max.toFixed(3)),
+            mean: parseFloat(mean.toFixed(3)),
+            variance: parseFloat(variance.toFixed(4)),
+            stdDev: parseFloat(stdDev.toFixed(3)),
+            median: parseFloat(median.toFixed(3)),
+            standardError: parseFloat(standardError.toFixed(4))
+        };
+    }
+
+    /**
+     * Calculate Pearson linear correlation coefficient between two paired sample sets.
+     * @param {Array<number>} xArray
+     * @param {Array<number>} yArray
+     * @returns {number} Pearson r (-1.0 to +1.0)
+     */
+    static computeCorrelationCoefficient(xArray = [], yArray = []) {
+        const n = Math.min(xArray.length, yArray.length);
+        if (n < 2) return 0;
+
+        const meanX = xArray.slice(0, n).reduce((a, b) => a + b, 0) / n;
+        const meanY = yArray.slice(0, n).reduce((a, b) => a + b, 0) / n;
+
+        let num = 0;
+        let denX = 0;
+        let denY = 0;
+
+        for (let i = 0; i < n; i++) {
+            const dx = xArray[i] - meanX;
+            const dy = yArray[i] - meanY;
+            num += dx * dy;
+            denX += dx * dx;
+            denY += dy * dy;
+        }
+
+        const den = Math.sqrt(denX * denY);
+        if (den === 0) return 0;
+
+        return parseFloat((num / den).toFixed(4));
+    }
+
+    /**
+     * Generate a regular grid of sample coordinates within a bounding box.
+     * @param {{south: number, west: number, north: number, east: number}} bbox
+     * @param {number} [stepKm=50] - Grid spacing in km
+     * @param {string} [body='mars'] - Target planetary body
+     * @returns {Array<[number, number]>} Array of [lat, lon] points
+     */
+    static generateRegularGridPoints(bbox, stepKm = 50, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : 3389.5;
+        const kmPerDegLat = (Math.PI * R) / 180;
+        const dLat = Math.max(0.1, stepKm / kmPerDegLat);
+
+        const south = Math.max(-90, bbox.south);
+        const north = Math.min(90, bbox.north);
+        const west = bbox.west;
+        const east = bbox.east;
+
+        const points = [];
+
+        for (let lat = south; lat <= north; lat += dLat) {
+            const cosLat = Math.max(0.01, Math.cos(lat * Math.PI / 180));
+            const kmPerDegLon = kmPerDegLat * cosLat;
+            const dLon = Math.max(0.1, stepKm / kmPerDegLon);
+
+            let lonSpan = east >= west ? (east - west) : (360 - west + east);
+            let lonSteps = Math.ceil(lonSpan / dLon);
+
+            for (let step = 0; step <= lonSteps; step++) {
+                let lon = west + step * dLon;
+                while (lon > 180) lon -= 360;
+                while (lon < -180) lon += 360;
+                points.push([parseFloat(lat.toFixed(4)), parseFloat(lon.toFixed(4))]);
+            }
+        }
+
+        return points;
+    }
 }
+
