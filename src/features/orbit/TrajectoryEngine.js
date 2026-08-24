@@ -149,4 +149,88 @@ export class TrajectoryEngine {
 
     return windows;
   }
+
+  // --- Planetary Satellite Orbit Mechanics ---
+
+  /**
+   * Calculate circular or elliptical orbital speed using the Vis-Viva equation.
+   * @param {number} altitudeKm - Altitude above planetary surface
+   * @param {string} [body='mars'] - Celestial body key
+   * @param {number} [semiMajorAxisKm=null] - Optional semi-major axis (defaults to circular r)
+   * @returns {number} Orbital speed in km/s
+   */
+  static computeOrbitalSpeed(altitudeKm, body = 'mars', semiMajorAxisKm = null) {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const rBody = TrajectoryEngine.ORBITS[bKey]?.radiusKm || 3389.5;
+    const r = rBody + altitudeKm;
+    const a = semiMajorAxisKm || r;
+
+    return Math.sqrt(mu * (2.0 / r - 1.0 / a));
+  }
+
+  /**
+   * Calculate planetary escape velocity at a given altitude.
+   * @param {number} altitudeKm
+   * @param {string} [body='mars']
+   * @returns {number} Escape velocity in km/s
+   */
+  static computeEscapeVelocity(altitudeKm, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const rBody = TrajectoryEngine.ORBITS[bKey]?.radiusKm || 3389.5;
+    const r = rBody + altitudeKm;
+
+    return Math.sqrt((2.0 * mu) / r);
+  }
+
+  /**
+   * Calculate orbital period for a satellite in seconds and minutes.
+   * @param {number} altitudeKm
+   * @param {string} [body='mars']
+   * @returns {{periodSeconds: number, periodMinutes: number, periodHours: number}}
+   */
+  static computeOrbitalPeriod(altitudeKm, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const rBody = TrajectoryEngine.ORBITS[bKey]?.radiusKm || 3389.5;
+    const a = rBody + altitudeKm;
+
+    const periodSeconds = 2.0 * Math.PI * Math.sqrt(Math.pow(a, 3) / mu);
+    return {
+      periodSeconds,
+      periodMinutes: periodSeconds / 60.0,
+      periodHours: periodSeconds / 3600.0
+    };
+  }
+
+  /**
+   * Compute Areostationary / Geostationary synchronous orbital radius and altitude.
+   * @param {string} [body='mars']
+   * @returns {{radiusKm: number, altitudeKm: number, speedKmS: number}}
+   */
+  static computeSynchronousOrbitAltitude(body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const rBody = TrajectoryEngine.ORBITS[bKey]?.radiusKm || 3389.5;
+
+    // Rotation periods in seconds (Mars = 24.6229 h, Earth = 23.9344 h)
+    const ROTATION_PERIODS_SEC = {
+      mars: 88642.66,
+      earth: 86164.10,
+      moon: 2360584.7
+    };
+
+    const T = ROTATION_PERIODS_SEC[bKey] || ROTATION_PERIODS_SEC.mars;
+    const radiusKm = Math.cbrt(mu * Math.pow(T / (2.0 * Math.PI), 2));
+    const altitudeKm = radiusKm - rBody;
+    const speedKmS = Math.sqrt(mu / radiusKm);
+
+    return {
+      radiusKm,
+      altitudeKm,
+      speedKmS
+    };
+  }
 }
+

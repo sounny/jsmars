@@ -509,6 +509,26 @@ describe('Astrodynamics & Interplanetary Trajectories (TrajectoryEngine)', () =>
         expect(windows[0].flightDurationDays).to.equal(259);
         expect(windows[0].departureDate).to.be.a('string');
     });
+
+    it('should compute circular orbital speed, escape velocity, and Areostationary orbit', () => {
+        // Low Mars Orbit (300 km altitude)
+        const vCirc = TrajectoryEngine.computeOrbitalSpeed(300, 'mars');
+        expect(vCirc).to.be.closeTo(3.40, 0.05); // ~3.4 km/s
+
+        // Mars surface escape velocity
+        const vEsc = TrajectoryEngine.computeEscapeVelocity(0, 'mars');
+        expect(vEsc).to.be.closeTo(5.03, 0.05); // ~5.03 km/s
+
+        // Orbital period at 300 km (~113 minutes)
+        const period = TrajectoryEngine.computeOrbitalPeriod(300, 'mars');
+        expect(period.periodMinutes).to.be.closeTo(113.0, 3.0);
+
+        // Areostationary synchronous orbit (~17,032 km altitude, ~20,422 km radius)
+        const sync = TrajectoryEngine.computeSynchronousOrbitAltitude('mars');
+        expect(sync.radiusKm).to.be.closeTo(20428, 50);
+        expect(sync.altitudeKm).to.be.closeTo(17038, 50);
+        expect(sync.speedKmS).to.be.closeTo(1.45, 0.05);
+    });
 });
 
 describe('Color Stretch & Image Processing (ColorStretchControl)', () => {
