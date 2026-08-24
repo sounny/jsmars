@@ -108,25 +108,14 @@ export class ExportTool {
     const bounds = this.map.getBounds();
     const size = this.map.getSize();
 
-    // Pixel size in degrees
-    const pixelWidth = (bounds.getEast() - bounds.getWest()) / size.x;
-    const pixelHeight = (bounds.getNorth() - bounds.getSouth()) / size.y;
-
-    // World file format (6 lines):
-    // Line 1: pixel size in x direction (map units/pixel)
-    // Line 2: rotation about y axis
-    // Line 3: rotation about x axis
-    // Line 4: pixel size in y direction (negative for top-to-bottom)
-    // Line 5: x coordinate of center of upper left pixel
-    // Line 6: y coordinate of center of upper left pixel
-    const content = [
-      pixelWidth.toFixed(10),
-      '0.0000000000',
-      '0.0000000000',
-      (-pixelHeight).toFixed(10),
-      (bounds.getWest() + pixelWidth / 2).toFixed(10),
-      (bounds.getNorth() - pixelHeight / 2).toFixed(10)
-    ].join('\n');
+    const content = ExportTool.generateWorldFileContent(
+      bounds.getWest(),
+      bounds.getEast(),
+      bounds.getSouth(),
+      bounds.getNorth(),
+      size.x,
+      size.y
+    );
 
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -135,6 +124,49 @@ export class ExportTool {
     a.download = `jsmars_map_${Date.now()}.${format}`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Generate a standard 6-line GIS World File (.pgw / .tfw / .jgw).
+   * @param {number} west
+   * @param {number} east
+   * @param {number} south
+   * @param {number} north
+   * @param {number} widthPx
+   * @param {number} heightPx
+   * @returns {string} 6-line world file string
+   */
+  static generateWorldFileContent(west, east, south, north, widthPx, heightPx) {
+    const pixelWidth = (east - west) / widthPx;
+    const pixelHeight = (north - south) / heightPx;
+
+    return [
+      pixelWidth.toFixed(10),
+      '0.0000000000',
+      '0.0000000000',
+      (-pixelHeight).toFixed(10),
+      (west + pixelWidth / 2).toFixed(10),
+      (north - pixelHeight / 2).toFixed(10)
+    ].join('\n');
+  }
+
+  /**
+   * Parse a standard 6-line GIS World File.
+   * @param {string} content
+   * @returns {{pixelWidth: number, pixelHeight: number, originX: number, originY: number}}
+   */
+  static parseWorldFileContent(content) {
+    const lines = content.trim().split(/\r?\n/).map(Number);
+    if (lines.length < 6) return null;
+
+    return {
+      pixelWidth: lines[0],
+      rotY: lines[1],
+      rotX: lines[2],
+      pixelHeight: lines[3],
+      originX: lines[4],
+      originY: lines[5]
+    };
   }
 
   /**

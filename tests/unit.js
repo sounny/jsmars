@@ -21,6 +21,7 @@ import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
+import { ExportTool } from '../src/features/export/ExportTool.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -726,6 +727,26 @@ describe('Planetary Spatial Proximity Search & Places (PlacesManager)', () => {
         expect(coord).to.not.be.null;
         expect(coord.lat).to.equal(18.5);
         expect(coord.lon).to.equal(-133.8);
+    });
+});
+
+describe('GIS Georeferencing & World Files (ExportTool)', () => {
+    it('should generate and parse 6-line GIS World File affine matrices symmetrically', () => {
+        const west = -180;
+        const east = 180;
+        const south = -90;
+        const north = 90;
+        const widthPx = 3600;
+        const heightPx = 1800;
+
+        const content = ExportTool.generateWorldFileContent(west, east, south, north, widthPx, heightPx);
+        expect(content.split('\n')).to.have.lengthOf(6);
+
+        const parsed = ExportTool.parseWorldFileContent(content);
+        expect(parsed.pixelWidth).to.be.closeTo(0.1, 0.0001);
+        expect(parsed.pixelHeight).to.be.closeTo(-0.1, 0.0001);
+        expect(parsed.originX).to.be.closeTo(-179.95, 0.001);
+        expect(parsed.originY).to.be.closeTo(89.95, 0.001);
     });
 });
 
