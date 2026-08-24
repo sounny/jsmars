@@ -214,4 +214,50 @@ export class KRCEngine {
     }
     return points;
   }
+
+  // --- Regolith Thermodynamics & Thermal Inertia ---
+
+  /**
+   * Calculate thermal skin depth for diurnal or annual orbital periods.
+   * @param {number} thermalInertia - Thermal inertia (J m^-2 K^-1 s^-1/2)
+   * @param {number} [periodSeconds=88775.244] - Period in seconds (defaults to 1 Sol)
+   * @returns {{skinDepthMeters: number, skinDepthCm: number}}
+   */
+  static computeSkinDepth(thermalInertia, periodSeconds = 88775.244) {
+    const C_vol = KRCEngine.DENSITY * KRCEngine.SPECIFIC_HEAT;
+    const deltaMeters = (thermalInertia * Math.sqrt(periodSeconds / Math.PI)) / C_vol;
+
+    return {
+      skinDepthMeters: deltaMeters,
+      skinDepthCm: deltaMeters * 100.0
+    };
+  }
+
+  /**
+   * Estimate Apparent Thermal Inertia (ATI) from diurnal temperature amplitude.
+   * @param {number} deltaT - Diurnal temperature range (T_max - T_min in K)
+   * @param {number} [albedo=0.25] - Bolometric albedo
+   * @param {number} [solarInsolation=588.6] - Solar insolation in W/m^2
+   * @returns {number} Apparent Thermal Inertia (ATI) in SI units
+   */
+  static computeApparentThermalInertia(deltaT, albedo = 0.25, solarInsolation = 588.6) {
+    const omega = (2 * Math.PI) / KRCEngine.MARS_SOL_SECONDS;
+    const safeDeltaT = Math.max(1.0, deltaT);
+    const absorbedFlux = (1.0 - albedo) * solarInsolation;
+
+    return (absorbedFlux / safeDeltaT) / Math.sqrt(omega);
+  }
+
+  /**
+   * Calculate regolith bulk thermal conductivity from thermal inertia.
+   * @param {number} thermalInertia - Thermal inertia (SI)
+   * @param {number} [density=1500] - Density in kg/m^3
+   * @param {number} [specificHeat=800] - Specific heat in J/(kg K)
+   * @returns {number} Thermal conductivity in W / (m K)
+   */
+  static computeRegolithConductivity(thermalInertia, density = 1500, specificHeat = 800) {
+    const cVol = density * specificHeat;
+    return (thermalInertia * thermalInertia) / cVol;
+  }
 }
+

@@ -155,6 +155,24 @@ describe('KRC Mars 1D Thermal Model', () => {
         expect(seasonal[0]).to.have.property('Ls');
         expect(seasonal[0]).to.have.property('meanTemp');
     });
+
+    it('should compute diurnal/annual thermal skin depths, ATI, and regolith conductivity', () => {
+        // Diurnal skin depth for TI = 250 (rho=1500, cp=800)
+        const skinDiurnal = KRCEngine.computeSkinDepth(250, 88775.244);
+        expect(skinDiurnal.skinDepthCm).to.be.closeTo(3.5, 0.2); // ~3.5 cm
+
+        // Annual skin depth (668.6 sols)
+        const skinAnnual = KRCEngine.computeSkinDepth(250, 88775.244 * 668.6);
+        expect(skinAnnual.skinDepthCm).to.be.closeTo(90.5, 5.0); // ~90 cm
+
+        // Regolith bulk thermal conductivity for TI = 250 (W/(m K))
+        const k = KRCEngine.computeRegolithConductivity(250);
+        expect(k).to.be.closeTo(0.052, 0.005); // ~0.052 W/(m K)
+
+        // Apparent Thermal Inertia estimate from Delta T = 80 K
+        const ati = KRCEngine.computeApparentThermalInertia(80, 0.25, 588.6);
+        expect(ati).to.be.closeTo(650, 50);
+    });
 });
 
 describe('Mars Climate Database (MCD) Profiler', () => {
