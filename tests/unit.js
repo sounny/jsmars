@@ -19,6 +19,7 @@ import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js'
 import { ProjectionManager } from '../src/features/projections/ProjectionManager.js';
 import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { CustomMapManager } from '../src/features/custom-map/CustomMapManager.js';
+import { LandingSitesLayer } from '../src/features/landing/LandingSitesLayer.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
@@ -1025,6 +1026,37 @@ describe('Custom Tile Layers & WMS Protocol (CustomMapManager)', () => {
 
         const invalidTemplate = CustomMapManager.validateTileUrlTemplate('https://example.com/tiles/{z}/{x}.png');
         expect(invalidTemplate.valid).to.be.false;
+    });
+});
+
+describe('Spacecraft Landing Sites & EDL Aerodynamics (LandingSitesLayer)', () => {
+    it('should compute entry ballistic coefficient and hypersonic dynamic pressure', () => {
+        // MSL/Perseverance entry: mass = 3150 kg, Cd = 1.4, Area = 15.9 m^2 -> beta ≈ 141.5 kg/m^2
+        const bc = LandingSitesLayer.computeBallisticCoefficient(3150, 1.4, 15.9);
+        expect(bc).to.be.closeTo(141.5, 1.0);
+
+        // Dynamic pressure at rho = 0.005 kg/m^3, v = 5000 m/s -> q = 0.5 * 0.005 * 25e6 = 62,500 Pa
+        const q = LandingSitesLayer.computeDynamicPressure(0.005, 5000);
+        expect(q).to.equal(62500);
+    });
+
+    it('should query the nearest landing site accurately', () => {
+        const mockSites = [
+            { name: 'Perseverance', lat: 18.38, lon: 77.58, body: 'mars' },
+            { name: 'Curiosity', lat: -4.59, lon: 137.44, body: 'mars' },
+            { name: 'Apollo 11', lat: 0.674, lon: 23.473, body: 'moon' }
+        ];
+
+        // Coordinate near Jezero Crater (18.5, 77.5)
+        const nearestMars = LandingSitesLayer.findNearestLandingSite(18.5, 77.5, mockSites, 'mars');
+        expect(nearestMars).to.not.be.null;
+        expect(nearestMars.name).to.equal('Perseverance');
+        expect(nearestMars.distanceKm).to.be.lessThan(50);
+
+        // Moon query
+        const nearestMoon = LandingSitesLayer.findNearestLandingSite(0.0, 23.0, mockSites, 'moon');
+        expect(nearestMoon).to.not.be.null;
+        expect(nearestMoon.name).to.equal('Apollo 11');
     });
 });
 

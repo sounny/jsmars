@@ -160,4 +160,64 @@ export class LandingSitesLayer {
       this.markerGroup.addLayer(marker);
     });
   }
+
+  // --- Planetary Entry, Descent & Landing (EDL) Solvers ---
+
+  /**
+   * Calculate spacecraft ballistic coefficient (beta).
+   * @param {number} massKg - Spacecraft entry mass in kg
+   * @param {number} [dragCoeff=1.4] - Hypersonic drag coefficient (Cd)
+   * @param {number} [crossSectionAreaM2=15.9] - Aeroshell frontal area (pi * r^2)
+   * @returns {number} Ballistic coefficient (kg/m^2)
+   */
+  static computeBallisticCoefficient(massKg, dragCoeff = 1.4, crossSectionAreaM2 = 15.9) {
+    const cdA = Math.max(0.01, dragCoeff * crossSectionAreaM2);
+    return massKg / cdA;
+  }
+
+  /**
+   * Calculate hypersonic dynamic pressure (q).
+   * @param {number} densityKgM3 - Atmospheric mass density (kg/m^3)
+   * @param {number} velocityMs - Entry velocity in m/s
+   * @returns {number} Dynamic pressure in Pascals (N/m^2)
+   */
+  static computeDynamicPressure(densityKgM3, velocityMs) {
+    return 0.5 * Math.max(0, densityKgM3) * (velocityMs * velocityMs);
+  }
+
+  /**
+   * Find the nearest landing site from arbitrary planetary coordinates.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {Array<object>} sites - Array of landing site objects
+   * @param {string} [body='mars'] - Target body
+   * @returns {object|null} Nearest landing site with distance in km
+   */
+  static findNearestLandingSite(lat, lon, sites = [], body = 'mars') {
+    const filtered = sites.filter(s => (s.body || 'mars').toLowerCase() === body.toLowerCase());
+    if (filtered.length === 0) return null;
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    filtered.forEach(s => {
+      // Haversine distance
+      const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+      const dLat = (s.lat - lat) * Math.PI / 180;
+      const dLon = (s.lon - lon) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat * Math.PI / 180) * Math.cos(s.lat * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
+      const dist = R * c;
+
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearest = { ...s, distanceKm: parseFloat(dist.toFixed(2)) };
+      }
+    });
+
+    return nearest;
+  }
 }
+
