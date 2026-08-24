@@ -386,6 +386,35 @@ describe('Crater Morphometry & Classification', () => {
     });
 });
 
+describe('Instrument Stamp & Footprint Optics (StampLayer)', () => {
+    it('should compute spatial pixel resolution (GSD) for HiRISE and CTX', () => {
+        // HiRISE: 300 km altitude, 12000 mm focal length, 12 micron pixel pitch -> 0.30 m/pixel
+        const gsdHirise = StampLayer.computeSpatialResolution(300, 12000, 12);
+        expect(gsdHirise).to.be.closeTo(0.30, 0.01);
+
+        // CTX: 300 km altitude, 350 mm focal length, 7 micron pixel pitch -> 6.0 m/pixel
+        const gsdCtx = StampLayer.computeSpatialResolution(300, 350, 7);
+        expect(gsdCtx).to.be.closeTo(6.0, 0.1);
+    });
+
+    it('should compute solar phase angle and slant range distance', () => {
+        // Incidence = 45 deg, Emission = 15 deg, Azimuth diff = 0 deg -> Phase = 30 deg
+        const phase = StampLayer.computePhaseAngle(45, 15, 0);
+        expect(phase).to.be.closeTo(30.0, 0.1);
+
+        // Slant range at 300 km altitude with 60 deg off-nadir emission -> 300 / cos(60) = 600 km
+        const slant = StampLayer.computeSlantRange(300, 60);
+        expect(slant).to.be.closeTo(600.0, 0.1);
+    });
+
+    it('should build valid USGS ODE REST API query URLs', () => {
+        const url = StampLayer.buildODEQueryURL({ instrument: 'CTX', minLat: 10, maxLat: 20 });
+        expect(url).to.include('oderest.rsl.wustl.edu');
+        expect(url).to.include('iid=CTX');
+        expect(url).to.include('minlat=10.0000');
+    });
+});
+
 describe('Layer Composite Blending & Publishing', () => {
     beforeEach(() => {
         jmarsState.reset();

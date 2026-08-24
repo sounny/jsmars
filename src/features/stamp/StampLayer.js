@@ -361,4 +361,77 @@ export class StampLayer {
     if (n < 0) n += 360;
     return n > 180 ? n - 360 : n;
   }
+
+  // --- Instrument Optics & Observational Geometry Solvers ---
+
+  /**
+   * Calculate Ground Sample Distance (GSD) / spatial pixel resolution.
+   * @param {number} altitudeKm - Spacecraft orbital altitude in km
+   * @param {number} focalLengthMm - Camera optical focal length in mm
+   * @param {number} pixelSizeMicrons - Detector pixel pitch in microns (µm)
+   * @returns {number} Spatial resolution in meters per pixel
+   */
+  static computeSpatialResolution(altitudeKm, focalLengthMm, pixelSizeMicrons) {
+    const altM = altitudeKm * 1000.0;
+    const focalM = focalLengthMm * 1e-3;
+    const pixelM = pixelSizeMicrons * 1e-6;
+
+    return (altM * pixelM) / focalM;
+  }
+
+  /**
+   * Calculate solar phase angle from incidence, emission, and azimuth angles.
+   * @param {number} incidenceAngleDeg - Solar incidence angle (i) in degrees
+   * @param {number} emissionAngleDeg - Emission/view angle (e) in degrees
+   * @param {number} [azimuthDiffDeg=0] - Azimuth difference angle in degrees
+   * @returns {number} Phase angle (g) in degrees
+   */
+  static computePhaseAngle(incidenceAngleDeg, emissionAngleDeg, azimuthDiffDeg = 0) {
+    const iRad = incidenceAngleDeg * Math.PI / 180;
+    const eRad = emissionAngleDeg * Math.PI / 180;
+    const psiRad = azimuthDiffDeg * Math.PI / 180;
+
+    const cosG = Math.cos(iRad) * Math.cos(eRad) + Math.sin(iRad) * Math.sin(eRad) * Math.cos(psiRad);
+    const gRad = Math.acos(Math.max(-1, Math.min(1, cosG)));
+
+    return gRad * 180 / Math.PI;
+  }
+
+  /**
+   * Calculate line-of-sight slant range distance to ground target.
+   * @param {number} altitudeKm - Spacecraft altitude
+   * @param {number} emissionAngleDeg - Off-nadir emission angle
+   * @returns {number} Slant range in km
+   */
+  static computeSlantRange(altitudeKm, emissionAngleDeg = 0) {
+    const eRad = emissionAngleDeg * Math.PI / 180;
+    const cosE = Math.cos(eRad);
+    return cosE > 1e-5 ? altitudeKm / cosE : altitudeKm;
+  }
+
+  /**
+   * Build a USGS ODE REST API query URL.
+   * @param {object} options
+   * @returns {string} Fully qualified ODE query URL
+   */
+  static buildODEQueryURL(options = {}) {
+    const baseUrl = 'https://oderest.rsl.wustl.edu/live2';
+    const params = new URLSearchParams({
+      query: 'product',
+      results: 'fmpc',
+      output: 'JSON',
+      target: options.target || 'mars',
+      ihid: options.host || 'MRO',
+      iid: options.instrument || 'CTX',
+      pt: options.productType || 'CTX_EDR',
+      minlat: (options.minLat ?? -10).toFixed(4),
+      maxlat: (options.maxLat ?? 10).toFixed(4),
+      westernlon: (options.westLon ?? 0).toFixed(4),
+      easternlon: (options.eastLon ?? 20).toFixed(4),
+      limit: options.limit || 100
+    });
+
+    return `${baseUrl}?${params.toString()}`;
+  }
 }
+

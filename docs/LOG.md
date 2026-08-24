@@ -107,3 +107,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - **Radar Sounding Geophysics**: Fresnel normal-incidence dielectric reflectivity, vertical range resolution, and one-way radar attenuation rate.
 - **Verification Status**: 72/72 automated Mocha/Chai unit tests passing with zero errors. All changes committed and synced to GitHub `origin main`.
 
+
+
+### Automated 4-Hour Check Alert [2026-08-24 07:15:58 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should classify complex central peak craters (7 to 100 km)
+?: AssertionError: expected 'Complex' to equal 'Complex (Central Peak)'
+    at n.<anonymous> (unit.js:379:33)
