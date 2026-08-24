@@ -1768,6 +1768,29 @@ describe('3D Planetary Ellipsoidal Geodesy & Solar Elevation (ThreeDEngine)', ()
     });
 });
 
+describe('Planetary Probe Geophysics & Gravity Variation (InvestigateTool)', () => {
+    it('should compute latitude-dependent theoretical surface gravity', () => {
+        // Mars equator: g ~ 3.7112 m/s^2
+        const gEq = InvestigateTool.computeTheoreticalGravityByLatitude(0, 'mars');
+        expect(gEq).to.be.closeTo(3.7112, 0.01);
+
+        // Mars pole (90 deg): g ~ 3.7309 m/s^2 (higher due to oblateness)
+        const gPole = InvestigateTool.computeTheoreticalGravityByLatitude(90, 'mars');
+        expect(gPole).to.be.closeTo(3.7309, 0.01);
+        expect(gPole).to.be.greaterThan(gEq);
+    });
+
+    it('should calculate volumetric heat capacity and hydrostatic temperature', () => {
+        // Regolith density = 1500 kg/m^3, cp = 800 J/(kg K) -> C_vol = 1.2e6 J/(m^3 K)
+        const cVol = InvestigateTool.computeVolumetricHeatCapacity(1500, 800);
+        expect(cVol).to.equal(1200000);
+
+        // Hydrostatic temperature for Mars scale height H = 11.1 km -> T ~ 218.8 K
+        const tIso = InvestigateTool.computeHydrostaticColumnPressure(11100, 3.72076, 0.04401);
+        expect(tIso).to.be.closeTo(218.8, 1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -407,5 +407,59 @@ export class InvestigateTool {
 
         return { regime, description, dustCover, thermalInertia: ti, albedo };
     }
+
+    // --- Latitude-Dependent Planetary Gravity & Thermal Properties ---
+
+    /**
+     * Compute theoretical surface gravity as a function of latitude on an oblate planet (Somigliana-like formula).
+     * g(phi) = g_e * (1 + beta * sin^2(phi))
+     * @param {number} latDeg - Planetocentric latitude in degrees (-90 to +90)
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {number} Surface gravitational acceleration in m/s^2
+     */
+    static computeTheoreticalGravityByLatitude(latDeg, body = 'mars') {
+        const bKey = body.toLowerCase();
+        const phiRad = latDeg * Math.PI / 180.0;
+        const sin2 = Math.sin(phiRad) * Math.sin(phiRad);
+
+        let g_e = 3.7112;
+        let beta = 0.0053;
+
+        if (bKey === 'moon') {
+            g_e = 1.622;
+            beta = 0.0002;
+        } else if (bKey === 'earth') {
+            g_e = 9.780327;
+            beta = 0.0053024;
+        }
+
+        const g = g_e * (1.0 + beta * sin2);
+        return parseFloat(g.toFixed(4));
+    }
+
+    /**
+     * Calculate volumetric heat capacity C_vol = rho * c_p.
+     * @param {number} [densityKgM3=1500] - Regolith mass density in kg/m^3
+     * @param {number} [specificHeat=800] - Specific heat capacity in J/(kg K)
+     * @returns {number} Volumetric heat capacity in J / (m^3 K)
+     */
+    static computeVolumetricHeatCapacity(densityKgM3 = 1500, specificHeat = 800) {
+        return Math.max(1, densityKgM3 * specificHeat);
+    }
+
+    /**
+     * Calculate isothermal atmospheric temperature from scale height and planetary gravity.
+     * T = (g * H * M) / R_univ
+     * @param {number} [scaleHeightM=11100] - Atmospheric scale height in meters
+     * @param {number} [gSurface=3.72076] - Surface gravitational acceleration in m/s^2
+     * @param {number} [molarMassKgMol=0.04401] - Molar mass of atmosphere in kg/mol (CO2 = 0.04401)
+     * @returns {number} Mean isothermal atmospheric temperature in Kelvin
+     */
+    static computeHydrostaticColumnPressure(scaleHeightM = 11100, gSurface = 3.72076, molarMassKgMol = 0.04401) {
+        const R_univ = 8.314462618; // J / (mol K)
+        const T = (gSurface * scaleHeightM * molarMassKgMol) / R_univ;
+        return parseFloat(T.toFixed(1));
+    }
 }
+
 
