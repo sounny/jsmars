@@ -22,6 +22,7 @@ import { CustomMapManager } from '../src/features/custom-map/CustomMapManager.js
 import { LandingSitesLayer } from '../src/features/landing/LandingSitesLayer.js';
 import { RadialProfileTool } from '../src/features/profile/RadialProfileTool.js';
 import { MeasureTool } from '../src/features/measure/MeasureTool.js';
+import { GroundTrackLayer } from '../src/features/groundtrack/GroundTrackLayer.js';
 import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
@@ -1226,6 +1227,31 @@ describe('Polar Stereographic & Map Projection Solvers (ProjectionManager)', () 
 
         // Cylindrical equirectangular expands toward poles: 1 / cos(60) = 2.0
         expect(ProjectionManager.computeArealDistortion(60, 'equirectangular')).to.be.closeTo(2.0, 0.01);
+    });
+});
+
+describe('Spacecraft Ground Tracks & Orbital Mechanics (GroundTrackLayer)', () => {
+    it('should compute Keplerian orbital period and velocity', () => {
+        // MRO at altitude 250 km on Mars -> a = 3639.5 km -> period ≈ 111.1 min
+        const orbit = GroundTrackLayer.computeOrbitalPeriod(250, 'mars');
+        expect(orbit.periodMinutes).to.be.closeTo(111.1, 0.5);
+        expect(orbit.orbitalVelocityKms).to.be.closeTo(3.43, 0.05);
+
+        // Low Lunar orbit at 100 km -> period ≈ 118 min
+        const moonOrbit = GroundTrackLayer.computeOrbitalPeriod(100, 'moon');
+        expect(moonOrbit.periodMinutes).to.be.closeTo(118.0, 1.0);
+    });
+
+    it('should calculate J2 nodal precession rate and ground track repeat drift', () => {
+        // Mars orbiter at 250 km, 92.65 deg inclination (MRO)
+        const j2 = GroundTrackLayer.computeJ2NodalPrecession(250, 92.65, 'mars');
+        expect(j2.degPerDay).to.be.closeTo(0.524, 0.1); // Sun-synchronous nodal regression rate
+
+        // Ground track repeat cycle for 112 min orbit
+        const repeat = GroundTrackLayer.computeGroundTrackRepeatCycle(112, 'mars');
+        expect(repeat.orbitsPerSol).to.be.closeTo(13.19, 0.1);
+        expect(repeat.driftDegPerOrbit).to.be.closeTo(27.29, 0.5);
+        expect(repeat.groundTrackShiftKm).to.be.greaterThan(1000);
     });
 });
 

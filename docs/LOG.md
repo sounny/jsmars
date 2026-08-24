@@ -133,3 +133,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute minimum enclosing circle and export WKT
 ?: AssertionError: expected 'POLYGON ((0 0, 1 0, 1 1, 0 0))' to include 'POLYGON (((0 0, 1 0, 1 1, 0 0)))'
     at n.<anonymous> (unit.js:1128:28)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 10:00:33 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute Keplerian orbital period and velocity
+?: AssertionError: expected 111.1 to be close to 111.9 +/- 0.5
+    at n.<anonymous> (unit.js:1237:43)

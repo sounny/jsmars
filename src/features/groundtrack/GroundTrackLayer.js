@@ -245,4 +245,85 @@ export class GroundTrackLayer {
       color: sc.color
     }));
   }
+
+  // --- Orbital Mechanics & Ephemeris Solvers ---
+
+  /**
+   * Compute Keplerian circular orbital period.
+   * @param {number} altitudeKm - Orbital altitude above mean radius (km)
+   * @param {string} [body='mars'] - Planetary body name
+   * @returns {{periodMinutes: number, periodSeconds: number, orbitalVelocityKms: number}}
+   */
+  static computeOrbitalPeriod(altitudeKm, body = 'mars') {
+    const bodyLow = body.toLowerCase();
+    const R = bodyLow === 'moon' ? 1737.4 : bodyLow === 'earth' ? 6371.0 : 3389.5;
+    const mu = bodyLow === 'moon' ? 4902.8 : bodyLow === 'earth' ? 398600.44 : 42828.37; // km^3/s^2
+
+    const a = R + Math.max(0, altitudeKm);
+    const periodSec = 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / mu);
+    const vOrbitKms = Math.sqrt(mu / a);
+
+    return {
+      periodMinutes: parseFloat((periodSec / 60).toFixed(2)),
+      periodSeconds: parseFloat(periodSec.toFixed(1)),
+      orbitalVelocityKms: parseFloat(vOrbitKms.toFixed(3)),
+      semiMajorAxisKm: a
+    };
+  }
+
+  /**
+   * Compute J2 gravitational oblateness nodal precession rate (dOmega/dt).
+   * @param {number} altitudeKm - Orbital altitude (km)
+   * @param {number} inclinationDeg - Orbit inclination in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{degPerDay: number, degPerMin: number, isSunSynchronous: boolean}}
+   */
+  static computeJ2NodalPrecession(altitudeKm, inclinationDeg, body = 'mars') {
+    const bodyLow = body.toLowerCase();
+    const R = bodyLow === 'moon' ? 1737.4 : bodyLow === 'earth' ? 6371.0 : 3389.5;
+    const mu = bodyLow === 'moon' ? 4902.8 : bodyLow === 'earth' ? 398600.44 : 42828.37;
+    const J2 = bodyLow === 'moon' ? 0.000203 : bodyLow === 'earth' ? 0.00108263 : 0.00196045;
+
+    const a = R + altitudeKm;
+    const n = Math.sqrt(mu / Math.pow(a, 3)); // mean motion in rad/s
+    const incRad = inclinationDeg * Math.PI / 180;
+
+    // dOmega/dt = -1.5 * J2 * (R/a)^2 * n * cos(i) in rad/s
+    const dOmegaRadSec = -1.5 * J2 * Math.pow(R / a, 2) * n * Math.cos(incRad);
+    const degPerDay = (dOmegaRadSec * 180 / Math.PI) * 86400;
+    const degPerMin = (dOmegaRadSec * 180 / Math.PI) * 60;
+
+    // Sun-synchronous target rate on Mars: 360 deg / 686.98 days = 0.524 deg/day
+    const isSunSync = Math.abs(degPerDay - 0.524) < 0.1;
+
+    return {
+      degPerDay: parseFloat(degPerDay.toFixed(4)),
+      degPerMin: parseFloat(degPerMin.toFixed(6)),
+      isSunSynchronous: isSunSync
+    };
+  }
+
+  /**
+   * Compute planetary ground track longitudinal drift per orbit and daily cycles.
+   * @param {number} periodMinutes - Orbital period in minutes
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{orbitsPerSol: number, driftDegPerOrbit: number, groundTrackShiftKm: number}}
+   */
+  static computeGroundTrackRepeatCycle(periodMinutes, body = 'mars') {
+    const bodyLow = body.toLowerCase();
+    const R = bodyLow === 'moon' ? 1737.4 : bodyLow === 'earth' ? 6371.0 : 3389.5;
+    const solMinutes = bodyLow === 'moon' ? 27.32 * 1440 : bodyLow === 'earth' ? 1440.0 : (24.6229 * 60);
+
+    const orbitsPerSol = solMinutes / periodMinutes;
+    const driftDegPerOrbit = (periodMinutes / solMinutes) * 360;
+    const equatorCircumferenceKm = 2 * Math.PI * R;
+    const groundTrackShiftKm = (driftDegPerOrbit / 360) * equatorCircumferenceKm;
+
+    return {
+      orbitsPerSol: parseFloat(orbitsPerSol.toFixed(2)),
+      driftDegPerOrbit: parseFloat(driftDegPerOrbit.toFixed(2)),
+      groundTrackShiftKm: parseFloat(groundTrackShiftKm.toFixed(1))
+    };
+  }
 }
+
