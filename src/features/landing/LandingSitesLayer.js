@@ -219,5 +219,60 @@ export class LandingSitesLayer {
 
     return nearest;
   }
+
+  // --- Entry Deceleration, Parachute Dynamics & Site Filters ---
+
+  /**
+   * Calculate peak atmospheric entry deceleration (g-load) using analytical Chapman approximation.
+   * a_max = (v_entry^2 * sin(gamma)) / (2 * e * H)
+   * @param {number} entryVelocityMs - Atmospheric entry velocity in m/s (e.g. 5800 m/s for Mars)
+   * @param {number} flightPathAngleDeg - Entry flight path angle in degrees (e.g. 12 deg)
+   * @param {number} [scaleHeightMeters=11100] - Atmospheric scale height (H)
+   * @returns {{peakDecelM_S2: number, peakDecelGLoad: number}}
+   */
+  static computePeakDecelerationG(entryVelocityMs, flightPathAngleDeg, scaleHeightMeters = 11100) {
+    const gammaRad = Math.abs(flightPathAngleDeg) * Math.PI / 180.0;
+    const aMax = (Math.pow(entryVelocityMs, 2) * Math.sin(gammaRad)) / (2.0 * Math.E * scaleHeightMeters);
+    const gLoad = aMax / 9.80665;
+
+    return {
+      peakDecelM_S2: parseFloat(aMax.toFixed(1)),
+      peakDecelGLoad: parseFloat(gLoad.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate parachute terminal descent equilibrium velocity.
+   * v_term = sqrt((2 * m * g) / (rho * Cd * A))
+   * @param {number} massKg - Descent stage mass in kg (e.g. 1025 kg for Perseverance/Curiosity)
+   * @param {number} [surfaceDensityKgM3=0.015] - Atmospheric density at parachute deployment
+   * @param {number} [parachuteAreaM2=360] - Parachute canopy reference area (e.g. 21.5 m disk-gap-band)
+   * @param {number} [parachuteCd=2.0] - Parachute drag coefficient
+   * @param {number} [gMars=3.72076] - Mars gravitational acceleration
+   * @returns {number} Terminal descent speed in m/s
+   */
+  static computeTerminalDescentVelocity(massKg, surfaceDensityKgM3 = 0.015, parachuteAreaM2 = 360, parachuteCd = 2.0, gMars = 3.72076) {
+    const denom = surfaceDensityKgM3 * parachuteCd * parachuteAreaM2;
+    if (denom <= 0) return Infinity;
+    const vTerm = Math.sqrt((2.0 * massKg * gMars) / denom);
+    return parseFloat(vTerm.toFixed(2));
+  }
+
+  /**
+   * Filter landing sites by space agency, body, and operational status.
+   * @param {Array<object>} sites
+   * @param {{agency?: string, body?: string, minYear?: number, maxYear?: number}} [filters={}]
+   * @returns {Array<object>}
+   */
+  static filterSitesByAgencyOrYear(sites = [], filters = {}) {
+    return sites.filter(s => {
+      if (filters.body && (s.body || 'mars').toLowerCase() !== filters.body.toLowerCase()) return false;
+      if (filters.agency && s.agency && !s.agency.toUpperCase().includes(filters.agency.toUpperCase())) return false;
+      if (filters.minYear && s.year && s.year < filters.minYear) return false;
+      if (filters.maxYear && s.year && s.year > filters.maxYear) return false;
+      return true;
+    });
+  }
 }
+
 

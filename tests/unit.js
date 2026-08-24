@@ -1724,6 +1724,21 @@ describe('Hyperspectral Mineral Parameter Indices & Mineral Suites (BandMathEngi
     });
 });
 
+describe('Entry, Descent & Landing (EDL) Aerodynamics (LandingSitesLayer)', () => {
+    it('should compute Chapman peak atmospheric entry deceleration g-loads', () => {
+        // Mars entry: v = 5800 m/s, gamma = 12 deg, H = 11100 m -> a_max ~ 116 m/s^2 (~11.8 g)
+        const decel = LandingSitesLayer.computePeakDecelerationG(5800, 12.0, 11100);
+        expect(decel.peakDecelGLoad).to.be.closeTo(11.8, 0.5);
+        expect(decel.peakDecelM_S2).to.be.greaterThan(100);
+    });
+
+    it('should calculate parachute terminal descent equilibrium velocity', () => {
+        // 1025 kg landing mass, rho = 0.015 kg/m^3, Cd = 2.0, Area = 360 m^2 -> v_term ~ 26.5 m/s
+        const vTerm = LandingSitesLayer.computeTerminalDescentVelocity(1025, 0.015, 360, 2.0, 3.72076);
+        expect(vTerm).to.be.closeTo(26.56, 0.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
