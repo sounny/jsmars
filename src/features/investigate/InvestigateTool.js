@@ -283,4 +283,64 @@ export class InvestigateTool {
         });
         resultsEl.innerHTML = html;
     }
+
+    /**
+     * Compute and format scientific probe diagnostics for any planetary coordinate.
+     * @param {object} params
+     * @param {number} params.lat - Latitude (planetocentric)
+     * @param {number} params.lng - Longitude (degrees)
+     * @param {string} [params.body='mars'] - Planetary body
+     * @param {number} [params.elevationMeters=0] - Elevation in meters
+     * @param {number} [params.Ls=0] - Solar longitude
+     * @param {number} [params.MTC=12] - Mars Coordinated Time
+     * @returns {object} Full probe diagnostic data
+     */
+    static formatProbeDiagnostics({ lat, lng, body = 'mars', elevationMeters = 0, Ls = 0, MTC = 12 }) {
+        const lng360E = ((lng % 360) + 360) % 360;
+        const lng180 = lng360E > 180 ? lng360E - 360 : lng360E;
+        const lng360W = (360 - lng360E) % 360;
+
+        const isMars = body.toLowerCase() === 'mars';
+        const ltst = isMars ? MarsTime.computeLTST(Ls, MTC, lng360E) : (lng360E / 15.0);
+        const ltstHours = Math.floor(ltst);
+        const ltstMins = Math.floor((ltst - ltstHours) * 60);
+        const ltstStr = `${String(ltstHours).padStart(2, '0')}:${String(ltstMins).padStart(2, '0')}`;
+
+        let krcSummary = null;
+        let mcdSummary = null;
+
+        if (isMars) {
+            const krc = KRCEngine.simulateDiurnal({
+                lat,
+                Ls,
+                elevation: elevationMeters / 1000,
+                thermalInertia: 280,
+                albedo: 0.22
+            });
+            krcSummary = krc.summary;
+
+            const mcd = MCDEngine.computeProfile({
+                lat,
+                lon: lng360E,
+                elevation: elevationMeters / 1000,
+                Ls,
+                localHour: ltst
+            });
+            mcdSummary = mcd.surface;
+        }
+
+        return {
+            body,
+            lat,
+            lng360E,
+            lng180,
+            lng360W,
+            elevationMeters,
+            elevationKm: elevationMeters / 1000,
+            ltst,
+            ltstStr,
+            krc: krcSummary,
+            mcd: mcdSummary
+        };
+    }
 }

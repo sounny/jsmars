@@ -15,6 +15,7 @@ import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
+import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -569,6 +570,27 @@ describe('Geodesic Navigation & Cross-Track Distance', () => {
         // Point at (10, 0) is 10 deg North ≈ 10 * PI/180 * 3389.5 ≈ 591.6 km
         const xtDist = computeCrossTrackDistance(10, 0, 0, -45, 0, 45, 'mars');
         expect(Math.abs(xtDist)).to.be.closeTo(591.6, 5.0);
+    });
+});
+
+describe('Planetary Multi-Layer Probe (InvestigateTool)', () => {
+    it('should format probe diagnostics including coordinate notations, KRC temperature, and MCD pressure', () => {
+        const diag = InvestigateTool.formatProbeDiagnostics({
+            lat: 18.5,
+            lng: 226.2,
+            body: 'mars',
+            elevationMeters: 21287,
+            Ls: 90,
+            MTC: 12
+        });
+
+        expect(diag.lng360E).to.be.closeTo(226.2, 0.01);
+        expect(diag.lng180).to.be.closeTo(-133.8, 0.01);
+        expect(diag.elevationKm).to.be.closeTo(21.287, 0.001);
+        expect(diag.krc).to.not.be.null;
+        expect(diag.krc.meanTemp).to.be.within(150, 300);
+        expect(diag.mcd).to.not.be.null;
+        expect(diag.mcd.pressurePa).to.be.greaterThan(0);
     });
 });
 
