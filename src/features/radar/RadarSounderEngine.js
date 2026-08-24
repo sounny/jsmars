@@ -216,4 +216,53 @@ export class RadarSounderEngine {
       grid
     };
   }
+
+  // --- Radar Geophysical Equations ---
+
+  /**
+   * Calculate normal-incidence Fresnel power reflectivity at a dielectric interface.
+   * @param {number} eps1 - Relative permittivity of top layer
+   * @param {number} eps2 - Relative permittivity of bottom layer
+   * @returns {{reflectivityLinear: number, reflectivityDb: number, transmissivityLinear: number}}
+   */
+  static computeFresnelReflectivity(eps1, eps2) {
+    const n1 = Math.sqrt(Math.max(1, eps1));
+    const n2 = Math.sqrt(Math.max(1, eps2));
+
+    const rAmp = (n1 - n2) / (n1 + n2);
+    const rPower = rAmp * rAmp;
+    const rDb = 10 * Math.log10(Math.max(1e-12, rPower));
+    const tPower = 1.0 - rPower;
+
+    return {
+      reflectivityLinear: rPower,
+      reflectivityDb: rDb,
+      transmissivityLinear: tPower
+    };
+  }
+
+  /**
+   * Calculate vertical range resolution in medium.
+   * @param {number} [bandwidthHz=10e6] - Chirp bandwidth (e.g. 10 MHz for SHARAD)
+   * @param {number} [epsR=3.15] - Dielectric permittivity of medium
+   * @returns {number} Vertical range resolution in meters
+   */
+  static computeRangeResolution(bandwidthHz = 10e6, epsR = 3.15) {
+    const v = RadarSounderEngine.getVelocity(epsR);
+    return v / (2.0 * bandwidthHz);
+  }
+
+  /**
+   * Calculate one-way radar power attenuation rate in dB per meter.
+   * @param {number} [freqHz=20e6] - Radar center frequency (e.g. 20 MHz for SHARAD)
+   * @param {number} [lossTangent=0.001] - Loss tangent (tan delta)
+   * @param {number} [epsR=3.15] - Relative permittivity
+   * @returns {number} Attenuation rate in dB/meter
+   */
+  static computeAttenuationRate(freqHz = 20e6, lossTangent = 0.001, epsR = 3.15) {
+    const v = RadarSounderEngine.getVelocity(epsR);
+    const omega = 2 * Math.PI * freqHz;
+    return ((omega * lossTangent) / (2 * v)) * 8.686;
+  }
 }
+

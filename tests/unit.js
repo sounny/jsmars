@@ -432,6 +432,22 @@ describe('Mars Subsurface Radar Sounder (SHARAD/MARSIS)', () => {
         expect(radargram.grid).to.be.an('array').with.lengthOf(30);
         expect(radargram.distances).to.be.an('array').with.lengthOf(30);
     });
+
+    it('should compute Fresnel dielectric reflectivity, vertical resolution, and attenuation rate', () => {
+        // Fresnel reflection between air (eps=1) and ice (eps=3.15)
+        const refl = RadarSounderEngine.computeFresnelReflectivity(1.0, 3.15);
+        expect(refl.reflectivityLinear).to.be.closeTo(0.078, 0.005);
+        expect(refl.reflectivityDb).to.be.closeTo(-11.1, 0.2);
+        expect(refl.transmissivityLinear).to.be.closeTo(0.922, 0.005);
+
+        // SHARAD vertical range resolution (10 MHz bandwidth in ice eps=3.15)
+        const resIce = RadarSounderEngine.computeRangeResolution(10e6, 3.15);
+        expect(resIce).to.be.closeTo(8.45, 0.1); // ~8.45 meters
+
+        // SHARAD attenuation rate (20 MHz in ice eps=3.15, tan_delta=0.001)
+        const atten = RadarSounderEngine.computeAttenuationRate(20e6, 0.001, 3.15);
+        expect(atten).to.be.closeTo(0.00323, 0.0002); // ~0.00323 dB/m (~3.23 dB/km)
+    });
 });
 
 describe('Spatial POI Bookmarks System', () => {

@@ -88,3 +88,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute Mars atmospheric speed of sound, viscosity, mean free path, and column mass
 ?: AssertionError: expected 0.000010291611372627857 to be close to 0.0000065 +/- 0.000001
     at n.<anonymous> (unit.js:192:30)
+
+
+### Automated 4-Hour Check Alert [2026-08-24 05:45:36 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute Fresnel dielectric reflectivity, vertical resolution, and attenuation rate
+?: AssertionError: expected 0.0032309799824388314 to be close to 0.00645 +/- 0.0005
+    at n.<anonymous> (unit.js:449:29)
