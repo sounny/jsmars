@@ -227,5 +227,119 @@ export class ProjectionManager {
       lon: to180(lon0 + dLambda * 180 / Math.PI)
     };
   }
+
+  /**
+   * Forward Mollweide pseudocylindrical equal-area projection.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {number} [lon0=0] - Central meridian
+   * @param {string} [body='mars']
+   * @returns {{x: number, y: number}} Coordinates in km
+   */
+  static forwardMollweide(lat, lon, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180;
+    const dLambda = to180(lon - lon0) * Math.PI / 180;
+
+    // Solve 2*theta + sin(2*theta) = pi * sin(phi) via Newton-Raphson
+    let theta = phi;
+    const target = Math.PI * Math.sin(phi);
+    for (let iter = 0; iter < 10; iter++) {
+      const f = 2 * theta + Math.sin(2 * theta) - target;
+      const df = 2 + 2 * Math.cos(2 * theta);
+      const delta = f / df;
+      theta -= delta;
+      if (Math.abs(delta) < 1e-7) break;
+    }
+
+    const x = (2 * Math.SQRT2 / Math.PI) * R * dLambda * Math.cos(theta);
+    const y = Math.SQRT2 * R * Math.sin(theta);
+    return { x, y };
+  }
+
+  /**
+   * Inverse Mollweide projection.
+   */
+  static inverseMollweide(x, y, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const sinTheta = y / (Math.SQRT2 * R);
+    if (Math.abs(sinTheta) > 1) return null;
+
+    const theta = Math.asin(sinTheta);
+    const cosTheta = Math.cos(theta);
+    if (Math.abs(cosTheta) < 1e-7) {
+      return { lat: y > 0 ? 90 : -90, lon: to180(lon0) };
+    }
+
+    const phi = Math.asin((2 * theta + Math.sin(2 * theta)) / Math.PI);
+    const dLambda = (Math.PI * x) / (2 * Math.SQRT2 * R * cosTheta);
+
+    return {
+      lat: phi * 180 / Math.PI,
+      lon: to180(lon0 + dLambda * 180 / Math.PI)
+    };
+  }
+
+  /**
+   * Forward Lambert Azimuthal Equal-Area (LAEA) projection.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {number} [centerLat=90] - Center latitude (defaults to North Pole)
+   * @param {number} [centerLon=0] - Center longitude
+   * @param {string} [body='mars']
+   * @returns {{x: number, y: number, visible: boolean}}
+   */
+  static forwardLambertAzimuthal(lat, lon, centerLat = 90, centerLon = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180;
+    const lambda = lon * Math.PI / 180;
+    const phi1 = centerLat * Math.PI / 180;
+    const lambda0 = centerLon * Math.PI / 180;
+
+    const cosC = Math.sin(phi1) * Math.sin(phi) + Math.cos(phi1) * Math.cos(phi) * Math.cos(lambda - lambda0);
+    if (cosC < -1 + 1e-7) return { x: 0, y: 0, visible: false }; // Antipodal point
+
+    const kPrime = Math.sqrt(2 / (1 + cosC));
+    const x = R * kPrime * Math.cos(phi) * Math.sin(lambda - lambda0);
+    const y = R * kPrime * (Math.cos(phi1) * Math.sin(phi) - Math.sin(phi1) * Math.cos(phi) * Math.cos(lambda - lambda0));
+
+    return { x, y, visible: cosC >= 0 };
+  }
+
+  /**
+   * Inverse Lambert Azimuthal Equal-Area projection.
+   */
+  static inverseLambertAzimuthal(x, y, centerLat = 90, centerLon = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const rho = Math.hypot(x, y);
+    if (rho > 2 * R) return null;
+
+    if (rho < 1e-6) {
+      return { lat: centerLat, lon: to180(centerLon) };
+    }
+
+    const phi1 = centerLat * Math.PI / 180;
+    const lambda0 = centerLon * Math.PI / 180;
+
+    const c = 2 * Math.asin(rho / (2 * R));
+    const sinC = Math.sin(c);
+    const cosC = Math.cos(c);
+
+    const phi = Math.asin(cosC * Math.sin(phi1) + (y * sinC * Math.cos(phi1)) / rho);
+    let lambda;
+
+    if (Math.abs(centerLat) >= 89.999) {
+      // Polar aspect
+      lambda = centerLat > 0 ? lambda0 + Math.atan2(x, -y) : lambda0 + Math.atan2(x, y);
+    } else {
+      lambda = lambda0 + Math.atan2(x * sinC, rho * Math.cos(phi1) * cosC - y * Math.sin(phi1) * sinC);
+    }
+
+    return {
+      lat: phi * 180 / Math.PI,
+      lon: to180(lambda * 180 / Math.PI)
+    };
+  }
 }
+
 

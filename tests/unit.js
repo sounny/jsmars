@@ -753,6 +753,21 @@ describe('Planetary Map Projections (ProjectionManager)', () => {
         expect(inv.lat).to.be.closeTo(-15, 0.001);
         expect(inv.lon).to.be.closeTo(60, 0.001);
     });
+
+    it('should perform forward and inverse Mollweide and Lambert Azimuthal Equal-Area projections', () => {
+        // Mollweide equal-area projection
+        const fwdMoll = ProjectionManager.forwardMollweide(45, 90, 0, 'mars');
+        const invMoll = ProjectionManager.inverseMollweide(fwdMoll.x, fwdMoll.y, 0, 'mars');
+        expect(invMoll.lat).to.be.closeTo(45, 0.01);
+        expect(invMoll.lon).to.be.closeTo(90, 0.01);
+
+        // Lambert Azimuthal Equal-Area (North Polar aspect)
+        const fwdLaea = ProjectionManager.forwardLambertAzimuthal(80, 45, 90, 0, 'mars');
+        expect(fwdLaea.visible).to.be.true;
+        const invLaea = ProjectionManager.inverseLambertAzimuthal(fwdLaea.x, fwdLaea.y, 90, 0, 'mars');
+        expect(invLaea.lat).to.be.closeTo(80, 0.01);
+        expect(invLaea.lon).to.be.closeTo(45, 0.01);
+    });
 });
 
 describe('Terrain Slope & Aspect Topographic Analysis (ContourLayer)', () => {
