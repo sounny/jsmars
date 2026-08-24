@@ -1421,6 +1421,27 @@ describe('3D Solar Ephemeris & Day/Night Terminator Solvers (ThreeDEngine)', () 
     });
 });
 
+describe('Subsurface Radar Sounding & Dielectric Inversion (RadarSounderEngine)', () => {
+    it('should invert relative dielectric permittivity from TWTT and layer thickness', () => {
+        // Pure water ice layer of 1000m thickness in Planum Boreum:
+        // twt = 2 * 1000 / (c / sqrt(3.15)) = 11.838 microseconds
+        const twt = RadarSounderEngine.depthToTwt(1000, 3.15);
+        const epsInverted = RadarSounderEngine.invertDielectricPermittivity(1000, twt);
+        expect(epsInverted).to.be.closeTo(3.15, 0.05);
+
+        // Classification
+        const classification = RadarSounderEngine.classifySubsurfaceMedium(epsInverted);
+        expect(classification.medium).to.include('Pure Water');
+    });
+
+    it('should compute radar first Fresnel zone horizontal footprint radius', () => {
+        // MRO SHARAD at 250 km altitude, 20 MHz (lambda = 15m)
+        const rf = RadarSounderEngine.computeFresnelZoneRadius(250, 20e6, 500, 3.15);
+        expect(rf).to.be.closeTo(1369.3, 20.0);
+        expect(rf).to.be.greaterThan(1000);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

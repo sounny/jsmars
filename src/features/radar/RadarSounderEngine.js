@@ -264,5 +264,74 @@ export class RadarSounderEngine {
     const omega = 2 * Math.PI * freqHz;
     return ((omega * lossTangent) / (2 * v)) * 8.686;
   }
+
+  // --- Dielectric Permittivity Inversion & Radar Geophysics Solvers ---
+
+  /**
+   * Invert relative dielectric permittivity from known layer thickness and radar two-way travel time.
+   * @param {number} layerThicknessMeters - True layer physical depth/thickness in meters (z)
+   * @param {number} twtMicroseconds - Observed two-way travel time in microseconds (μs)
+   * @returns {number} Inverted relative dielectric permittivity (epsilon_r)
+   */
+  static invertDielectricPermittivity(layerThicknessMeters, twtMicroseconds) {
+    if (layerThicknessMeters <= 0 || twtMicroseconds <= 0) return 1.0;
+    const twtSec = twtMicroseconds * 1e-6;
+    // z = (c * twt) / (2 * sqrt(eps)) => sqrt(eps) = (c * twt) / (2 * z) => eps = ((c * twt) / (2 * z))^2
+    const sqrtEps = (RadarSounderEngine.C * twtSec) / (2.0 * layerThicknessMeters);
+    const eps = Math.pow(sqrtEps, 2);
+    return parseFloat(eps.toFixed(3));
+  }
+
+  /**
+   * Classify geological subsurface composition based on real dielectric permittivity (epsilon_r).
+   * @param {number} epsR - Relative dielectric constant
+   * @returns {{medium: string, description: string, typicalLossTan: number}}
+   */
+  static classifySubsurfaceMedium(epsR) {
+    if (epsR < 2.5) {
+      return {
+        medium: 'Porous Regolith / Volcanic Ash / Pyroclastics',
+        description: 'Low-density friable dust mantle or porous deposit (e.g. Medusae Fossae Formation)',
+        typicalLossTan: 0.002
+      };
+    } else if (epsR <= 3.3) {
+      return {
+        medium: 'Pure Water & CO2 Ice / Polar Layered Deposits',
+        description: 'Massive volatile ice sheet with low dust contamination (<5% lithic fraction)',
+        typicalLossTan: 0.001
+      };
+    } else if (epsR <= 5.2) {
+      return {
+        medium: 'Dirty Ice / Permafrost / Cryolithosphere',
+        description: 'Ice-dust mixture or cemented permafrost with 15-30% silicate volume fraction',
+        typicalLossTan: 0.004
+      };
+    } else {
+      return {
+        medium: 'Dense Basaltic Bedrock / Solid Lava Flows',
+        description: 'Consolidated volcanic basalt or anhydrous mafic crustal basement',
+        typicalLossTan: 0.015
+      };
+    }
+  }
+
+  /**
+   * Compute horizontal 1st Fresnel zone footprint radius for a subsurface radar echo.
+   * @param {number} satelliteAltitudeKm - Spacecraft orbit altitude in km (e.g. 250 km for MRO)
+   * @param {number} [centerFreqHz=20e6] - Center frequency in Hz (20 MHz for SHARAD => lambda = 15m)
+   * @param {number} [targetDepthMeters=0] - Subsurface target depth in meters
+   * @param {number} [epsR=3.15] - Dielectric permittivity of medium
+   * @returns {number} First Fresnel zone radius in meters (RF)
+   */
+  static computeFresnelZoneRadius(satelliteAltitudeKm, centerFreqHz = 20e6, targetDepthMeters = 0, epsR = 3.15) {
+    const lambda0 = RadarSounderEngine.C / centerFreqHz;
+    const hMeters = Math.max(1000, satelliteAltitudeKm * 1000);
+    const zApparent = targetDepthMeters / Math.sqrt(Math.max(1, epsR));
+    const totalDist = hMeters + zApparent;
+
+    const rFresnel = Math.sqrt(lambda0 * totalDist / 2.0);
+    return parseFloat(rFresnel.toFixed(1));
+  }
 }
+
 
