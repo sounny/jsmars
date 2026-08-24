@@ -315,6 +315,66 @@ export class CSFDEngine {
     if (ageGa >= 0.3) return 'Middle Amazonian (0.3 - 2.0 Ga)';
     return 'Late Amazonian (<0.3 Ga)';
   }
+
+  // --- Differential CSFD & Area Slope Correction Solvers ---
+
+  /**
+   * Compute Differential Crater Size-Frequency Distribution (DFD): d(D) = deltaN / (deltaD * Area).
+   * @param {Array<{diameter: number}>} craters - Crater records with diameter in meters
+   * @param {number} [countAreaKm2=1e6] - Total counting area in km^2
+   * @param {number} [binFactor=Math.SQRT2] - Logarithmic bin step factor (sqrt(2) standard)
+   * @returns {Array<{dMin: number, dMax: number, dCenter: number, count: number, differentialDensity: number}>}
+   */
+  static computeDifferentialCSFD(craters = [], countAreaKm2 = 1e6, binFactor = Math.SQRT2) {
+    if (!craters || craters.length === 0) return [];
+
+    const diametersKm = craters
+      .map(c => (typeof c.diameter === 'number' ? c.diameter / 1000 : 1.0))
+      .filter(d => d > 0);
+
+    const diffBins = [];
+    let dMin = 0.1;
+
+    for (let b = 0; b < 12; b++) {
+      const dMax = dMin * binFactor;
+      const dCenter = Math.sqrt(dMin * dMax);
+      const deltaD = dMax - dMin;
+
+      const inBin = diametersKm.filter(d => d >= dMin && d < dMax).length;
+      const dDensity = inBin / (deltaD * countAreaKm2);
+
+      diffBins.push({
+        dMin: parseFloat(dMin.toFixed(3)),
+        dMax: parseFloat(dMax.toFixed(3)),
+        dCenter: parseFloat(dCenter.toFixed(3)),
+        count: inBin,
+        differentialDensity: parseFloat(dDensity.toExponential(4))
+      });
+
+      dMin = dMax;
+    }
+
+    return diffBins;
+  }
+
+  /**
+   * Correct projected counting area for local terrain slope angle.
+   * A_true = A_proj / cos(theta)
+   * @param {number} projectedAreaKm2 - Map-projected 2D area in km^2
+   * @param {number} meanSlopeDeg - Mean slope of the counting region in degrees
+   * @returns {{trueAreaKm2: number, areaExpansionFactor: number}}
+   */
+  static computeSlopeCorrectedArea(projectedAreaKm2, meanSlopeDeg = 0) {
+    const slopeRad = Math.abs(meanSlopeDeg) * Math.PI / 180.0;
+    const cosSlope = Math.max(0.1, Math.cos(slopeRad));
+    const trueArea = projectedAreaKm2 / cosSlope;
+
+    return {
+      trueAreaKm2: parseFloat(trueArea.toFixed(3)),
+      areaExpansionFactor: parseFloat((1.0 / cosSlope).toFixed(4))
+    };
+  }
 }
+
 
 

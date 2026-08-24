@@ -1815,6 +1815,34 @@ describe('Spherical Excess Geodesic Polygon Area & Cross-Track Distance (Measure
     });
 });
 
+describe('Differential Crater Distribution & Slope Correction (CSFDEngine)', () => {
+    it('should compute differential size-frequency distribution (DFD) bins', () => {
+        const craters = [
+            { diameter: 200 }, // 0.2 km
+            { diameter: 250 },
+            { diameter: 500 }, // 0.5 km
+            { diameter: 1200 } // 1.2 km
+        ];
+
+        const dfd = CSFDEngine.computeDifferentialCSFD(craters, 1e6);
+        expect(dfd.length).to.be.greaterThan(0);
+        expect(dfd[0]).to.have.property('differentialDensity');
+        expect(dfd.reduce((sum, b) => sum + b.count, 0)).to.equal(4);
+    });
+
+    it('should calculate slope-corrected counting target area on inclined terrain', () => {
+        // Flat terrain (slope = 0 deg) -> True area = projected area (1e6 km^2)
+        const flat = CSFDEngine.computeSlopeCorrectedArea(1e6, 0);
+        expect(flat.trueAreaKm2).to.equal(1e6);
+        expect(flat.areaExpansionFactor).to.equal(1.0);
+
+        // 30 degree canyon wall slope -> cos(30) = 0.866 -> True area = 1e6 / 0.866 ~ 1.1547e6 km^2
+        const steep = CSFDEngine.computeSlopeCorrectedArea(1e6, 30.0);
+        expect(steep.trueAreaKm2).to.be.closeTo(1154700.5, 10.0);
+        expect(steep.areaExpansionFactor).to.be.closeTo(1.1547, 0.001);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
