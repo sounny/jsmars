@@ -348,7 +348,73 @@ export class MCDEngine {
       isStable: true
     };
   }
+
+  // --- Surface Friction Velocity, Dust Specific Extinction & Potential Temperature Solvers ---
+
+  /**
+   * Calculate atmospheric surface boundary layer friction velocity (u*) and surface shear stress.
+   * u* = (kappa * u) / ln(z / z0),  tau_w = rho * u*^2
+   * @param {number} windSpeedMs - Wind speed at height z in m/s (e.g. 10 m/s at 10m height)
+   * @param {number} [measurementHeightM=10.0] - Measurement altitude in meters
+   * @param {number} [roughnessLengthM=0.01] - Aerodynamic surface roughness length z0 (1 cm typical for Mars rocks)
+   * @param {number} [surfaceDensityKgM3=0.015] - Near-surface atmospheric density
+   * @returns {{frictionVelocityMs: number, shearStressPa: number, thresholdExceeded: boolean}}
+   */
+  static computeSurfaceFrictionVelocity(windSpeedMs, measurementHeightM = 10.0, roughnessLengthM = 0.01, surfaceDensityKgM3 = 0.015) {
+    const kappa = 0.40; // Von Kármán constant
+    const z = Math.max(roughnessLengthM * 2.0, measurementHeightM);
+    const z0 = Math.max(1e-5, roughnessLengthM);
+
+    const logRatio = Math.log(z / z0);
+    const uStar = (kappa * Math.max(0, windSpeedMs)) / Math.max(0.1, logRatio);
+    const shearStress = surfaceDensityKgM3 * uStar * uStar;
+
+    // Saltation / dust lifting threshold on Mars is approximately u* >= 1.5 m/s
+    const thresholdExceeded = uStar >= 1.5;
+
+    return {
+      frictionVelocityMs: parseFloat(uStar.toFixed(3)),
+      shearStressPa: parseFloat(shearStress.toExponential(3)),
+      thresholdExceeded
+    };
+  }
+
+  /**
+   * Calculate specific dust mass extinction cross-section.
+   * sigma_ext = (3 * Q_ext) / (4 * rho * r_eff)
+   * @param {number} [extinctionEfficiencyQ=2.5] - Extinction efficiency factor Q_ext (~2.5 in visible)
+   * @param {number} [particleDensityKgM3=2500.0] - Mineral grain density in kg/m^3
+   * @param {number} [effectiveRadiusMicrons=1.5] - Mean cross-sectional particle radius in µm
+   * @returns {{massExtinctionM2PerKg: number, massExtinctionM2PerGram: number}}
+   */
+  static computeDustSpecificExtinctionCrossSection(extinctionEfficiencyQ = 2.5, particleDensityKgM3 = 2500.0, effectiveRadiusMicrons = 1.5) {
+    const rM = effectiveRadiusMicrons * 1e-6;
+    const sigmaKg = (3.0 * extinctionEfficiencyQ) / (4.0 * particleDensityKgM3 * rM);
+    const sigmaG = sigmaKg * 1e-3;
+
+    return {
+      massExtinctionM2PerKg: parseFloat(sigmaKg.toFixed(1)),
+      massExtinctionM2PerGram: parseFloat(sigmaG.toFixed(4))
+    };
+  }
+
+  /**
+   * Compute dry potential temperature theta = T * (P0 / P)^(R / cp).
+   * @param {number} tempK - Atmospheric temperature in Kelvin
+   * @param {number} pressurePa - Layer atmospheric pressure in Pa
+   * @param {number} [referencePressurePa=610.0] - Reference datum surface pressure (610 Pa)
+   * @returns {number} Potential temperature in Kelvin
+   */
+  static computePotentialTemperature(tempK, pressurePa, referencePressurePa = 610.0) {
+    const cp = 800.0; // J/(kg K)
+    const exponent = this.R_SPECIFIC_CO2 / cp; // ~ 0.23615
+    const pSafe = Math.max(0.01, pressurePa);
+
+    const theta = Math.max(1, tempK) * Math.pow(referencePressurePa / pSafe, exponent);
+    return parseFloat(theta.toFixed(2));
+  }
 }
+
 
 
 

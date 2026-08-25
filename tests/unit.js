@@ -2541,6 +2541,30 @@ describe('Atmospheric Downwelling IR, Skin Depth Amplification & Radiative Equil
     });
 });
 
+describe('Surface Friction Velocity, Dust Specific Extinction & Potential Temperature (MCDEngine)', () => {
+    it('should compute boundary layer friction velocity and dust lifting threshold', () => {
+        // 20 m/s wind at 10m height over z0 = 0.01m -> u* = (0.4 * 20) / ln(1000) = 8.0 / 6.9077 ~ 1.158 m/s
+        const fv = MCDEngine.computeSurfaceFrictionVelocity(20.0, 10.0, 0.01, 0.015);
+        expect(fv.frictionVelocityMs).to.be.closeTo(1.158, 0.01);
+        expect(fv.thresholdExceeded).to.equal(false);
+
+        // Strong 30 m/s storm wind -> u* ~ 1.737 m/s >= 1.5 m/s -> threshold exceeded
+        const fvStorm = MCDEngine.computeSurfaceFrictionVelocity(30.0, 10.0, 0.01, 0.015);
+        expect(fvStorm.thresholdExceeded).to.equal(true);
+    });
+
+    it('should calculate specific dust mass extinction cross-section and potential temperature', () => {
+        // Q = 2.5, rho = 2500 kg/m^3, r = 1.5 µm -> sigma = 7.5 / (4 * 2500 * 1.5e-6) = 500 m^2/kg = 0.5 m^2/g
+        const ext = MCDEngine.computeDustSpecificExtinctionCrossSection(2.5, 2500, 1.5);
+        expect(ext.massExtinctionM2PerKg).to.equal(500.0);
+        expect(ext.massExtinctionM2PerGram).to.equal(0.5);
+
+        // T = 180 K at 305 Pa (P0 = 610 Pa) -> theta = 180 * (610 / 305)^0.23615 ~ 212.0 K
+        const theta = MCDEngine.computePotentialTemperature(180.0, 305.0, 610.0);
+        expect(theta).to.be.closeTo(212.0, 0.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
