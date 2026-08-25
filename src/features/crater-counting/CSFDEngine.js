@@ -824,7 +824,77 @@ export class CSFDEngine {
 
     return parseFloat(factor.toFixed(4));
   }
+
+  // --- Power-Law Slope Conversion, Gault Saturation & Poisson Age Likelihood Solvers ---
+
+  /**
+   * Convert cumulative power-law index alpha to differential power-law index b (dN/dD ~ D^-b where b = alpha + 1).
+   * @param {number} [cumulativeSlopeAlpha=2.0] - Cumulative power-law exponent (e.g. 2.0 for standard production)
+   * @returns {{cumulativeSlopeAlpha: number, differentialSlopeBeta: number, rPlotSlope: number}}
+   */
+  static computeDifferentialPowerLawConversion(cumulativeSlopeAlpha = 2.0) {
+    const alpha = Math.max(0.1, cumulativeSlopeAlpha);
+    const beta = alpha + 1.0;
+    // R-plot slope convention: R ~ D^(3 - beta) = D^(2 - alpha)
+    const rSlope = 2.0 - alpha;
+
+    return {
+      cumulativeSlopeAlpha: parseFloat(alpha.toFixed(2)),
+      differentialSlopeBeta: parseFloat(beta.toFixed(2)),
+      rPlotSlope: parseFloat(rSlope.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate Gault (1970) / Melosh (1989) geometric crater saturation equilibrium threshold.
+   * N_sat(>D) = 0.10 * D^-2 per km^2
+   * @param {number} diameterKm - Crater diameter in km
+   * @param {number} [observedDensityPerKm2=0.01] - Observed cumulative crater density
+   * @returns {{saturationDensityPerKm2: number, saturationPercent: number, isEquilibriumSaturated: boolean}}
+   */
+  static computeGaultCraterSaturationEquilibrium(diameterKm, observedDensityPerKm2 = 0.01) {
+    const D = Math.max(0.01, diameterKm);
+    const nSat = 0.10 * Math.pow(D, -2.0);
+    const obs = Math.max(0, observedDensityPerKm2);
+    const pct = (obs / nSat) * 100.0;
+
+    return {
+      saturationDensityPerKm2: parseFloat(nSat.toExponential(4)),
+      saturationPercent: parseFloat(pct.toFixed(2)),
+      isEquilibriumSaturated: pct >= 100.0
+    };
+  }
+
+  /**
+   * Calculate exact Poisson probability density of observing k craters given model surface age.
+   * P(k; lambda) = (lambda^k * exp(-lambda)) / k!
+   * @param {number} observedCountK - Observed crater count (integer >= 0)
+   * @param {number} areaKm2 - Counting area in km^2
+   * @param {number} modelAgeGa - Model surface age in Ga
+   * @returns {{lambdaExpectedCount: number, probabilityMass: number, logLikelihood: number}}
+   */
+  static computePoissonAgeLikelihoodDensity(observedCountK, areaKm2, modelAgeGa) {
+    const n1 = this.chronologyN1(Math.max(0.001, modelAgeGa));
+    const lambda = n1 * Math.max(1, areaKm2);
+    const k = Math.max(0, Math.round(observedCountK));
+
+    let lnKFact = 0;
+    for (let i = 1; i <= Math.min(60, k); i++) lnKFact += Math.log(i);
+    if (k > 60) {
+      lnKFact = k * Math.log(k) - k + 0.5 * Math.log(2.0 * Math.PI * k);
+    }
+
+    const logLikelihood = k * Math.log(Math.max(1e-12, lambda)) - lambda - lnKFact;
+    const prob = Math.exp(Math.max(-700, Math.min(0, logLikelihood)));
+
+    return {
+      lambdaExpectedCount: parseFloat(lambda.toFixed(2)),
+      probabilityMass: parseFloat(prob.toExponential(4)),
+      logLikelihood: parseFloat(logLikelihood.toFixed(3))
+    };
+  }
 }
+
 
 
 

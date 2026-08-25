@@ -3479,6 +3479,28 @@ describe('SINDEX2 Sulfates, OLINDEX3 Olivine & SAM Angle (BandMathEngine)', () =
     });
 });
 
+describe('Power-Law Conversion, Gault Saturation & Poisson Likelihood (CSFDEngine)', () => {
+    it('should convert cumulative to differential power-law slope exponent', () => {
+        // Standard production cumulative alpha = 2.0 -> differential beta = 3.0, R-plot slope = 0.0
+        const slope = CSFDEngine.computeDifferentialPowerLawConversion(2.0);
+        expect(slope.cumulativeSlopeAlpha).to.equal(2.0);
+        expect(slope.differentialSlopeBeta).to.equal(3.0);
+        expect(slope.rPlotSlope).to.equal(0.0);
+    });
+
+    it('should evaluate Gault crater saturation limit and exact Poisson age likelihood', () => {
+        // Gault saturation limit at D = 1 km (N_sat = 0.10 km^-2)
+        const sat = CSFDEngine.computeGaultCraterSaturationEquilibrium(1.0, 0.05);
+        expect(sat.saturationPercent).to.equal(50.0);
+        expect(sat.isEquilibriumSaturated).to.equal(false);
+
+        // Poisson likelihood for 3.5 Ga surface (expected craters mu ~ 10 on 5000 km^2)
+        const pois = CSFDEngine.computePoissonAgeLikelihoodDensity(10, 5000.0, 3.5);
+        expect(pois.lambdaExpectedCount).to.be.greaterThan(0);
+        expect(pois.probabilityMass).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
