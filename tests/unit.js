@@ -3623,6 +3623,29 @@ describe('Lambert Conformal Conic (LCC) & Scale (ProjectionManager)', () => {
     });
 });
 
+describe('Surface Energy Balance, CO2 Mass Balance & Geotherm (KRCEngine)', () => {
+    it('should compute closed surface energy balance and equilibrium surface temperature', () => {
+        // Absorbed solar 400 W/m^2 + downwelling IR 30 W/m^2
+        const eb = KRCEngine.computeSurfaceRadiativeEnergyBalance(400.0, 30.0, 0, 0.95);
+        expect(eb.equilibriumTempK).to.be.greaterThan(280.0);
+        expect(eb.equilibriumTempK).to.be.lessThan(305.0);
+        expect(eb.outgoingThermalFluxW_M2).to.be.closeTo(430.0, 1.0);
+    });
+
+    it('should calculate CO2 frost condensation mass and deep crustal geothermal profile', () => {
+        // 20 W/m^2 energy deficit over 1 Sol -> ~3.0 kg/m^2 accumulation (~1.88 mm)
+        const frost = KRCEngine.computeCO2LatentHeatMassBalance(20.0, 88775.244);
+        expect(frost.accumulatedMassKg_M2).to.be.greaterThan(2.5);
+        expect(frost.accumulatedMassKg_M2).to.be.lessThan(3.5);
+        expect(frost.frostThicknessMm).to.be.greaterThan(1.5);
+
+        // Geothermal equilibrium at 1000m depth with 30 mW/m^2 flux in 2.0 W/(m K) basalt
+        const geo = KRCEngine.computeDeepSubsurfaceGeothermEquilibrium(210.0, 30.0, 2.0, 1000.0);
+        expect(geo.temperatureAtDepthK).to.equal(225.0);
+        expect(geo.geothermalGradientKPerKm).to.equal(15.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

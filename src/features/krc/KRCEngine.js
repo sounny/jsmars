@@ -734,7 +734,81 @@ export class KRCEngine {
       estimatedMinTempK: parseFloat((tMean - deltaT * 0.5).toFixed(1))
     };
   }
+
+  // --- Surface Radiative Energy Balance, CO2 Mass Balance & Deep Geotherm Solvers ---
+
+  /**
+   * Calculate closed surface energy balance solving equilibrium surface temperature and outgoing thermal flux.
+   * F_net = F_abs_solar + F_down_IR + F_cond - eps * sigma * T_surf^4 = 0
+   * @param {number} absorbedSolarW_M2 - Net absorbed solar flux (1 - A) * S
+   * @param {number} downwellingIRW_M2 - Downward atmospheric thermal infrared flux
+   * @param {number} [groundConductiveFluxW_M2=0] - Conductive heat flux from subsurface into surface
+   * @param {number} [emissivity=0.95] - Broadband surface thermal emissivity
+   * @returns {{equilibriumTempK: number, outgoingThermalFluxW_M2: number, totalEnergyInflowW_M2: number}}
+   */
+  static computeSurfaceRadiativeEnergyBalance(absorbedSolarW_M2, downwellingIRW_M2, groundConductiveFluxW_M2 = 0, emissivity = 0.95) {
+    const totalInflow = Math.max(0, absorbedSolarW_M2) + Math.max(0, downwellingIRW_M2) + groundConductiveFluxW_M2;
+    const eps = Math.max(0.01, Math.min(1.0, emissivity));
+    const denom = eps * this.STEFAN_BOLTZMANN;
+
+    const tEq = Math.pow(Math.max(1, totalInflow) / denom, 0.25);
+    const fUp = eps * this.STEFAN_BOLTZMANN * Math.pow(tEq, 4);
+
+    return {
+      equilibriumTempK: parseFloat(tEq.toFixed(2)),
+      outgoingThermalFluxW_M2: parseFloat(fUp.toFixed(2)),
+      totalEnergyInflowW_M2: parseFloat(totalInflow.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate CO2 frost condensation mass and layer accumulation thickness from net radiative deficit.
+   * Delta_m = (F_deficit * Delta_t) / L_subl,  Delta_z = Delta_m / rho_ice
+   * @param {number} netEnergyDeficitW_M2 - Energy loss rate below frost point (W/m^2)
+   * @param {number} [timeSeconds=88775.244] - Accumulation duration in seconds (defaults to 1 Sol)
+   * @param {number} [latentHeatSublimation=5.9e5] - Latent heat of CO2 sublimation (J/kg)
+   * @param {number} [co2IceDensityKgM3=1600.0] - Solid CO2 dry ice density
+   * @returns {{accumulatedMassKg_M2: number, frostThicknessMm: number, condensationRateKg_M2_S: number}}
+   */
+  static computeCO2LatentHeatMassBalance(netEnergyDeficitW_M2, timeSeconds = 88775.244, latentHeatSublimation = 5.9e5, co2IceDensityKgM3 = 1600.0) {
+    const fDeficit = Math.max(0, netEnergyDeficitW_M2);
+    const mRate = fDeficit / latentHeatSublimation; // kg / (m^2 s)
+    const totalMass = mRate * timeSeconds; // kg / m^2
+    const thicknessM = totalMass / co2IceDensityKgM3;
+    const thicknessMm = thicknessM * 1000.0;
+
+    return {
+      accumulatedMassKg_M2: parseFloat(totalMass.toFixed(3)),
+      frostThicknessMm: parseFloat(thicknessMm.toFixed(3)),
+      condensationRateKg_M2_S: parseFloat(mRate.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate deep subsurface geothermal equilibrium temperature at depth z.
+   * T(z) = T_surf + (q_geo / k) * z
+   * @param {number} meanSurfaceTempK - Mean annual surface temperature in Kelvin
+   * @param {number} [geothermalFluxMwM2=30.0] - Basal geothermal heat flux in mW/m^2
+   * @param {number} [crustConductivityW_MK=2.0] - Crustal rock thermal conductivity in W/(m K)
+   * @param {number} [depthMeters=1000.0] - Subsurface depth in meters
+   * @returns {{temperatureAtDepthK: number, geothermalGradientKPerKm: number}}
+   */
+  static computeDeepSubsurfaceGeothermEquilibrium(meanSurfaceTempK, geothermalFluxMwM2 = 30.0, crustConductivityW_MK = 2.0, depthMeters = 1000.0) {
+    const q_W = geothermalFluxMwM2 * 1e-3;
+    const k = Math.max(0.01, crustConductivityW_MK);
+    const gradKPerM = q_W / k;
+    const gradKPerKm = gradKPerM * 1000.0;
+
+    const zM = Math.max(0, depthMeters);
+    const tDepth = meanSurfaceTempK + gradKPerM * zM;
+
+    return {
+      temperatureAtDepthK: parseFloat(tDepth.toFixed(2)),
+      geothermalGradientKPerKm: parseFloat(gradKPerKm.toFixed(2))
+    };
+  }
 }
+
 
 
 
