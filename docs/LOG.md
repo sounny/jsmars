@@ -224,3 +224,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute upper convex hull continuum and Pearson spectral correlation
 ?: AssertionError: expected 0.25 to be above 0.25
     at n.<anonymous> (unit.js:2424:31)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 15:00:30 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute two-layer apparent thermal inertia and skin depth ratio
+?: AssertionError: expected false to equal true
+    at n.<anonymous> (unit.js:2818:48)

@@ -2809,6 +2809,28 @@ describe('Geodetic Destination Point & Interior Tunnel Chord (MeasureTool)', () 
     });
 });
 
+describe('Two-Layer Apparent TI, Fourier Harmonics & Geothermal Flux (KRCEngine)', () => {
+    it('should compute two-layer apparent thermal inertia and skin depth ratio', () => {
+        // Thin 2 mm dust mantle (TI = 50) over solid basalt bedrock (TI = 1200) -> apparent TI > 50 and bedrock dominated
+        const twoLayer = KRCEngine.computeTwoLayerApparentThermalInertia(50, 1200, 0.002);
+        expect(twoLayer.apparentThermalInertia).to.be.greaterThan(50.0);
+        expect(twoLayer.apparentThermalInertia).to.be.lessThan(1200.0);
+        expect(twoLayer.isBedrockDominated).to.equal(true);
+    });
+
+    it('should decompose diurnal temperature curves into Fourier harmonics and compute geothermal flux', () => {
+        // Synthetic diurnal curve with 200 K mean and 40 K diurnal swing
+        const temps = Array.from({ length: 24 }, (_, i) => 200 + 40 * Math.sin((i / 24) * 2 * Math.PI));
+        const fourier = KRCEngine.decomposeFourierHarmonics(temps, 2);
+        expect(fourier.meanTemp).to.be.closeTo(200.0, 0.1);
+        expect(fourier.harmonics[0].amplitudeK).to.be.closeTo(40.0, 0.5);
+
+        // Geothermal gradient: 0.015 K/m (15 K/km) with rock conductivity 2.0 W/(m K) -> 30 mW/m^2
+        const flux = KRCEngine.computeSubsurfaceGeothermalFlux(0.015, 2.0);
+        expect(flux.heatFluxMw_M2).to.equal(30.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

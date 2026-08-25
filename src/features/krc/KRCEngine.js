@@ -496,7 +496,103 @@ export class KRCEngine {
     const tEq = Math.pow(totalInflow / denom, 0.25);
     return parseFloat(tEq.toFixed(2));
   }
+
+  // --- Two-Layer Apparent TI, Fourier Harmonics & Geothermal Flux Solvers ---
+
+  /**
+   * Calculate apparent two-layer thermal inertia for a mantle layer of thickness L over bedrock.
+   * Gamma_app = Gamma_1 * (Gamma_2 + Gamma_1 * tanh(mu)) / (Gamma_1 + Gamma_2 * tanh(mu))
+   * where mu = L / delta_1
+   * @param {number} topThermalInertia - Upper mantle thermal inertia (tiu)
+   * @param {number} bottomThermalInertia - Deep substrate thermal inertia (tiu)
+   * @param {number} topThicknessMeters - Upper layer thickness L in meters
+   * @param {number} [periodSeconds=88775.244] - Thermal wave period (1 Sol)
+   * @returns {{apparentThermalInertia: number, skinDepthRatio: number, isBedrockDominated: boolean}}
+   */
+  static computeTwoLayerApparentThermalInertia(topThermalInertia, bottomThermalInertia, topThicknessMeters, periodSeconds = 88775.244) {
+    const g1 = Math.max(10, topThermalInertia);
+    const g2 = Math.max(10, bottomThermalInertia);
+    const L = Math.max(0, topThicknessMeters);
+
+    const skin1 = this.computeSkinDepth(g1, periodSeconds).skinDepthMeters;
+    const mu = L / Math.max(1e-5, skin1);
+    const tanhMu = Math.tanh(mu);
+
+    const numerator = g2 + g1 * tanhMu;
+    const denominator = g1 + g2 * tanhMu;
+    const gApp = g1 * (numerator / Math.max(1e-5, denominator));
+
+    return {
+      apparentThermalInertia: parseFloat(gApp.toFixed(1)),
+      skinDepthRatio: parseFloat(mu.toFixed(3)),
+      isBedrockDominated: mu < 0.5 && g2 > g1
+    };
+  }
+
+  /**
+   * Decompose a discrete diurnal temperature curve into its fundamental Fourier harmonics.
+   * T(t) = T_mean + sum( C_k * cos(k * omega * t - phi_k) )
+   * @param {Array<number>} temperatures - Equispaced diurnal temperature samples
+   * @param {number} [numHarmonics=3] - Number of harmonic modes to extract
+   * @returns {{meanTemp: number, harmonics: Array<{harmonic: number, amplitudeK: number, phaseRad: number, phaseHours: number}>}}
+   */
+  static decomposeFourierHarmonics(temperatures = [], numHarmonics = 3) {
+    const N = temperatures.length;
+    if (N === 0) return { meanTemp: 0, harmonics: [] };
+
+    const mean = temperatures.reduce((a, b) => a + b, 0) / N;
+    const harmonics = [];
+
+    for (let k = 1; k <= numHarmonics; k++) {
+      let sumCos = 0;
+      let sumSin = 0;
+
+      for (let j = 0; j < N; j++) {
+        const theta = (2.0 * Math.PI * k * j) / N;
+        sumCos += temperatures[j] * Math.cos(theta);
+        sumSin += temperatures[j] * Math.sin(theta);
+      }
+
+      const A_k = (2.0 / N) * sumCos;
+      const B_k = (2.0 / N) * sumSin;
+      const C_k = Math.hypot(A_k, B_k);
+      const phi_k = Math.atan2(B_k, A_k);
+      const phaseHours = (phi_k / (2.0 * Math.PI * k)) * 24.0;
+
+      harmonics.push({
+        harmonic: k,
+        amplitudeK: parseFloat(C_k.toFixed(2)),
+        phaseRad: parseFloat(phi_k.toFixed(4)),
+        phaseHours: parseFloat(phaseHours.toFixed(2))
+      });
+    }
+
+    return {
+      meanTemp: parseFloat(mean.toFixed(2)),
+      harmonics
+    };
+  }
+
+  /**
+   * Calculate subsurface conductive geothermal heat flux from vertical temperature gradient.
+   * q = k * (dT / dz)
+   * @param {number} temperatureGradientK_PerM - Vertical temperature gradient (K/m)
+   * @param {number} [thermalConductivityW_MK=2.0] - Rock/regolith thermal conductivity (W/(m K))
+   * @returns {{heatFluxW_M2: number, heatFluxMw_M2: number}}
+   */
+  static computeSubsurfaceGeothermalFlux(temperatureGradientK_PerM, thermalConductivityW_MK = 2.0) {
+    const k = Math.max(0.001, thermalConductivityW_MK);
+    const grad = temperatureGradientK_PerM;
+    const q_W = k * grad;
+    const q_mW = q_W * 1000.0;
+
+    return {
+      heatFluxW_M2: parseFloat(q_W.toFixed(4)),
+      heatFluxMw_M2: parseFloat(q_mW.toFixed(2))
+    };
+  }
 }
+
 
 
 
