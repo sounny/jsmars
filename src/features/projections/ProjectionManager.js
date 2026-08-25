@@ -778,7 +778,111 @@ export class ProjectionManager {
       apicalHalfAngleDeg: parseFloat(halfAngle.toFixed(2))
     };
   }
+
+  // --- Authalic Radius, Wagner IV Equal-Area & Meridional Arc Solvers ---
+
+  /**
+   * Calculate authalic (equal-surface-area) sphere radius R_q of an oblate planetary ellipsoid.
+   * R_q = sqrt( [ a^2 + (b^2 / (2*e)) * ln((1+e)/(1-e)) ] / 2 )
+   * @param {number} [semiMajorAxisKm=3396.19] - Equatorial radius a in km
+   * @param {number} [flattening=0.005886] - Ellipsoidal flattening f = (a - b) / a
+   * @returns {{authalicRadiusKm: number, surfaceAreaKm2: number}}
+   */
+  static computeAuthalicRadius(semiMajorAxisKm = 3396.19, flattening = 0.005886) {
+    const a = semiMajorAxisKm;
+    const f = flattening;
+    const b = a * (1.0 - f);
+    const e2 = 2.0 * f - f * f;
+    const e = Math.sqrt(e2);
+
+    let Rq = a;
+    if (e > 1e-6) {
+      const term = (b * b / (2.0 * e)) * Math.log((1.0 + e) / (1.0 - e));
+      const area = 2.0 * Math.PI * (a * a + term);
+      Rq = Math.sqrt(area / (4.0 * Math.PI));
+    }
+
+    const totalArea = 4.0 * Math.PI * Rq * Rq;
+
+    return {
+      authalicRadiusKm: parseFloat(Rq.toFixed(3)),
+      surfaceAreaKm2: parseFloat(totalArea.toFixed(1))
+    };
+  }
+
+  /**
+   * Forward Wagner IV pseudocylindrical equal-area projection with pole line.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {number} [lon0=0] - Central meridian
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{x: number, y: number}} Projected coordinates in km
+   */
+  static computeWagnerIVElliptical(lat, lon, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180.0;
+    const dLam = to180(lon - lon0) * Math.PI / 180.0;
+
+    // Solve 2*theta + sin(2*theta) = (4 + pi) * sin(phi) / 2
+    let theta = phi;
+    const target = ((4.0 + Math.PI) / 2.0) * Math.sin(phi);
+    for (let iter = 0; iter < 10; iter++) {
+      const fVal = 2.0 * theta + Math.sin(2.0 * theta) - target;
+      const df = 2.0 + 2.0 * Math.cos(2.0 * theta);
+      const delta = fVal / df;
+      theta -= delta;
+      if (Math.abs(delta) < 1e-7) break;
+    }
+
+    const x = (4.0 * R / (Math.PI * Math.sqrt(3.0))) * dLam * Math.cos(theta);
+    const y = (2.0 * R / Math.sqrt(3.0)) * Math.sin(theta);
+
+    return {
+      x: parseFloat(x.toFixed(3)),
+      y: parseFloat(y.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate precise ellipsoidal meridional arc distance between two latitudes.
+   * M = a * (1 - e^2) * integral( (1 - e^2*sin^2(phi))^(-3/2) dphi )
+   * @param {number} lat1Deg - Start latitude
+   * @param {number} lat2Deg - End latitude
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {number} Meridional distance along meridian in km
+   */
+  static computeMeridianDistance(lat1Deg, lat2Deg, body = 'mars') {
+    const isMars = body.toLowerCase() === 'mars';
+    const a = isMars ? 3396.19 : (body.toLowerCase() === 'moon' ? 1737.4 : 6378.14);
+    const f = isMars ? 0.005886 : (body.toLowerCase() === 'moon' ? 0.0001 : 0.0033528);
+    const e2 = 2.0 * f - f * f;
+
+    const phi1 = Math.min(lat1Deg, lat2Deg) * Math.PI / 180.0;
+    const phi2 = Math.max(lat1Deg, lat2Deg) * Math.PI / 180.0;
+
+    // Simpson numerical integration with 50 steps
+    const n = 50;
+    const h = (phi2 - phi1) / n;
+    let sum = 0;
+
+    const integrand = (phi) => {
+      const sinP = Math.sin(phi);
+      return Math.pow(1.0 - e2 * sinP * sinP, -1.5);
+    };
+
+    for (let i = 0; i <= n; i++) {
+      const p = phi1 + i * h;
+      const weight = (i === 0 || i === n) ? 1 : (i % 2 === 1 ? 4 : 2);
+      sum += weight * integrand(p);
+    }
+
+    const integral = (h / 3.0) * sum;
+    const distanceKm = a * (1.0 - e2) * integral;
+
+    return parseFloat(distanceKm.toFixed(3));
+  }
 }
+
 
 
 

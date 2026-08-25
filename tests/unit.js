@@ -3101,6 +3101,25 @@ describe('Ellipsoidal Geodesy, Girard Excess & Sinuosity (MeasureTool)', () => {
     });
 });
 
+describe('Authalic Radius, Wagner IV & Meridional Arc (ProjectionManager)', () => {
+    it('should compute authalic sphere radius and surface area of Mars ellipsoid', () => {
+        const authalic = ProjectionManager.computeAuthalicRadius(3396.19, 0.005886);
+        expect(authalic.authalicRadiusKm).to.be.closeTo(3389.5, 10.0);
+        expect(authalic.surfaceAreaKm2).to.be.greaterThan(1.4e8);
+    });
+
+    it('should project coordinates with Wagner IV and compute meridional arc distance', () => {
+        // Wagner IV at (30 deg N, 45 deg E)
+        const wagner = ProjectionManager.computeWagnerIVElliptical(30, 45, 0, 'mars');
+        expect(wagner.x).to.be.greaterThan(0);
+        expect(wagner.y).to.be.greaterThan(0);
+
+        // Meridional arc from 0 to 45 deg N along Mars meridian
+        const arc = ProjectionManager.computeMeridianDistance(0, 45, 'mars');
+        expect(arc).to.be.greaterThan(2500.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
