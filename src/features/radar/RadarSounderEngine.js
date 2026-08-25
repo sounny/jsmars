@@ -720,7 +720,84 @@ export class RadarSounderEngine {
       receivedPowerDbm: parseFloat(pRxDbm.toFixed(2))
     };
   }
+
+  // --- Subsurface Range Resolution, SAR Doppler Sharpening & Basal Attenuation Inversion Solvers ---
+
+  /**
+   * Calculate vertical subsurface range resolution after matched-filter chirp dechirping/compression.
+   * Delta_r = c / (2 * B * sqrt(eps_r))
+   * @param {number} [chirpBandwidthHz=10e6] - Chirp bandwidth (10 MHz for SHARAD, 1 MHz for MARSIS)
+   * @param {number} [dielectricPermittivity=3.15] - Subsurface relative permittivity
+   * @returns {{rangeResolutionMeters: number, rangeResolutionAirMeters: number}}
+   */
+  static computeSubsurfaceRangeResolution(chirpBandwidthHz = 10e6, dielectricPermittivity = 3.15) {
+    const B = Math.max(1e4, chirpBandwidthHz);
+    const eps = Math.max(1.0, dielectricPermittivity);
+
+    const deltaAir = RadarSounderEngine.C / (2.0 * B);
+    const deltaMedium = deltaAir / Math.sqrt(eps);
+
+    return {
+      rangeResolutionMeters: parseFloat(deltaMedium.toFixed(2)),
+      rangeResolutionAirMeters: parseFloat(deltaAir.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate along-track Doppler SAR synthetic aperture focusing sharpening factor.
+   * L_Doppler = (lambda * H) / (2 * L_synth)
+   * @param {number} [orbitAltitudeKm=250.0] - Spacecraft orbit altitude in km
+   * @param {number} [centerFreqHz=20e6] - Center frequency in Hz (20 MHz for SHARAD)
+   * @param {number} [syntheticApertureLengthM=5000.0] - Synthetic aperture integration length in meters
+   * @returns {{dopplerFootprintMeters: number, unfocusedFresnelDiameterMeters: number, sharpeningFactor: number}}
+   */
+  static computeDopplerFresnelSharpening(orbitAltitudeKm = 250.0, centerFreqHz = 20e6, syntheticApertureLengthM = 5000.0) {
+    const lambda = RadarSounderEngine.C / Math.max(1e3, centerFreqHz);
+    const H = Math.max(1000, orbitAltitudeKm * 1000.0);
+    const LSynth = Math.max(100, syntheticApertureLengthM);
+
+    const lDoppler = (lambda * H) / (2.0 * LSynth);
+    const fresnelRadius = Math.sqrt(lambda * H / 2.0);
+    const unfocusedDiameter = fresnelRadius * 2.0;
+    const sharpening = unfocusedDiameter / Math.max(1.0, lDoppler);
+
+    return {
+      dopplerFootprintMeters: parseFloat(lDoppler.toFixed(1)),
+      unfocusedFresnelDiameterMeters: parseFloat(unfocusedDiameter.toFixed(1)),
+      sharpeningFactor: parseFloat(sharpening.toFixed(2))
+    };
+  }
+
+  /**
+   * Invert bulk two-way volumetric radar attenuation rate from surface and basal echo powers.
+   * alpha_2way = (P_surf_dB - P_basal_dB - 2*Loss_interface_dB) / (2 * z_km)
+   * @param {number} surfPowerDb - Surface reflection echo power in dB
+   * @param {number} basalPowerDb - Basal interface reflection echo power in dB
+   * @param {number} iceThicknessMeters - Physical thickness of ice sheet in meters
+   * @param {number} [interfaceLossDb=1.0] - Transmission loss at surface interface in dB
+   * @returns {{twoWayAttenuationDbPerKm: number, oneWayAttenuationDbPerM: number, lossTangentEstimate: number}}
+   */
+  static invertTwoWayAttenuationFromReflectivity(surfPowerDb, basalPowerDb, iceThicknessMeters, interfaceLossDb = 1.0) {
+    const zKm = Math.max(0.01, iceThicknessMeters / 1000.0);
+    const pDiff = surfPowerDb - basalPowerDb;
+    const netLossDb = Math.max(0, pDiff - 2.0 * interfaceLossDb);
+
+    const twoWayAlphaDbKm = netLossDb / (2.0 * zKm);
+    const oneWayAlphaDbM = twoWayAlphaDbKm / 2000.0;
+
+    // Estimate loss tangent: alpha_dB/m ≈ (omega * tan_delta) / (2 * v) * 8.686
+    const vIce = RadarSounderEngine.getVelocity(3.15);
+    const omega = 2.0 * Math.PI * 20e6;
+    const tanDelta = (oneWayAlphaDbM * 2.0 * vIce) / (omega * 8.686);
+
+    return {
+      twoWayAttenuationDbPerKm: parseFloat(twoWayAlphaDbKm.toFixed(2)),
+      oneWayAttenuationDbPerM: parseFloat(oneWayAlphaDbM.toFixed(4)),
+      lossTangentEstimate: parseFloat(tanDelta.toFixed(5))
+    };
+  }
 }
+
 
 
 

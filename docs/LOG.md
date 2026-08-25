@@ -238,3 +238,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute Zevenbergen-Thorne profile and planform terrain curvature
 ?: AssertionError: expected +0 to not equal +0
     at n.<anonymous> (unit.js:2925:47)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 21:15:38 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute vertical subsurface range resolution and Doppler SAR sharpening
+?: AssertionError: expected 14.99 to equal 15
+    at n.<anonymous> (unit.js:3436:49)

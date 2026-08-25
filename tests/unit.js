@@ -3427,6 +3427,29 @@ describe('Vis-Viva Velocity, Equation of Center Series & Insolation (MarsTime)',
     });
 });
 
+describe('Range Resolution, SAR Sharpening & Basal Attenuation (RadarSounderEngine)', () => {
+    it('should compute vertical subsurface range resolution and Doppler SAR sharpening', () => {
+        // SHARAD 10 MHz chirp bandwidth in ice (eps = 3.15) -> ~8.4m resolution
+        const res = RadarSounderEngine.computeSubsurfaceRangeResolution(10e6, 3.15);
+        expect(res.rangeResolutionMeters).to.be.greaterThan(8.0);
+        expect(res.rangeResolutionMeters).to.be.lessThan(9.0);
+        expect(res.rangeResolutionAirMeters).to.be.closeTo(15.0, 0.1);
+
+        // 5 km synthetic aperture at 250 km orbit altitude
+        const sar = RadarSounderEngine.computeDopplerFresnelSharpening(250.0, 20e6, 5000.0);
+        expect(sar.dopplerFootprintMeters).to.be.lessThan(500.0);
+        expect(sar.sharpeningFactor).to.be.greaterThan(5.0);
+    });
+
+    it('should invert bulk two-way volumetric radar attenuation rate from echo contrast', () => {
+        // 20 dB loss across 1000m ice sheet (2 km two-way)
+        const att = RadarSounderEngine.invertTwoWayAttenuationFromReflectivity(0.0, -22.0, 1000.0, 1.0);
+        expect(att.twoWayAttenuationDbPerKm).to.be.greaterThan(5.0);
+        expect(att.twoWayAttenuationDbPerKm).to.be.lessThan(15.0);
+        expect(att.lossTangentEstimate).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
