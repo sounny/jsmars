@@ -3258,6 +3258,27 @@ describe('Clark-Evans Spatial Randomness & Chronology Factor (CSFDEngine)', () =
     });
 });
 
+describe('Limb Tangent Altitude, DEM Slope & Horizon Culling (ThreeDEngine)', () => {
+    it('should compute atmospheric limb grazing line-of-sight tangent altitude', () => {
+        // MRO limb sounding at 300 km looking at ~66.8 deg off-nadir -> tangent height in upper atmosphere ~25 km
+        const limb = ThreeDEngine.computeAtmosphericLimbTangentHeight(300, 66.8, 'mars');
+        expect(limb.tangentAltitudeKm).to.be.greaterThan(0);
+        expect(limb.isGrazingAtmosphere).to.equal(true);
+        expect(limb.isHittingGround).to.equal(false);
+    });
+
+    it('should calculate Horn DEM slope/aspect and horizon occlusion culling', () => {
+        // Eastward dipping slope: West high (300m), East low (100m), cell 100m
+        const dem = ThreeDEngine.computeDEMGridSlopeAspect(200, 200, 300, 100, 100);
+        expect(dem.slopeDeg).to.be.greaterThan(0);
+        expect(dem.aspectDeg).to.be.closeTo(90.0, 1.0); // East aspect
+
+        // Feature 40 degrees away around Mars curve from 300 km orbit -> occluded by horizon
+        const cull = ThreeDEngine.computeHorizonOcclusionCulling(300, 0, 40.0, 'mars');
+        expect(cull.isOccluded).to.equal(true);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

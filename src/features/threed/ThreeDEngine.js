@@ -619,7 +619,92 @@ export class ThreeDEngine {
       vz: parseFloat((dz / len).toFixed(5))
     };
   }
+
+  // --- Atmospheric Limb Tangent Altitude, Horn DEM Slope & Horizon Culling Solvers ---
+
+  /**
+   * Calculate atmospheric limb grazing tangent line-of-sight altitude for limb sounding.
+   * h_tangent = (R + h_craft) * sin(offNadirAngle) - R
+   * @param {number} [spacecraftAltitudeKm=300] - Spacecraft altitude above surface in km
+   * @param {number} [offNadirAngleDeg=65] - Look angle away from nadir in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{tangentAltitudeKm: number, isGrazingAtmosphere: boolean, isHittingGround: boolean}}
+   */
+  static computeAtmosphericLimbTangentHeight(spacecraftAltitudeKm = 300, offNadirAngleDeg = 65, body = 'mars') {
+    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const rCraft = R + Math.max(0, spacecraftAltitudeKm);
+    const thetaRad = offNadirAngleDeg * Math.PI / 180.0;
+
+    const rTangent = rCraft * Math.sin(thetaRad);
+    const hTangent = rTangent - R;
+
+    return {
+      tangentAltitudeKm: parseFloat(hTangent.toFixed(2)),
+      isGrazingAtmosphere: hTangent >= 0 && hTangent <= 150.0,
+      isHittingGround: hTangent < 0
+    };
+  }
+
+  /**
+   * Calculate Horn (1981) 4-neighbor / central-difference slope angle and aspect azimuth from DEM grid.
+   * @param {number} zTop - Elevation of North neighbor cell (meters)
+   * @param {number} zBottom - Elevation of South neighbor cell (meters)
+   * @param {number} zLeft - Elevation of West neighbor cell (meters)
+   * @param {number} zRight - Elevation of East neighbor cell (meters)
+   * @param {number} [cellSizeMeters=100.0] - Grid horizontal cell spacing (dx = dy)
+   * @returns {{slopeDeg: number, aspectDeg: number, slopePercent: number}}
+   */
+  static computeDEMGridSlopeAspect(zTop, zBottom, zLeft, zRight, cellSizeMeters = 100.0) {
+    const dx = 2.0 * Math.max(1, cellSizeMeters);
+    const dy = 2.0 * Math.max(1, cellSizeMeters);
+
+    const dz_dx = (zRight - zLeft) / dx;
+    const dz_dy = (zTop - zBottom) / dy;
+
+    const grad = Math.hypot(dz_dx, dz_dy);
+    const slopeRad = Math.atan(grad);
+    const slopeDeg = slopeRad * 180.0 / Math.PI;
+
+    // Aspect: compass direction of steepest downhill gradient (0 = North, 90 = East, 180 = South, 270 = West)
+    let aspectDeg = Math.atan2(-dz_dx, dz_dy) * 180.0 / Math.PI;
+    if (aspectDeg < 0) aspectDeg += 360.0;
+
+    return {
+      slopeDeg: parseFloat(slopeDeg.toFixed(2)),
+      aspectDeg: parseFloat(aspectDeg.toFixed(1)),
+      slopePercent: parseFloat((grad * 100.0).toFixed(2))
+    };
+  }
+
+  /**
+   * Test whether a 3D surface feature is occluded below the planetary horizon.
+   * @param {number} cameraAltitudeKm - Observer camera altitude in km
+   * @param {number} featureAltitudeKm - Feature elevation in km
+   * @param {number} angularSeparationDeg - Great-circle angular distance between camera and feature
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{isOccluded: boolean, maxVisibleAngularArcDeg: number}}
+   */
+  static computeHorizonOcclusionCulling(cameraAltitudeKm, featureAltitudeKm, angularSeparationDeg, body = 'mars') {
+    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const hCam = Math.max(0, cameraAltitudeKm);
+    const hFeat = Math.max(0, featureAltitudeKm);
+
+    // Horizon angular distances
+    const arcCamRad = Math.acos(R / (R + hCam));
+    const arcFeatRad = Math.acos(R / (R + hFeat));
+
+    const maxArcRad = arcCamRad + arcFeatRad;
+    const maxArcDeg = maxArcRad * 180.0 / Math.PI;
+
+    const isOccluded = angularSeparationDeg > maxArcDeg;
+
+    return {
+      isOccluded,
+      maxVisibleAngularArcDeg: parseFloat(maxArcDeg.toFixed(3))
+    };
+  }
 }
+
 
 
 
