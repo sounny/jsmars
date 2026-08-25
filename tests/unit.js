@@ -2693,6 +2693,32 @@ describe('Surface-to-Basal Power Ratio, EM Skin Depth & Doppler (RadarSounderEng
     });
 });
 
+describe('Transient-to-Final Collapse, Ejecta Blanket & Cavity Volume (CSFDEngine)', () => {
+    it('should calculate transient to final crater diameter collapse and morphology', () => {
+        // Simple crater Dt = 4 km <= 7 km -> Df = 1.25 * 4 = 5 km
+        const simple = CSFDEngine.computeTransientToFinalDiameter(4.0, 7.0);
+        expect(simple.finalDiameterKm).to.equal(5.0);
+        expect(simple.morphology).to.include('Simple');
+
+        // Complex crater Dt = 15 km > 7 km -> Df > 1.25 * Dt
+        const complex = CSFDEngine.computeTransientToFinalDiameter(15.0, 7.0);
+        expect(complex.finalDiameterKm).to.be.greaterThan(18.75);
+        expect(complex.morphology).to.include('Complex');
+    });
+
+    it('should compute continuous ejecta blanket radius and crater cavity volume', () => {
+        // Crater radius = 10 km -> continuous ejecta radius = 2.3 * 10 = 23 km
+        const ejecta = CSFDEngine.computeContinuousEjectaRadius(10.0);
+        expect(ejecta.continuousEjectaRadiusKm).to.equal(23.0);
+        expect(ejecta.ejectaCoverAreaKm2).to.be.greaterThan(1000.0);
+
+        // Crater diameter = 10 km -> cavity volume > 0
+        const cav = CSFDEngine.computeCraterCavityVolume(10.0, true);
+        expect(cav.volumeKm3).to.be.greaterThan(0);
+        expect(cav.depthKm).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

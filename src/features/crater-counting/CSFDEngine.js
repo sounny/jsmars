@@ -558,7 +558,84 @@ export class CSFDEngine {
       numCratersFitted: valid.length
     };
   }
+
+  // --- Transient-to-Final Collapse, Ejecta Blanket & Cavity Volume Solvers ---
+
+  /**
+   * Calculate final rim-to-rim crater diameter (D_f) from transient excavation diameter (D_t).
+   * @param {number} transientDiameterKm - Transient cavity diameter in km
+   * @param {number} [simpleComplexTransitionKm=7.0] - Transition diameter D* on Mars (~7 km)
+   * @returns {{finalDiameterKm: number, morphology: string, collapseFactor: number}}
+   */
+  static computeTransientToFinalDiameter(transientDiameterKm, simpleComplexTransitionKm = 7.0) {
+    const Dt = Math.max(0.01, transientDiameterKm);
+    const DStar = Math.max(0.1, simpleComplexTransitionKm);
+
+    let Df = 0;
+    let morphology = 'Simple Bowl-Shaped';
+
+    if (Dt <= DStar) {
+      Df = 1.25 * Dt;
+    } else {
+      Df = (1.17 * Math.pow(Dt, 1.13)) / Math.pow(DStar, 0.13);
+      morphology = 'Complex (Central Peak / Terraced Rim)';
+    }
+
+    const collapseFactor = Df / Dt;
+
+    return {
+      finalDiameterKm: parseFloat(Df.toFixed(3)),
+      morphology,
+      collapseFactor: parseFloat(collapseFactor.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate outer radius of continuous impact ejecta blanket (apron extent).
+   * R_ejecta = 2.3 * R_crater
+   * @param {number} craterRadiusKm - Rim-to-center crater radius in km
+   * @returns {{continuousEjectaRadiusKm: number, ejectaCoverAreaKm2: number}}
+   */
+  static computeContinuousEjectaRadius(craterRadiusKm) {
+    const R = Math.max(0, craterRadiusKm);
+    const rEjecta = 2.3 * R;
+    const blanketArea = Math.PI * (rEjecta * rEjecta - R * R);
+
+    return {
+      continuousEjectaRadiusKm: parseFloat(rEjecta.toFixed(3)),
+      ejectaCoverAreaKm2: parseFloat(blanketArea.toFixed(2))
+    };
+  }
+
+  /**
+   * Compute geometric excavated crater cavity volume.
+   * @param {number} diameterKm - Final crater diameter in km
+   * @param {boolean} [isComplex=false] - Whether the crater has complex morphology
+   * @returns {{depthKm: number, volumeKm3: number}}
+   */
+  static computeCraterCavityVolume(diameterKm, isComplex = false) {
+    const D = Math.max(0.01, diameterKm);
+    const R = D / 2.0;
+
+    let d = 0;
+    if (isComplex || D >= 7.0) {
+      // Complex crater depth: d ≈ 0.36 * D^0.49
+      d = 0.36 * Math.pow(D, 0.49);
+    } else {
+      // Simple crater depth: d ≈ 0.20 * D
+      d = 0.20 * D;
+    }
+
+    // Paraboloid cavity volume V = (1/2) * pi * R^2 * d
+    const volume = 0.5 * Math.PI * R * R * d;
+
+    return {
+      depthKm: parseFloat(d.toFixed(3)),
+      volumeKm3: parseFloat(volume.toFixed(3))
+    };
+  }
 }
+
 
 
 
