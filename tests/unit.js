@@ -2772,6 +2772,26 @@ describe('Ground Swath Width, Triangle Facet Normal & Perspective Camera (ThreeD
     });
 });
 
+describe('Bouguer Gravity Anomaly, Airy Isostasy & Thermal Diffusivity (InvestigateTool)', () => {
+    it('should calculate complete Bouguer gravity anomaly and Airy isostatic crustal root', () => {
+        // High volcanic plateau at 5000 m elevation on Mars (g0 = 3.72 m/s^2, rho_c = 2900 kg/m^3)
+        const grav = InvestigateTool.computeBouguerGravityAnomaly(3.72, 3.72, 5000, 2900, 'mars');
+        expect(grav.freeAirCorrectionMGal).to.be.greaterThan(0);
+        expect(grav.bouguerPlateCorrectionMGal).to.be.greaterThan(0);
+
+        // 5 km Olympus Mons flank topography (rho_c = 2900, rho_m = 3500) -> root = 5 * (2900 / 600) ~ 24.17 km
+        const root = InvestigateTool.computeAiryIsostaticCrustalRoot(5.0, 2900, 3500);
+        expect(root.crustalRootThicknessKm).to.be.closeTo(24.17, 0.5);
+        expect(root.totalCrustalColumnKm).to.be.greaterThan(70.0);
+    });
+
+    it('should compute regolith and rock thermal diffusivity', () => {
+        // Basalt rock: k = 2.0 W/(m K), rho = 2500 kg/m^3, cp = 800 J/(kg K) -> kappa = 2 / (2500 * 800) = 1.0e-6 m^2/s
+        const kappa = InvestigateTool.computeThermalDiffusivity(2.0, 2500, 800);
+        expect(kappa).to.be.closeTo(1.0e-6, 1e-7);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -628,7 +628,82 @@ export class InvestigateTool {
             directFluxFractionPercent: parseFloat((transmittance * 100.0).toFixed(2))
         };
     }
+
+    // --- Bouguer Gravity Anomaly, Airy Isostasy & Thermal Diffusivity Solvers ---
+
+    /**
+     * Calculate Complete Bouguer Gravity Anomaly in milliGals (mGal).
+     * Delta_g_B = (g_obs - g_theor + delta_g_FA - 2*pi*G*rho_c*h) * 1e5
+     * @param {number} observedGravityMs2 - Measured gravity in m/s^2
+     * @param {number} theoreticalGravityMs2 - Normal reference ellipsoid gravity in m/s^2
+     * @param {number} elevationMeters - Surface elevation above datum in meters
+     * @param {number} [crustDensityKgM3=2900] - Crustal rock density (Mars basalt ~ 2900 kg/m^3)
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{freeAirCorrectionMGal: number, bouguerPlateCorrectionMGal: number, bouguerAnomalyMGal: number}}
+     */
+    static computeBouguerGravityAnomaly(observedGravityMs2, theoreticalGravityMs2, elevationMeters, crustDensityKgM3 = 2900, body = 'mars') {
+        const G = 6.67430e-11; // m^3 / (kg s^2)
+        const R = (body.toLowerCase() === 'moon' ? 1737.4 : 3389.5) * 1000.0;
+        const g0 = theoreticalGravityMs2;
+        const h = elevationMeters;
+
+        // Free-air gradient dg/dz = (2 * g0 / R) in s^-2
+        const freeAirGrad = (2.0 * g0) / R;
+        const deltaFA_ms2 = freeAirGrad * h;
+        const deltaFA_mGal = deltaFA_ms2 * 1e5;
+
+        // Bouguer slab correction: 2 * pi * G * rho * h
+        const deltaB_ms2 = 2.0 * Math.PI * G * crustDensityKgM3 * h;
+        const deltaB_mGal = deltaB_ms2 * 1e5;
+
+        const anomaly_ms2 = (observedGravityMs2 - theoreticalGravityMs2) + deltaFA_ms2 - deltaB_ms2;
+        const anomaly_mGal = anomaly_ms2 * 1e5;
+
+        return {
+            freeAirCorrectionMGal: parseFloat(deltaFA_mGal.toFixed(2)),
+            bouguerPlateCorrectionMGal: parseFloat(deltaB_mGal.toFixed(2)),
+            bouguerAnomalyMGal: parseFloat(anomaly_mGal.toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate Airy-Heiskanen local isostatic crustal compensation root thickness.
+     * t_root = h * (rho_c / (rho_m - rho_c))
+     * @param {number} topographyHeightKm - Topographic elevation above base datum in km
+     * @param {number} [crustDensity=2900] - Crustal density in kg/m^3
+     * @param {number} [mantleDensity=3500] - Upper mantle density in kg/m^3
+     * @returns {{crustalRootThicknessKm: number, totalCrustalColumnKm: number}}
+     */
+    static computeAiryIsostaticCrustalRoot(topographyHeightKm, crustDensity = 2900, mantleDensity = 3500) {
+        const h = Math.max(0, topographyHeightKm);
+        const rhoC = crustDensity;
+        const rhoM = mantleDensity;
+        const deltaRho = Math.max(10, rhoM - rhoC);
+
+        const rootKm = h * (rhoC / deltaRho);
+        const referenceCrustThicknessKm = 50.0; // Mean Martian crustal thickness ~ 50 km
+        const totalCrustKm = referenceCrustThicknessKm + h + rootKm;
+
+        return {
+            crustalRootThicknessKm: parseFloat(rootKm.toFixed(2)),
+            totalCrustalColumnKm: parseFloat(totalCrustKm.toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate thermal diffusivity kappa = k / (rho * c_p).
+     * @param {number} thermalConductivityW_MK - Bulk thermal conductivity in W/(m K)
+     * @param {number} [densityKgM3=1500] - Regolith/rock mass density in kg/m^3
+     * @param {number} [specificHeat=800] - Specific heat capacity in J/(kg K)
+     * @returns {number} Thermal diffusivity in m^2 / s
+     */
+    static computeThermalDiffusivity(thermalConductivityW_MK, densityKgM3 = 1500, specificHeat = 800) {
+        const cVol = densityKgM3 * specificHeat;
+        const kappa = Math.max(0, thermalConductivityW_MK) / Math.max(1, cVol);
+        return parseFloat(kappa.toExponential(4));
+    }
 }
+
 
 
 
