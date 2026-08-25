@@ -796,7 +796,74 @@ export class RadarSounderEngine {
       lossTangentEstimate: parseFloat(tanDelta.toFixed(5))
     };
   }
+
+  // --- Free-Space Path Loss, Refraction Angle & Clutter-to-Signal Ratio Solvers ---
+
+  /**
+   * Calculate radar geometric free-space spherical spreading path loss in dB.
+   * L_fs = (4 * pi * R / lambda)^2
+   * @param {number} rangeKm - Two-way or one-way range distance in km (e.g. 250 km for MRO)
+   * @param {number} [freqHz=20e6] - Center frequency in Hz (20 MHz for SHARAD => lambda = 15m)
+   * @returns {{pathLossDb: number, wavelengthMeters: number}}
+   */
+  static computeFreeSpacePathLoss(rangeKm, freqHz = 20e6) {
+    const lambda = RadarSounderEngine.C / Math.max(1e3, freqHz);
+    const rMeters = Math.max(100, rangeKm * 1000.0);
+
+    const lossRatio = (4.0 * Math.PI * rMeters) / lambda;
+    const lossDb = 20.0 * Math.log10(Math.max(1.0, lossRatio));
+
+    return {
+      pathLossDb: parseFloat(lossDb.toFixed(2)),
+      wavelengthMeters: parseFloat(lambda.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate subsurface electromagnetic wave refraction angle using Snell's Law.
+   * sin(theta_2) = sin(theta_1) / sqrt(eps_r)
+   * @param {number} incidenceAngleDeg - Surface incidence angle theta_1 in degrees
+   * @param {number} [dielectricPermittivity=3.15] - Subsurface relative permittivity
+   * @returns {{refractionAngleDeg: number, criticalAngleDeg: number, isTotalInternalReflection: boolean}}
+   */
+  static computeSubsurfaceRefractionAngle(incidenceAngleDeg, dielectricPermittivity = 3.15) {
+    const eps = Math.max(1.0, dielectricPermittivity);
+    const n = Math.sqrt(eps);
+    const theta1Rad = Math.abs(incidenceAngleDeg) * Math.PI / 180.0;
+
+    const sinTheta2 = Math.sin(theta1Rad) / n;
+    const theta2Rad = Math.asin(Math.max(-1.0, Math.min(1.0, sinTheta2)));
+    const theta2Deg = theta2Rad * 180.0 / Math.PI;
+
+    const criticalAngleDeg = Math.asin(1.0 / n) * 180.0 / Math.PI;
+
+    return {
+      refractionAngleDeg: parseFloat(theta2Deg.toFixed(2)),
+      criticalAngleDeg: parseFloat(criticalAngleDeg.toFixed(2)),
+      isTotalInternalReflection: false // Entering denser medium from vacuum/air cannot undergo TIR
+    };
+  }
+
+  /**
+   * Calculate Clutter-to-Signal Ratio (CSR) and subsurface echo detection margin.
+   * CSR = P_clutter_dB - P_nadir_dB
+   * @param {number} clutterPowerDb - Off-nadir surface clutter return power in dB
+   * @param {number} nadirEchoPowerDb - In-nadir subsurface reflection power in dB
+   * @returns {{clutterToSignalRatioDb: number, isEchoDetectable: boolean, qualityMarginDb: number}}
+   */
+  static computeClutterToSignalRatio(clutterPowerDb, nadirEchoPowerDb) {
+    const csr = clutterPowerDb - nadirEchoPowerDb;
+    const margin = nadirEchoPowerDb - clutterPowerDb;
+    const detectable = margin >= 3.0; // At least +3 dB Signal-to-Clutter margin
+
+    return {
+      clutterToSignalRatioDb: parseFloat(csr.toFixed(2)),
+      isEchoDetectable: detectable,
+      qualityMarginDb: parseFloat(margin.toFixed(2))
+    };
+  }
 }
+
 
 
 

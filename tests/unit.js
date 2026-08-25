@@ -3673,6 +3673,30 @@ describe('Synodic Cycle, Mean Motion & True Anomaly (MarsTime)', () => {
     });
 });
 
+describe('Path Loss, Refraction Angle & Clutter Ratio (RadarSounderEngine)', () => {
+    it('should compute radar free-space spherical spreading path loss and wavelength', () => {
+        // SHARAD 20 MHz (lambda = 15m) at 250 km orbit -> ~106.4 dB
+        const loss = RadarSounderEngine.computeFreeSpacePathLoss(250.0, 20e6);
+        expect(loss.wavelengthMeters).to.be.closeTo(15.0, 0.1);
+        expect(loss.pathLossDb).to.be.greaterThan(100.0);
+        expect(loss.pathLossDb).to.be.lessThan(115.0);
+    });
+
+    it('should calculate Snell subsurface refraction angle and clutter detection margin', () => {
+        // 30 deg incidence in vacuum into water ice (eps = 3.15 -> n ~ 1.775)
+        const refr = RadarSounderEngine.computeSubsurfaceRefractionAngle(30.0, 3.15);
+        expect(refr.refractionAngleDeg).to.be.greaterThan(15.0);
+        expect(refr.refractionAngleDeg).to.be.lessThan(18.0);
+        expect(refr.criticalAngleDeg).to.be.greaterThan(30.0);
+
+        // Clutter vs nadir echo detection (+10 dB margin)
+        const csr = RadarSounderEngine.computeClutterToSignalRatio(-75.0, -65.0);
+        expect(csr.clutterToSignalRatioDb).to.equal(-10.0);
+        expect(csr.isEchoDetectable).to.equal(true);
+        expect(csr.qualityMarginDb).to.equal(10.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -245,3 +245,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute vertical subsurface range resolution and Doppler SAR sharpening
 ?: AssertionError: expected 14.99 to equal 15
     at n.<anonymous> (unit.js:3436:49)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 23:45:34 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute radar free-space spherical spreading path loss and wavelength
+?: AssertionError: expected 106.43 to be above 120
+    at n.<anonymous> (unit.js:3681:39)
