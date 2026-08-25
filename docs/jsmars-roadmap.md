@@ -140,9 +140,23 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] Forward destination point calculation (`computeDestinationPoint`) and cross-track / along-track distance solvers.
     - [x] Cumulative polyline length and closed polygon perimeter estimation.
 
+## Phase 9: Comprehensive Documentation Portal & Website (Active)
+- [x] **Interactive Documentation Web Portal (`docs/index.html`)**:
+    - [x] Standalone, zero-build, responsive documentation website with dark titanium scientific styling.
+    - [x] Interactive sidebar navigation with search filter across all 18 tools and layers.
+    - [x] Mathematical equations, scientific background, and physical formulas for planetary science engines.
+    - [x] Step-by-step user tutorials, workflows, and parameter references.
+    - [x] Keyboard shortcuts cheat sheet and GIS export format specifications.
+- [ ] **Interactive Code & Live Tool Sandboxes**:
+    - [ ] Embedded interactive calculation widgets for KRC, MCD, CSFD, and Astrodynamics in the docs portal.
+- [ ] **Automated Doc Generator & API References**:
+    - [ ] JSDoc-compatible API reference extraction for all `src/` ES modules.
+
 ## Documentation & Process
+- [x] **Documentation Portal**: Live web portal in `docs/index.html`.
 - [x] **Release Notes**: Maintained in `docs/release-notes.md`.
 - [x] **User Guide**: Maintained in `docs/user-guide.md`.
 - [x] **Work Log**: Maintained in `docs/LOG.md`.
-- [x] **Automated CI/CD**: 69 automated unit tests verifying 100% test pass on every commit.
+- [x] **Automated CI/CD**: 218 automated unit tests verifying 100% test pass on every commit.
+
 

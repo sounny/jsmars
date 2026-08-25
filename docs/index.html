@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSMARS Documentation & Science Handbook</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23c1440e'/><circle cx='35' cy='35' r='10' fill='%238b2500'/><circle cx='65' cy='60' r='14' fill='%238b2500'/></svg>">
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --bg-card: #1f2937;
+            --bg-hover: #374151;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-cyan: #38bdf8;
+            --accent-orange: #fb923c;
+            --accent-green: #4ade80;
+            --accent-purple: #c084fc;
+            --border-color: #374151;
+            --sidebar-width: 280px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        #sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(180deg, rgba(56, 189, 248, 0.08) 0%, transparent 100%);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .logo-container h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-container span {
+            color: var(--accent-orange);
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        .nav-links {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 10px;
+        }
+
+        .nav-category {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            padding: 10px 10px 4px 10px;
+            margin-top: 6px;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            color: #fff;
+            background: var(--bg-card);
+        }
+
+        .nav-item.active {
+            color: #fff;
+            background: rgba(56, 189, 248, 0.15);
+            border-left: 3px solid var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            padding: 14px 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .sidebar-footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .sidebar-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Content Container */
+        #content-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px 40px 60px 40px;
+            scroll-behavior: smooth;
+        }
+
+        .content-wrapper {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        /* Section Styling */
+        section {
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h2 {
+            font-size: 24px;
+            color: #fff;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -0.3px;
+        }
+
+        h3 {
+            font-size: 18px;
+            color: var(--accent-cyan);
+            margin: 24px 0 10px 0;
+        }
+
+        p {
+            margin-bottom: 14px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        ul, ol {
+            margin-left: 24px;
+            margin-bottom: 16px;
+            color: #d1d5db;
+            font-size: 14.5px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        /* Cards and Callouts */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 18px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+
+        .card h4 {
+            font-size: 15px;
+            color: #fff;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .formula-box {
+            background: #0d1322;
+            border-left: 4px solid var(--accent-cyan);
+            padding: 12px 16px;
+            margin: 14px 0;
+            border-radius: 0 6px 6px 0;
+            font-family: "Courier New", Courier, monospace;
+            color: #7dd3fc;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-cyan { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+        .badge-orange { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
+        .badge-green { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            font-size: 13.5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-card);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        td {
+            color: #d1d5db;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Top Header Bar */
+        .top-banner {
+            background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-banner h2 {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .top-banner p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-cyan);
+            color: #0b0f19;
+        }
+
+        .btn-primary:hover {
+            background: #7dd3fc;
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: #fff;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow: auto;
+            }
+            #sidebar {
+                width: 100%;
+                height: auto;
+            }
+            #content-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <svg width="24" height="24" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="#c1440e"/>
+                    <circle cx="35" cy="35" r="10" fill="#8b2500"/>
+                    <circle cx="65" cy="60" r="14" fill="#8b2500"/>
+                </svg>
+                <h1>JSMARS <span>Docs</span></h1>
+            </div>
+            <div class="search-box">
+                <input type="text" id="tool-search" placeholder="Filter tools & topics...">
+            </div>
+        </div>
+
+        <nav class="nav-links" id="nav-list">
+            <div class="nav-category">Overview</div>
+            <a class="nav-item active" href="#intro">Introduction & Parity</a>
+            <a class="nav-item" href="#getting-started">Getting Started</a>
+            <a class="nav-item" href="#keyboard-shortcuts">Keyboard Shortcuts</a>
+
+            <div class="nav-category">Planetary Science Tools</div>
+            <a class="nav-item" href="#krc-thermal">1D KRC Thermal Model</a>
+            <a class="nav-item" href="#time-slider">Mars Time Slider & Ephemeris</a>
+            <a class="nav-item" href="#mcd-profiler">MCD Atmospheric Profiler</a>
+            <a class="nav-item" href="#crater-counting">Crater Counting & CSFD Dating</a>
+            <a class="nav-item" href="#band-math">Spectral Band Math & CRISM</a>
+            <a class="nav-item" href="#threed-globe">3D Terrain & Globe Viewer</a>
+            <a class="nav-item" href="#radar-sounder">Subsurface Radar Sounder</a>
+            <a class="nav-item" href="#trajectories">Astrodynamics & Trajectories</a>
+            <a class="nav-item" href="#contour-slopes">Contour & Slope Hazards</a>
+
+            <div class="nav-category">Cartography & Navigation</div>
+            <a class="nav-item" href="#projections">Map Projections & Coords</a>
+            <a class="nav-item" href="#investigate-probe">Investigate Probe & Geophysics</a>
+            <a class="nav-item" href="#measurements">Geodesy & Measurements</a>
+            <a class="nav-item" href="#shapes-rois">Vector Shapes & GIS WKT</a>
+            <a class="nav-item" href="#nomenclature">Planetary Nomenclature</a>
+            <a class="nav-item" href="#layer-manager">Layer Manager & Overlays</a>
+            <a class="nav-item" href="#sessions">Sessions & Data Export</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="../index.html" target="_blank">🚀 Open Live App</a>
+            <a href="../tests/index.html" target="_blank">🧪 Run Tests</a>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="content-container">
+        <div class="content-wrapper">
+
+            <!-- Welcome Banner -->
+            <div class="top-banner">
+                <div>
+                    <h2>🪐 JSMARS Documentation & Handbook</h2>
+                    <p>Browser-native planetary GIS & analytical suite inspired by ASU JMARS. Zero build step, 100% pure ES modules.</p>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <a href="../index.html" class="btn btn-primary">Launch App</a>
+                    <a href="https://github.com/sounny/jsmars" target="_blank" class="btn btn-secondary">GitHub Repo</a>
+                </div>
+            </div>
+
+            <!-- Introduction Section -->
+            <section id="intro">
+                <h2>📖 Introduction & Architecture</h2>
+                <p>JSMARS is an open-source, client-side web application providing high-performance geospatial data visualization, orbital tracking, planetary climatology, and geophysical modeling for Mars, the Moon, and Earth.</p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <h4>⚡ Zero Build Step</h4>
+                        <p>Written in standard Vanilla JavaScript (ES6+ Modules), Leaflet, HTML5 Canvas, and WebGL Three.js. No Webpack, Vite, or npm compilation required.</p>
+                    </div>
+                    <div class="card">
+                        <h4>🔬 Desktop Parity (~91%)</h4>
+                        <p>Faithfully ports mathematical models, physical constants, and analytical pipelines from Java-based JMARS desktop into fast client-side JavaScript.</p>
+                    </div>
+                    <div class="card">
+                        <h4>🛡️ Continuous Automated CI</h4>
+                        <p>Covered by <strong>218 automated unit tests (100% passing)</strong> and automated headless browser verification pipelines ensuring 0 console errors.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Getting Started -->
+            <section id="getting-started">
+                <h2>🚀 Getting Started</h2>
+                <p>To use JSMARS locally or in production:</p>
+                <ol>
+                    <li>Open <code>index.html</code> in any modern browser (Chrome, Firefox, Safari, Edge) via an HTTP server or GitHub Pages.</li>
+                    <li>Use the <strong>Sidebar</strong> on the left to toggle analytical tools, add base maps from USGS/OpenPlanetary WMS feeds, and customize layers.</li>
+                    <li>Use the <strong>Panner Overview</strong> (bottom-right) or standard map controls to pan and zoom across the planetary surface.</li>
+                </ol>
+            </section>
+
+            <!-- Keyboard Shortcuts -->
+            <section id="keyboard-shortcuts">
+                <h2>⌨️ Keyboard Shortcuts & Quick Actions</h2>
+                <p>Press <kbd>Ctrl+K</kbd> (or <kbd>⌘+K</kbd> on macOS) to focus the Quick Command input at any time.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Shortcut / Command</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>Ctrl+K</code> / <code>Cmd+K</code></td><td>Focus Quick Actions search box</td></tr>
+                        <tr><td><code>Save Session</code></td><td>Download current session (active layers, bookmarks, measurements) as JSON</td></tr>
+                        <tr><td><code>Load Session</code></td><td>Upload and restore a saved JSMARS JSON session</td></tr>
+                        <tr><td><code>Reset View</code></td><td>Reset map center to 0° Lat, 0° Lon at global zoom level</td></tr>
+                        <tr><td><code>Toggle Sidebar</code></td><td>Collapse or expand the left sidebar controls</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 1D KRC Thermal Model -->
+            <section id="krc-thermal">
+                <h2>🌡️ 1D KRC Mars Thermal Simulation Model</h2>
+                <span class="badge badge-orange">Physics Engine</span>
+                <p>The KRC engine solves the 1D transient heat diffusion equation in the Martian regolith coupled with surface radiative energy balance and atmospheric downward thermal infrared flux (Hugh Kieffer KRC formulation).</p>
+                
+                <div class="formula-box">
+                    rho * c_p * (dT/dt) = d/dz [ k(z, P) * (dT/dz) ]<br>
+                    Surface Boundary: (1 - A)*F_sun + F_IR,down - eps*sigma*T^4 + k*(dT/dz)|_0 = 0
+                </div>
+
+                <h3>Key Capabilities:</h3>
+                <ul>
+                    <li><strong>Diurnal & Seasonal Curves:</strong> Simulates diurnal temperature swings ($T(t)$) and full orbital seasonal curves across Solar Longitude ($L_s = 0^\circ - 360^\circ$).</li>
+                    <li><strong>CO2 Frost Condensation:</strong> Accurately clamps surface temperatures to the Clausius-Clapeyron dry ice condensation point ($T \approx 145-148\text{ K}$) and models sublimation mass flux.</li>
+                    <li><strong>Two-Layer Apparent Thermal Inertia ($\Gamma_{\text{app}}$):</strong> Disentangles fine airfall dust mantles over high-conductivity volcanic basalt bedrock.</li>
+                    <li><strong>Fourier Harmonics Deconvolution:</strong> Extracts fundamental harmonic amplitudes ($C_k$) and phase lag hours from diurnal temperature waves.</li>
+                </ul>
+            </section>
+
+            <!-- Mars Time Slider -->
+            <section id="time-slider">
+                <h2>⏱️ Mars Time Slider & Orbital Ephemeris</h2>
+                <span class="badge badge-cyan">Astronomical Engine</span>
+                <p>Computes orbital mechanics, Keplerian true anomaly, Solar Longitude ($L_s$), Mars Year (MY), Mars Sol Date (MSD), and Local True Solar Time (LTST) using high-precision Allison & McEwen (2000) formulations.</p>
+
+                <div class="formula-box">
+                    LTST = MTC + (Lon_E / 15 degrees) [hours]<br>
+                    True Solar Sol Duration: delta_t(Ls) = 88775.244 * [1 + 2e*cos(Ls - 251 deg) / (1 - e^2)]
+                </div>
+            </section>
+
+            <!-- MCD Atmospheric Profiler -->
+            <section id="mcd-profiler">
+                <h2>💨 Mars Climate Database (MCD) Profiler</h2>
+                <span class="badge badge-green">Atmospheric Sounder</span>
+                <p>Generates vertical atmospheric soundings from surface datum to 120 km altitude, modeling hydrostatic scale height, dry adiabatic lapse rates ($4.5\text{ K/km}$), Conrath dust vertical distribution ($\nu = 0.007$), boundary layer friction velocity ($u_*$), and potential temperature ($\theta$).</p>
+            </section>
+
+            <!-- Crater Counting CSFD -->
+            <section id="crater-counting">
+                <h2>☄️ Crater Counting CSFD & Isochron Dating</h2>
+                <span class="badge badge-orange">Geochronology</span>
+                <p>Implements the Neukum Production Function (NPF 11th-order polynomial) and Hartmann-Neukum Mars Chronology Function to date planetary surface units:</p>
+                <div class="formula-box">
+                    N(D &gt; 1km) / km^2 = 2.68e-14 * (exp(6.93 * t) - 1) + 4.13e-4 * t [t in Ga]<br>
+                    Croft &amp; Ivanov Collapse: D_f = 1.17 * D_t^1.13 / D_*^0.13  (D_* = 7 km)
+                </div>
+            </section>
+
+            <!-- Spectral Band Math -->
+            <section id="band-math">
+                <h2>💎 Hyperspectral Band Math & Mineralogy</h2>
+                <span class="badge badge-cyan">Spectroscopy</span>
+                <p>Calculates CRISM summary parameters including ferric iron (BD530), hydration (BD1900), water ice (BD1500), smectite clays (D2300), sulfates (BD2100), and carbonates (BD2500/BD3900), plus Olivine Forsterite $\text{Fo\#}$ estimation from $1\ \mu\text{m}$ absorption center minimums.</p>
+            </section>
+
+            <!-- 3D Terrain Viewer -->
+            <section id="threed-globe">
+                <h2>🌐 3D Terrain & Globe Viewer (WebGL)</h2>
+                <span class="badge badge-green">3D Graphics</span>
+                <p>Renders regional elevation displacement meshes and 3D planetary globes with dynamic vertical exaggeration scaling ($1\times - 20\times$), real-time solar terminator illumination, Lambertian/Lommel-Seeliger/Minnaert photometric models, camera FOV ground swath width footprint ($W = 2 h \tan(\text{FOV}/2)$), and facet normals.</p>
+            </section>
+
+            <!-- Subsurface Radar Sounder -->
+            <section id="radar-sounder">
+                <h2>📡 Subsurface Radar Sounder (SHARAD / MARSIS)</h2>
+                <span class="badge badge-orange">Geophysics</span>
+                <p>Simulates synthetic 2D B-scope radargrams and 1D A-scope power traces for subsurface orbital radar sounding across polar ice caps and sedimentary deposits with dielectric mixing laws (Looyenga, Birchak, Lichtenecker) and two-way travel time dielectric depth conversion ($z = \frac{c \Delta t}{2 \sqrt{\epsilon_r}}$).</p>
+            </section>
+
+            <!-- Astrodynamics & Trajectories -->
+            <section id="trajectories">
+                <h2>🚀 Interplanetary Astrodynamics & Trajectories</h2>
+                <span class="badge badge-cyan">Mission Planning</span>
+                <p>Calculates heliocentric Hohmann transfer orbits, Trans-Mars Injection ($\Delta v_1$), Mars Orbit Insertion ($\Delta v_2$), characteristic launch energy ($C_3$), synodic transfer opportunities, and Areostationary synchronous orbit altitudes.</p>
+            </section>
+
+            <!-- Contour & Slope Hazards -->
+            <section id="contour-slopes">
+                <h2>⛰️ Topographic Contours, Slopes & Landing Hazards</h2>
+                <span class="badge badge-green">Cartography</span>
+                <p>Generates client-side Marching Squares elevation isocontours, 3x3 Zevenbergen-Thorne slope &amp; aspect gradients, Topographic Wetness Index (TWI), Stream Power Index (SPI), and automated landing site hazard safety classification.</p>
+            </section>
+
+            <!-- Map Projections -->
+            <section id="projections">
+                <h2>🗺️ Map Projections & Coordinate Systems</h2>
+                <span class="badge badge-cyan">Geodesy</span>
+                <p>Supports Cylindrical Equirectangular, North/South Polar Stereographic, Albers Equal-Area Conic, Lambert Azimuthal Equal-Area, Sinusoidal, and Mollweide projections with real-time coordinate transformations across $0^\circ-360^\circ\text{ E}$, $\pm 180^\circ$, and West longitude.</p>
+            </section>
+
+            <!-- Investigate Probe Tool -->
+            <section id="investigate-probe">
+                <h2>📍 Investigate Probe Tool & Potential Fields</h2>
+                <span class="badge badge-orange">Geophysics</span>
+                <p>Click anywhere on Mars or the Moon to probe MOLA DEM elevations, WMS layer attributes, Complete Bouguer gravity anomalies ($\Delta g_B$), Airy-Heiskanen isostatic crustal roots ($t_{\text{root}} = h \frac{\rho_c}{\rho_m - \rho_c}$), and thermal diffusivity ($\kappa = \frac{k}{\rho c_p}$).</p>
+            </section>
+
+            <!-- Geodesy & Measurements -->
+            <section id="measurements">
+                <h2>📏 Geodesy & Distance Measurements</h2>
+                <span class="badge badge-green">Navigation</span>
+                <p>Calculates planetary radius-calibrated geodesic line lengths, closed polygon surface areas, great-circle waypoint interpolation, cross-track/along-track offsets, direct destination points, and 3D interior straight-line tunnel chords.</p>
+            </section>
+
+            <!-- Vector Shapes & ROIs -->
+            <section id="shapes-rois">
+                <h2>✏️ Vector Shapes (ROIs) & GIS Formats</h2>
+                <span class="badge badge-cyan">GIS Interoperability</span>
+                <p>Digitize points, polylines, polygons, circles, and bounding boxes. Export to GeoJSON, CSV, WKT (Well-Known Text), and generate 6-line affine transformation world files (<code>.pgw</code> / <code>.jgw</code>) for QGIS, ArcGIS, and GDAL.</p>
+            </section>
+
+            <!-- Nomenclature -->
+            <section id="nomenclature">
+                <h2>🏷️ Planetary Nomenclature & Gazetteer</h2>
+                <span class="badge badge-orange">Gazetteer</span>
+                <p>Search over thousands of IAU official planetary landmarks across Mars and the Moon, filter by morphological feature type (craters, mons, valles, chasmata, planitiae), and recenter the map with one click.</p>
+            </section>
+
+            <!-- Layer Manager -->
+            <section id="layer-manager">
+                <h2>🗂️ Layer Manager & Overlays</h2>
+                <span class="badge badge-green">Map Composition</span>
+                <p>Reorder layer stacking via drag-and-drop, adjust transparency with real-time opacity sliders, toggle adaptive coordinate graticules, north arrows, and physical scale bars.</p>
+            </section>
+
+            <!-- Sessions -->
+            <section id="sessions">
+                <h2>💾 Session Management & Serialization</h2>
+                <span class="badge badge-cyan">Persistence</span>
+                <p>Save entire workspaces—including active layer stack, opacity settings, viewport center, zoom, spatial bookmarks, measurements, and vector shapes—into compact JSON session files with instant restore.</p>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        // Interactive search filter for documentation sidebar
+        const searchInput = document.getElementById('tool-search');
+        const navList = document.getElementById('nav-list');
+        const navItems = navList.querySelectorAll('.nav-item');
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            navItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const href = item.getAttribute('href').toLowerCase();
+                if (text.includes(term) || href.includes(term)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Active link highlighting on scroll
+        const sections = document.querySelectorAll('section');
+        const contentContainer = document.getElementById('content-container');
+
+        contentContainer.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - contentContainer.offsetTop - 100;
+                if (contentContainer.scrollTop >= sectionTop) {
+                    current = '#' + section.getAttribute('id');
+                }
+            });
+
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('href') === current) {
+                    item.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
