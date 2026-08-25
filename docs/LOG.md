@@ -210,3 +210,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute exact 8-neighbor Horn slope and compass aspect
 ?: AssertionError: expected 'W' to equal 'E'
     at n.<anonymous> (unit.js:2269:42)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 10:30:28 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate ionospheric dispersion delay and cumulative multi-layer TWT
+?: AssertionError: expected 3.3607 to be close to 0.336 +/- 0.01
+    at n.<anonymous> (unit.js:2358:42)

@@ -461,7 +461,77 @@ export class RadarSounderEngine {
       contactType
     };
   }
+
+  // --- Synthetic Aperture SAR, Ionospheric Dispersion & Multi-Layer TWT Solvers ---
+
+  /**
+   * Calculate along-track synthetic aperture radar (SAR) azimuth resolution.
+   * Delta_x = v_orbit / (2 * B_Doppler)
+   * @param {number} [orbitVelocityMs=3400] - Spacecraft orbital ground track speed in m/s (MRO ~ 3.4 km/s)
+   * @param {number} [dopplerBandwidthHz=200] - Synthetic aperture processed Doppler bandwidth in Hz
+   * @returns {number} Along-track SAR spatial resolution in meters
+   */
+  static computeSARResolution(orbitVelocityMs = 3400, dopplerBandwidthHz = 200) {
+    const resMeters = orbitVelocityMs / (2.0 * Math.max(1, dopplerBandwidthHz));
+    return parseFloat(resMeters.toFixed(2));
+  }
+
+  /**
+   * Calculate Martian ionospheric pulse dispersion group delay.
+   * Delta_tau = (40.3 * TEC) / (c * f^2)
+   * @param {number} [totalElectronContentTecU=1.0] - Total Electron Content (1 TECU = 1e16 electrons/m^2)
+   * @param {number} [freqHz=20e6] - Center frequency in Hz (20 MHz for SHARAD, 4 MHz for MARSIS)
+   * @returns {{delayMicrosec: number, apparentHeightShiftMeters: number}}
+   */
+  static computeIonosphericDispersionDelay(totalElectronContentTecU = 1.0, freqHz = 20e6) {
+    const tecM2 = totalElectronContentTecU * 1e16;
+    const f2 = freqHz * freqHz;
+    const delaySec = (40.3 * tecM2) / (RadarSounderEngine.C * f2);
+    const delayMicrosec = delaySec * 1e6;
+    const shiftMeters = (RadarSounderEngine.C * delaySec) / 2.0;
+
+    return {
+      delayMicrosec: parseFloat(delayMicrosec.toFixed(4)),
+      apparentHeightShiftMeters: parseFloat(shiftMeters.toFixed(2))
+    };
+  }
+
+  /**
+   * Compute cumulative two-way travel time (TWT) and depth across a multi-layer stratigraphy.
+   * @param {Array<{thicknessMeters: number, dielectricConstant: number}>} layers - Array of layer strata
+   * @returns {{totalDepthMeters: number, totalTwtMicrosec: number, layerIntervals: Array<object>}}
+   */
+  static computeMultiLayerTWT(layers = []) {
+    let totalZ = 0;
+    let totalTwt = 0;
+    const intervals = [];
+
+    layers.forEach((l, i) => {
+      const z = l.thicknessMeters || 0;
+      const eps = l.dielectricConstant || 3.15;
+      const twt = this.depthToTwt(z, eps);
+
+      totalZ += z;
+      totalTwt += twt;
+
+      intervals.push({
+        layerIndex: i + 1,
+        thicknessMeters: z,
+        dielectricConstant: eps,
+        intervalTwtMicrosec: parseFloat(twt.toFixed(3)),
+        cumulativeDepthMeters: parseFloat(totalZ.toFixed(1)),
+        cumulativeTwtMicrosec: parseFloat(totalTwt.toFixed(3))
+      });
+    });
+
+    return {
+      totalDepthMeters: parseFloat(totalZ.toFixed(1)),
+      totalTwtMicrosec: parseFloat(totalTwt.toFixed(3)),
+      layerIntervals: intervals
+    };
+  }
 }
+
 
 
 

@@ -2345,6 +2345,30 @@ describe('Standard Parallel Scaling, Grid Convergence & Heading Departure (Proje
     });
 });
 
+describe('Synthetic Aperture SAR, Ionospheric Dispersion & Multi-Layer TWT (RadarSounderEngine)', () => {
+    it('should compute along-track synthetic aperture radar (SAR) resolution', () => {
+        // Orbital speed 3400 m/s, Doppler bandwidth 200 Hz -> SAR resolution = 3400 / 400 = 8.5 meters
+        const sar = RadarSounderEngine.computeSARResolution(3400, 200);
+        expect(sar).to.equal(8.5);
+    });
+
+    it('should calculate ionospheric dispersion delay and cumulative multi-layer TWT', () => {
+        // 1 TECU at 20 MHz (SHARAD) -> delay ~ 3.36 µs, height shift ~ 504 m
+        const iono = RadarSounderEngine.computeIonosphericDispersionDelay(1.0, 20e6);
+        expect(iono.delayMicrosec).to.be.closeTo(3.361, 0.01);
+        expect(iono.apparentHeightShiftMeters).to.be.closeTo(503.7, 1.0);
+
+        // Multi-layer polar stratigraphy: 500m NPLD ice (eps=3.15) + 200m sand basal unit (eps=4.0)
+        const ml = RadarSounderEngine.computeMultiLayerTWT([
+            { thicknessMeters: 500, dielectricConstant: 3.15 },
+            { thicknessMeters: 200, dielectricConstant: 4.0 }
+        ]);
+        expect(ml.totalDepthMeters).to.equal(700.0);
+        expect(ml.totalTwtMicrosec).to.be.greaterThan(7.0);
+        expect(ml.layerIntervals.length).to.equal(2);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
