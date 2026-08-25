@@ -645,7 +645,84 @@ export class ProjectionManager {
       departureDeg: parseFloat(departure.toFixed(2))
     };
   }
+
+  // --- Albers Equal-Area Conic & Cartographic Scale Solvers ---
+
+  /**
+   * Forward Albers Equal-Area Conic projection.
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {number} [lat1=20] - Standard parallel 1
+   * @param {number} [lat2=60] - Standard parallel 2
+   * @param {number} [lon0=0] - Central meridian
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{x: number, y: number}} Projected coordinates in km
+   */
+  static forwardAlbersEqualArea(lat, lon, lat1 = 20, lat2 = 60, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180.0;
+    const phi1 = lat1 * Math.PI / 180.0;
+    const phi2 = lat2 * Math.PI / 180.0;
+    const dLam = to180(lon - lon0) * Math.PI / 180.0;
+
+    const n = 0.5 * (Math.sin(phi1) + Math.sin(phi2));
+    const C = Math.pow(Math.cos(phi1), 2) + 2.0 * n * Math.sin(phi1);
+    const rho = (R / n) * Math.sqrt(Math.max(0, C - 2.0 * n * Math.sin(phi)));
+    const rho0 = (R / n) * Math.sqrt(Math.max(0, C - 2.0 * n * Math.sin(0))); // Origin at equator
+
+    const theta = n * dLam;
+    const x = rho * Math.sin(theta);
+    const y = rho0 - rho * Math.cos(theta);
+
+    return {
+      x: parseFloat(x.toFixed(3)),
+      y: parseFloat(y.toFixed(3))
+    };
+  }
+
+  /**
+   * Inverse Albers Equal-Area Conic projection.
+   * @param {number} x - Projected x in km
+   * @param {number} y - Projected y in km
+   * @param {number} [lat1=20] - Standard parallel 1
+   * @param {number} [lat2=60] - Standard parallel 2
+   * @param {number} [lon0=0] - Central meridian
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{lat: number, lon: number}} Unprojected latitude and longitude in degrees
+   */
+  static inverseAlbersEqualArea(x, y, lat1 = 20, lat2 = 60, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi1 = lat1 * Math.PI / 180.0;
+    const phi2 = lat2 * Math.PI / 180.0;
+
+    const n = 0.5 * (Math.sin(phi1) + Math.sin(phi2));
+    const C = Math.pow(Math.cos(phi1), 2) + 2.0 * n * Math.sin(phi1);
+    const rho0 = (R / n) * Math.sqrt(Math.max(0, C - 2.0 * n * Math.sin(0)));
+
+    const rho = Math.sign(n) * Math.hypot(x, rho0 - y);
+    const sinPhi = (C - Math.pow(rho * n / R, 2)) / (2.0 * n);
+    const phi = Math.asin(Math.max(-1.0, Math.min(1.0, sinPhi)));
+    const theta = Math.atan2(x, rho0 - y);
+    const dLam = theta / n;
+
+    return {
+      lat: parseFloat((phi * 180.0 / Math.PI).toFixed(4)),
+      lon: parseFloat(to180(lon0 + dLam * 180.0 / Math.PI).toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate Equirectangular cylindrical areal expansion scale factor (secant of latitude).
+   * @param {number} latDeg - Latitude in degrees
+   * @returns {number} Areal scale factor s
+   */
+  static computeEquirectangularArealScale(latDeg) {
+    const phi = Math.abs(latDeg) * Math.PI / 180.0;
+    const s = 1.0 / Math.max(0.001, Math.cos(phi));
+    return parseFloat(s.toFixed(3));
+  }
 }
+
 
 
 

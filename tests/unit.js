@@ -2649,6 +2649,30 @@ describe('Visvalingam-Whyatt Simplification, Point-in-Polygon & Ear Clipping (Sh
     });
 });
 
+describe('Albers Equal-Area Conic & Cartographic Distortion (ProjectionManager)', () => {
+    it('should forward and inverse transform coordinates using Albers Equal-Area Conic projection', () => {
+        // Project (lat = 40, lon = 0) with standard parallels 20 and 60
+        const fwd = ProjectionManager.forwardAlbersEqualArea(40, 0, 20, 60, 0, 'mars');
+        expect(fwd.x).to.equal(0);
+        expect(fwd.y).to.be.greaterThan(0);
+
+        // Inverse transform should recover original latitude and longitude
+        const inv = ProjectionManager.inverseAlbersEqualArea(fwd.x, fwd.y, 20, 60, 0, 'mars');
+        expect(inv.lat).to.be.closeTo(40.0, 0.05);
+        expect(inv.lon).to.be.closeTo(0.0, 0.05);
+    });
+
+    it('should compute Equirectangular cylindrical areal expansion scale factor', () => {
+        // At equator (lat = 0): s = 1.0
+        const s0 = ProjectionManager.computeEquirectangularArealScale(0);
+        expect(s0).to.equal(1.0);
+
+        // At 60 deg lat: sec(60) = 2.0 (2x area distortion)
+        const s60 = ProjectionManager.computeEquirectangularArealScale(60);
+        expect(s60).to.be.closeTo(2.0, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
