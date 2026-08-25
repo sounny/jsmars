@@ -3576,6 +3576,31 @@ describe('Line-Load Flexure, Seismic Velocities & Bouguer Slab (InvestigateTool)
     });
 });
 
+describe('Aspect Ratio, Polyline Length & Rhumb Loxodrome (MeasureTool)', () => {
+    it('should compute bounding box aspect ratio and great-circle polyline total length', () => {
+        // Elongated valley polygon (2 deg lat x 10 deg lon at equator)
+        const poly = [[-1.0, 0.0], [1.0, 0.0], [1.0, 10.0], [-1.0, 10.0]];
+        const bbox = MeasureTool.computePolygonBoundingBoxAspectRatio(poly, 'mars');
+        expect(bbox.aspectRatio).to.be.greaterThan(4.0);
+        expect(bbox.lengthKm).to.be.greaterThan(500.0);
+
+        // 3-point polyline along equator (0 to 10 deg lon -> ~591.6 km on Mars)
+        const line = [[0.0, 0.0], [0.0, 5.0], [0.0, 10.0]];
+        const len = MeasureTool.computeGreatCirclePolylineTotalLength(line, 'mars');
+        expect(len.totalLengthKm).to.be.greaterThan(550.0);
+        expect(len.totalLengthKm).to.be.lessThan(650.0);
+        expect(len.segmentCount).to.equal(2);
+    });
+
+    it('should compute constant-bearing Rhumb line (loxodrome) distance and heading', () => {
+        // Rhumb line along 45 deg bearing on Mars
+        const rhumb = MeasureTool.computeRhumbLineLoxodromeDirect(0.0, 0.0, 10.0, 10.0, 'mars');
+        expect(rhumb.rhumbDistanceKm).to.be.greaterThan(700.0);
+        expect(rhumb.constantBearingDeg).to.be.greaterThan(40.0);
+        expect(rhumb.constantBearingDeg).to.be.lessThan(50.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

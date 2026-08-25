@@ -1181,7 +1181,84 @@ export class MeasureTool {
             shapeClass: shape
         };
     }
+
+    // --- Bounding Box Aspect Ratio, Polyline Total Length & Loxodrome Navigation Solvers ---
+
+    /**
+     * Calculate 2D oriented bounding box dimensions and elongation aspect ratio (L / W).
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Polygon vertex coordinates
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{lengthKm: number, widthKm: number, aspectRatio: number, areaBoundingBoxKm2: number}}
+     */
+    static computePolygonBoundingBoxAspectRatio(latlngs = [], body = 'mars') {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length < 2) return { lengthKm: 0, widthKm: 0, aspectRatio: 1.0, areaBoundingBoxKm2: 0 };
+
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+
+        const lats = coords.map(p => p[0]);
+        const lons = coords.map(p => p[1]);
+
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const minLon = Math.min(...lons);
+        const maxLon = Math.max(...lons);
+
+        const meanLatRad = ((minLat + maxLat) / 2.0) * Math.PI / 180.0;
+        const dLatRad = (maxLat - minLat) * Math.PI / 180.0;
+        const dLonRad = (maxLon - minLon) * Math.PI / 180.0;
+
+        const heightKm = R * dLatRad;
+        const widthKm = R * Math.cos(meanLatRad) * dLonRad;
+
+        const major = Math.max(heightKm, widthKm);
+        const minor = Math.max(1e-4, Math.min(heightKm, widthKm));
+        const aspect = major / minor;
+
+        return {
+            lengthKm: parseFloat(major.toFixed(3)),
+            widthKm: parseFloat(minor.toFixed(3)),
+            aspectRatio: parseFloat(aspect.toFixed(2)),
+            areaBoundingBoxKm2: parseFloat((major * minor).toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate total spherical geodesic length for an arbitrary polyline path.
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Array of coordinates
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{totalLengthKm: number, totalLengthMeters: number, segmentCount: number}}
+     */
+    static computeGreatCirclePolylineTotalLength(latlngs = [], body = 'mars') {
+        const segs = this.computeSegmentMetrics(latlngs, body);
+        const totalKm = segs.reduce((acc, s) => acc + s.distanceKm, 0);
+
+        return {
+            totalLengthKm: parseFloat(totalKm.toFixed(3)),
+            totalLengthMeters: parseFloat((totalKm * 1000.0).toFixed(1)),
+            segmentCount: segs.length
+        };
+    }
+
+    /**
+     * Calculate direct Rhumb line (loxodrome) distance and true constant bearing.
+     * @param {number} startLat - Departure latitude
+     * @param {number} startLon - Departure longitude
+     * @param {number} endLat - Destination latitude
+     * @param {number} endLon - Destination longitude
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{rhumbDistanceKm: number, constantBearingDeg: number}}
+     */
+    static computeRhumbLineLoxodromeDirect(startLat, startLon, endLat, endLon, body = 'mars') {
+        const res = this.computeRhumbLineDistance(startLat, startLon, endLat, endLon, body);
+
+        return {
+            rhumbDistanceKm: res.distanceKm,
+            constantBearingDeg: res.constantBearingDeg
+        };
+    }
 }
+
 
 
 
