@@ -2287,6 +2287,40 @@ describe('Horn 3x3 Slope, Aspect, Terrain Curvature & Hypsometry (ContourLayer)'
     });
 });
 
+describe('Polygon Centroid, Polyline Binary Serialization & Decimation (ShapeIO)', () => {
+    it('should compute exact polygon centroid coordinates and signed shoelace area', () => {
+        // 10x10 square from (0,0) to (10,10) -> area = 100, centroid = (5, 5)
+        const square = [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 10]
+        ];
+        const res = ShapeIO.computePolygonCentroid(square);
+        expect(res.centroidX).to.equal(5.0);
+        expect(res.centroidY).to.equal(5.0);
+        expect(res.area).to.equal(100.0);
+    });
+
+    it('should generate binary Polyline Shapefile buffer and decimate dense vertices', () => {
+        // 2-segment polyline
+        const line = [
+            [[0, 0], [1, 1], [2, 0]]
+        ];
+        const buf = ShapeIO.createShapefilePolylineBuffer(line);
+        expect(buf.byteLength).to.be.greaterThan(100);
+
+        const header = ShapeIO.parseShapefileHeader(buf);
+        expect(header.shapeType).to.equal(3); // PolyLine
+        expect(header.shapeTypeName).to.equal('PolyLine');
+
+        // Vertex decimation
+        const dense = [[0, 0], [0.001, 0.001], [0.002, 0.002], [1.0, 1.0]];
+        const simplified = ShapeIO.simplifyRadialDistance(dense, 0.01);
+        expect(simplified.length).to.equal(2); // Only start and end remain
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

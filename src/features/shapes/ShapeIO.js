@@ -692,7 +692,155 @@ export class ShapeIO {
       overlapArea: parseFloat(overlapArea.toFixed(4))
     };
   }
+
+  // --- Polygon Centroid, Polyline Binary Serialization & Decimation Solvers ---
+
+  /**
+   * Calculate exact 2D planar/geodetic polygon centroid and signed shoelace area.
+   * Cx = (1 / 6A) * sum((xi + xi+1) * (xi*yi+1 - xi+1*yi))
+   * Cy = (1 / 6A) * sum((yi + yi+1) * (xi*yi+1 - xi+1*yi))
+   * @param {Array<[number, number]>} ring - Polygon coordinate ring [[x, y], ...]
+   * @returns {{centroidX: number, centroidY: number, area: number, isClockwise: boolean}}
+   */
+  static computePolygonCentroid(ring = []) {
+    if (!ring || ring.length < 3) {
+      return { centroidX: 0, centroidY: 0, area: 0, isClockwise: false };
+    }
+
+    let signedArea2 = 0;
+    let cxSum = 0;
+    let cySum = 0;
+    const n = ring.length;
+
+    for (let i = 0; i < n; i++) {
+      const p1 = ring[i];
+      const p2 = ring[(i + 1) % n];
+      const cross = p1[0] * p2[1] - p2[0] * p1[1];
+
+      signedArea2 += cross;
+      cxSum += (p1[0] + p2[0]) * cross;
+      cySum += (p1[1] + p2[1]) * cross;
+    }
+
+    const area = signedArea2 / 2.0;
+    if (Math.abs(signedArea2) < 1e-10) {
+      return { centroidX: ring[0][0], centroidY: ring[0][1], area: 0, isClockwise: false };
+    }
+
+    const cx = cxSum / (3.0 * signedArea2);
+    const cy = cySum / (3.0 * signedArea2);
+
+    return {
+      centroidX: parseFloat(cx.toFixed(6)),
+      centroidY: parseFloat(cy.toFixed(6)),
+      area: parseFloat(Math.abs(area).toFixed(6)),
+      isClockwise: signedArea2 < 0
+    };
+  }
+
+  /**
+   * Create a binary ESRI Shapefile (.shp) buffer from an array of Polyline segments (ShapeType 3).
+   * @param {Array<Array<[number, number]>>} lines - Array of coordinate lines [[ [x, y], ... ]]
+   * @returns {ArrayBuffer} Valid 100-byte header + ShapeType 3 binary buffer
+   */
+  static createShapefilePolylineBuffer(lines = []) {
+    const numParts = lines.length;
+    let totalPoints = 0;
+    let xMin = Infinity, yMin = Infinity, xMax = -Infinity, yMax = -Infinity;
+
+    lines.forEach(line => {
+      totalPoints += line.length;
+      line.forEach(([x, y]) => {
+        if (x < xMin) xMin = x;
+        if (y < yMin) yMin = y;
+        if (x > xMax) xMax = x;
+        if (y > yMax) yMax = y;
+      });
+    });
+
+    if (totalPoints === 0) {
+      xMin = 0; yMin = 0; xMax = 0; yMax = 0;
+    }
+
+    const recordHeaderBytes = 8;
+    const contentBytes = 44 + numParts * 4 + totalPoints * 16;
+    const totalRecordBytes = recordHeaderBytes + contentBytes;
+    const totalFileBytes = 100 + totalRecordBytes;
+
+    const buffer = new ArrayBuffer(totalFileBytes);
+    const view = new DataView(buffer);
+
+    // 100-byte Header
+    view.setInt32(0, 9994, false); // File code
+    view.setInt32(24, totalFileBytes / 2, false);
+    view.setInt32(28, 1000, true);
+    view.setInt32(32, 3, true); // ShapeType: PolyLine (3)
+    view.setFloat64(36, xMin, true);
+    view.setFloat64(44, yMin, true);
+    view.setFloat64(52, xMax, true);
+    view.setFloat64(60, yMax, true);
+
+    // Write Record
+    let offset = 100;
+    view.setInt32(offset, 1, false);
+    view.setInt32(offset + 4, contentBytes / 2, false);
+    view.setInt32(offset + 8, 3, true); // PolyLine
+    view.setFloat64(offset + 12, xMin, true);
+    view.setFloat64(offset + 20, yMin, true);
+    view.setFloat64(offset + 28, xMax, true);
+    view.setFloat64(offset + 36, yMax, true);
+    view.setInt32(offset + 44, numParts, true);
+    view.setInt32(offset + 48, totalPoints, true);
+
+    let partOffset = offset + 52;
+    let pointIndex = 0;
+    lines.forEach(line => {
+      view.setInt32(partOffset, pointIndex, true);
+      partOffset += 4;
+      pointIndex += line.length;
+    });
+
+    let ptOffset = partOffset;
+    lines.forEach(line => {
+      line.forEach(([x, y]) => {
+        view.setFloat64(ptOffset, x, true);
+        view.setFloat64(ptOffset + 8, y, true);
+        ptOffset += 16;
+      });
+    });
+
+    return buffer;
+  }
+
+  /**
+   * Decimate dense polyline/polygon vertices using radial distance thresholding.
+   * @param {Array<[number, number]>} points - Array of [x, y] coordinates
+   * @param {number} [tolerance=0.01] - Minimum Euclidean distance between successive vertices
+   * @returns {Array<[number, number]>} Simplified array of coordinates
+   */
+  static simplifyRadialDistance(points = [], tolerance = 0.01) {
+    if (points.length <= 2) return [...points];
+
+    const tolSq = tolerance * tolerance;
+    const simplified = [points[0]];
+    let prev = points[0];
+
+    for (let i = 1; i < points.length; i++) {
+      const curr = points[i];
+      const dx = curr[0] - prev[0];
+      const dy = curr[1] - prev[1];
+      const distSq = dx * dx + dy * dy;
+
+      if (distSq >= tolSq || i === points.length - 1) {
+        simplified.push(curr);
+        prev = curr;
+      }
+    }
+
+    return simplified;
+  }
 }
+
 
 
 
