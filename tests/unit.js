@@ -2321,6 +2321,30 @@ describe('Polygon Centroid, Polyline Binary Serialization & Decimation (ShapeIO)
     });
 });
 
+describe('Standard Parallel Scaling, Grid Convergence & Heading Departure (ProjectionManager)', () => {
+    it('should compute secant polar stereographic standard parallel scale factor', () => {
+        // At standard parallel phi = 70 deg: scale factor k = 1.0000
+        const kStandard = ProjectionManager.computeStandardParallelScale(70.0, 70.0);
+        expect(kStandard).to.equal(1.0);
+
+        // At North Pole phi = 90 deg: scale factor k = (1 + sin 70) / 2 ~ 0.9698
+        const kPole = ProjectionManager.computeStandardParallelScale(90.0, 70.0);
+        expect(kPole).to.be.closeTo(0.9698, 0.005);
+    });
+
+    it('should calculate grid convergence angle and great-circle departure', () => {
+        // At 45 deg N latitude, 30 deg offset from central meridian -> gamma = 30 * sin(45) ~ 21.21 deg
+        const gamma = ProjectionManager.computeGridConvergence(45.0, 30.0, 0.0);
+        expect(gamma).to.be.closeTo(21.213, 0.01);
+
+        // Heading departure along oblique trajectory
+        const hd = ProjectionManager.computeGreatCircleAzimuthDistortion(10, 0, 50, 60);
+        expect(hd.greatCircleAzimuthDeg).to.be.greaterThan(0);
+        expect(hd.rhumbLineAzimuthDeg).to.be.greaterThan(0);
+        expect(hd.departureDeg).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -580,7 +580,73 @@ export class ProjectionManager {
     const trueScale = nominalScaleMPerPixel * Math.cos(phi);
     return parseFloat(trueScale.toFixed(2));
   }
+
+  // --- Standard Parallel Scaling, Grid Convergence & Heading Departure Solvers ---
+
+  /**
+   * Calculate exact conformal scale factor for Secant Polar Stereographic projection with standard parallel phi0.
+   * k(phi) = (1 + sin(phi0)) / (1 + sin(phi))
+   * @param {number} latDeg - Point latitude (-90 to +90)
+   * @param {number} [standardParallelLatDeg=70] - Standard parallel of true scale (e.g. 70° for Mars polar maps)
+   * @returns {number} Scale factor k
+   */
+  static computeStandardParallelScale(latDeg, standardParallelLatDeg = 70) {
+    const phi = Math.abs(latDeg) * Math.PI / 180.0;
+    const phi0 = Math.abs(standardParallelLatDeg) * Math.PI / 180.0;
+
+    const k = (1.0 + Math.sin(phi0)) / (1.0 + Math.sin(phi));
+    return parseFloat(k.toFixed(4));
+  }
+
+  /**
+   * Calculate Grid Convergence angle (gamma) between True Geodetic North and Grid North.
+   * gamma = (lambda - lambda0) * sin(phi)
+   * @param {number} latDeg - Latitude in degrees
+   * @param {number} lonDeg - Longitude in degrees
+   * @param {number} [centralMeridianLonDeg=0] - Central meridian longitude
+   * @returns {number} Grid convergence angle in degrees
+   */
+  static computeGridConvergence(latDeg, lonDeg, centralMeridianLonDeg = 0) {
+    const phi = latDeg * Math.PI / 180.0;
+    const dLambda = to180(lonDeg - centralMeridianLonDeg);
+
+    const gamma = dLambda * Math.sin(phi);
+    return parseFloat(gamma.toFixed(3));
+  }
+
+  /**
+   * Calculate departure between Great-Circle Initial Heading and Constant-Bearing Rhumb Line Heading.
+   * @param {number} lat1 - Start latitude
+   * @param {number} lon1 - Start longitude
+   * @param {number} lat2 - End latitude
+   * @param {number} lon2 - End longitude
+   * @returns {{greatCircleAzimuthDeg: number, rhumbLineAzimuthDeg: number, departureDeg: number}}
+   */
+  static computeGreatCircleAzimuthDistortion(lat1, lon1, lat2, lon2) {
+    const phi1 = lat1 * Math.PI / 180.0;
+    const phi2 = lat2 * Math.PI / 180.0;
+    const dLam = to180(lon2 - lon1) * Math.PI / 180.0;
+
+    // Great circle initial bearing
+    const y = Math.sin(dLam) * Math.cos(phi2);
+    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLam);
+    let gcAz = (Math.atan2(y, x) * 180.0 / Math.PI + 360.0) % 360.0;
+
+    // Rhumb line bearing
+    const dPsi = Math.log(Math.tan(Math.PI / 4.0 + phi2 / 2.0) / Math.tan(Math.PI / 4.0 + phi1 / 2.0));
+    let rhumbAz = (Math.atan2(dLam, dPsi) * 180.0 / Math.PI + 360.0) % 360.0;
+
+    let departure = Math.abs(gcAz - rhumbAz);
+    if (departure > 180) departure = 360 - departure;
+
+    return {
+      greatCircleAzimuthDeg: parseFloat(gcAz.toFixed(2)),
+      rhumbLineAzimuthDeg: parseFloat(rhumbAz.toFixed(2)),
+      departureDeg: parseFloat(departure.toFixed(2))
+    };
+  }
 }
+
 
 
 
