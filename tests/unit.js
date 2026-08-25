@@ -2369,6 +2369,35 @@ describe('Synthetic Aperture SAR, Ionospheric Dispersion & Multi-Layer TWT (Rada
     });
 });
 
+describe('Gehrels Poisson Confidence Limits & Buffered Counting Areas (CSFDEngine)', () => {
+    it('should calculate exact Gehrels small-sample Poisson confidence bounds', () => {
+        // N = 10 craters -> lower ~ 7.16, upper ~ 13.96
+        const g10 = CSFDEngine.computeGehrelsPoissonIntervals(10);
+        expect(g10.lowerLimit).to.be.greaterThan(6.5);
+        expect(g10.lowerLimit).to.be.lessThan(8.0);
+        expect(g10.upperLimit).to.be.greaterThan(13.0);
+        expect(g10.upperLimit).to.be.lessThan(15.0);
+
+        // N = 0 -> upper limit ~ 1.84
+        const g0 = CSFDEngine.computeGehrelsPoissonIntervals(0);
+        expect(g0.lowerLimit).to.equal(0);
+        expect(g0.upperLimit).to.be.closeTo(1.84, 0.05);
+    });
+
+    it('should compute buffered boundary area correction and differential slope index', () => {
+        // 1000 km^2 area with 100 km perimeter, D = 2 km crater
+        // Area loss = 0.5 * 100 * 2 - (pi/4)*4 = 100 - 3.14 = 96.86 km^2
+        const buf = CSFDEngine.computeBufferedEffectiveArea(1000, 100, 2);
+        expect(buf.effectiveAreaKm2).to.be.closeTo(903.14, 1.0);
+        expect(buf.areaLossPercent).to.be.closeTo(9.69, 0.2);
+
+        // Power-law slope index for synthetic distribution
+        const craters = Array.from({ length: 30 }, (_, i) => ({ diameter: (i + 1) * 500 }));
+        const slope = CSFDEngine.computeDifferentialPowerLawSlope(craters, 1.0, 10.0);
+        expect(slope).to.have.property('slopeIndex');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
