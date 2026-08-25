@@ -524,7 +524,81 @@ export class MarsTime {
 
     return points;
   }
+
+  // --- True Solar Sol Duration, Kepler Anomaly & Seasonal Calendar Solvers ---
+
+  /**
+   * Calculate variable duration of true solar day (sol) at a given season (Ls).
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @returns {{solDurationSeconds: number, solDurationMinutes: number, diffFromMeanSeconds: number}}
+   */
+  static computeTrueSolarSolDuration(Ls) {
+    const e = this.ECCENTRICITY;
+    const LsRad = Ls * Math.PI / 180.0;
+    const nuRad = LsRad - (250.99 * Math.PI / 180.0);
+
+    const baseSolSec = 88775.244;
+    // Fractional rate of true solar motion change ~ (1 + 2*e*cos(nu))
+    const solSec = baseSolSec * (1.0 + (2.0 * e * Math.cos(nuRad)) / (1.0 - e * e));
+    const diffSec = solSec - baseSolSec;
+
+    return {
+      solDurationSeconds: parseFloat(solSec.toFixed(2)),
+      solDurationMinutes: parseFloat((solSec / 60.0).toFixed(2)),
+      diffFromMeanSeconds: parseFloat(diffSec.toFixed(2))
+    };
+  }
+
+  /**
+   * Solve Kepler's equation M = E - e*sin(E) and compute true anomaly nu.
+   * @param {number} meanAnomalyDeg - Mean anomaly in degrees (0-360)
+   * @param {number} [eccentricity=0.0934] - Orbit eccentricity
+   * @returns {{eccentricAnomalyDeg: number, trueAnomalyDeg: number, radiusRatio: number}}
+   */
+  static computeKeplerOrbitTrueAnomaly(meanAnomalyDeg, eccentricity = 0.0934) {
+    const MRad = (meanAnomalyDeg % 360.0) * Math.PI / 180.0;
+    const e = Math.max(0, Math.min(0.99, eccentricity));
+
+    // Newton-Raphson iteration for Eccentric Anomaly E
+    let E = MRad;
+    for (let iter = 0; iter < 15; iter++) {
+      const f = E - e * Math.sin(E) - MRad;
+      const df = 1.0 - e * Math.cos(E);
+      const delta = f / df;
+      E -= delta;
+      if (Math.abs(delta) < 1e-8) break;
+    }
+
+    // True anomaly nu = 2 * atan(sqrt((1+e)/(1-e)) * tan(E/2))
+    const sqrtFactor = Math.sqrt((1.0 + e) / (1.0 - e));
+    const nuRad = 2.0 * Math.atan2(sqrtFactor * Math.sin(E / 2.0), Math.cos(E / 2.0));
+    let nuDeg = nuRad * 180.0 / Math.PI;
+    if (nuDeg < 0) nuDeg += 360.0;
+
+    const radiusRatio = (1.0 - e * e) / (1.0 + e * Math.cos(nuRad));
+
+    return {
+      eccentricAnomalyDeg: parseFloat(((E * 180.0 / Math.PI + 360.0) % 360.0).toFixed(4)),
+      trueAnomalyDeg: parseFloat(nuDeg.toFixed(4)),
+      radiusRatio: parseFloat(radiusRatio.toFixed(5))
+    };
+  }
+
+  /**
+   * Compute exact Gregorian start dates for all 4 astronomical seasons for given Mars Year.
+   * @param {number} [marsYear=37] - Mars Year number
+   * @returns {{springDate: Date, summerDate: Date, autumnDate: Date, winterDate: Date}}
+   */
+  static computeSeasonalCalendarDates(marsYear = 37) {
+    return {
+      springDate: this.lsToDate(0, marsYear),
+      summerDate: this.lsToDate(90, marsYear),
+      autumnDate: this.lsToDate(180, marsYear),
+      winterDate: this.lsToDate(270, marsYear)
+    };
+  }
 }
+
 
 
 

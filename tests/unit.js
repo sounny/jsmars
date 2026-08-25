@@ -2565,6 +2565,37 @@ describe('Surface Friction Velocity, Dust Specific Extinction & Potential Temper
     });
 });
 
+describe('True Solar Sol Duration, Kepler Anomaly & Seasonal Calendars (MarsTime)', () => {
+    it('should calculate variable true solar sol duration across Martian orbit', () => {
+        // At perihelion Ls = 251 deg: sol duration is longer than mean by ~ 50 seconds
+        const solPeri = MarsTime.computeTrueSolarSolDuration(251.0);
+        expect(solPeri.solDurationSeconds).to.be.greaterThan(88775.244);
+        expect(solPeri.diffFromMeanSeconds).to.be.greaterThan(0);
+
+        // At aphelion Ls = 71 deg: sol duration is shorter than mean
+        const solAph = MarsTime.computeTrueSolarSolDuration(71.0);
+        expect(solAph.solDurationSeconds).to.be.lessThan(88775.244);
+        expect(solAph.diffFromMeanSeconds).to.be.lessThan(0);
+    });
+
+    it('should solve Kepler equation for true anomaly and compute seasonal start dates', () => {
+        // Mean anomaly M = 0 -> Eccentric Anomaly E = 0, True Anomaly nu = 0
+        const kep0 = MarsTime.computeKeplerOrbitTrueAnomaly(0, 0.0934);
+        expect(kep0.eccentricAnomalyDeg).to.equal(0);
+        expect(kep0.trueAnomalyDeg).to.equal(0);
+
+        // Mean anomaly M = 90 deg -> True anomaly nu > 90 deg due to eccentricity
+        const kep90 = MarsTime.computeKeplerOrbitTrueAnomaly(90, 0.0934);
+        expect(kep90.trueAnomalyDeg).to.be.greaterThan(90.0);
+
+        // Seasonal start dates for MY 37
+        const cal = MarsTime.computeSeasonalCalendarDates(37);
+        expect(cal.springDate).to.be.instanceOf(Date);
+        expect(cal.summerDate).to.be.instanceOf(Date);
+        expect(cal.summerDate.getTime()).to.be.greaterThan(cal.springDate.getTime());
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
