@@ -2596,6 +2596,35 @@ describe('True Solar Sol Duration, Kepler Anomaly & Seasonal Calendars (MarsTime
     });
 });
 
+describe('Topographic Wetness (TWI), Stream Power (SPI) & Morphometric Roughness (ContourLayer)', () => {
+    it('should calculate Beven-Kirkby Topographic Wetness Index (TWI)', () => {
+        // Upslope area 10,000 m^2 on a 5-degree slope -> tan(5) ~ 0.08749 -> TWI = ln(10000 / 0.08749) ~ 11.647
+        const twi = ContourLayer.computeTopographicWetnessIndex(5.0, 10000);
+        expect(twi).to.be.closeTo(11.647, 0.05);
+
+        // Fluvial valley floor / flat area (slope 1 deg) -> higher TWI
+        const twiFlat = ContourLayer.computeTopographicWetnessIndex(1.0, 10000);
+        expect(twiFlat).to.be.greaterThan(twi);
+    });
+
+    it('should compute Stream Power Index (SPI) and local 3x3 morphometric roughness', () => {
+        // Upslope area 5,000 m^2 on a 10-degree slope -> SPI = 5000 * tan(10) ~ 881.63
+        const spi = ContourLayer.computeStreamPowerIndex(10.0, 5000);
+        expect(spi).to.be.closeTo(881.63, 1.0);
+
+        // 3x3 step terrain: roughness std dev and relief span
+        const patch = [
+            100, 100, 100,
+            120, 120, 120,
+            140, 140, 140
+        ];
+        const rough = ContourLayer.computeMorphometricRoughness(patch);
+        expect(rough.meanElevMeters).to.equal(120.0);
+        expect(rough.reliefSpanMeters).to.equal(40.0);
+        expect(rough.roughnessStdDevMeters).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

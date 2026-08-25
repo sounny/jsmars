@@ -677,7 +677,76 @@ export class ContourLayer {
 
     return curve;
   }
+
+  // --- Topographic Wetness (TWI), Stream Power (SPI) & Morphometric Roughness Solvers ---
+
+  /**
+   * Calculate Beven-Kirkby Topographic Wetness Index (TWI) for fluvial/gully drainage analysis.
+   * TWI = ln(a / tan(beta))
+   * @param {number} slopeDeg - Local slope angle in degrees
+   * @param {number} [upslopeAreaM2=10000] - Specific catchment / contributing upslope area per unit contour length in m^2
+   * @returns {number} Topographic Wetness Index (dimensionless)
+   */
+  static computeTopographicWetnessIndex(slopeDeg, upslopeAreaM2 = 10000) {
+    const slopeRad = Math.max(0.001, Math.abs(slopeDeg) * Math.PI / 180.0);
+    const tanSlope = Math.tan(slopeRad);
+    const a = Math.max(1.0, upslopeAreaM2);
+
+    const twi = Math.log(a / tanSlope);
+    return parseFloat(twi.toFixed(3));
+  }
+
+  /**
+   * Calculate Stream Power Index (SPI) for erosive power of overland sediment transport.
+   * SPI = a * tan(beta)
+   * @param {number} slopeDeg - Local slope angle in degrees
+   * @param {number} [upslopeAreaM2=10000] - Contributing catchment area in m^2
+   * @returns {number} Stream Power Index
+   */
+  static computeStreamPowerIndex(slopeDeg, upslopeAreaM2 = 10000) {
+    const slopeRad = Math.max(0, Math.abs(slopeDeg) * Math.PI / 180.0);
+    const tanSlope = Math.tan(slopeRad);
+    const a = Math.max(0, upslopeAreaM2);
+
+    const spi = a * tanSlope;
+    return parseFloat(spi.toFixed(2));
+  }
+
+  /**
+   * Compute 3x3 local morphometric elevation roughness (standard deviation of height).
+   * @param {Array<number>} patch3x3 - 9 elevation values in row-major order
+   * @returns {{meanElevMeters: number, roughnessStdDevMeters: number, reliefSpanMeters: number}}
+   */
+  static computeMorphometricRoughness(patch3x3 = []) {
+    if (!patch3x3 || patch3x3.length === 0) {
+      return { meanElevMeters: 0, roughnessStdDevMeters: 0, reliefSpanMeters: 0 };
+    }
+
+    const n = patch3x3.length;
+    const mean = patch3x3.reduce((a, b) => a + b, 0) / n;
+
+    let sumSq = 0;
+    let min = Infinity;
+    let max = -Infinity;
+
+    for (let i = 0; i < n; i++) {
+      const z = patch3x3[i];
+      if (z < min) min = z;
+      if (z > max) max = z;
+      const diff = z - mean;
+      sumSq += diff * diff;
+    }
+
+    const stdDev = Math.sqrt(sumSq / n);
+
+    return {
+      meanElevMeters: parseFloat(mean.toFixed(2)),
+      roughnessStdDevMeters: parseFloat(stdDev.toFixed(2)),
+      reliefSpanMeters: parseFloat((max - min).toFixed(2))
+    };
+  }
 }
+
 
 
 
