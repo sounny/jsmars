@@ -2951,6 +2951,35 @@ describe('Zevenbergen-Thorne Curvatures, Vector Ruggedness & Relief Ratio (Conto
     });
 });
 
+describe('Temperature-Dependent Permittivity & Dielectric Mixing (RadarSounderEngine)', () => {
+    it('should compute temperature-dependent ice dielectric permittivity', () => {
+        // At T = 200 K: eps = 3.15 * (1 + 0) = 3.15
+        const eps200 = RadarSounderEngine.computeWaterIceTemperaturePermittivity(200.0);
+        expect(eps200).to.equal(3.15);
+
+        // At cold polar temperature T = 150 K: eps slightly lower than 3.15
+        const eps150 = RadarSounderEngine.computeWaterIceTemperaturePermittivity(150.0);
+        expect(eps150).to.be.lessThan(3.15);
+        expect(eps150).to.be.greaterThan(3.0);
+    });
+
+    it('should compute Looyenga and Birchak dielectric mixing for ice-dust mixtures', () => {
+        // Pure ice (phi = 0) -> effective permittivity = 3.15
+        const pureIce = RadarSounderEngine.computeLooyengaDielectricMixing(0.0, 3.15, 7.5);
+        expect(pureIce.effectivePermittivity).to.equal(3.15);
+
+        // 10% dust mixture (phi = 0.10) in ice -> intermediate permittivity ~ 3.4 - 3.6
+        const mix10 = RadarSounderEngine.computeLooyengaDielectricMixing(0.10, 3.15, 7.5);
+        expect(mix10.effectivePermittivity).to.be.greaterThan(3.15);
+        expect(mix10.effectivePermittivity).to.be.lessThan(7.5);
+
+        // Birchak mixing with 20% dust
+        const birchak = RadarSounderEngine.computeBirchakDielectricMixing(0.20, 3.15, 7.5);
+        expect(birchak.effectivePermittivity).to.be.greaterThan(3.15);
+        expect(birchak.waveVelocityMs).to.be.lessThan(RadarSounderEngine.getVelocity(3.15));
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

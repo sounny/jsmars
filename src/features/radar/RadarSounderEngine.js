@@ -592,7 +592,67 @@ export class RadarSounderEngine {
     const shift = (2.0 * relativeVelocityMs * centerFreqHz) / RadarSounderEngine.C;
     return parseFloat(shift.toFixed(2));
   }
+
+  // --- Temperature-Dependent Permittivity, Looyenga & Birchak Dielectric Mixing Solvers ---
+
+  /**
+   * Calculate temperature-dependent relative dielectric permittivity for pure water ice on Mars.
+   * eps_r(T) = 3.15 * (1 + 0.0003 * (T - 200))
+   * @param {number} tempK - Ice temperature in Kelvin (e.g. 150K to 240K)
+   * @returns {number} Temperature-corrected real permittivity
+   */
+  static computeWaterIceTemperaturePermittivity(tempK) {
+    const T = Math.max(50, Math.min(273.15, tempK));
+    const eps = 3.15 * (1.0 + 0.0003 * (T - 200.0));
+    return parseFloat(eps.toFixed(4));
+  }
+
+  /**
+   * Calculate bulk effective dielectric permittivity for ice-dust mixtures using Looyenga (1/3 power) model.
+   * eps_mix^(1/3) = (1 - phi_d) * eps_ice^(1/3) + phi_d * eps_dust^(1/3)
+   * @param {number} volFractionDust - Volumetric fraction of silicate dust (0.0 to 1.0)
+   * @param {number} [epsIce=3.15] - Dielectric permittivity of pure water ice
+   * @param {number} [epsDust=7.5] - Dielectric permittivity of silicate dust/basalt
+   * @returns {{effectivePermittivity: number, refractiveIndex: number}}
+   */
+  static computeLooyengaDielectricMixing(volFractionDust, epsIce = 3.15, epsDust = 7.5) {
+    const phi = Math.max(0, Math.min(1.0, volFractionDust));
+    const termIce = (1.0 - phi) * Math.cbrt(Math.max(1, epsIce));
+    const termDust = phi * Math.cbrt(Math.max(1, epsDust));
+
+    const epsCbrt = termIce + termDust;
+    const epsEff = Math.pow(epsCbrt, 3);
+
+    return {
+      effectivePermittivity: parseFloat(epsEff.toFixed(3)),
+      refractiveIndex: parseFloat(Math.sqrt(epsEff).toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate bulk effective dielectric permittivity using Birchak / CRIM (1/2 power) model.
+   * eps_mix^(1/2) = (1 - phi_d) * eps_ice^(1/2) + phi_d * eps_dust^(1/2)
+   * @param {number} volFractionDust - Volumetric fraction of dust (0.0 to 1.0)
+   * @param {number} [epsIce=3.15] - Dielectric constant of ice
+   * @param {number} [epsDust=7.5] - Dielectric constant of dust
+   * @returns {{effectivePermittivity: number, waveVelocityMs: number}}
+   */
+  static computeBirchakDielectricMixing(volFractionDust, epsIce = 3.15, epsDust = 7.5) {
+    const phi = Math.max(0, Math.min(1.0, volFractionDust));
+    const sqrtIce = (1.0 - phi) * Math.sqrt(Math.max(1, epsIce));
+    const sqrtDust = phi * Math.sqrt(Math.max(1, epsDust));
+
+    const sqrtEff = sqrtIce + sqrtDust;
+    const epsEff = Math.pow(sqrtEff, 2);
+    const v = RadarSounderEngine.C / sqrtEff;
+
+    return {
+      effectivePermittivity: parseFloat(epsEff.toFixed(3)),
+      waveVelocityMs: parseFloat(v.toFixed(0))
+    };
+  }
 }
+
 
 
 
