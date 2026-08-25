@@ -2521,6 +2521,26 @@ describe('Geodetic Midpoints, Polyline Resampling & Polygon Circularity (Measure
     });
 });
 
+describe('Atmospheric Downwelling IR, Skin Depth Amplification & Radiative Equilibrium (KRCEngine)', () => {
+    it('should compute downwelling IR flux and annual skin depth amplification ratio', () => {
+        // T_air = 210 K, tau = 0.3 -> downwelling flux > 20 W/m^2
+        const ir = KRCEngine.computeAtmosphericDownwellingIR(210.0, 0.3, 610.0);
+        expect(ir.downwellingFluxW_M2).to.be.greaterThan(20.0);
+        expect(ir.atmosphericEmissivity).to.be.greaterThan(0.15);
+
+        // 668.6 sols in Mars year -> ratio = sqrt(668.6) ~ 25.857
+        const ratio = KRCEngine.computeSkinDepthRatio(668.6);
+        expect(ratio).to.be.closeTo(25.857, 0.01);
+    });
+
+    it('should calculate steady-state radiative equilibrium surface temperature', () => {
+        // Solar flux = 500 W/m^2, albedo = 0.25, IR = 25 W/m^2 -> T_eq ~ 293 K
+        const tEq = KRCEngine.computeEquilibriumSurfaceTemperature(500.0, 0.25, 25.0, 0.95);
+        expect(tEq).to.be.greaterThan(280.0);
+        expect(tEq).to.be.lessThan(310.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

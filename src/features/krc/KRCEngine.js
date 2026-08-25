@@ -445,7 +445,59 @@ export class KRCEngine {
       totalHeatCapacityJ_M2_K: parseFloat(totalCap.toFixed(1))
     };
   }
+
+  // --- Downwelling IR, Skin Depth Amplification & Radiative Equilibrium Solvers ---
+
+  /**
+   * Calculate atmospheric downward thermal infrared flux at Martian surface.
+   * F_IR = eps_atm * sigma * T_air^4
+   * @param {number} [airTempK=210.0] - Near-surface atmospheric air temperature in Kelvin
+   * @param {number} [dustTau=0.3] - Dust optical depth
+   * @param {number} [surfacePressurePa=610.0] - Surface atmospheric pressure in Pa
+   * @returns {{downwellingFluxW_M2: number, atmosphericEmissivity: number}}
+   */
+  static computeAtmosphericDownwellingIR(airTempK = 210.0, dustTau = 0.3, surfacePressurePa = 610.0) {
+    const tau = Math.max(0.01, dustTau);
+    const p = Math.max(0, surfacePressurePa);
+    const epsAtm = 0.12 + 0.20 * (1.0 - Math.exp(-tau)) + 0.05 * Math.min(1.0, p / 610.0);
+    const flux = epsAtm * this.STEFAN_BOLTZMANN * Math.pow(Math.max(1, airTempK), 4);
+
+    return {
+      downwellingFluxW_M2: parseFloat(flux.toFixed(2)),
+      atmosphericEmissivity: parseFloat(epsAtm.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate exact thermal skin depth amplification ratio between annual and diurnal cycles.
+   * ratio = sqrt(solsPerYear)
+   * @param {number} [solsPerYear=668.6] - Number of sols in Mars year
+   * @returns {number} Ratio of annual to diurnal skin depth
+   */
+  static computeSkinDepthRatio(solsPerYear = 668.6) {
+    const ratio = Math.sqrt(Math.max(1, solsPerYear));
+    return parseFloat(ratio.toFixed(3));
+  }
+
+  /**
+   * Calculate steady-state radiative equilibrium surface temperature.
+   * T_eq = [ ((1 - A) * F_sun + F_IR) / (eps * sigma) ]^(1/4)
+   * @param {number} solarFluxW_M2 - Top-of-atmosphere/surface solar flux
+   * @param {number} [albedo=0.25] - Bolometric surface albedo
+   * @param {number} [downwellingIrW_M2=25.0] - Downward atmospheric IR flux
+   * @param {number} [emissivity=0.95] - Surface infrared emissivity
+   * @returns {number} Equilibrium surface temperature in Kelvin
+   */
+  static computeEquilibriumSurfaceTemperature(solarFluxW_M2, albedo = 0.25, downwellingIrW_M2 = 25.0, emissivity = 0.95) {
+    const absorbedSolar = (1.0 - Math.max(0, Math.min(1.0, albedo))) * Math.max(0, solarFluxW_M2);
+    const totalInflow = absorbedSolar + Math.max(0, downwellingIrW_M2);
+    const denom = Math.max(0.01, emissivity) * this.STEFAN_BOLTZMANN;
+
+    const tEq = Math.pow(totalInflow / denom, 0.25);
+    return parseFloat(tEq.toFixed(2));
+  }
 }
+
 
 
 
