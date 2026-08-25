@@ -2154,6 +2154,30 @@ describe('Lithospheric Geothermal Gradients & Atmospheric Scale Height (Investig
     });
 });
 
+describe('Great-Circle Waypoint Interpolation & Geodetic Intersections (MeasureTool)', () => {
+    it('should interpolate smooth intermediate geodesic waypoints', () => {
+        // Interpolate 4 segments (5 points) from (0, 0) to (0, 90) along equator
+        const waypoints = MeasureTool.interpolateGreatCircleWaypoints(0, 0, 0, 90, 4);
+        expect(waypoints.length).to.equal(5);
+        expect(waypoints[0][0]).to.equal(0);
+        expect(waypoints[0][1]).to.equal(0);
+        expect(waypoints[2][1]).to.be.closeTo(45.0, 0.01); // Midpoint at 45 deg lon
+        expect(waypoints[4][1]).to.be.closeTo(90.0, 0.01);
+    });
+
+    it('should calculate great-circle intersections and rhumb line distances', () => {
+        // Equator (0,0)->(0,90) intersecting Prime Meridian (45,0)->(-45,0) -> intersection at (0, 0) or (0, 180)
+        const intPt = MeasureTool.computeGreatCircleIntersection(0, 0, 0, 90, 45, 0, -45, 0);
+        expect(intPt.lat).to.be.closeTo(0.0, 0.01);
+        expect([0, 180]).to.include(Math.round(intPt.lon));
+
+        // Constant-bearing rhumb line from (0, 0) to (10, 10) on Mars
+        const rhumb = MeasureTool.computeRhumbLineDistance(0, 0, 10, 10, 'mars');
+        expect(rhumb.distanceKm).to.be.greaterThan(500);
+        expect(rhumb.constantBearingDeg).to.be.closeTo(45.0, 1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -182,3 +182,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute pressure-dependent thermal conductivity and CO2 sublimation temperature
 ?: AssertionError: expected 163 to be close to 147.8 +/- 1
     at n.<anonymous> (unit.js:1855:30)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 08:45:37 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate great-circle intersections and rhumb line distances
+?: AssertionError: expected 180 to be close to 0 +/- 0.01
+    at n.<anonymous> (unit.js:2172:33)

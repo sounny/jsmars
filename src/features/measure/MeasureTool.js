@@ -668,6 +668,148 @@ export class MeasureTool {
             alongTrackKm: parseFloat(alongTrackKm.toFixed(3))
         };
     }
+
+    // --- Great-Circle Waypoint Interpolation & Geodetic Intersections ---
+
+    /**
+     * Interpolate intermediate waypoints along a great-circle path.
+     * @param {number} startLat - Start latitude in degrees
+     * @param {number} startLon - Start longitude in degrees
+     * @param {number} endLat - End latitude in degrees
+     * @param {number} endLon - End longitude in degrees
+     * @param {number} [numPoints=10] - Number of points to sample
+     * @returns {Array<[number, number]>} Array of [lat, lon] coordinates
+     */
+    static interpolateGreatCircleWaypoints(startLat, startLon, endLat, endLon, numPoints = 10) {
+        const phi1 = startLat * Math.PI / 180.0;
+        const lam1 = startLon * Math.PI / 180.0;
+        const phi2 = endLat * Math.PI / 180.0;
+        const lam2 = endLon * Math.PI / 180.0;
+
+        const d = 2.0 * Math.asin(Math.sqrt(
+            Math.pow(Math.sin((phi2 - phi1) / 2.0), 2) +
+            Math.cos(phi1) * Math.cos(phi2) * Math.pow(Math.sin((lam2 - lam1) / 2.0), 2)
+        ));
+
+        if (d === 0) return [[startLat, startLon]];
+
+        const points = [];
+        const sinD = Math.sin(d);
+
+        for (let i = 0; i <= numPoints; i++) {
+            const f = i / numPoints;
+            const A = Math.sin((1.0 - f) * d) / sinD;
+            const B = Math.sin(f * d) / sinD;
+
+            const x = A * Math.cos(phi1) * Math.cos(lam1) + B * Math.cos(phi2) * Math.cos(lam2);
+            const y = A * Math.cos(phi1) * Math.sin(lam1) + B * Math.cos(phi2) * Math.sin(lam2);
+            const z = A * Math.sin(phi1) + B * Math.sin(phi2);
+
+            const phi = Math.atan2(z, Math.hypot(x, y));
+            const lam = Math.atan2(y, x);
+
+            let lonDeg = lam * 180.0 / Math.PI;
+            if (lonDeg < 0) lonDeg += 360.0;
+
+            points.push([
+                parseFloat((phi * 180.0 / Math.PI).toFixed(4)),
+                parseFloat(lonDeg.toFixed(4))
+            ]);
+        }
+
+        return points;
+    }
+
+    /**
+     * Calculate intersection point of two great-circle paths defined by point pairs.
+     * @param {number} p1Lat
+     * @param {number} p1Lon
+     * @param {number} p2Lat
+     * @param {number} p2Lon
+     * @param {number} p3Lat
+     * @param {number} p3Lon
+     * @param {number} p4Lat
+     * @param {number} p4Lon
+     * @returns {{lat: number, lon: number, antipodeLat: number, antipodeLon: number}}
+     */
+    static computeGreatCircleIntersection(p1Lat, p1Lon, p2Lat, p2Lon, p3Lat, p3Lon, p4Lat, p4Lon) {
+        const toCartesian = (lat, lon) => {
+            const phi = lat * Math.PI / 180.0;
+            const lam = lon * Math.PI / 180.0;
+            return [Math.cos(phi) * Math.cos(lam), Math.cos(phi) * Math.sin(lam), Math.sin(phi)];
+        };
+
+        const cross = (v1, v2) => [
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0]
+        ];
+
+        const c1 = toCartesian(p1Lat, p1Lon);
+        const c2 = toCartesian(p2Lat, p2Lon);
+        const c3 = toCartesian(p3Lat, p3Lon);
+        const c4 = toCartesian(p4Lat, p4Lon);
+
+        const n1 = cross(c1, c2);
+        const n2 = cross(c3, c4);
+        const intPt = cross(n1, n2);
+
+        const len = Math.hypot(intPt[0], intPt[1], intPt[2]);
+        if (len === 0) {
+            return { lat: 0, lon: 0, antipodeLat: 0, antipodeLon: 180 };
+        }
+
+        const unit = [intPt[0] / len, intPt[1] / len, intPt[2] / len];
+        const phi = Math.atan2(unit[2], Math.hypot(unit[0], unit[1]));
+        let lam = Math.atan2(unit[1], unit[0]) * 180.0 / Math.PI;
+        if (lam < 0) lam += 360.0;
+
+        const latDeg = parseFloat((phi * 180.0 / Math.PI).toFixed(4));
+        const lonDeg = parseFloat(lam.toFixed(4));
+
+        return {
+            lat: latDeg,
+            lon: lonDeg,
+            antipodeLat: -latDeg,
+            antipodeLon: parseFloat(((lonDeg + 180.0) % 360.0).toFixed(4))
+        };
+    }
+
+    /**
+     * Calculate constant-bearing Rhumb line (loxodrome) distance.
+     * @param {number} startLat
+     * @param {number} startLon
+     * @param {number} endLat
+     * @param {number} endLon
+     * @param {string} [body='mars']
+     * @returns {{distanceKm: number, constantBearingDeg: number}}
+     */
+    static computeRhumbLineDistance(startLat, startLon, endLat, endLon, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+
+        const phi1 = startLat * Math.PI / 180.0;
+        const phi2 = endLat * Math.PI / 180.0;
+        const dPhi = phi2 - phi1;
+        let dLam = (endLon - startLon) * Math.PI / 180.0;
+
+        // Projected latitude difference
+        const dPsi = Math.log(Math.tan(Math.PI / 4.0 + phi2 / 2.0) / Math.tan(Math.PI / 4.0 + phi1 / 2.0));
+        const q = Math.abs(dPsi) > 1e-10 ? dPhi / dPsi : Math.cos(phi1);
+
+        if (Math.abs(dLam) > Math.PI) {
+            dLam = dLam > 0 ? -(2.0 * Math.PI - dLam) : (2.0 * Math.PI + dLam);
+        }
+
+        const distKm = Math.hypot(dPhi, q * dLam) * R;
+        let bearing = Math.atan2(dLam, dPsi) * 180.0 / Math.PI;
+        if (bearing < 0) bearing += 360.0;
+
+        return {
+            distanceKm: parseFloat(distKm.toFixed(3)),
+            constantBearingDeg: parseFloat(bearing.toFixed(1))
+        };
+    }
 }
+
 
 
