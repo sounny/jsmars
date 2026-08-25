@@ -881,7 +881,81 @@ export class ProjectionManager {
 
     return parseFloat(distanceKm.toFixed(3));
   }
+
+  // --- Gnomonic Projection, Transverse Mercator Convergence & Sinusoidal Distortion Solvers ---
+
+  /**
+   * Forward Gnomonic perspective projection from planetary center (maps all great-circle geodesics to straight lines).
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {number} [centerLat=0] - Center latitude
+   * @param {number} [centerLon=0] - Center longitude
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{x: number, y: number, visible: boolean}} Projected coordinates in km
+   */
+  static forwardGnomonic(lat, lon, centerLat = 0, centerLon = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180.0;
+    const lam = lon * Math.PI / 180.0;
+    const phi0 = centerLat * Math.PI / 180.0;
+    const lam0 = centerLon * Math.PI / 180.0;
+    const dLam = lam - lam0;
+
+    const cosC = Math.sin(phi0) * Math.sin(phi) + Math.cos(phi0) * Math.cos(phi) * Math.cos(dLam);
+    if (cosC <= 0) {
+      return { x: 0, y: 0, visible: false }; // Beyond hemisphere horizon
+    }
+
+    const x = (R * Math.cos(phi) * Math.sin(dLam)) / cosC;
+    const y = (R * (Math.cos(phi0) * Math.sin(phi) - Math.sin(phi0) * Math.cos(phi) * Math.cos(dLam))) / cosC;
+
+    return {
+      x: parseFloat(x.toFixed(3)),
+      y: parseFloat(y.toFixed(3)),
+      visible: true
+    };
+  }
+
+  /**
+   * Calculate Transverse Mercator meridian convergence angle gamma.
+   * gamma = atan(tan(lambda - lambda0) * sin(phi))
+   * @param {number} latDeg - Latitude in degrees
+   * @param {number} lonDeg - Longitude in degrees
+   * @param {number} [centralMeridianLonDeg=0] - Central meridian
+   * @returns {number} Convergence angle in degrees
+   */
+  static computeTransverseMercatorConvergence(latDeg, lonDeg, centralMeridianLonDeg = 0) {
+    const phi = latDeg * Math.PI / 180.0;
+    const dLam = to180(lonDeg - centralMeridianLonDeg) * Math.PI / 180.0;
+
+    const tanGamma = Math.tan(dLam) * Math.sin(phi);
+    const gammaDeg = Math.atan(tanGamma) * 180.0 / Math.PI;
+
+    return parseFloat(gammaDeg.toFixed(3));
+  }
+
+  /**
+   * Calculate Sinusoidal equal-area angular shear distortion angle theta'.
+   * cos(theta') = -sin(phi) * sin(lambda - lambda0)
+   * @param {number} latDeg - Latitude in degrees
+   * @param {number} [dLonDeg=30.0] - Longitude distance from central meridian in degrees
+   * @returns {{shearAngleDeg: number, maxShearDeg: number}}
+   */
+  static computeSinusoidalDistortionMetrics(latDeg, dLonDeg = 30.0) {
+    const phi = latDeg * Math.PI / 180.0;
+    const dLam = dLonDeg * Math.PI / 180.0;
+
+    const cosThetaPrime = -Math.sin(phi) * Math.sin(dLam);
+    const thetaPrimeRad = Math.acos(Math.max(-1.0, Math.min(1.0, cosThetaPrime)));
+    const shearDeg = Math.abs(90.0 - thetaPrimeRad * 180.0 / Math.PI);
+
+    return {
+      shearAngleDeg: parseFloat(shearDeg.toFixed(2)),
+      maxShearDeg: parseFloat((shearDeg * 2.0).toFixed(2))
+    };
+  }
 }
+
 
 
 

@@ -3356,6 +3356,28 @@ describe('Direct Geodetic Destination, Cross-Track Error & Compactness (MeasureT
     });
 });
 
+describe('Gnomonic Projection, TM Convergence & Sinusoidal Shear (ProjectionManager)', () => {
+    it('should project forward Gnomonic perspective coordinates', () => {
+        // Point near center (10 deg lat, 10 deg lon from center 0, 0)
+        const gn = ProjectionManager.forwardGnomonic(10.0, 10.0, 0.0, 0.0, 'mars');
+        expect(gn.visible).to.equal(true);
+        expect(gn.x).to.be.greaterThan(500.0);
+        expect(gn.y).to.be.greaterThan(500.0);
+    });
+
+    it('should calculate Transverse Mercator grid convergence and Sinusoidal angular shear', () => {
+        // At 45 deg N, 10 deg east of central meridian
+        const gamma = ProjectionManager.computeTransverseMercatorConvergence(45.0, 10.0, 0.0);
+        expect(gamma).to.be.greaterThan(0);
+        expect(gamma).to.be.lessThan(10.0);
+
+        // Sinusoidal shear at 60 deg N with 30 deg dLon
+        const shear = ProjectionManager.computeSinusoidalDistortionMetrics(60.0, 30.0);
+        expect(shear.shearAngleDeg).to.be.greaterThan(0);
+        expect(shear.maxShearDeg).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
