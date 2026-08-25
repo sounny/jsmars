@@ -2625,6 +2625,30 @@ describe('Topographic Wetness (TWI), Stream Power (SPI) & Morphometric Roughness
     });
 });
 
+describe('Visvalingam-Whyatt Simplification, Point-in-Polygon & Ear Clipping (ShapeIO)', () => {
+    it('should simplify polyline using Visvalingam-Whyatt effective area and test point in polygon', () => {
+        // Polyline with a tiny spike forming a triangle of area 0.5 * 2 * 0.0001 = 0.0001 < 0.001
+        const line = [[0, 0], [1, 0.0001], [2, 0]];
+        const simp = ShapeIO.simplifyVisvalingamWhyatt(line, 0.001);
+        expect(simp.length).to.equal(2);
+        expect(simp[0]).to.deep.equal([0, 0]);
+        expect(simp[1]).to.deep.equal([2, 0]);
+
+        // Point-in-Polygon test for unit square [0,0] -> [10,10]
+        const square = [[0, 0], [10, 0], [10, 10], [0, 10]];
+        expect(ShapeIO.isPointInPolygon([5, 5], square)).to.equal(true);
+        expect(ShapeIO.isPointInPolygon([15, 5], square)).to.equal(false);
+    });
+
+    it('should triangulate arbitrary polygon using ear-clipping algorithm', () => {
+        // 4-vertex quadrilateral should triangulate into 2 triangles
+        const quad = [[0, 0], [10, 0], [10, 10], [0, 10]];
+        const tris = ShapeIO.triangulatePolygonEarClipping(quad);
+        expect(tris.length).to.equal(2);
+        expect(tris[0].length).to.equal(3);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

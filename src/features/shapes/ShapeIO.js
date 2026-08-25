@@ -839,7 +839,161 @@ export class ShapeIO {
 
     return simplified;
   }
+
+  // --- Visvalingam-Whyatt Simplification, Ear Clipping & Point-in-Polygon Solvers ---
+
+  /**
+   * Visvalingam-Whyatt area-based polyline decimation.
+   * Eliminates vertices forming triangles with effective area less than minArea.
+   * @param {Array<[number, number]>} points - Array of [x, y] coordinates
+   * @param {number} [minArea=0.001] - Minimum effective triangle area threshold
+   * @returns {Array<[number, number]>} Simplified points array
+   */
+  static simplifyVisvalingamWhyatt(points = [], minArea = 0.001) {
+    if (!points || points.length <= 2) return [...(points || [])];
+
+    let pts = points.map(p => [...p]);
+
+    const computeTriangleArea = (p1, p2, p3) => {
+      return 0.5 * Math.abs(p1[0] * (p2[1] - p3[1]) + p2[0] * (p3[1] - p1[1]) + p3[0] * (p1[1] - p2[1]));
+    };
+
+    while (pts.length > 2) {
+      let minIdx = -1;
+      let smallestArea = Infinity;
+
+      for (let i = 1; i < pts.length - 1; i++) {
+        const area = computeTriangleArea(pts[i - 1], pts[i], pts[i + 1]);
+        if (area < smallestArea) {
+          smallestArea = area;
+          minIdx = i;
+        }
+      }
+
+      if (minIdx !== -1 && smallestArea < minArea) {
+        pts.splice(minIdx, 1);
+      } else {
+        break;
+      }
+    }
+
+    return pts;
+  }
+
+  /**
+   * Test whether a 2D point [x, y] lies inside a polygon ring using Ray-Casting.
+   * @param {[number, number]} point - [x, y] test coordinate
+   * @param {Array<[number, number]>} ring - Polygon vertices [[x, y], ...]
+   * @returns {boolean} True if point is inside polygon
+   */
+  static isPointInPolygon(point, ring = []) {
+    if (!point || !ring || ring.length < 3) return false;
+    const [px, py] = point;
+    let inside = false;
+    const n = ring.length;
+
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+
+      const intersect = ((yi > py) !== (yj > py)) &&
+        (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
+  }
+
+  /**
+   * Triangulate a simple non-self-intersecting 2D polygon ring using Ear Clipping.
+   * @param {Array<[number, number]>} ring - Polygon vertices [[x, y], ...]
+   * @returns {Array<[[number, number], [number, number], [number, number]]>} Array of triangle triplets
+   */
+  static triangulatePolygonEarClipping(ring = []) {
+    if (!ring || ring.length < 3) return [];
+    if (ring.length === 3) return [[ring[0], ring[1], ring[2]]];
+
+    // Ensure CCW orientation
+    let pts = ring.map((p, idx) => ({ p, idx }));
+    let signedArea = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const p1 = pts[i].p;
+      const p2 = pts[(i + 1) % pts.length].p;
+      signedArea += p1[0] * p2[1] - p2[0] * p1[1];
+    }
+    if (signedArea < 0) {
+      pts.reverse();
+    }
+
+    const isConvex = (a, b, c) => {
+      return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) > 0;
+    };
+
+    const isPointInTriangle = (pt, a, b, c) => {
+      const v0 = [c[0] - a[0], c[1] - a[1]];
+      const v1 = [b[0] - a[0], b[1] - a[1]];
+      const v2 = [pt[0] - a[0], pt[1] - a[1]];
+
+      const dot00 = v0[0] * v0[0] + v0[1] * v0[1];
+      const dot01 = v0[0] * v1[0] + v0[1] * v1[1];
+      const dot02 = v0[0] * v2[0] + v0[1] * v2[1];
+      const dot11 = v1[0] * v1[0] + v1[1] * v1[1];
+      const dot12 = v1[0] * v2[0] + v1[1] * v2[1];
+
+      const denom = dot00 * dot11 - dot01 * dot01;
+      if (Math.abs(denom) < 1e-10) return false;
+      const u = (dot11 * dot02 - dot01 * dot12) / denom;
+      const v = (dot00 * dot12 - dot01 * dot02) / denom;
+
+      return (u >= 0) && (v >= 0) && (u + v <= 1);
+    };
+
+    const triangles = [];
+    let count = pts.length;
+
+    while (count > 3) {
+      let earFound = false;
+
+      for (let i = 0; i < count; i++) {
+        const prev = pts[(i - 1 + count) % count].p;
+        const curr = pts[i].p;
+        const next = pts[(i + 1) % count].p;
+
+        if (!isConvex(prev, curr, next)) continue;
+
+        let hasPointInside = false;
+        for (let j = 0; j < count; j++) {
+          if (j === (i - 1 + count) % count || j === i || j === (i + 1) % count) continue;
+          if (isPointInTriangle(pts[j].p, prev, curr, next)) {
+            hasPointInside = true;
+            break;
+          }
+        }
+
+        if (!hasPointInside) {
+          triangles.push([prev, curr, next]);
+          pts.splice(i, 1);
+          count--;
+          earFound = true;
+          break;
+        }
+      }
+
+      if (!earFound) {
+        // Fallback break to prevent infinite loop on degenerate polygons
+        break;
+      }
+    }
+
+    if (pts.length === 3) {
+      triangles.push([pts[0].p, pts[1].p, pts[2].p]);
+    }
+
+    return triangles;
+  }
 }
+
 
 
 
