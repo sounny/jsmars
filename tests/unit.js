@@ -2085,6 +2085,31 @@ describe('Linear Spectral Unmixing & Continuum Removal (BandMathEngine)', () => 
     });
 });
 
+describe('Aerodynamic Stagnation Heat Flux & Dispersion Ellipses (LandingSitesLayer)', () => {
+    it('should compute Sutton-Graves stagnation convective heat flux in CO2', () => {
+        // Mars entry: v = 5800 m/s, density = 1.5e-4 kg/m^3, Rn = 0.6 m
+        const heat = LandingSitesLayer.computeStagnationPointHeatFlux(5800, 1.5e-4, 0.6);
+        expect(heat.heatFluxW_M2).to.be.greaterThan(5e5);
+        expect(heat.heatFluxW_Cm2).to.be.greaterThan(50);
+        expect(heat.heatFluxW_Cm2).to.be.lessThan(150);
+    });
+
+    it('should calculate dispersion ellipse footprint area and point containment', () => {
+        // Jezero crater landing ellipse: 7.7 km x 6.6 km
+        const ellipse = LandingSitesLayer.computeEllipseSurfaceArea(7.7, 6.6);
+        expect(ellipse.areaKm2).to.be.closeTo(159.66, 0.5);
+        expect(ellipse.perimeterKm).to.be.closeTo(45.0, 1.0);
+
+        // Center: (18.444 N, 77.45 E). Point 1 km away should be inside
+        const inside = LandingSitesLayer.isPointInsideEllipse(18.45, 77.46, 18.444, 77.45, 7.7, 6.6, 0);
+        expect(inside).to.be.true;
+
+        // Point 50 km away should be outside
+        const outside = LandingSitesLayer.isPointInsideEllipse(19.0, 77.45, 18.444, 77.45, 7.7, 6.6, 0);
+        expect(outside).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -273,6 +273,77 @@ export class LandingSitesLayer {
       return true;
     });
   }
+
+  // --- Aerodynamic Stagnation Heat Flux & Dispersion Ellipse Solvers ---
+
+  /**
+   * Calculate Sutton-Graves stagnation point convective heat flux in Martian CO2 atmosphere.
+   * q_stag = k * sqrt(rho / Rn) * v^3
+   * @param {number} entryVelocityMs - Entry speed in m/s (e.g. 5800 m/s)
+   * @param {number} densityKgM3 - Atmospheric density at peak heating in kg/m^3 (e.g. 1.5e-4 kg/m^3)
+   * @param {number} [noseRadiusMeters=0.6] - Aeroshell spherical nose radius in meters (e.g. 0.6 m for Mars 2020)
+   * @returns {{heatFluxW_M2: number, heatFluxW_Cm2: number}}
+   */
+  static computeStagnationPointHeatFlux(entryVelocityMs, densityKgM3, noseRadiusMeters = 0.6) {
+    const kMars = 1.898e-4; // Sutton-Graves constant for pure CO2 (kg^0.5 / m)
+    const rn = Math.max(0.01, noseRadiusMeters);
+    const rho = Math.max(0, densityKgM3);
+
+    const qFluxW_M2 = kMars * Math.sqrt(rho / rn) * Math.pow(entryVelocityMs, 3);
+    const qFluxW_Cm2 = qFluxW_M2 / 10000.0; // 1 W/cm^2 = 10,000 W/m^2
+
+    return {
+      heatFluxW_M2: parseFloat(qFluxW_M2.toFixed(1)),
+      heatFluxW_Cm2: parseFloat(qFluxW_Cm2.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate surface footprint area of a landing dispersion ellipse.
+   * A = pi * a * b
+   * @param {number} aKm - Semi-major axis in km
+   * @param {number} bKm - Semi-minor axis in km
+   * @returns {{areaKm2: number, perimeterKm: number}}
+   */
+  static computeEllipseSurfaceArea(aKm, bKm) {
+    const a = Math.max(0, aKm);
+    const b = Math.max(0, bKm);
+    const area = Math.PI * a * b;
+
+    // Ramanujan's perimeter approximation: pi * [3(a+b) - sqrt((3a+b)(a+3b))]
+    const perimeter = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
+
+    return {
+      areaKm2: parseFloat(area.toFixed(2)),
+      perimeterKm: parseFloat(perimeter.toFixed(2))
+    };
+  }
+
+  /**
+   * Check if a geographic coordinate is within a landing dispersion ellipse.
+   * @param {number} lat - Target point latitude
+   * @param {number} lon - Target point longitude
+   * @param {number} centerLat - Ellipse center latitude
+   * @param {number} centerLon - Ellipse center longitude
+   * @param {number} aKm - Semi-major axis in km
+   * @param {number} bKm - Semi-minor axis in km
+   * @param {number} [azimuthDeg=0] - Ellipse major axis azimuth in degrees from North
+   * @returns {boolean} True if point lies inside ellipse
+   */
+  static isPointInsideEllipse(lat, lon, centerLat, centerLon, aKm, bKm, azimuthDeg = 0) {
+    const R_MARS = 3389.5;
+    const dLatKm = (lat - centerLat) * (Math.PI / 180.0) * R_MARS;
+    const dLonKm = (lon - centerLon) * (Math.PI / 180.0) * R_MARS * Math.cos(centerLat * Math.PI / 180.0);
+
+    // Rotate into ellipse coordinate system
+    const thetaRad = -azimuthDeg * Math.PI / 180.0;
+    const xRot = dLonKm * Math.cos(thetaRad) - dLatKm * Math.sin(thetaRad);
+    const yRot = dLonKm * Math.sin(thetaRad) + dLatKm * Math.cos(thetaRad);
+
+    const normDistSq = Math.pow(xRot / Math.max(0.01, bKm), 2) + Math.pow(yRot / Math.max(0.01, aKm), 2);
+    return normDistSq <= 1.0;
+  }
 }
+
 
 
