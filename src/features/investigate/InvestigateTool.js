@@ -702,7 +702,79 @@ export class InvestigateTool {
         const kappa = Math.max(0, thermalConductivityW_MK) / Math.max(1, cVol);
         return parseFloat(kappa.toExponential(4));
     }
+
+    // --- Lithospheric Flexure, Free-Air Anomaly & Regolith Bulk Density Solvers ---
+
+    /**
+     * Calculate Turcotte & Schubert (2002) lithospheric flexural rigidity and central deflection.
+     * D = (E * Te^3) / (12 * (1 - nu^2)), alpha = [ 4 * D / (delta_rho * g) ]^(1/4)
+     * @param {number} [loadRadiusKm=150] - Volcanic shield radius in km (e.g. Olympus Mons ~ 150 km)
+     * @param {number} [loadHeightKm=10] - Volcano load height in km
+     * @param {number} [elasticThicknessTeKm=50] - Effective elastic thickness Te in km
+     * @param {number} [youngsModulusGPa=100] - Young's modulus E in GPa (crustal basalt ~ 100 GPa)
+     * @returns {{flexuralRigidityNm: number, flexuralParameterKm: number, maxDeflectionKm: number}}
+     */
+    static computeLithosphericFlexure(loadRadiusKm = 150, loadHeightKm = 10, elasticThicknessTeKm = 50, youngsModulusGPa = 100) {
+        const E = youngsModulusGPa * 1e9; // Pa
+        const nu = 0.25; // Poisson ratio for rock
+        const TeM = elasticThicknessTeKm * 1000.0;
+        const g = 3.72076;
+        const rhoLoad = 2900.0; // Basalt load
+        const deltaRho = 3500.0 - 2900.0; // Mantle - crust density contrast (600 kg/m^3)
+
+        // Rigidity D = E * Te^3 / (12 * (1 - nu^2))
+        const D = (E * Math.pow(TeM, 3)) / (12.0 * (1.0 - nu * nu));
+
+        // Flexural parameter alpha = (4 * D / (delta_rho * g))^(1/4)
+        const alphaM = Math.pow((4.0 * D) / (deltaRho * g), 0.25);
+        const alphaKm = alphaM / 1000.0;
+
+        // Central deflection w0 ~ (rho_load * h_load) / delta_rho * (loadRadius / alpha)^2 / 8
+        const rRatio = Math.max(0.1, loadRadiusKm / alphaKm);
+        const w0Km = (rhoLoad * loadHeightKm / deltaRho) * (rRatio * rRatio * 0.125);
+
+        return {
+            flexuralRigidityNm: parseFloat(D.toExponential(4)),
+            flexuralParameterKm: parseFloat(alphaKm.toFixed(2)),
+            maxDeflectionKm: parseFloat(w0Km.toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate pure Free-Air Gravity Anomaly without Bouguer plate subtraction.
+     * Delta_g_FA = (g_obs - g_theor + 2 * g0 / R * h) * 1e5 mGal
+     * @param {number} observedGravityMs2 - Measured gravity in m/s^2
+     * @param {number} theoreticalGravityMs2 - Reference ellipsoid gravity in m/s^2
+     * @param {number} elevationMeters - Elevation above datum in meters
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {number} Free-air gravity anomaly in mGal
+     */
+    static computeFreeAirGravityAnomaly(observedGravityMs2, theoreticalGravityMs2, elevationMeters, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon' ? 1737.4 : 3389.5) * 1000.0;
+        const freeAirGrad = (2.0 * theoreticalGravityMs2) / R;
+        const deltaFA_ms2 = freeAirGrad * elevationMeters;
+
+        const anomaly_ms2 = (observedGravityMs2 - theoreticalGravityMs2) + deltaFA_ms2;
+        const anomaly_mGal = anomaly_ms2 * 1e5;
+
+        return parseFloat(anomaly_mGal.toFixed(2));
+    }
+
+    /**
+     * Calculate bulk density of porous regolith given porosity and solid grain density.
+     * rho_bulk = (1 - phi) * rho_grain + phi * rho_pore
+     * @param {number} [porosityFraction=0.40] - Volumetric porosity phi (0.0 to 1.0)
+     * @param {number} [grainDensityKgM3=2900] - Basaltic grain density in kg/m^3
+     * @param {number} [poreDensityKgM3=0] - Pore filler density (0 for vacuum/gas, 920 for ice)
+     * @returns {number} Bulk density in kg/m^3
+     */
+    static computeBulkRegolithDensity(porosityFraction = 0.40, grainDensityKgM3 = 2900, poreDensityKgM3 = 0) {
+        const phi = Math.max(0, Math.min(1.0, porosityFraction));
+        const rhoBulk = (1.0 - phi) * grainDensityKgM3 + phi * poreDensityKgM3;
+        return parseFloat(rhoBulk.toFixed(1));
+    }
 }
+
 
 
 

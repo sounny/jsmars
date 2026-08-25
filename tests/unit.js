@@ -3054,6 +3054,26 @@ describe('Hapke Photometry, Pixel Resolution & Camera Look (ThreeDEngine)', () =
     });
 });
 
+describe('Lithospheric Flexure, Free-Air Gravity & Regolith Density (InvestigateTool)', () => {
+    it('should compute lithospheric elastic flexure rigidity and deflection', () => {
+        // Olympus Mons scale load: R = 150 km, h = 10 km, Te = 50 km
+        const flex = InvestigateTool.computeLithosphericFlexure(150, 10, 50, 100);
+        expect(flex.flexuralRigidityNm).to.be.greaterThan(0);
+        expect(flex.flexuralParameterKm).to.be.greaterThan(100.0);
+        expect(flex.maxDeflectionKm).to.be.greaterThan(0);
+    });
+
+    it('should calculate pure Free-Air gravity anomaly and bulk regolith density', () => {
+        // At 3000 m elevation on Mars with 0.001 m/s^2 observed excess
+        const fa = InvestigateTool.computeFreeAirGravityAnomaly(3.721, 3.720, 3000, 'mars');
+        expect(fa).to.be.greaterThan(100.0); // positive mGal anomaly
+
+        // Porous regolith (40% vacuum pores, 2900 kg/m^3 basalt grains) -> 1740 kg/m^3
+        const bulk = InvestigateTool.computeBulkRegolithDensity(0.40, 2900, 0);
+        expect(bulk).to.equal(1740.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
