@@ -718,7 +718,114 @@ export class CSFDEngine {
       floorDiameterKm: parseFloat(dFloorKm.toFixed(2))
     };
   }
+
+  // --- Clark-Evans Spatial Randomness, Secondary Clustering & Chronology Factor Solvers ---
+
+  /**
+   * Calculate Clark & Evans (1954) Nearest Neighbor Spatial Randomness R-statistic and Z-score.
+   * R = r_obs / (0.5 / sqrt(rho))
+   * R = 1.0 (Complete Spatial Randomness), R < 1.0 (Clustered / Secondaries), R > 1.0 (Dispersed / Regular)
+   * @param {Array<{x?: number, y?: number, lat?: number, lon?: number}>} craters - Crater spatial coordinates
+   * @param {number} [countAreaKm2=1e6] - Total counting area in km^2
+   * @returns {{rStatistic: number, zScore: number, spatialPattern: string, meanObservedDistanceKm: number, meanExpectedDistanceKm: number}}
+   */
+  static computeClarkEvansNearestNeighbor(craters = [], countAreaKm2 = 1e6) {
+    const N = craters.length;
+    if (N < 2) {
+      return {
+        rStatistic: 1.0,
+        zScore: 0.0,
+        spatialPattern: 'Random (CSR)',
+        meanObservedDistanceKm: 0,
+        meanExpectedDistanceKm: 0
+      };
+    }
+
+    const A = Math.max(1, countAreaKm2);
+    const rho = N / A; // Density per km^2
+    const rExp = 0.5 / Math.sqrt(rho);
+    const sigmaRExp = 0.26136 / Math.sqrt(N * rho);
+
+    // Compute pairwise nearest neighbor distances
+    let sumDist = 0;
+    for (let i = 0; i < N; i++) {
+      const p1 = craters[i];
+      const x1 = p1.x ?? (p1.lon ?? 0) * 59.3; // Approx km/deg on Mars
+      const y1 = p1.y ?? (p1.lat ?? 0) * 59.3;
+
+      let minDist = Infinity;
+      for (let j = 0; j < N; j++) {
+        if (i === j) continue;
+        const p2 = craters[j];
+        const x2 = p2.x ?? (p2.lon ?? 0) * 59.3;
+        const y2 = p2.y ?? (p2.lat ?? 0) * 59.3;
+
+        const d = Math.hypot(x2 - x1, y2 - y1);
+        if (d < minDist) minDist = d;
+      }
+      sumDist += (minDist === Infinity ? rExp : minDist);
+    }
+
+    const rObs = sumDist / N;
+    const R = rExp > 0 ? rObs / rExp : 1.0;
+    const Z = sigmaRExp > 0 ? (rObs - rExp) / sigmaRExp : 0.0;
+
+    let pattern = 'Complete Spatial Randomness (CSR / Poisson)';
+    if (R < 0.85) {
+      pattern = 'Clustered Population (Secondary Craters / Impact Clusters)';
+    } else if (R > 1.15) {
+      pattern = 'Dispersed / Self-Avoiding Pattern';
+    }
+
+    return {
+      rStatistic: parseFloat(R.toFixed(3)),
+      zScore: parseFloat(Z.toFixed(2)),
+      spatialPattern: pattern,
+      meanObservedDistanceKm: parseFloat(rObs.toFixed(2)),
+      meanExpectedDistanceKm: parseFloat(rExp.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate secondary crater contamination fraction from spatial clustering metrics.
+   * @param {Array<{x?: number, y?: number, lat?: number, lon?: number}>} craters
+   * @param {number} [countAreaKm2=1e6]
+   * @returns {{secondaryFraction: number, secondaryPercent: number, primaryCountEstimated: number}}
+   */
+  static computeSecondaryCraterFraction(craters = [], countAreaKm2 = 1e6) {
+    const N = craters.length;
+    const ce = this.computeClarkEvansNearestNeighbor(craters, countAreaKm2);
+
+    let secFrac = 0.0;
+    if (ce.rStatistic < 1.0) {
+      // Clustering increases as R decreases from 1.0 to 0
+      secFrac = Math.min(0.85, (1.0 - ce.rStatistic) * 1.2);
+    }
+
+    const primaryCount = Math.round(N * (1.0 - secFrac));
+
+    return {
+      secondaryFraction: parseFloat(secFrac.toFixed(3)),
+      secondaryPercent: parseFloat((secFrac * 100.0).toFixed(1)),
+      primaryCountEstimated: primaryCount
+    };
+  }
+
+  /**
+   * Compute chronology scaling factor relative to 1 Ga reference epoch.
+   * Phi(t) = N1(t) / N1(1 Ga)
+   * @param {number} ageGa - Surface age in Ga
+   * @returns {number} Chronology multiplication factor
+   */
+  static computeChronologyFactor(ageGa) {
+    const n1 = this.chronologyN1(Math.max(0, ageGa));
+    const n1_1Ga = this.chronologyN1(1.0);
+    const factor = n1_1Ga > 0 ? n1 / n1_1Ga : 0;
+
+    return parseFloat(factor.toFixed(4));
+  }
 }
+
 
 
 

@@ -3230,6 +3230,34 @@ describe('Mg-Carbonate Doublet, Ferrous Iron & Contrast Stretch (BandMathEngine)
     });
 });
 
+describe('Clark-Evans Spatial Randomness & Chronology Factor (CSFDEngine)', () => {
+    it('should compute Clark-Evans nearest neighbor spatial randomness R-statistic', () => {
+        // Uniform grid -> dispersed / regular (R > 1)
+        const gridCraters = [
+            { x: 100, y: 100 }, { x: 200, y: 100 }, { x: 300, y: 100 },
+            { x: 100, y: 200 }, { x: 200, y: 200 }, { x: 300, y: 200 },
+            { x: 100, y: 300 }, { x: 200, y: 300 }, { x: 300, y: 300 }
+        ];
+        const ce = CSFDEngine.computeClarkEvansNearestNeighbor(gridCraters, 1e5);
+        expect(ce.rStatistic).to.be.greaterThan(1.0);
+        expect(ce.meanObservedDistanceKm).to.be.greaterThan(0);
+    });
+
+    it('should calculate secondary crater fraction and chronology scaling factor', () => {
+        // Tight cluster -> secondary craters
+        const cluster = [
+            { x: 10, y: 10 }, { x: 11, y: 10 }, { x: 10, y: 11 }, { x: 12, y: 11 }
+        ];
+        const sec = CSFDEngine.computeSecondaryCraterFraction(cluster, 1e5);
+        expect(sec.secondaryFraction).to.be.greaterThan(0);
+        expect(sec.primaryCountEstimated).to.be.lessThan(cluster.length);
+
+        // Chronology factor at 3.5 Ga should be substantially greater than 1 Ga
+        const factor = CSFDEngine.computeChronologyFactor(3.5);
+        expect(factor).to.be.greaterThan(5.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
