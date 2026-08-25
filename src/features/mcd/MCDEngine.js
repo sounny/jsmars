@@ -552,7 +552,72 @@ export class MCDEngine {
 
     return parseFloat(tau.toExponential(4));
   }
+
+  // --- Atmospheric Thermal Tides, Volumetric Dust Cross-Section & Scale Height Solvers ---
+
+  /**
+   * Calculate migrating atmospheric thermal tide temperature perturbation amplitude.
+   * delta_T(z) = delta_T0 * exp(z / (2 * H))
+   * @param {number} altitudeKm - Altitude above surface in km
+   * @param {number} [diurnalHarmonic=1] - Harmonic order (1 = diurnal, 2 = semidiurnal)
+   * @param {number} [baseAmplitudeK=2.5] - Surface baseline tidal amplitude in K
+   * @returns {{tidalAmplitudeK: number, waveOrder: string}}
+   */
+  static computeAtmosphericThermalTideAmplitude(altitudeKm, diurnalHarmonic = 1, baseAmplitudeK = 2.5) {
+    const H_km = 11.0; // Scale height ~ 11 km
+    const z = Math.max(0, altitudeKm);
+    const growthFactor = Math.exp(z / (2.0 * H_km));
+    const amp = baseAmplitudeK * growthFactor;
+
+    // Saturation limit in upper mesosphere / thermosphere (~30 K)
+    const clampedAmp = Math.min(35.0, amp);
+
+    return {
+      tidalAmplitudeK: parseFloat(clampedAmp.toFixed(2)),
+      waveOrder: diurnalHarmonic === 2 ? 'Semi-Diurnal (12-hour)' : 'Diurnal (24-hour)'
+    };
+  }
+
+  /**
+   * Calculate volumetric dust extinction coefficient beta_ext in m^-1.
+   * beta_ext = (3 * rho_dust * Q_ext) / (4 * rho_grain * r_eff)
+   * @param {number} dustMassConcentrationKgM3 - Airborne dust mass concentration in kg/m^3
+   * @param {number} [effectiveRadiusMicrons=1.5] - Effective particle radius in µm
+   * @param {number} [grainDensityKgM3=2500.0] - Mineral grain density
+   * @returns {{extinctionCoeffPerMeter: number, extinctionCoeffPerKm: number}}
+   */
+  static computeDustOpticalCrossSectionPerVolume(dustMassConcentrationKgM3, effectiveRadiusMicrons = 1.5, grainDensityKgM3 = 2500.0) {
+    const rM = effectiveRadiusMicrons * 1e-6;
+    const qExt = 2.5; // Extinction efficiency in visible
+    const betaM = (3.0 * Math.max(0, dustMassConcentrationKgM3) * qExt) / (4.0 * grainDensityKgM3 * rM);
+    const betaKm = betaM * 1000.0;
+
+    return {
+      extinctionCoeffPerMeter: parseFloat(betaM.toExponential(4)),
+      extinctionCoeffPerKm: parseFloat(betaKm.toFixed(5))
+    };
+  }
+
+  /**
+   * Calculate variable atmospheric scale height with linear temperature lapse rate.
+   * H(z) = (R_spec * (T_surf - Gamma * z)) / g
+   * @param {number} surfaceTempK - Surface temperature in Kelvin
+   * @param {number} altitudeKm - Altitude above datum in km
+   * @param {number} [lapseRateKPerKm=4.5] - Temperature lapse rate in K/km
+   * @returns {{localScaleHeightKm: number, localTempK: number}}
+   */
+  static computeAtmosphericScaleHeightLapseRate(surfaceTempK, altitudeKm, lapseRateKPerKm = 4.5) {
+    const z = Math.max(0, altitudeKm);
+    const localT = Math.max(100.0, surfaceTempK - lapseRateKPerKm * z);
+    const hM = (this.R_SPECIFIC_CO2 * localT) / this.G_MARS;
+
+    return {
+      localScaleHeightKm: parseFloat((hM / 1000.0).toFixed(3)),
+      localTempK: parseFloat(localT.toFixed(1))
+    };
+  }
 }
+
 
 
 

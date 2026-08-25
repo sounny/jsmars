@@ -3279,6 +3279,28 @@ describe('Limb Tangent Altitude, DEM Slope & Horizon Culling (ThreeDEngine)', ()
     });
 });
 
+describe('Thermal Tides, Volumetric Dust Cross-Section & Scale Height (MCDEngine)', () => {
+    it('should compute atmospheric thermal tide perturbation amplitude', () => {
+        // At 30 km altitude, thermal tide amplitude grows exponentially
+        const tide = MCDEngine.computeAtmosphericThermalTideAmplitude(30.0, 1, 2.5);
+        expect(tide.tidalAmplitudeK).to.be.greaterThan(5.0);
+        expect(tide.waveOrder).to.include('Diurnal');
+    });
+
+    it('should calculate volumetric dust optical cross-section and scale height lapse rate', () => {
+        // Dust concentration 1e-6 kg/m^3
+        const dust = MCDEngine.computeDustOpticalCrossSectionPerVolume(1e-6, 1.5, 2500.0);
+        expect(dust.extinctionCoeffPerMeter).to.be.greaterThan(0);
+        expect(dust.extinctionCoeffPerKm).to.be.greaterThan(0);
+
+        // Scale height variation with 4.5 K/km lapse rate from 220 K surface at 10 km altitude
+        const sh = MCDEngine.computeAtmosphericScaleHeightLapseRate(220.0, 10.0, 4.5);
+        expect(sh.localTempK).to.equal(175.0);
+        expect(sh.localScaleHeightKm).to.be.lessThan(11.0);
+        expect(sh.localScaleHeightKm).to.be.greaterThan(8.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
