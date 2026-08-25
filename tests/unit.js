@@ -2673,6 +2673,26 @@ describe('Albers Equal-Area Conic & Cartographic Distortion (ProjectionManager)'
     });
 });
 
+describe('Surface-to-Basal Power Ratio, EM Skin Depth & Doppler (RadarSounderEngine)', () => {
+    it('should compute surface-to-basal radar power ratio and dielectric attenuation loss', () => {
+        // 1000m pure ice sheet (eps = 3.15, lossTan = 0.001) over basaltic basement (eps = 7.5)
+        const ratio = RadarSounderEngine.computeSurfaceBasalPowerRatio(3.15, 7.5, 1000, 0.001, 20e6);
+        expect(ratio.attenuationLossDb).to.be.greaterThan(0);
+        expect(ratio.powerRatioDb).to.be.greaterThan(0);
+        expect(ratio.basalReflectivityDb).to.be.lessThan(0);
+    });
+
+    it('should calculate electromagnetic skin depth and radar carrier Doppler frequency shift', () => {
+        // Loss tangent 0.001 in ice (eps = 3.15) at 20 MHz -> skin depth > 1000 meters
+        const skin = RadarSounderEngine.computeSkinDepthEM(20e6, 0.001, 3.15);
+        expect(skin).to.be.greaterThan(1000.0);
+
+        // 100 m/s line-of-sight relative velocity at 20 MHz -> Doppler shift = 2 * 100 * 20e6 / 3e8 ~ 13.34 Hz
+        const doppler = RadarSounderEngine.computeDopplerShift(100.0, 20e6);
+        expect(doppler).to.be.closeTo(13.34, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

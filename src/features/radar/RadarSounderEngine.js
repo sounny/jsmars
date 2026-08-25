@@ -530,7 +530,70 @@ export class RadarSounderEngine {
       layerIntervals: intervals
     };
   }
+
+  // --- Surface-to-Basal Power Ratio, EM Skin Depth & Doppler Solvers ---
+
+  /**
+   * Calculate surface-to-basal radar power ratio in dB.
+   * P_ratio = 10*log10(R_surf / (R_basal * T_surf^2)) + 2 * alpha * z
+   * @param {number} [epsSurface=3.15] - Dielectric constant of surface medium (ice)
+   * @param {number} [epsBasal=7.5] - Dielectric constant of basal substrate (bedrock)
+   * @param {number} [iceThicknessMeters=1000] - Ice sheet thickness
+   * @param {number} [lossTangent=0.001] - Ice dielectric loss tangent
+   * @param {number} [freqHz=20e6] - Radar frequency
+   * @returns {{powerRatioDb: number, attenuationLossDb: number, basalReflectivityDb: number}}
+   */
+  static computeSurfaceBasalPowerRatio(epsSurface = 3.15, epsBasal = 7.5, iceThicknessMeters = 1000, lossTangent = 0.001, freqHz = 20e6) {
+    const rSurf = this.computeFresnelReflectivity(1.0, epsSurface);
+    const rBasal = this.computeFresnelReflectivity(epsSurface, epsBasal);
+    const alpha = this.computeAttenuationRate(freqHz, lossTangent, epsSurface);
+
+    const twoWayLossDb = 2.0 * alpha * Math.max(0, iceThicknessMeters);
+    const tSurfPower = rSurf.transmissivityLinear;
+    const geometricFactor = rSurf.reflectivityLinear / (rBasal.reflectivityLinear * tSurfPower * tSurfPower);
+    const reflectionDbDiff = 10.0 * Math.log10(Math.max(1e-6, geometricFactor));
+
+    const totalRatioDb = reflectionDbDiff + twoWayLossDb;
+
+    return {
+      powerRatioDb: parseFloat(totalRatioDb.toFixed(2)),
+      attenuationLossDb: parseFloat(twoWayLossDb.toFixed(2)),
+      basalReflectivityDb: parseFloat(rBasal.reflectivityDb.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate electromagnetic skin depth (1/e amplitude penetration depth) in lossy medium.
+   * delta_EM = 1 / alpha_Np
+   * @param {number} [freqHz=20e6] - Center frequency in Hz
+   * @param {number} [lossTangent=0.001] - Loss tangent tan(delta)
+   * @param {number} [epsR=3.15] - Relative dielectric permittivity
+   * @returns {number} EM skin depth in meters
+   */
+  static computeSkinDepthEM(freqHz = 20e6, lossTangent = 0.001, epsR = 3.15) {
+    const alphaDb = this.computeAttenuationRate(freqHz, lossTangent, epsR);
+    if (alphaDb <= 0) return Infinity;
+
+    // Convert dB/m to Nepers/m (1 Np = 8.686 dB)
+    const alphaNp = alphaDb / 8.686;
+    const skinDepth = 1.0 / alphaNp;
+
+    return parseFloat(skinDepth.toFixed(1));
+  }
+
+  /**
+   * Calculate radar carrier Doppler frequency shift.
+   * Delta_f = (2 * v_r * f0) / c
+   * @param {number} relativeVelocityMs - Relative velocity along line of sight in m/s
+   * @param {number} [centerFreqHz=20e6] - Center frequency (20 MHz for SHARAD)
+   * @returns {number} Doppler frequency shift in Hz
+   */
+  static computeDopplerShift(relativeVelocityMs, centerFreqHz = 20e6) {
+    const shift = (2.0 * relativeVelocityMs * centerFreqHz) / RadarSounderEngine.C;
+    return parseFloat(shift.toFixed(2));
+  }
 }
+
 
 
 
