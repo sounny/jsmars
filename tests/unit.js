@@ -3188,6 +3188,27 @@ describe('Aerocentric Coordinates, OWLT & Darian Calendar (MarsTime)', () => {
     });
 });
 
+describe('Radar Fringe Resonance, Basal Loss & Radar Equation (RadarSounderEngine)', () => {
+    it('should compute quarter-wave constructive interference fringe layer thickness', () => {
+        // SHARAD 20 MHz in pure water ice (eps = 3.15) -> lambda ~ 8.45 m -> quarter wave ~ 2.11 m
+        const fringe = RadarSounderEngine.computeInterferenceFringeSpacing(20e6, 3.15);
+        expect(fringe.quarterWaveFringeMeters).to.be.closeTo(2.11, 0.1);
+        expect(fringe.halfWaveFringeMeters).to.be.closeTo(4.23, 0.2);
+    });
+
+    it('should calculate two-way basal transmission loss and radar equation received power', () => {
+        // Ice over basaltic basement
+        const loss = RadarSounderEngine.computeBasalDielectricContrastLoss(3.15, 7.5);
+        expect(loss.oneWayTransmissivity).to.be.greaterThan(0.9);
+        expect(loss.twoWayTransmissionLossDb).to.be.lessThan(0); // negative dB loss
+
+        // SHARAD from 250 km orbit
+        const radarEq = RadarSounderEngine.computeRadarEquationReceivedPower(10.0, 0.0, 20e6, 250.0, 100.0);
+        expect(radarEq.receivedPowerWatts).to.be.greaterThan(0);
+        expect(radarEq.receivedPowerDbm).to.be.a('number');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

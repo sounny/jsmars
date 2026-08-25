@@ -651,7 +651,77 @@ export class RadarSounderEngine {
       waveVelocityMs: parseFloat(v.toFixed(0))
     };
   }
+
+  // --- Thin-Film Resonance Fringes, Basal Transmission & Radar Equation Solvers ---
+
+  /**
+   * Calculate thin-film quarter-wave constructive/destructive radar interference fringe layer thickness.
+   * Delta_z = lambda_medium / 4 = c / (4 * f0 * sqrt(eps_r))
+   * @param {number} [centerFreqHz=20e6] - Center frequency (20 MHz for SHARAD)
+   * @param {number} [epsR=3.15] - Dielectric permittivity of layer
+   * @returns {{quarterWaveFringeMeters: number, halfWaveFringeMeters: number}}
+   */
+  static computeInterferenceFringeSpacing(centerFreqHz = 20e6, epsR = 3.15) {
+    const v = this.getVelocity(epsR);
+    const lambdaM = v / Math.max(1e3, centerFreqHz);
+
+    const quarterWaveM = lambdaM / 4.0;
+    const halfWaveM = lambdaM / 2.0;
+
+    return {
+      quarterWaveFringeMeters: parseFloat(quarterWaveM.toFixed(2)),
+      halfWaveFringeMeters: parseFloat(halfWaveM.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate two-way radar power transmission efficiency across a dielectric boundary.
+   * T_two_way = (1 - R)^2
+   * @param {number} eps1 - Relative permittivity of upper medium
+   * @param {number} eps2 - Relative permittivity of lower medium
+   * @returns {{oneWayTransmissivity: number, twoWayTransmissionLossDb: number}}
+   */
+  static computeBasalDielectricContrastLoss(eps1, eps2) {
+    const fresnel = this.computeFresnelReflectivity(eps1, eps2);
+    const tOneWay = fresnel.transmissivityLinear;
+    const tTwoWay = tOneWay * tOneWay;
+    const lossDb = 10.0 * Math.log10(Math.max(1e-9, tTwoWay));
+
+    return {
+      oneWayTransmissivity: parseFloat(tOneWay.toFixed(4)),
+      twoWayTransmissionLossDb: parseFloat(lossDb.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate received radar echo power using the planetary radar equation.
+   * P_rx = (P_tx * G^2 * lambda^2 * sigma) / ((4 * pi)^3 * R^4)
+   * @param {number} [ptWatts=10.0] - Transmitter peak power in Watts (10W for SHARAD)
+   * @param {number} [gainDbi=0.0] - Antenna isotropic gain in dBi (0 dBi for dipole)
+   * @param {number} [freqHz=20e6] - Radar frequency (20 MHz)
+   * @param {number} [altitudeKm=250.0] - Spacecraft orbit altitude in km
+   * @param {number} [sigmaTargetM2=100.0] - Radar backscatter cross-section in m^2
+   * @returns {{receivedPowerWatts: number, receivedPowerDbm: number}}
+   */
+  static computeRadarEquationReceivedPower(ptWatts = 10.0, gainDbi = 0.0, freqHz = 20e6, altitudeKm = 250.0, sigmaTargetM2 = 100.0) {
+    const lambda = RadarSounderEngine.C / Math.max(1e3, freqHz);
+    const GLinear = Math.pow(10, gainDbi / 10.0);
+    const RMeters = Math.max(1000, altitudeKm * 1000.0);
+
+    const numerator = ptWatts * GLinear * GLinear * lambda * lambda * sigmaTargetM2;
+    const denominator = Math.pow(4.0 * Math.PI, 3) * Math.pow(RMeters, 4);
+
+    const pRxWatts = numerator / denominator;
+    // P_dBm = 10 * log10(P_watts / 1e-3) = 10 * log10(P_watts) + 30
+    const pRxDbm = 10.0 * Math.log10(Math.max(1e-25, pRxWatts)) + 30.0;
+
+    return {
+      receivedPowerWatts: parseFloat(pRxWatts.toExponential(4)),
+      receivedPowerDbm: parseFloat(pRxDbm.toFixed(2))
+    };
+  }
 }
+
 
 
 
