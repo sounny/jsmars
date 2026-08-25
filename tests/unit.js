@@ -3501,6 +3501,34 @@ describe('Power-Law Conversion, Gault Saturation & Poisson Likelihood (CSFDEngin
     });
 });
 
+describe('Rectilinear Footprint, Dip Horizon & Surface Radiance (ThreeDEngine)', () => {
+    it('should compute 2D rectangular ground footprint and planetary dip horizon viewing angle', () => {
+        // At 300 km orbit with 20° x 15° camera FOV
+        const fp = ThreeDEngine.computeRectilinearGroundFootprint(300.0, 20.0, 15.0);
+        expect(fp.swathWidthXKm).to.be.greaterThan(100.0);
+        expect(fp.swathHeightYKm).to.be.greaterThan(70.0);
+        expect(fp.groundFootprintAreaKm2).to.be.greaterThan(7000.0);
+
+        // Dip angle from 300 km orbit above Mars
+        const dip = ThreeDEngine.computePlanetaryDipHorizonViewingAngle(300.0, 'mars');
+        expect(dip.dipAngleDeg).to.be.greaterThan(20.0);
+        expect(dip.dipAngleDeg).to.be.lessThan(30.0);
+        expect(dip.visibleCapAreaKm2).to.be.greaterThan(1e6);
+    });
+
+    it('should calculate Lambertian surface reflected radiance with solar incidence', () => {
+        // Overhead sun (0 deg incidence) with 590 W/m^2 solar flux and 0.25 albedo
+        const radNoon = ThreeDEngine.computeLambertianSurfaceRadiance(590.0, 0.0, 0.25);
+        expect(radNoon.radianceW_M2_Sr).to.be.greaterThan(40.0);
+        expect(radNoon.isIlluminated).to.equal(true);
+
+        // Grazing sun (85 deg incidence)
+        const radGrazing = ThreeDEngine.computeLambertianSurfaceRadiance(590.0, 85.0, 0.25);
+        expect(radGrazing.radianceW_M2_Sr).to.be.lessThan(10.0);
+        expect(radGrazing.isIlluminated).to.equal(true);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

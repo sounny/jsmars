@@ -703,7 +703,82 @@ export class ThreeDEngine {
       maxVisibleAngularArcDeg: parseFloat(maxArcDeg.toFixed(3))
     };
   }
+
+  // --- Rectilinear Ground Footprint, Planetary Dip Horizon & Surface Radiance Solvers ---
+
+  /**
+   * Calculate 2D rectangular camera sensor ground swath footprint dimensions.
+   * W_x = 2 * H * tan(FOV_x / 2),  W_y = 2 * H * tan(FOV_y / 2)
+   * @param {number} altitudeKm - Spacecraft altitude above datum in km
+   * @param {number} [fovHorizontalDeg=20.0] - Horizontal Field of View (degrees)
+   * @param {number} [fovVerticalDeg=15.0] - Vertical Field of View (degrees)
+   * @returns {{swathWidthXKm: number, swathHeightYKm: number, groundFootprintAreaKm2: number}}
+   */
+  static computeRectilinearGroundFootprint(altitudeKm, fovHorizontalDeg = 20.0, fovVerticalDeg = 15.0) {
+    const H = Math.max(0, altitudeKm);
+    const radX = (fovHorizontalDeg * Math.PI / 180.0) / 2.0;
+    const radY = (fovVerticalDeg * Math.PI / 180.0) / 2.0;
+
+    const wx = 2.0 * H * Math.tan(radX);
+    const wy = 2.0 * H * Math.tan(radY);
+    const area = wx * wy;
+
+    return {
+      swathWidthXKm: parseFloat(wx.toFixed(3)),
+      swathHeightYKm: parseFloat(wy.toFixed(3)),
+      groundFootprintAreaKm2: parseFloat(area.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate planetary horizon dip depression angle and visible spherical cap surface area.
+   * theta_dip = arccos(R / (R + H)),  A_cap = 2 * pi * R^2 * (1 - cos(theta_dip))
+   * @param {number} altitudeKm - Observer height above surface in km
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{dipAngleDeg: number, visibleCapAreaKm2: number, planetFractionPercent: number}}
+   */
+  static computePlanetaryDipHorizonViewingAngle(altitudeKm, body = 'mars') {
+    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const H = Math.max(0, altitudeKm);
+
+    const cosDip = R / (R + H);
+    const dipRad = Math.acos(Math.max(0, Math.min(1.0, cosDip)));
+    const dipDeg = dipRad * 180.0 / Math.PI;
+
+    const totalArea = 4.0 * Math.PI * R * R;
+    const capArea = 2.0 * Math.PI * R * R * (1.0 - cosDip);
+    const fracPct = (capArea / totalArea) * 100.0;
+
+    return {
+      dipAngleDeg: parseFloat(dipDeg.toFixed(3)),
+      visibleCapAreaKm2: parseFloat(capArea.toFixed(1)),
+      planetFractionPercent: parseFloat(fracPct.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate Lambertian surface reflected radiance in W / (m^2 sr).
+   * L = (A * F_sun * cos(i)) / pi
+   * @param {number} solarFluxW_M2 - Incident top-of-atmosphere/surface solar flux
+   * @param {number} solarIncidenceDeg - Solar incidence angle in degrees
+   * @param {number} [surfaceAlbedo=0.25] - Bolometric surface albedo
+   * @returns {{radianceW_M2_Sr: number, isIlluminated: boolean}}
+   */
+  static computeLambertianSurfaceRadiance(solarFluxW_M2, solarIncidenceDeg, surfaceAlbedo = 0.25) {
+    const incRad = Math.abs(solarIncidenceDeg) * Math.PI / 180.0;
+    const cosI = Math.max(0, Math.cos(incRad));
+    const A = Math.max(0, Math.min(1.0, surfaceAlbedo));
+    const F0 = Math.max(0, solarFluxW_M2);
+
+    const L = (A * F0 * cosI) / Math.PI;
+
+    return {
+      radianceW_M2_Sr: parseFloat(L.toFixed(3)),
+      isIlluminated: cosI > 0
+    };
+  }
 }
+
 
 
 
