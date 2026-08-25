@@ -597,7 +597,69 @@ export class MarsTime {
       winterDate: this.lsToDate(270, marsYear)
     };
   }
+
+  // --- Heliocentric Orbital Speed, Mean Solar Time & Apparent Sun Diameter Solvers ---
+
+  /**
+   * Calculate instantaneous heliocentric orbital velocity of Mars along its eccentric orbit.
+   * v = sqrt(GM_sun * (2/r - 1/a))
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @returns {{orbitalSpeedKmS: number, orbitalSpeedMps: number, isNearPerihelion: boolean}}
+   */
+  static computeHeliocentricOrbitalSpeed(Ls) {
+    const GM_Sun = 1.32712440018e11; // km^3 / s^2
+    const aKm = this.SEMI_MAJOR_AXIS * 149597870.7; // ~227.9M km
+    const fluxRes = this.computeInstantaneousSolarFlux(Ls);
+    const rKm = fluxRes.distanceKm;
+
+    const vKmS = Math.sqrt(GM_Sun * (2.0 / rKm - 1.0 / aKm));
+
+    return {
+      orbitalSpeedKmS: parseFloat(vKmS.toFixed(3)),
+      orbitalSpeedMps: parseFloat((vKmS * 1000.0).toFixed(1)),
+      isNearPerihelion: Math.abs(Ls - 251.0) < 45.0
+    };
+  }
+
+  /**
+   * Compute Local Mean Solar Time (LMST) at a given Mars longitude.
+   * LMST = (MTC + eastLon / 15) % 24
+   * @param {number} eastLonDeg - Longitude in degrees East (0-360)
+   * @param {number} [mtcHours=12.0] - Coordinated Mars Time (MTC)
+   * @returns {{lmstHours: number, lmstFormatted: string}}
+   */
+  static computeMeanSolarTimeOffset(eastLonDeg, mtcHours = 12.0) {
+    let lmst = (mtcHours + eastLonDeg / 15.0) % 24.0;
+    if (lmst < 0) lmst += 24.0;
+
+    return {
+      lmstHours: parseFloat(lmst.toFixed(4)),
+      lmstFormatted: this.formatHours(lmst)
+    };
+  }
+
+  /**
+   * Calculate apparent angular diameter of the Sun viewed from Martian surface.
+   * theta = 2 * asin(R_sun / r)
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @returns {{angularDiameterDeg: number, angularDiameterArcmin: number}}
+   */
+  static computeMartianSunDiameter(Ls) {
+    const rSunKm = 696340.0; // Sun radius in km
+    const fluxRes = this.computeInstantaneousSolarFlux(Ls);
+    const rKm = fluxRes.distanceKm;
+
+    const angRad = 2.0 * Math.asin(rSunKm / rKm);
+    const angDeg = angRad * 180.0 / Math.PI;
+    const angArcmin = angDeg * 60.0;
+
+    return {
+      angularDiameterDeg: parseFloat(angDeg.toFixed(4)),
+      angularDiameterArcmin: parseFloat(angArcmin.toFixed(2))
+    };
+  }
 }
+
 
 
 

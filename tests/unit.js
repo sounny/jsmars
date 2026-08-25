@@ -2878,6 +2878,31 @@ describe('Atmospheric Thermal Diffusivity, CO2 Condensation & Dust Settling (MCD
     });
 });
 
+describe('Heliocentric Orbital Speed, Mean Solar Time & Apparent Sun (MarsTime)', () => {
+    it('should calculate instantaneous orbital velocity across perihelion and aphelion', () => {
+        // At perihelion (Ls = 251): orbital speed peaks ~ 26.5 km/s
+        const peri = MarsTime.computeHeliocentricOrbitalSpeed(251.0);
+        expect(peri.orbitalSpeedKmS).to.be.closeTo(26.5, 0.5);
+        expect(peri.isNearPerihelion).to.equal(true);
+
+        // At aphelion (Ls = 71): orbital speed reaches minimum ~ 22.0 km/s
+        const aph = MarsTime.computeHeliocentricOrbitalSpeed(71.0);
+        expect(aph.orbitalSpeedKmS).to.be.closeTo(22.0, 0.5);
+        expect(aph.isNearPerihelion).to.equal(false);
+    });
+
+    it('should compute Local Mean Solar Time (LMST) and Sun angular diameter', () => {
+        // At 180 deg East with MTC = 12: LMST = (12 + 180/15) % 24 = 24 % 24 = 0.0 h (midnight)
+        const lmst = MarsTime.computeMeanSolarTimeOffset(180.0, 12.0);
+        expect(lmst.lmstHours).to.equal(0.0);
+
+        // Sun angular diameter at Mars is ~21 arcmin (0.35 degrees)
+        const sunDiam = MarsTime.computeMartianSunDiameter(0.0);
+        expect(sunDiam.angularDiameterDeg).to.be.closeTo(0.35, 0.05);
+        expect(sunDiam.angularDiameterArcmin).to.be.closeTo(21.0, 3.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
