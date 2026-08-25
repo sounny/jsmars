@@ -3551,6 +3551,31 @@ describe('Sutherland Viscosity, Buoyancy Frequency & Eddy Diffusivity (MCDEngine
     });
 });
 
+describe('Line-Load Flexure, Seismic Velocities & Bouguer Slab (InvestigateTool)', () => {
+    it('should compute 2D line-load flexural profile and crustal seismic velocities', () => {
+        // Line-load flexure deflection at origin x = 0 (w0 = 4 km)
+        const flex0 = InvestigateTool.computeLineLoadFlexureProfile(0, 4.0, 150.0);
+        expect(flex0.deflectionKm).to.equal(4.0);
+        expect(flex0.isForebulge).to.equal(false);
+
+        // Crustal basalt (K = 50 GPa, G = 30 GPa, rho = 2900 kg/m^3)
+        const seis = InvestigateTool.computeSeismicPWaveVelocity(50.0, 30.0, 2900.0);
+        expect(seis.vP_KmS).to.be.greaterThan(5.0);
+        expect(seis.vP_KmS).to.be.lessThan(6.5);
+        expect(seis.vS_KmS).to.be.greaterThan(3.0);
+        expect(seis.vS_KmS).to.be.lessThan(4.0);
+        expect(seis.poissonRatio).to.be.greaterThan(0.2);
+    });
+
+    it('should calculate infinite slab Bouguer gravitational attraction', () => {
+        // 1000m basalt slab (rho = 2900 kg/m^3) -> ~121.5 mGal
+        const slab = InvestigateTool.computeInfiniteSlabBouguerAttraction(1000.0, 2900.0);
+        expect(slab.bouguerAttractionMGal).to.be.greaterThan(115.0);
+        expect(slab.bouguerAttractionMGal).to.be.lessThan(130.0);
+        expect(slab.attractionPerMeterMGal).to.be.greaterThan(0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

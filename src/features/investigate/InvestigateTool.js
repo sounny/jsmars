@@ -844,7 +844,85 @@ export class InvestigateTool {
             densityDeficitKgM3: parseFloat(deficit.toFixed(1))
         };
     }
+
+    // --- Line-Load Flexure Profile, Seismic Wave Velocity & Bouguer Attraction Solvers ---
+
+    /**
+     * Calculate 2D line-load lithospheric flexural deflection profile w(x).
+     * w(x) = w0 * exp(-x / alpha) * (cos(x / alpha) + sin(x / alpha))
+     * @param {number} distanceKm - Perpendicular distance from volcanic rift/ridge load in km
+     * @param {number} [centralDeflectionKm=4.0] - Maximum central deflection w0 in km
+     * @param {number} [flexuralParameterKm=150.0] - Flexural parameter alpha in km
+     * @returns {{deflectionKm: number, deflectionMeters: number, isForebulge: boolean}}
+     */
+    static computeLineLoadFlexureProfile(distanceKm, centralDeflectionKm = 4.0, flexuralParameterKm = 150.0) {
+        const x = Math.max(0, distanceKm);
+        const alpha = Math.max(10, flexuralParameterKm);
+        const arg = x / alpha;
+
+        const w = centralDeflectionKm * Math.exp(-arg) * (Math.cos(arg) + Math.sin(arg));
+
+        return {
+            deflectionKm: parseFloat(w.toFixed(3)),
+            deflectionMeters: parseFloat((w * 1000.0).toFixed(1)),
+            isForebulge: w < 0
+        };
+    }
+
+    /**
+     * Calculate crustal seismic compressional (P-wave) and shear (S-wave) velocities.
+     * Vp = sqrt( (K + 4/3*G) / rho ),  Vs = sqrt( G / rho )
+     * @param {number} [bulkModulusGPa=50.0] - Elastic Bulk modulus K in GPa
+     * @param {number} [shearModulusGPa=30.0] - Elastic Shear modulus G in GPa
+     * @param {number} [densityKgM3=2900.0] - Rock density in kg/m^3
+     * @returns {{vP_KmS: number, vS_KmS: number, vpVsRatio: number, poissonRatio: number}}
+     */
+    static computeSeismicPWaveVelocity(bulkModulusGPa = 50.0, shearModulusGPa = 30.0, densityKgM3 = 2900.0) {
+        const K_Pa = bulkModulusGPa * 1e9;
+        const G_Pa = shearModulusGPa * 1e9;
+        const rho = Math.max(100, densityKgM3);
+
+        const vP_m = Math.sqrt((K_Pa + (4.0 / 3.0) * G_Pa) / rho);
+        const vS_m = Math.sqrt(G_Pa / rho);
+
+        const vP_km = vP_m / 1000.0;
+        const vS_km = vS_m / 1000.0;
+        const ratio = vP_km / vS_km;
+
+        // Poisson ratio nu = (Vp^2 - 2*Vs^2) / (2*(Vp^2 - Vs^2))
+        const nu = (Math.pow(ratio, 2) - 2.0) / (2.0 * (Math.pow(ratio, 2) - 1.0));
+
+        return {
+            vP_KmS: parseFloat(vP_km.toFixed(2)),
+            vS_KmS: parseFloat(vS_km.toFixed(2)),
+            vpVsRatio: parseFloat(ratio.toFixed(3)),
+            poissonRatio: parseFloat(nu.toFixed(3))
+        };
+    }
+
+    /**
+     * Calculate infinite slab Bouguer gravitational attraction in mGal.
+     * delta_g = 2 * pi * G * rho * h * 1e5 mGal
+     * @param {number} elevationMeters - Slab thickness/elevation in meters
+     * @param {number} [densityKgM3=2900.0] - Slab density in kg/m^3
+     * @returns {{bouguerAttractionMGal: number, attractionPerMeterMGal: number}}
+     */
+    static computeInfiniteSlabBouguerAttraction(elevationMeters, densityKgM3 = 2900.0) {
+        const G = 6.67430e-11;
+        const rho = Math.max(0, densityKgM3);
+        const h = elevationMeters;
+
+        const deltaG_ms2 = 2.0 * Math.PI * G * rho * h;
+        const deltaG_mGal = deltaG_ms2 * 1e5;
+        const perMeter_mGal = 2.0 * Math.PI * G * rho * 1e5;
+
+        return {
+            bouguerAttractionMGal: parseFloat(deltaG_mGal.toFixed(2)),
+            attractionPerMeterMGal: parseFloat(perMeter_mGal.toFixed(4))
+        };
+    }
 }
+
 
 
 
