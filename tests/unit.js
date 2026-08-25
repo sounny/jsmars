@@ -2792,6 +2792,23 @@ describe('Bouguer Gravity Anomaly, Airy Isostasy & Thermal Diffusivity (Investig
     });
 });
 
+describe('Geodetic Destination Point & Interior Tunnel Chord (MeasureTool)', () => {
+    it('should calculate destination point along forward geodesic bearing', () => {
+        // Start at equator (0, 0), bearing 90 deg (East), distance = 1/4 of Mars circumference (pi/2 * 3389.5 ~ 5324.28 km)
+        const dest = MeasureTool.computeDestinationPoint(0, 0, 90.0, 5324.28, 'mars');
+        expect(dest.destLat).to.be.closeTo(0.0, 0.1);
+        expect(dest.destLon).to.be.closeTo(90.0, 0.5);
+    });
+
+    it('should calculate 3D interior straight-line tunnel chord distance', () => {
+        // Points 90 degrees apart on Mars (R = 3389.5 km): chord = 2 * R * sin(45) = R * sqrt(2) ~ 4793.47 km
+        const chord = MeasureTool.computeChordDistance(0, 0, 0, 90.0, 'mars');
+        expect(chord.arcDistanceKm).to.be.closeTo(5324.28, 1.0);
+        expect(chord.chordDistanceKm).to.be.closeTo(4793.47, 1.0);
+        expect(chord.depthBelowSurfaceKm).to.be.greaterThan(900.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

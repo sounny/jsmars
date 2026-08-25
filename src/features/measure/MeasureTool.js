@@ -909,7 +909,88 @@ export class MeasureTool {
             areaKm2: areaRes.areaKm2
         };
     }
+
+    // --- Direct Geodetic Destination, Spherical Triangle Deficit & Interior Chord Solvers ---
+
+    /**
+     * Calculate destination point given start point, forward initial bearing, and geodetic distance.
+     * @param {number} startLat - Start latitude in degrees
+     * @param {number} startLon - Start longitude in degrees
+     * @param {number} initialBearingDeg - Forward azimuth in degrees (0 = North, 90 = East)
+     * @param {number} distanceKm - Geodetic travel distance in km
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{destLat: number, destLon: number, finalBearingDeg: number}}
+     */
+    static computeDestinationPoint(startLat, startLon, initialBearingDeg, distanceKm, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const delta = Math.max(0, distanceKm) / R; // Angular distance in radians
+        const theta = initialBearingDeg * Math.PI / 180.0;
+
+        const phi1 = startLat * Math.PI / 180.0;
+        const lam1 = startLon * Math.PI / 180.0;
+
+        const phi2 = Math.asin(
+            Math.sin(phi1) * Math.cos(delta) +
+            Math.cos(phi1) * Math.sin(delta) * Math.cos(theta)
+        );
+
+        let lam2 = lam1 + Math.atan2(
+            Math.sin(theta) * Math.sin(delta) * Math.cos(phi1),
+            Math.cos(delta) - Math.sin(phi1) * Math.sin(phi2)
+        );
+
+        let lonDeg = lam2 * 180.0 / Math.PI;
+        if (lonDeg < 0) lonDeg += 360.0;
+        if (lonDeg >= 360) lonDeg -= 360.0;
+
+        // Final bearing
+        const y = Math.sin(lam2 - lam1) * Math.cos(phi2);
+        const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(lam2 - lam1);
+        let finalBearing = (Math.atan2(y, x) * 180.0 / Math.PI + 360.0) % 360.0;
+
+        return {
+            destLat: parseFloat((phi2 * 180.0 / Math.PI).toFixed(4)),
+            destLon: parseFloat(lonDeg.toFixed(4)),
+            finalBearingDeg: parseFloat(finalBearing.toFixed(1))
+        };
+    }
+
+    /**
+     * Calculate 3D interior Euclidean tunnel chord distance between two surface points.
+     * d_chord = 2 * R * sin(delta / 2)
+     * @param {number} lat1 - Point 1 latitude
+     * @param {number} lon1 - Point 1 longitude
+     * @param {number} lat2 - Point 2 latitude
+     * @param {number} lon2 - Point 2 longitude
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{arcDistanceKm: number, chordDistanceKm: number, depthBelowSurfaceKm: number}}
+     */
+    static computeChordDistance(lat1, lon1, lat2, lon2, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+
+        const phi1 = lat1 * Math.PI / 180.0;
+        const lam1 = lon1 * Math.PI / 180.0;
+        const phi2 = lat2 * Math.PI / 180.0;
+        const lam2 = lon2 * Math.PI / 180.0;
+
+        const delta = 2.0 * Math.asin(Math.sqrt(
+            Math.pow(Math.sin((phi2 - phi1) / 2.0), 2) +
+            Math.cos(phi1) * Math.cos(phi2) * Math.pow(Math.sin((lam2 - lam1) / 2.0), 2)
+        ));
+
+        const arcKm = delta * R;
+        const chordKm = 2.0 * R * Math.sin(delta / 2.0);
+        // Maximum tunnel depth at midpoint
+        const maxDepthKm = R * (1.0 - Math.cos(delta / 2.0));
+
+        return {
+            arcDistanceKm: parseFloat(arcKm.toFixed(3)),
+            chordDistanceKm: parseFloat(chordKm.toFixed(3)),
+            depthBelowSurfaceKm: parseFloat(maxDepthKm.toFixed(3))
+        };
+    }
 }
+
 
 
 
