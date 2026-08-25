@@ -413,7 +413,75 @@ export class MCDEngine {
     const theta = Math.max(1, tempK) * Math.pow(referencePressurePa / pSafe, exponent);
     return parseFloat(theta.toFixed(2));
   }
+
+  // --- Atmospheric Thermal Diffusivity, CO2 Condensation & Dust Settling Velocity Solvers ---
+
+  /**
+   * Calculate atmospheric gas thermal diffusivity alpha_atm = k_gas / (rho * cp).
+   * @param {number} tempK - Atmospheric temperature in Kelvin
+   * @param {number} pressurePa - Layer atmospheric pressure in Pa
+   * @returns {number} Thermal diffusivity in m^2 / s
+   */
+  static computeAtmosphericThermalDiffusivity(tempK, pressurePa) {
+    const cp = 800.0; // J/(kg K)
+    const rho = Math.max(1e-6, pressurePa / (this.R_SPECIFIC_CO2 * Math.max(10, tempK)));
+    // CO2 gas thermal conductivity ~ 0.015 W/(m K) at 210K
+    const kGas = 0.015 * Math.pow(tempK / 273.15, 0.8);
+    const alpha = kGas / (rho * cp);
+
+    return parseFloat(alpha.toExponential(4));
+  }
+
+  /**
+   * Calculate atmospheric CO2 vapor supersaturation ratio and frost status.
+   * S = P / P_sat(T)
+   * @param {number} tempK - Air temperature in Kelvin
+   * @param {number} pressurePa - Ambient atmospheric pressure in Pa
+   * @returns {{supersaturationRatio: number, isCondensing: boolean, satPressurePa: number}}
+   */
+  static computeCO2CondensationFlux(tempK, pressurePa) {
+    const T = Math.max(50, tempK);
+    // Clausius-Clapeyron: P_sat = 1.055e12 * exp(-3148 / T)
+    const pSat = 1.055e12 * Math.exp(-3148.0 / T);
+    const S = pressurePa / Math.max(1e-6, pSat);
+
+    return {
+      supersaturationRatio: parseFloat(S.toFixed(3)),
+      isCondensing: S >= 1.0,
+      satPressurePa: parseFloat(pSat.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate Stokes-Cunningham terminal sedimentation settling velocity for dust grains in Mars atmosphere.
+   * v_term = (2 * rho_p * r^2 * g / (9 * mu)) * (1 + 1.257 * Kn)
+   * @param {number} [effectiveRadiusMicrons=1.5] - Particle radius in µm
+   * @param {number} [tempK=210.0] - Temperature in Kelvin
+   * @param {number} [pressurePa=610.0] - Pressure in Pa
+   * @param {number} [particleDensityKgM3=2500.0] - Mineral grain density in kg/m^3
+   * @returns {{settlingVelocityMmS: number, knudsenNumber: number}}
+   */
+  static computeDustDepositionVelocity(effectiveRadiusMicrons = 1.5, tempK = 210.0, pressurePa = 610.0, particleDensityKgM3 = 2500.0) {
+    const rM = effectiveRadiusMicrons * 1e-6;
+    const mu = this.computeDynamicViscosity(tempK);
+    const lambda = this.computeMeanFreePath(pressurePa, tempK);
+    const Kn = lambda / Math.max(1e-9, rM); // Knudsen number
+
+    // Cunningham slip correction factor
+    const cunninghamFactor = 1.0 + 1.257 * Kn;
+
+    // Stokes settling velocity
+    const vStokes = (2.0 * particleDensityKgM3 * rM * rM * this.G_MARS) / (9.0 * mu);
+    const vTerm = vStokes * cunninghamFactor; // m/s
+    const vMmS = vTerm * 1000.0; // mm/s
+
+    return {
+      settlingVelocityMmS: parseFloat(vMmS.toFixed(3)),
+      knudsenNumber: parseFloat(Kn.toFixed(2))
+    };
+  }
 }
+
 
 
 

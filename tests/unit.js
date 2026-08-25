@@ -2854,6 +2854,30 @@ describe('Stereographic Point Scale, Parallel Length & Conic Constant (Projectio
     });
 });
 
+describe('Atmospheric Thermal Diffusivity, CO2 Condensation & Dust Settling (MCDEngine)', () => {
+    it('should calculate atmospheric CO2 thermal diffusivity and condensation flux', () => {
+        // Near-surface 210 K, 610 Pa atmosphere
+        const alpha = MCDEngine.computeAtmosphericThermalDiffusivity(210.0, 610.0);
+        expect(alpha).to.be.greaterThan(0);
+
+        // At 140 K and 610 Pa: P_sat < 610 Pa -> S > 1.0 (supersaturated, CO2 ice clouds form)
+        const cond = MCDEngine.computeCO2CondensationFlux(140.0, 610.0);
+        expect(cond.isCondensing).to.equal(true);
+        expect(cond.supersaturationRatio).to.be.greaterThan(1.0);
+
+        // At 210 K and 610 Pa: P_sat >> 610 Pa -> S << 1.0 (vapor stable)
+        const warm = MCDEngine.computeCO2CondensationFlux(210.0, 610.0);
+        expect(warm.isCondensing).to.equal(false);
+    });
+
+    it('should compute Stokes-Cunningham terminal dust sedimentation velocity', () => {
+        // Standard 1.5 µm radius Martian dust grain at 610 Pa -> terminal velocity on order of mm/s
+        const settling = MCDEngine.computeDustDepositionVelocity(1.5, 210.0, 610.0, 2500.0);
+        expect(settling.settlingVelocityMmS).to.be.greaterThan(0.1);
+        expect(settling.knudsenNumber).to.be.greaterThan(1.0); // Rarefied slip-flow regime on Mars
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
