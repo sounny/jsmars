@@ -3209,6 +3209,27 @@ describe('Radar Fringe Resonance, Basal Loss & Radar Equation (RadarSounderEngin
     });
 });
 
+describe('Mg-Carbonate Doublet, Ferrous Iron & Contrast Stretch (BandMathEngine)', () => {
+    it('should compute CRISM Mg-carbonate doublet index (MIN2295_2480)', () => {
+        const carb = BandMathEngine.computeCRISMMgCarbonateIndex({ B2140: 0.30, B2295: 0.22, B2480: 0.21, B2530: 0.29 });
+        expect(carb.min2295_2480).to.be.greaterThan(0.10);
+        expect(carb.isCarbonateConfirmed).to.equal(true);
+    });
+
+    it('should calculate broad 1 µm ferrous iron index and 2%-98% contrast stretch', () => {
+        // Unweathered basalt with strong 1 µm Fe2+ absorption
+        const fe2 = BandMathEngine.computeFerrousIronIndex({ B800: 0.26, B1000: 0.18, B1300: 0.28 });
+        expect(fe2.bd1000).to.be.greaterThan(0.15);
+        expect(fe2.ferrousAbundance).to.include('High Primary Fe2+');
+
+        // Linear stretch test
+        const vals = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+        const stretch = BandMathEngine.computeSpectralContrastStretch(vals, 10, 90);
+        expect(stretch.minStretch).to.be.lessThan(stretch.maxStretch);
+        expect(stretch.dynamicRange).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -821,7 +821,85 @@ export class BandMathEngine {
       skewDirection: skew
     };
   }
+
+  // --- Mg-Carbonate Doublet, Ferrous Iron & Percentile Stretch Solvers ---
+
+  /**
+   * Calculate CRISM diagnostic Mg-Carbonate doublet parameter (MIN2295_2480).
+   * @param {object} bands - Map of band reflectances (B2140, B2295, B2480, B2530)
+   * @returns {{min2295_2480: number, isCarbonateConfirmed: boolean}}
+   */
+  static computeCRISMMgCarbonateIndex(bands = {}) {
+    const b2140 = bands.B2140 ?? 0.28;
+    const b2295 = bands.B2295 ?? 0.22;
+    const b2480 = bands.B2480 ?? 0.21;
+    const b2530 = bands.B2530 ?? 0.27;
+
+    const denom = b2140 + b2530;
+    const numer = b2295 + b2480;
+    const val = denom > 0 ? 1.0 - (numer / denom) : 0;
+
+    return {
+      min2295_2480: parseFloat(Math.max(0, val).toFixed(4)),
+      isCarbonateConfirmed: val > 0.05
+    };
+  }
+
+  /**
+   * Calculate broad 1 µm Ferrous Iron (Fe2+) crystal field band depth (BD1000).
+   * @param {object} bands - Map of band reflectances (B800, B1000, B1300)
+   * @returns {{bd1000: number, ferrousAbundance: string}}
+   */
+  static computeFerrousIronIndex(bands = {}) {
+    const b800 = bands.B800 ?? 0.24;
+    const b1000 = bands.B1000 ?? 0.18;
+    const b1300 = bands.B1300 ?? 0.26;
+
+    const cont = 0.5 * (b800 + b1300);
+    const depth = cont > 0 ? 1.0 - (b1000 / cont) : 0;
+
+    let abundance = 'Low / Heavily Weathered Dust';
+    if (depth > 0.15) {
+      abundance = 'High Primary Fe2+ (Fresh Basalt / Olivine / Pyroxene)';
+    } else if (depth > 0.06) {
+      abundance = 'Moderate Fe2+ Silicate Bearing';
+    }
+
+    return {
+      bd1000: parseFloat(Math.max(0, depth).toFixed(4)),
+      ferrousAbundance: abundance
+    };
+  }
+
+  /**
+   * Calculate 2% - 98% cumulative percentile linear contrast stretch limits for RGB compositing.
+   * @param {Array<number>} bandValues - Array of numeric pixel/reflectance values
+   * @param {number} [pLow=2.0] - Lower percentile (e.g. 2.0%)
+   * @param {number} [pHigh=98.0] - Upper percentile (e.g. 98.0%)
+   * @returns {{minStretch: number, maxStretch: number, dynamicRange: number}}
+   */
+  static computeSpectralContrastStretch(bandValues = [], pLow = 2.0, pHigh = 98.0) {
+    if (bandValues.length === 0) {
+      return { minStretch: 0, maxStretch: 1, dynamicRange: 1 };
+    }
+
+    const sorted = [...bandValues].sort((a, b) => a - b);
+    const n = sorted.length;
+
+    const idxLow = Math.min(n - 1, Math.max(0, Math.floor((pLow / 100.0) * n)));
+    const idxHigh = Math.min(n - 1, Math.max(0, Math.floor((pHigh / 100.0) * n)));
+
+    const minVal = sorted[idxLow];
+    const maxVal = sorted[idxHigh];
+
+    return {
+      minStretch: parseFloat(minVal.toFixed(4)),
+      maxStretch: parseFloat(maxVal.toFixed(4)),
+      dynamicRange: parseFloat((maxVal - minVal).toFixed(4))
+    };
+  }
 }
+
 
 
 
