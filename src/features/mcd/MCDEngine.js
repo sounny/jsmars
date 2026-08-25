@@ -271,7 +271,85 @@ export class MCDEngine {
     const denom = cosTheta + 0.50572 * Math.pow(96.07995 - theta, -1.6364);
     return parseFloat((1.0 / denom).toFixed(3));
   }
+
+  // --- Planetary Boundary Layer (PBL), Ångström Dust & Static Stability ---
+
+  /**
+   * Calculate daytime convective Planetary Boundary Layer (PBL) height on Mars.
+   * On Mars, the deep convective PBL grows up to 6 - 10 km during intense midday heating.
+   * @param {number} sensibleHeatFluxW_M2 - Surface sensible heat flux (e.g. 20 W/m^2)
+   * @param {number} [surfaceTempK=220] - Surface temperature in Kelvin
+   * @param {number} [surfaceDensityKgM3=0.015] - Atmospheric surface density in kg/m^3
+   * @returns {{pblHeightMeters: number, pblHeightKm: number, convectiveVelocityMs: number}}
+   */
+  static computePBLHeight(sensibleHeatFluxW_M2, surfaceTempK = 220, surfaceDensityKgM3 = 0.015) {
+    const cp = 800.0; // J/(kg K)
+    const g = MCDEngine.G_MARS;
+    const flux = Math.max(0.1, sensibleHeatFluxW_M2);
+    const rho = Math.max(1e-4, surfaceDensityKgM3);
+    const T0 = Math.max(100, surfaceTempK);
+
+    // Buoyancy flux B0 = (g / T0) * (H_sens / (rho * cp))
+    const B0 = (g / T0) * (flux / (rho * cp));
+
+    // Convective PBL height scaling: z_i ~ sqrt(2 * B0 * t_heating / gamma_theta)
+    // Over a 6-hour midday heating sol duration (21600 s), with lapse deficit gamma ~ 0.003 K/m
+    const tHeating = 21600.0;
+    const gammaTheta = 0.003;
+    const ziMeters = Math.sqrt((2.0 * B0 * tHeating) / gammaTheta);
+    const clampedZi = Math.max(500, Math.min(12000, ziMeters));
+
+    // Deardorff convective velocity scale w* = (B0 * z_i)^(1/3)
+    const wStar = Math.pow(B0 * clampedZi, 1.0 / 3.0);
+
+    return {
+      pblHeightMeters: parseFloat(clampedZi.toFixed(1)),
+      pblHeightKm: parseFloat((clampedZi / 1000.0).toFixed(2)),
+      convectiveVelocityMs: parseFloat(wStar.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate wavelength-dependent dust optical depth using Ångström power-law exponent.
+   * tau(lambda) = tau_ref * (lambda_ref / lambda)^alpha
+   * @param {number} tauVisible - Reference visible optical depth (at 0.67 µm)
+   * @param {number} targetWavelengthMicrons - Target observation wavelength in µm (e.g. 9.3 µm for thermal IR or 15 µm)
+   * @param {number} [angstromAlpha=0.5] - Ångström exponent for Martian mineral dust (~0.5 - 0.9)
+   * @returns {number} Extinction optical depth at target wavelength
+   */
+  static computeWavelengthDependentDustTau(tauVisible, targetWavelengthMicrons, angstromAlpha = 0.5) {
+    const lambdaRef = 0.67; // µm (visible)
+    const lambda = Math.max(0.1, targetWavelengthMicrons);
+    const tau = tauVisible * Math.pow(lambdaRef / lambda, angstromAlpha);
+    return parseFloat(tau.toFixed(4));
+  }
+
+  /**
+   * Compute atmospheric Brunt-Väisälä buoyancy frequency (N) and static stability.
+   * N^2 = (g / theta) * (d_theta / dz)
+   * @param {number} potentialTempK - Layer potential temperature in Kelvin
+   * @param {number} dThetaDzKPerM - Vertical potential temperature gradient (K/m)
+   * @returns {{frequencyRadS: number, periodSeconds: number, isStable: boolean}}
+   */
+  static computeBruntVaisalaFrequency(potentialTempK, dThetaDzKPerM) {
+    const theta = Math.max(50, potentialTempK);
+    const N2 = (MCDEngine.G_MARS / theta) * dThetaDzKPerM;
+
+    if (N2 <= 0) {
+      return { frequencyRadS: 0, periodSeconds: Infinity, isStable: false };
+    }
+
+    const N = Math.sqrt(N2);
+    const period = (2.0 * Math.PI) / N;
+
+    return {
+      frequencyRadS: parseFloat(N.toFixed(5)),
+      periodSeconds: parseFloat(period.toFixed(1)),
+      isStable: true
+    };
+  }
 }
+
 
 
 

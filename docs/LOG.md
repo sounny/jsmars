@@ -189,3 +189,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate great-circle intersections and rhumb line distances
 ?: AssertionError: expected 180 to be close to 0 +/- 0.01
     at n.<anonymous> (unit.js:2172:33)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 09:15:29 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate convective PBL height and Deardorff velocity scale
+?: AssertionError: expected 0.64 to be above 4
+    at n.<anonymous> (unit.js:2209:39)

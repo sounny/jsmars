@@ -2202,6 +2202,29 @@ describe('CO2 Sublimation Latent Heat & Subsurface Thermal Wave Damping (KRCEngi
     });
 });
 
+describe('Planetary Boundary Layer (PBL) & Static Stability (MCDEngine)', () => {
+    it('should calculate convective PBL height and Deardorff velocity scale', () => {
+        // Sensible heat flux H = 20 W/m^2 at surface T = 220 K, rho = 0.015 kg/m^3
+        const pbl = MCDEngine.computePBLHeight(20.0, 220, 0.015);
+        expect(pbl.pblHeightKm).to.be.greaterThan(0.5);
+        expect(pbl.pblHeightKm).to.be.lessThan(5.0);
+        expect(pbl.convectiveVelocityMs).to.be.greaterThan(1.5);
+    });
+
+    it('should compute wavelength-dependent dust optical depth and Brunt-Väisälä stability', () => {
+        // Visible tau = 0.5 at 0.67 µm -> Thermal IR tau at 9.3 µm (alpha = 0.5)
+        const tauIR = MCDEngine.computeWavelengthDependentDustTau(0.5, 9.3, 0.5);
+        expect(tauIR).to.be.closeTo(0.134, 0.02);
+
+        // Stably stratified layer: potential temp = 200 K, dTheta/dz = +0.003 K/m
+        const bv = MCDEngine.computeBruntVaisalaFrequency(200.0, 0.003);
+        expect(bv.isStable).to.be.true;
+        expect(bv.frequencyRadS).to.be.greaterThan(0.005);
+        expect(bv.frequencyRadS).to.be.lessThan(0.015);
+        expect(bv.periodSeconds).to.be.greaterThan(500);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
