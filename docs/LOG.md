@@ -217,3 +217,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate ionospheric dispersion delay and cumulative multi-layer TWT
 ?: AssertionError: expected 3.3607 to be close to 0.336 +/- 0.01
     at n.<anonymous> (unit.js:2358:42)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 11:00:32 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute upper convex hull continuum and Pearson spectral correlation
+?: AssertionError: expected 0.25 to be above 0.25
+    at n.<anonymous> (unit.js:2424:31)

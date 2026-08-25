@@ -2398,6 +2398,39 @@ describe('Gehrels Poisson Confidence Limits & Buffered Counting Areas (CSFDEngin
     });
 });
 
+describe('CRISM Summary Parameters, Convex Hull & Spectral Correlation (BandMathEngine)', () => {
+    it('should compute CRISM mineralogical summary parameters and indices', () => {
+        const bands = {
+            B1080: 0.25,
+            B1500: 0.28,
+            B1815: 0.26,
+            B1930: 0.20, // 20% absorption dip at 1.93 µm
+            B2130: 0.25,
+            B2210: 0.22, // Al-OH dip
+            B2290: 0.25,
+            B2530: 0.20
+        };
+        const params = BandMathEngine.computeCRISMSummaryParameters(bands);
+        expect(params.bd1900_2).to.be.greaterThan(0.15);
+        expect(params.bd2210_2).to.be.greaterThan(0.05);
+        expect(params.islope).to.be.greaterThan(0);
+    });
+
+    it('should compute upper convex hull continuum and Pearson spectral correlation', () => {
+        const wavelengths = [1.0, 1.5, 1.9, 2.2, 2.5];
+        const spectrum = [0.30, 0.35, 0.25, 0.32, 0.30];
+        const hull = BandMathEngine.computeConvexHullContinuum(wavelengths, spectrum);
+        expect(hull.length).to.equal(5);
+        expect(hull[2]).to.be.greaterThan(spectrum[2]); // Continuum above dip
+
+        // Perfectly correlated spectra
+        const specA = [0.1, 0.2, 0.3, 0.4];
+        const specB = [0.2, 0.4, 0.6, 0.8];
+        const r = BandMathEngine.computeSpectralCorrelation(specA, specB);
+        expect(r).to.equal(1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -528,7 +528,132 @@ export class BandMathEngine {
       bandCenterWavelength: minWavelength
     };
   }
+
+  // --- CRISM Summary Parameters, Convex Hull & Pearson Correlation Solvers ---
+
+  /**
+   * Calculate standard Viviano-Beck et al. (2014) CRISM mineralogical summary parameters.
+   * @param {object} bands - Map of band IDs (e.g. B1080, B1500, B1930, B2210, B2290, B2530)
+   * @returns {{bd1900_2: number, bd2210_2: number, bd2290: number, islope: number, lcpindex: number, hcpindex: number}}
+   */
+  static computeCRISMSummaryParameters(bands = {}) {
+    const b1080 = bands.B1080 ?? 0.25;
+    const b1500 = bands.B1500 ?? 0.28;
+    const b1815 = bands.B1815 ?? 0.27;
+    const b1930 = bands.B1930 ?? 0.23;
+    const b2130 = bands.B2130 ?? 0.26;
+    const b2210 = bands.B2210 ?? 0.24;
+    const b2290 = bands.B2290 ?? 0.25;
+    const b2530 = bands.B2530 ?? 0.22;
+
+    // BD1900_2: 1.93 µm H2O absorption
+    const cont1900 = 0.5 * (b1815 + b2130);
+    const bd1900_2 = cont1900 > 0 ? 1.0 - (b1930 / cont1900) : 0;
+
+    // BD2210_2: 2.21 µm Al-OH (kaolinite/montmorillonite)
+    const cont2210 = 0.5 * (b2130 + b2290);
+    const bd2210_2 = cont2210 > 0 ? 1.0 - (b2210 / cont2210) : 0;
+
+    // BD2290: 2.29 µm Fe/Mg-OH (nontronite/saponite)
+    const cont2290 = 0.5 * (b2210 + b2530);
+    const bd2290 = cont2290 > 0 ? 1.0 - (b2290 / cont2290) : 0;
+
+    // Spectral slope parameter ISLOPE
+    const islope = (b1815 - b2530) / (2.53 - 1.815);
+
+    // LCP vs HCP pyroxene indices
+    const lcpindex = (b1815 - b1930) / (b1815 + b1930);
+    const hcpindex = (b2130 - b2210) / (b2130 + b2210);
+
+    return {
+      bd1900_2: parseFloat(Math.max(0, bd1900_2).toFixed(4)),
+      bd2210_2: parseFloat(Math.max(0, bd2210_2).toFixed(4)),
+      bd2290: parseFloat(Math.max(0, bd2290).toFixed(4)),
+      islope: parseFloat(islope.toFixed(4)),
+      lcpindex: parseFloat(lcpindex.toFixed(4)),
+      hcpindex: parseFloat(hcpindex.toFixed(4))
+    };
+  }
+
+  /**
+   * Compute multi-point upper convex hull continuum for full hyperspectral reflectance curves.
+   * @param {Array<number>} wavelengths - Array of spectral band wavelengths in µm
+   * @param {Array<number>} spectrum - Measured reflectance values
+   * @returns {Array<number>} Upper convex hull continuum values matching input bands
+   */
+  static computeConvexHullContinuum(wavelengths = [], spectrum = []) {
+    const n = Math.min(wavelengths.length, spectrum.length);
+    if (n < 2) return [...spectrum];
+
+    // Upper convex hull (Monotone Chain)
+    const hull = [];
+    for (let i = 0; i < n; i++) {
+      const p3 = [wavelengths[i], spectrum[i]];
+      while (hull.length >= 2) {
+        const p1 = hull[hull.length - 2];
+        const p2 = hull[hull.length - 1];
+        // Cross product of (p2 - p1) and (p3 - p1)
+        const cross = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0]);
+        if (cross <= 0) break; // Clockwise turn (valid upper hull vertex)
+        hull.pop();
+      }
+      hull.push(p3);
+    }
+
+    // Interpolate hull linearly across all original wavelength samples
+    const continuum = new Array(n);
+    let hullIdx = 0;
+
+    for (let i = 0; i < n; i++) {
+      const w = wavelengths[i];
+      while (hullIdx < hull.length - 2 && hull[hullIdx + 1][0] < w) {
+        hullIdx++;
+      }
+      const pA = hull[hullIdx];
+      const pB = hull[Math.min(hull.length - 1, hullIdx + 1)];
+
+      const span = pB[0] - pA[0];
+      const frac = span > 0 ? (w - pA[0]) / span : 0;
+      const val = pA[1] + frac * (pB[1] - pA[1]);
+
+      continuum[i] = parseFloat(Math.max(spectrum[i], val).toFixed(4));
+    }
+
+    return continuum;
+  }
+
+  /**
+   * Compute Pearson spectral correlation coefficient r between two spectral profiles.
+   * @param {Array<number>} spectrumA
+   * @param {Array<number>} spectrumB
+   * @returns {number} Pearson r (-1.0 to +1.0)
+   */
+  static computeSpectralCorrelation(spectrumA = [], spectrumB = []) {
+    const n = Math.min(spectrumA.length, spectrumB.length);
+    if (n < 2) return 1.0;
+
+    const meanA = spectrumA.slice(0, n).reduce((a, b) => a + b, 0) / n;
+    const meanB = spectrumB.slice(0, n).reduce((a, b) => a + b, 0) / n;
+
+    let num = 0;
+    let denA = 0;
+    let denB = 0;
+
+    for (let i = 0; i < n; i++) {
+      const da = spectrumA[i] - meanA;
+      const db = spectrumB[i] - meanB;
+      num += da * db;
+      denA += da * da;
+      denB += db * db;
+    }
+
+    const denom = Math.sqrt(denA * denB);
+    const r = denom > 0 ? num / denom : 1.0;
+
+    return parseFloat(Math.max(-1.0, Math.min(1.0, r)).toFixed(4));
+  }
 }
+
 
 
 
