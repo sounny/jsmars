@@ -954,7 +954,107 @@ export class ProjectionManager {
       maxShearDeg: parseFloat((shearDeg * 2.0).toFixed(2))
     };
   }
+
+  // --- Lambert Conformal Conic (LCC) Forward, Inverse & Point Scale Solvers ---
+
+  /**
+   * Forward Lambert Conformal Conic (LCC) secant projection (Snyder 1987).
+   * @param {number} lat - Latitude in degrees
+   * @param {number} lon - Longitude in degrees
+   * @param {number} [lat1=20.0] - First standard parallel in degrees
+   * @param {number} [lat2=60.0] - Second standard parallel in degrees
+   * @param {number} [lon0=0] - Central meridian in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{x: number, y: number, scaleFactor: number}} Projected coordinates in km
+   */
+  static forwardLambertConformalConic(lat, lon, lat1 = 20.0, lat2 = 60.0, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = lat * Math.PI / 180.0;
+    const phi1 = lat1 * Math.PI / 180.0;
+    const phi2 = lat2 * Math.PI / 180.0;
+    const dLam = to180(lon - lon0) * Math.PI / 180.0;
+
+    const t = (p) => Math.tan(Math.PI / 4.0 - p / 2.0);
+    const m = (p) => Math.cos(p);
+
+    const t1 = t(phi1);
+    const t2 = t(phi2);
+    const m1 = m(phi1);
+    const m2 = m(phi2);
+
+    const n = Math.log(m1 / m2) / Math.log(t1 / t2);
+    const F = m1 / (n * Math.pow(t1, n));
+
+    const t_phi = t(phi);
+    const rho = R * F * Math.pow(t_phi, n);
+    const rho0 = R * F * Math.pow(t(0), n); // Origin at equator
+
+    const theta = n * dLam;
+    const x = rho * Math.sin(theta);
+    const y = rho0 - rho * Math.cos(theta);
+
+    const k = (rho * n) / (R * Math.max(1e-6, Math.cos(phi)));
+
+    return {
+      x: parseFloat(x.toFixed(3)),
+      y: parseFloat(y.toFixed(3)),
+      scaleFactor: parseFloat(k.toFixed(4))
+    };
+  }
+
+  /**
+   * Inverse Lambert Conformal Conic (LCC) projection.
+   * @param {number} x - Projected X in km
+   * @param {number} y - Projected Y in km
+   * @param {number} [lat1=20.0] - Standard parallel 1
+   * @param {number} [lat2=60.0] - Standard parallel 2
+   * @param {number} [lon0=0] - Central meridian
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{lat: number, lon: number}} Unprojected latitude and longitude in degrees
+   */
+  static inverseLambertConformalConic(x, y, lat1 = 20.0, lat2 = 60.0, lon0 = 0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi1 = lat1 * Math.PI / 180.0;
+    const phi2 = lat2 * Math.PI / 180.0;
+
+    const t = (p) => Math.tan(Math.PI / 4.0 - p / 2.0);
+    const m = (p) => Math.cos(p);
+
+    const t1 = t(phi1);
+    const t2 = t(phi2);
+    const m1 = m(phi1);
+    const m2 = m(phi2);
+
+    const n = Math.log(m1 / m2) / Math.log(t1 / t2);
+    const F = m1 / (n * Math.pow(t1, n));
+    const rho0 = R * F * Math.pow(t(0), n);
+
+    const rho = Math.sign(n) * Math.hypot(x, rho0 - y);
+    const theta = Math.atan2(Math.sign(n) * x, Math.sign(n) * (rho0 - y));
+
+    const t_val = Math.pow(rho / (R * F), 1.0 / n);
+    const phi = Math.PI / 2.0 - 2.0 * Math.atan(t_val);
+    const dLam = theta / n;
+
+    return {
+      lat: parseFloat((phi * 180.0 / Math.PI).toFixed(4)),
+      lon: parseFloat(to180(lon0 + dLam * 180.0 / Math.PI).toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate exact conformal point scale factor for Lambert Conformal Conic.
+   * @param {number} latDeg - Point latitude in degrees
+   * @param {number} [lat1Deg=20.0] - Standard parallel 1
+   * @param {number} [lat2Deg=60.0] - Standard parallel 2
+   * @returns {number} Scale factor (1.0 at standard parallels)
+   */
+  static computeLCCScaleFactor(latDeg, lat1Deg = 20.0, lat2Deg = 60.0) {
+    const res = this.forwardLambertConformalConic(latDeg, 0, lat1Deg, lat2Deg, 0, 'mars');
+    return res.scaleFactor;
+  }
 }
+
 
 
 

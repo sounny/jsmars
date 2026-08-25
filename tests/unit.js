@@ -3601,6 +3601,28 @@ describe('Aspect Ratio, Polyline Length & Rhumb Loxodrome (MeasureTool)', () => 
     });
 });
 
+describe('Lambert Conformal Conic (LCC) & Scale (ProjectionManager)', () => {
+    it('should compute forward and inverse Lambert Conformal Conic projection coordinates', () => {
+        // Forward LCC projection of Gale Crater area (lat = 30°N, lon = 45°E) with parallels 20°N & 60°N
+        const fwd = ProjectionManager.forwardLambertConformalConic(30.0, 45.0, 20.0, 60.0, 0.0, 'mars');
+        expect(fwd.x).to.be.greaterThan(0);
+        expect(fwd.scaleFactor).to.be.closeTo(1.0, 0.05);
+
+        // Inverse LCC projection recovery
+        const inv = ProjectionManager.inverseLambertConformalConic(fwd.x, fwd.y, 20.0, 60.0, 0.0, 'mars');
+        expect(inv.lat).to.be.closeTo(30.0, 0.01);
+        expect(inv.lon).to.be.closeTo(45.0, 0.01);
+    });
+
+    it('should verify exact unit scale factor at LCC standard parallels', () => {
+        // Scale factor must equal 1.0000 at both 20° and 60° standard parallels
+        const k1 = ProjectionManager.computeLCCScaleFactor(20.0, 20.0, 60.0);
+        const k2 = ProjectionManager.computeLCCScaleFactor(60.0, 20.0, 60.0);
+        expect(k1).to.be.closeTo(1.0, 0.001);
+        expect(k2).to.be.closeTo(1.0, 0.001);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
