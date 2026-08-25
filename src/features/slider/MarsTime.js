@@ -658,7 +658,91 @@ export class MarsTime {
       angularDiameterArcmin: parseFloat(angArcmin.toFixed(2))
     };
   }
+
+  // --- Aerocentric Subsolar Coordinates, Earth-Mars Distance & Darian Calendar Solvers ---
+
+  /**
+   * Calculate aerocentric celestial right ascension and declination of the Sun.
+   * alpha_sun = atan2(cos(eps) * sin(Ls), cos(Ls)), delta_sun = asin(sin(eps) * sin(Ls))
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @returns {{rightAscensionDeg: number, declinationDeg: number, rightAscensionHours: number}}
+   */
+  static computeAerocentricSubsolarCoordinates(Ls) {
+    const epsRad = this.OBLIQUITY * Math.PI / 180.0;
+    const LsRad = (Ls % 360.0) * Math.PI / 180.0;
+
+    const y = Math.cos(epsRad) * Math.sin(LsRad);
+    const x = Math.cos(LsRad);
+    let raDeg = Math.atan2(y, x) * 180.0 / Math.PI;
+    if (raDeg < 0) raDeg += 360.0;
+
+    const decRad = Math.asin(Math.sin(epsRad) * Math.sin(LsRad));
+    const decDeg = decRad * 180.0 / Math.PI;
+
+    return {
+      rightAscensionDeg: parseFloat(raDeg.toFixed(3)),
+      declinationDeg: parseFloat(decDeg.toFixed(3)),
+      rightAscensionHours: parseFloat((raDeg / 15.0).toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate Earth-Mars heliocentric distance and communication One-Way Light Time (OWLT).
+   * d = sqrt(r_earth^2 + r_mars^2 - 2 * r_earth * r_mars * cos(delta_lambda))
+   * @param {number} earthHelioLonDeg - Earth heliocentric longitude (0-360)
+   * @param {number} marsLsDeg - Mars Solar Longitude Ls (0-360)
+   * @returns {{distanceKm: number, distanceAU: number, oneWayLightTimeMinutes: number, oneWayLightTimeSeconds: number}}
+   */
+  static computeEarthMarsDistanceAndOWLT(earthHelioLonDeg, marsLsDeg) {
+    const cKmS = 299792.458; // speed of light in km/s
+    const rEarthKm = 149597870.7; // ~ 1 AU
+    const fluxRes = this.computeInstantaneousSolarFlux(marsLsDeg);
+    const rMarsKm = fluxRes.distanceKm;
+
+    const dLamRad = (earthHelioLonDeg - marsLsDeg) * Math.PI / 180.0;
+    const dKm = Math.sqrt(
+      rEarthKm * rEarthKm + rMarsKm * rMarsKm - 2.0 * rEarthKm * rMarsKm * Math.cos(dLamRad)
+    );
+    const dAU = dKm / rEarthKm;
+
+    const owltSec = dKm / cKmS;
+    const owltMin = owltSec / 60.0;
+
+    return {
+      distanceKm: parseFloat(dKm.toFixed(0)),
+      distanceAU: parseFloat(dAU.toFixed(4)),
+      oneWayLightTimeMinutes: parseFloat(owltMin.toFixed(2)),
+      oneWayLightTimeSeconds: parseFloat(owltSec.toFixed(1))
+    };
+  }
+
+  /**
+   * Determine Darian Mars calendar month and sol interval from Solar Longitude (Ls).
+   * The Darian calendar divides the 668-sol Martian year into 24 months of 27-28 sols each.
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @returns {{monthNumber: number, monthName: string, quarter: string}}
+   */
+  static computeDarianMonth(Ls) {
+    const DARIAN_MONTHS = [
+      'Sagittarius', 'Dhanus', 'Capricornus', 'Makara', 'Aquarius', 'Kumbha',
+      'Pisces', 'Mina', 'Aries', 'Mesha', 'Taurus', 'Rishabha',
+      'Gemini', 'Mithuna', 'Cancer', 'Karka', 'Leo', 'Simha',
+      'Virgo', 'Kanya', 'Libra', 'Tula', 'Scorpius', 'Vrishika'
+    ];
+
+    const safeLs = ((Ls % 360.0) + 360.0) % 360.0;
+    const monthIdx = Math.min(23, Math.floor(safeLs / 15.0));
+    const quarterIdx = Math.floor(monthIdx / 6);
+    const quarters = ['Spring', 'Summer', 'Autumn', 'Winter'];
+
+    return {
+      monthNumber: monthIdx + 1,
+      monthName: DARIAN_MONTHS[monthIdx],
+      quarter: quarters[quarterIdx]
+    };
+  }
 }
+
 
 
 

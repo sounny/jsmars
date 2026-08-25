@@ -3166,6 +3166,28 @@ describe('IR Window Transmission, Frost Recession & Phase Velocity (KRCEngine)',
     });
 });
 
+describe('Aerocentric Coordinates, OWLT & Darian Calendar (MarsTime)', () => {
+    it('should compute aerocentric subsolar right ascension and declination', () => {
+        // Northern summer solstice (Ls = 90 deg) -> max declination +25.19 deg
+        const sub90 = MarsTime.computeAerocentricSubsolarCoordinates(90.0);
+        expect(sub90.declinationDeg).to.be.closeTo(25.19, 0.1);
+        expect(sub90.rightAscensionDeg).to.be.closeTo(90.0, 1.0);
+    });
+
+    it('should calculate Earth-Mars communication light time and Darian calendar month', () => {
+        // Conjunction alignment (180 deg opposition) -> max distance ~ 2.5 AU, OWLT ~ 20 min
+        const owlt = MarsTime.computeEarthMarsDistanceAndOWLT(0.0, 180.0);
+        expect(owlt.oneWayLightTimeMinutes).to.be.greaterThan(10.0);
+        expect(owlt.distanceKm).to.be.greaterThan(2e8);
+
+        // Ls = 0 deg is month 1 (Sagittarius in Darian calendar)
+        const darian = MarsTime.computeDarianMonth(0.0);
+        expect(darian.monthNumber).to.equal(1);
+        expect(darian.monthName).to.equal('Sagittarius');
+        expect(darian.quarter).to.equal('Spring');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
