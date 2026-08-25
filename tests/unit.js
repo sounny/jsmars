@@ -2493,6 +2493,34 @@ describe('Crustal Magnetic Remanence, Multi-Layer Geotherms & Optical Extinction
     });
 });
 
+describe('Geodetic Midpoints, Polyline Resampling & Polygon Circularity (MeasureTool)', () => {
+    it('should compute exact spherical geodetic midpoint', () => {
+        // Between (0, 0) and (0, 90) -> midpoint should be (0, 45)
+        const mid = MeasureTool.computeGeodeticMidpoint(0, 0, 0, 90);
+        expect(mid.lat).to.equal(0);
+        expect(mid.lon).to.equal(45.0);
+
+        // Between (0, 0) and (60, 0) -> midpoint should be (30, 0)
+        const mid2 = MeasureTool.computeGeodeticMidpoint(0, 0, 60, 0);
+        expect(mid2.lat).to.equal(30.0);
+        expect(mid2.lon).to.equal(0);
+    });
+
+    it('should equidistantly resample a polyline track and compute polygon circularity', () => {
+        // 1000 km straight equator track sampled every 100 km
+        const track = [[0, 0], [0, 20]];
+        const samples = MeasureTool.resamplePolylineEquidistant(track, 200, 'mars');
+        expect(samples.length).to.be.greaterThan(3);
+        expect(samples[0].distanceKm).to.equal(0);
+
+        // Square polygon circularity C = 4*pi*A / P^2 = 4*pi*1 / 16 = pi/4 ~ 0.785
+        const square = [[0, 0], [10, 0], [10, 10], [0, 10]];
+        const circ = MeasureTool.computePolygonCircularity(square, 'mars');
+        expect(circ.circularityQuotient).to.be.closeTo(0.785, 0.05);
+        expect(circ.perimeterKm).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

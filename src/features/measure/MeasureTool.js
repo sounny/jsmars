@@ -809,7 +809,108 @@ export class MeasureTool {
             constantBearingDeg: parseFloat(bearing.toFixed(1))
         };
     }
+
+    // --- Geodetic Midpoint, Equidistant Polyline Resampling & Circularity Solvers ---
+
+    /**
+     * Calculate exact spherical geodetic midpoint between two coordinates.
+     * @param {number} lat1 - Start latitude
+     * @param {number} lon1 - Start longitude
+     * @param {number} lat2 - End latitude
+     * @param {number} lon2 - End longitude
+     * @returns {{lat: number, lon: number}} Midpoint coordinate in degrees
+     */
+    static computeGeodeticMidpoint(lat1, lon1, lat2, lon2) {
+        const phi1 = lat1 * Math.PI / 180.0;
+        const lam1 = lon1 * Math.PI / 180.0;
+        const phi2 = lat2 * Math.PI / 180.0;
+        const dLam = (lon2 - lon1) * Math.PI / 180.0;
+
+        const Bx = Math.cos(phi2) * Math.cos(dLam);
+        const By = Math.cos(phi2) * Math.sin(dLam);
+
+        const phiM = Math.atan2(
+            Math.sin(phi1) + Math.sin(phi2),
+            Math.sqrt((Math.cos(phi1) + Bx) * (Math.cos(phi1) + Bx) + By * By)
+        );
+        let lamM = lam1 + Math.atan2(By, Math.cos(phi1) + Bx);
+
+        let lonDeg = lamM * 180.0 / Math.PI;
+        if (lonDeg < 0) lonDeg += 360.0;
+        if (lonDeg >= 360) lonDeg -= 360.0;
+
+        return {
+            lat: parseFloat((phiM * 180.0 / Math.PI).toFixed(4)),
+            lon: parseFloat(lonDeg.toFixed(4))
+        };
+    }
+
+    /**
+     * Resample a multi-segment geodetic path at uniform distance intervals for elevation profiling.
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Polyline vertices
+     * @param {number} [sampleIntervalKm=10] - Sampling step size in km
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {Array<{distanceKm: number, lat: number, lon: number}>} Equidistant sampled track
+     */
+    static resamplePolylineEquidistant(latlngs = [], sampleIntervalKm = 10, body = 'mars') {
+        const segs = this.computeSegmentMetrics(latlngs, body);
+        if (segs.length === 0) return [];
+
+        const totalDist = segs[segs.length - 1].cumulativeKm;
+        const step = Math.max(0.1, sampleIntervalKm);
+        const numSamples = Math.floor(totalDist / step);
+
+        const samples = [
+            { distanceKm: 0, lat: segs[0].from[0], lon: segs[0].from[1] }
+        ];
+
+        for (let i = 1; i <= numSamples; i++) {
+            const targetDist = i * step;
+            // Find enclosing segment
+            const seg = segs.find(s => s.cumulativeKm >= targetDist) || segs[segs.length - 1];
+            const segStartDist = seg.cumulativeKm - seg.distanceKm;
+            const frac = seg.distanceKm > 0 ? (targetDist - segStartDist) / seg.distanceKm : 0;
+
+            const wps = this.interpolateGreatCircleWaypoints(seg.from[0], seg.from[1], seg.to[0], seg.to[1], 100);
+            const wpIdx = Math.min(wps.length - 1, Math.round(frac * (wps.length - 1)));
+
+            samples.push({
+                distanceKm: parseFloat(targetDist.toFixed(2)),
+                lat: wps[wpIdx][0],
+                lon: wps[wpIdx][1]
+            });
+        }
+
+        return samples;
+    }
+
+    /**
+     * Compute polygon isoperimetric circularity quotient / compactness ratio.
+     * C = (4 * pi * Area) / Perimeter^2
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Polygon boundary vertices
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{circularityQuotient: number, perimeterKm: number, areaKm2: number}}
+     */
+    static computePolygonCircularity(latlngs = [], body = 'mars') {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length < 3) {
+            return { circularityQuotient: 0, perimeterKm: 0, areaKm2: 0 };
+        }
+
+        const areaRes = this.computeSphericalPolygonArea(coords, body);
+        const segs = this.computeSegmentMetrics([...coords, coords[0]], body);
+        const perimKm = segs.length > 0 ? segs[segs.length - 1].cumulativeKm : 0;
+
+        const c = perimKm > 0 ? (4.0 * Math.PI * areaRes.areaKm2) / (perimKm * perimKm) : 0;
+
+        return {
+            circularityQuotient: parseFloat(Math.min(1.0, c).toFixed(4)),
+            perimeterKm: parseFloat(perimKm.toFixed(3)),
+            areaKm2: areaRes.areaKm2
+        };
+    }
 }
+
 
 
 
