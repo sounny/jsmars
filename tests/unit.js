@@ -3378,6 +3378,29 @@ describe('Gnomonic Projection, TM Convergence & Sinusoidal Shear (ProjectionMana
     });
 });
 
+describe('Thermal Backflux, Pore Ice Conductivity & Diurnal Contrast (KRCEngine)', () => {
+    it('should calculate spectral downwelling IR backflux and pore ice conductivity enhancement', () => {
+        // Atmospheric backflux for 210 K air, dust optical depth tau = 0.3
+        const back = KRCEngine.computeAtmosphericThermalBackfluxSpectral(210.0, 0.3, 610.0);
+        expect(back.backfluxW_M2).to.be.greaterThan(10.0);
+        expect(back.effectiveIRemissivity).to.be.greaterThan(0.1);
+
+        // Dry matrix (0.05 W/mK) with 80% pore ice filling -> major enhancement
+        const ice = KRCEngine.computePoreIceThermalConductivity(0.05, 2.2, 0.35, 0.8);
+        expect(ice.effectiveConductivityW_MK).to.be.greaterThan(0.1);
+        expect(ice.enhancementRatio).to.be.greaterThan(2.0);
+    });
+
+    it('should estimate analytical peak-to-trough diurnal temperature amplitude contrast', () => {
+        // High thermal inertia bedrock (I = 800) vs low thermal inertia dust (I = 100)
+        const rock = KRCEngine.computeDiurnalThermalEmissionContrast(550.0, 0.25, 800.0);
+        const dust = KRCEngine.computeDiurnalThermalEmissionContrast(550.0, 0.25, 100.0);
+
+        expect(dust.diurnalAmplitudeK).to.be.greaterThan(rock.diurnalAmplitudeK * 5.0);
+        expect(rock.estimatedMaxTempK).to.be.lessThan(dust.estimatedMaxTempK);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

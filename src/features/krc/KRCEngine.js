@@ -658,7 +658,84 @@ export class KRCEngine {
       thermalWavelengthCm: parseFloat((lambdaM * 100.0).toFixed(2))
     };
   }
+
+  // --- Atmospheric Thermal Backflux, Pore Ice Conductivity & Emission Contrast Solvers ---
+
+  /**
+   * Calculate atmospheric thermal infrared downwelling backflux with dust spectral emission weighting.
+   * F_back = eps_atm * sigma * T_air^4 * (1 - exp(-tau_IR))
+   * @param {number} [airTempK=210.0] - Effective atmospheric temperature (K)
+   * @param {number} [dustTau=0.3] - Column dust optical depth
+   * @param {number} [surfacePressurePa=610.0] - Surface atmospheric pressure (Pa)
+   * @returns {{backfluxW_M2: number, effectiveIRemissivity: number}}
+   */
+  static computeAtmosphericThermalBackfluxSpectral(airTempK = 210.0, dustTau = 0.3, surfacePressurePa = 610.0) {
+    const tauIR = Math.max(0.01, dustTau * 0.35); // Thermal IR dust cross section ~ 0.35 of visible
+    const pRatio = Math.max(0, surfacePressurePa) / 610.0;
+    const epsGas = 0.08 * pRatio;
+    const epsDust = 1.0 - Math.exp(-tauIR);
+    const epsTotal = Math.min(1.0, epsGas + epsDust);
+
+    const flux = epsTotal * this.STEFAN_BOLTZMANN * Math.pow(Math.max(1, airTempK), 4);
+
+    return {
+      backfluxW_M2: parseFloat(flux.toFixed(2)),
+      effectiveIRemissivity: parseFloat(epsTotal.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate effective thermal conductivity of porous regolith with subsurface pore ice cementation.
+   * k_eff = k_matrix^(1 - phi) * k_pore^phi  (Woodside & Messmer geometric mean)
+   * @param {number} matrixConductivity - Dry matrix thermal conductivity in W/(m K) (e.g. 0.05)
+   * @param {number} [iceConductivity=2.2] - Pure water ice thermal conductivity in W/(m K)
+   * @param {number} [porosity=0.35] - Volumetric pore fraction (0.0 to 1.0)
+   * @param {number} [iceSaturation=0.8] - Pore space ice filling fraction (0.0 = dry, 1.0 = fully ice-cemented)
+   * @returns {{effectiveConductivityW_MK: number, enhancementRatio: number}}
+   */
+  static computePoreIceThermalConductivity(matrixConductivity, iceConductivity = 2.2, porosity = 0.35, iceSaturation = 0.8) {
+    const kMat = Math.max(1e-4, matrixConductivity);
+    const phi = Math.max(0, Math.min(0.9, porosity));
+    const sIce = Math.max(0, Math.min(1.0, iceSaturation));
+
+    // Pore filling thermal conductivity: mixture of gas (0.015) and ice (2.2)
+    const kPore = (1.0 - sIce) * 0.015 + sIce * Math.max(0.1, iceConductivity);
+
+    // Geometric mean model
+    const kEff = Math.pow(kMat, 1.0 - phi) * Math.pow(kPore, phi);
+    const ratio = kEff / kMat;
+
+    return {
+      effectiveConductivityW_MK: parseFloat(kEff.toFixed(4)),
+      enhancementRatio: parseFloat(ratio.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate analytical peak-to-trough diurnal surface temperature amplitude contrast.
+   * Delta_T = (2 * (1 - A) * S0) / (sqrt(pi) * I * sqrt(omega))
+   * @param {number} solarInsolationW_M2 - Peak noon solar insolation (W/m^2)
+   * @param {number} [albedo=0.25] - Bolometric surface albedo
+   * @param {number} [thermalInertia=250.0] - Thermal inertia in SI (tiu)
+   * @returns {{diurnalAmplitudeK: number, estimatedMaxTempK: number, estimatedMinTempK: number}}
+   */
+  static computeDiurnalThermalEmissionContrast(solarInsolationW_M2, albedo = 0.25, thermalInertia = 250.0) {
+    const s0 = Math.max(0, solarInsolationW_M2);
+    const A = Math.max(0, Math.min(0.95, albedo));
+    const I = Math.max(10, thermalInertia);
+    const omega = (2.0 * Math.PI) / this.MARS_SOL_SECONDS;
+
+    const deltaT = (2.0 * (1.0 - A) * s0) / (Math.sqrt(Math.PI) * I * Math.sqrt(omega));
+    const tMean = Math.pow(((1.0 - A) * s0 / Math.PI) / (this.STEFAN_BOLTZMANN * this.MARS_EMISSIVITY), 0.25);
+
+    return {
+      diurnalAmplitudeK: parseFloat(deltaT.toFixed(1)),
+      estimatedMaxTempK: parseFloat((tMean + deltaT * 0.5).toFixed(1)),
+      estimatedMinTempK: parseFloat((tMean - deltaT * 0.5).toFixed(1))
+    };
+  }
 }
+
 
 
 
