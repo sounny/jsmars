@@ -810,7 +810,81 @@ export class MarsTime {
       isPerihelionSeason: ratio > 1.10
     };
   }
+
+  // --- Synodic Cycle, Mean Motion & Eccentric-to-True Anomaly Solvers ---
+
+  /**
+   * Calculate Earth-Mars synodic period and launch window recurrence interval.
+   * S = (P_earth * P_mars) / (P_mars - P_earth)
+   * @param {number} [earthPeriodDays=365.25636] - Earth sidereal orbital period in days
+   * @param {number} [marsPeriodDays=686.9796] - Mars sidereal orbital period in days
+   * @returns {{synodicDays: number, synodicSols: number, synodicEarthYears: number}}
+   */
+  static computeSynodicCyclePeriod(earthPeriodDays = 365.25636, marsPeriodDays = 686.9796) {
+    const P1 = earthPeriodDays;
+    const P2 = marsPeriodDays;
+    const S_days = (P1 * P2) / Math.abs(P2 - P1);
+    const S_sols = S_days * (86400.0 / this.MARS_SOL_SECONDS || 86400.0 / 88775.244);
+    const S_years = S_days / 365.25636;
+
+    return {
+      synodicDays: parseFloat(S_days.toFixed(2)),
+      synodicSols: parseFloat(S_sols.toFixed(2)),
+      synodicEarthYears: parseFloat(S_years.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate Mars orbital mean motion (average angular velocity n = 2*pi / P).
+   * @param {number} [semiMajorAxisAU=1.52368] - Semi-major axis in AU
+   * @returns {{meanMotionDegPerDay: number, meanMotionDegPerSol: number, meanMotionRadPerSec: number}}
+   */
+  static computeOrbitalMeanMotion(semiMajorAxisAU = 1.52368) {
+    const a = Math.max(0.1, semiMajorAxisAU);
+    // Kepler 3rd law: P in years = a^(3/2)
+    const pYears = Math.pow(a, 1.5);
+    const pDays = pYears * 365.25636;
+    const pSec = pDays * 86400.0;
+
+    const nRadS = (2.0 * Math.PI) / pSec;
+    const nDegDay = 360.0 / pDays;
+    const nDegSol = nDegDay * (88775.244 / 86400.0);
+
+    return {
+      meanMotionDegPerDay: parseFloat(nDegDay.toFixed(5)),
+      meanMotionDegPerSol: parseFloat(nDegSol.toFixed(5)),
+      meanMotionRadPerSec: parseFloat(nRadS.toExponential(5))
+    };
+  }
+
+  /**
+   * Calculate exact true anomaly (nu) and orbital distance (r) from eccentric anomaly (E).
+   * tan(nu / 2) = sqrt((1 + e) / (1 - e)) * tan(E / 2),  r = a * (1 - e * cos(E))
+   * @param {number} eccentricAnomalyDeg - Eccentric anomaly E in degrees
+   * @param {number} [eccentricity=0.0934] - Orbit eccentricity
+   * @returns {{trueAnomalyDeg: number, radialDistanceAU: number, radialDistanceKm: number}}
+   */
+  static computeTrueAnomalyFromEccentricAnomaly(eccentricAnomalyDeg, eccentricity = 0.0934) {
+    const ERad = (eccentricAnomalyDeg % 360.0) * Math.PI / 180.0;
+    const e = Math.max(0, Math.min(0.99, eccentricity));
+    const a = this.SEMI_MAJOR_AXIS;
+
+    const sqrtFactor = Math.sqrt((1.0 + e) / (1.0 - e));
+    const nuRad = 2.0 * Math.atan2(sqrtFactor * Math.sin(ERad / 2.0), Math.cos(ERad / 2.0));
+    let nuDeg = nuRad * 180.0 / Math.PI;
+    if (nuDeg < 0) nuDeg += 360.0;
+
+    const rAU = a * (1.0 - e * Math.cos(ERad));
+    const rKm = rAU * 149597870.7;
+
+    return {
+      trueAnomalyDeg: parseFloat(nuDeg.toFixed(4)),
+      radialDistanceAU: parseFloat(rAU.toFixed(5)),
+      radialDistanceKm: parseFloat(rKm.toFixed(0))
+    };
+  }
 }
+
 
 
 

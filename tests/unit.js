@@ -3646,6 +3646,33 @@ describe('Surface Energy Balance, CO2 Mass Balance & Geotherm (KRCEngine)', () =
     });
 });
 
+describe('Synodic Cycle, Mean Motion & True Anomaly (MarsTime)', () => {
+    it('should compute Earth-Mars synodic period and Keplerian mean motion', () => {
+        // Earth-Mars synodic period (~779.9 days / 759.2 sols / 2.135 yr)
+        const syn = MarsTime.computeSynodicCyclePeriod();
+        expect(syn.synodicDays).to.be.greaterThan(775.0);
+        expect(syn.synodicDays).to.be.lessThan(785.0);
+        expect(syn.synodicEarthYears).to.be.closeTo(2.135, 0.05);
+
+        // Orbital mean motion (a = 1.52368 AU -> ~0.5240 deg/day)
+        const mm = MarsTime.computeOrbitalMeanMotion(1.52368);
+        expect(mm.meanMotionDegPerDay).to.be.closeTo(0.524, 0.005);
+        expect(mm.meanMotionDegPerSol).to.be.closeTo(0.538, 0.005);
+    });
+
+    it('should calculate exact true anomaly and heliocentric distance from eccentric anomaly', () => {
+        // At perihelion E = 0 -> nu = 0, r = a*(1-e) ~ 1.381 AU (~206.6M km)
+        const peri = MarsTime.computeTrueAnomalyFromEccentricAnomaly(0.0, 0.0934);
+        expect(peri.trueAnomalyDeg).to.equal(0.0);
+        expect(peri.radialDistanceAU).to.be.closeTo(1.381, 0.01);
+
+        // At aphelion E = 180 -> nu = 180, r = a*(1+e) ~ 1.666 AU (~249.2M km)
+        const aphel = MarsTime.computeTrueAnomalyFromEccentricAnomaly(180.0, 0.0934);
+        expect(aphel.trueAnomalyDeg).to.equal(180.0);
+        expect(aphel.radialDistanceAU).to.be.closeTo(1.666, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
