@@ -2178,6 +2178,30 @@ describe('Great-Circle Waypoint Interpolation & Geodetic Intersections (MeasureT
     });
 });
 
+describe('CO2 Sublimation Latent Heat & Subsurface Thermal Wave Damping (KRCEngine)', () => {
+    it('should compute CO2 frost sublimation mass and thickness flux', () => {
+        // Net solar energy imbalance +50 W/m^2 driving sublimation
+        const subl = KRCEngine.computeCO2SublimationRate(50.0);
+        expect(subl.isSublimating).to.be.true;
+        expect(subl.thicknessRateMmPerSol).to.be.greaterThan(4.0);
+        expect(subl.thicknessRateMmPerSol).to.be.lessThan(6.0);
+    });
+
+    it('should calculate harmonic thermal amplitude damping and phase delay at depth', () => {
+        // Typical Mars sand TI = 250 -> skin depth ~ 3.5 cm
+        // At depth z = 1 skin depth: amplitude is 1/e ~ 0.3679
+        const skin = KRCEngine.computeSkinDepth(250);
+        const damp = KRCEngine.computeThermalDampingDepth(skin.skinDepthMeters, 250);
+        expect(damp.amplitudeRatio).to.be.closeTo(0.3679, 0.01);
+        expect(damp.phaseLagRadians).to.be.closeTo(1.0, 0.01);
+
+        // Stratigraphy thermal capacitance
+        const cap = KRCEngine.computeSubsurfaceHeatCapacityLayered([0.05, 0.10, 0.20]);
+        expect(cap.totalThicknessMeters).to.equal(0.35);
+        expect(cap.totalHeatCapacityJ_M2_K).to.be.greaterThan(3e5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

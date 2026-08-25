@@ -375,7 +375,78 @@ export class KRCEngine {
     const ratePerSec = flux / (cVol * layerThicknessMeters);
     return parseFloat((ratePerSec * 3600.0).toFixed(2));
   }
+
+  // --- Latent Heat of Sublimation & Subsurface Thermal Wave Damping ---
+
+  /**
+   * Calculate CO2 dry ice sublimation or condensation mass flux from net surface energy imbalance.
+   * dm/dt = F_net / L_subl
+   * @param {number} netEnergyFluxW_M2 - Net absorbed minus emitted energy flux (W/m^2)
+   * @param {number} [latentHeatSublimationJ_Kg=5.9e5] - Latent heat of CO2 sublimation (J/kg)
+   * @param {number} [co2IceDensityKgM3=1600.0] - Dry ice density (kg/m^3)
+   * @returns {{massRateKg_M2_S: number, thicknessRateMmPerSol: number, isSublimating: boolean}}
+   */
+  static computeCO2SublimationRate(netEnergyFluxW_M2, latentHeatSublimationJ_Kg = 5.9e5, co2IceDensityKgM3 = 1600.0) {
+    const massRateKg_M2_S = netEnergyFluxW_M2 / latentHeatSublimationJ_Kg;
+    const volumeRateM3_M2_S = massRateKg_M2_S / co2IceDensityKgM3;
+    const thicknessRateMmPerSol = volumeRateM3_M2_S * this.MARS_SOL_SECONDS * 1000.0;
+
+    return {
+      massRateKg_M2_S: parseFloat(massRateKg_M2_S.toExponential(4)),
+      thicknessRateMmPerSol: parseFloat(thicknessRateMmPerSol.toFixed(3)),
+      isSublimating: netEnergyFluxW_M2 > 0
+    };
+  }
+
+  /**
+   * Calculate harmonic subsurface thermal wave exponential amplitude damping and phase lag at depth z.
+   * A(z) = A_0 * exp(-z / delta),  phase(z) = z / delta
+   * @param {number} depthMeters - Depth below surface in meters
+   * @param {number} thermalInertia - Regolith thermal inertia (SI)
+   * @param {number} [periodSeconds=88775.244] - Thermal period (1 Sol)
+   * @returns {{amplitudeRatio: number, phaseLagRadians: number, phaseLagHours: number}}
+   */
+  static computeThermalDampingDepth(depthMeters, thermalInertia, periodSeconds = 88775.244) {
+    const skin = this.computeSkinDepth(thermalInertia, periodSeconds);
+    const delta = Math.max(1e-4, skin.skinDepthMeters);
+    const z = Math.max(0, depthMeters);
+
+    const ampRatio = Math.exp(-z / delta);
+    const phaseRad = z / delta;
+    const periodHours = periodSeconds / 3600.0;
+    const phaseLagHours = (phaseRad / (2.0 * Math.PI)) * periodHours;
+
+    return {
+      amplitudeRatio: parseFloat(ampRatio.toFixed(4)),
+      phaseLagRadians: parseFloat(phaseRad.toFixed(3)),
+      phaseLagHours: parseFloat(phaseLagHours.toFixed(2))
+    };
+  }
+
+  /**
+   * Compute cumulative thermal capacitance and integrated heat capacity across a multi-layer stratigraphy.
+   * @param {Array<number>} layerThicknessesMeters - Array of thickness for each layer (m)
+   * @param {Array<number>} [layerDensities=[]] - Optional density per layer (kg/m^3)
+   * @returns {{totalThicknessMeters: number, totalHeatCapacityJ_M2_K: number}}
+   */
+  static computeSubsurfaceHeatCapacityLayered(layerThicknessesMeters = [], layerDensities = []) {
+    let totalZ = 0;
+    let totalCap = 0;
+
+    layerThicknessesMeters.forEach((dz, i) => {
+      const rho = layerDensities[i] || KRCEngine.DENSITY;
+      const cVol = rho * KRCEngine.SPECIFIC_HEAT;
+      totalZ += dz;
+      totalCap += cVol * dz;
+    });
+
+    return {
+      totalThicknessMeters: parseFloat(totalZ.toFixed(3)),
+      totalHeatCapacityJ_M2_K: parseFloat(totalCap.toFixed(1))
+    };
+  }
 }
+
 
 
 
