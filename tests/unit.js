@@ -2110,6 +2110,30 @@ describe('Aerodynamic Stagnation Heat Flux & Dispersion Ellipses (LandingSitesLa
     });
 });
 
+describe('Line-of-Sight Horizon, Solar Phase Angle & Ray Tracing (ThreeDEngine)', () => {
+    it('should compute geometric horizon distance and intervisibility ranges', () => {
+        // Rover mast (2m = 0.002 km) to horizon on Mars (R=3389.5 km): d = sqrt(2 * 3389.5 * 0.002) ~ 3.68 km
+        const rover = ThreeDEngine.computeLineOfSightHorizon(0.002, 0);
+        expect(rover.horizonDist1Km).to.be.closeTo(3.68, 0.05);
+
+        // Rover (2m) to Relay Orbiter (400 km) -> Intervisibility range ~ 1650 km
+        const relay = ThreeDEngine.computeLineOfSightHorizon(0.002, 400);
+        expect(relay.maxIntervisibleDistKm).to.be.greaterThan(1600);
+    });
+
+    it('should calculate solar phase angle and ray-ellipsoid intersections', () => {
+        // Sun at [1e8, 0, 0], Observer at [0, 1e8, 0], Target at [0, 0, 0] -> alpha = 90 deg, k = 0.5 (half phase)
+        const phase = ThreeDEngine.computeSolarPhaseAngle({ x: 1e8, y: 0, z: 0 }, { x: 0, y: 1e8, z: 0 });
+        expect(phase.phaseAngleDeg).to.be.closeTo(90.0, 0.1);
+        expect(phase.illuminationFraction).to.be.closeTo(0.5, 0.01);
+
+        // Ray from 5000 km altitude along -X towards Mars center -> hits near side
+        const hit = ThreeDEngine.testRayEllipsoidIntersection({ x: 5000, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, 'mars');
+        expect(hit.intersects).to.be.true;
+        expect(hit.tNear).to.be.closeTo(1603.8, 1.0); // 5000 - 3396.19
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

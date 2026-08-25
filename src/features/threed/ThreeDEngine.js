@@ -284,7 +284,104 @@ export class ThreeDEngine {
     const elevation = 90.0 - inc.incidenceAngleDeg;
     return parseFloat(elevation.toFixed(2));
   }
+
+  // --- Line-of-Sight Horizon, Solar Phase Angle & Ray-Ellipsoid Solvers ---
+
+  /**
+   * Calculate geometric line-of-sight horizon distance and maximum intervisibility range.
+   * d = sqrt(2 * R * h + h^2)
+   * @param {number} h1Km - Height of observer 1 above datum in km (e.g. rover mast or orbital camera)
+   * @param {number} [h2Km=0] - Height of target 2 above datum in km (e.g. relay orbiter or lander)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{horizonDist1Km: number, horizonDist2Km: number, maxIntervisibleDistKm: number}}
+   */
+  static computeLineOfSightHorizon(h1Km, h2Km = 0, body = 'mars') {
+    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const h1 = Math.max(0, h1Km);
+    const h2 = Math.max(0, h2Km);
+
+    const d1 = Math.sqrt(2.0 * R * h1 + h1 * h1);
+    const d2 = Math.sqrt(2.0 * R * h2 + h2 * h2);
+    const totalDist = d1 + d2;
+
+    return {
+      horizonDist1Km: parseFloat(d1.toFixed(3)),
+      horizonDist2Km: parseFloat(d2.toFixed(3)),
+      maxIntervisibleDistKm: parseFloat(totalDist.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate solar phase angle (alpha) from Sun, Target, and Observer 3D vectors.
+   * alpha = arccos(v_sun . v_obs)
+   * @param {{x: number, y: number, z: number}} sunPos - Sun position in km
+   * @param {{x: number, y: number, z: number}} obsPos - Observer position in km
+   * @param {{x: number, y: number, z: number}} [targetPos={x:0, y:0, z:0}] - Planetary target center
+   * @returns {{phaseAngleDeg: number, phaseAngleRad: number, illuminationFraction: number}}
+   */
+  static computeSolarPhaseAngle(sunPos, obsPos, targetPos = { x: 0, y: 0, z: 0 }) {
+    const vSun = { x: sunPos.x - targetPos.x, y: sunPos.y - targetPos.y, z: sunPos.z - targetPos.z };
+    const vObs = { x: obsPos.x - targetPos.x, y: obsPos.y - targetPos.y, z: obsPos.z - targetPos.z };
+
+    const lenSun = Math.hypot(vSun.x, vSun.y, vSun.z);
+    const lenObs = Math.hypot(vObs.x, vObs.y, vObs.z);
+
+    if (lenSun === 0 || lenObs === 0) {
+      return { phaseAngleDeg: 0, phaseAngleRad: 0, illuminationFraction: 1.0 };
+    }
+
+    const dot = (vSun.x * vObs.x + vSun.y * vObs.y + vSun.z * vObs.z) / (lenSun * lenObs);
+    const clampedDot = Math.max(-1.0, Math.min(1.0, dot));
+    const phaseRad = Math.acos(clampedDot);
+    const phaseDeg = phaseRad * 180.0 / Math.PI;
+
+    // Illumination fraction k = (1 + cos(alpha)) / 2
+    const k = (1.0 + clampedDot) / 2.0;
+
+    return {
+      phaseAngleDeg: parseFloat(phaseDeg.toFixed(2)),
+      phaseAngleRad: parseFloat(phaseRad.toFixed(4)),
+      illuminationFraction: parseFloat(k.toFixed(4))
+    };
+  }
+
+  /**
+   * Test 3D ray-ellipsoid intersection quadratic equation for planetary line-of-sight.
+   * @param {{x: number, y: number, z: number}} rayOrigin - Ray start position in km
+   * @param {{x: number, y: number, z: number}} rayDir - Unit direction vector
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{intersects: boolean, tNear: number, tFar: number}}
+   */
+  static testRayEllipsoidIntersection(rayOrigin, rayDir, body = 'mars') {
+    const isMars = body.toLowerCase() === 'mars';
+    const a = isMars ? 3396.19 : 1737.4;
+    const b = isMars ? 3396.19 : 1737.4;
+    const c = isMars ? 3376.20 : 1737.4;
+
+    const ox = rayOrigin.x, oy = rayOrigin.y, oz = rayOrigin.z;
+    const dx = rayDir.x, dy = rayDir.y, dz = rayDir.z;
+
+    const A = (dx * dx) / (a * a) + (dy * dy) / (b * b) + (dz * dz) / (c * c);
+    const B = 2.0 * ((ox * dx) / (a * a) + (oy * dy) / (b * b) + (oz * dz) / (c * c));
+    const C = (ox * ox) / (a * a) + (oy * oy) / (b * b) + (oz * oz) / (c * c) - 1.0;
+
+    const discriminant = B * B - 4.0 * A * C;
+    if (discriminant < 0) {
+      return { intersects: false, tNear: -1, tFar: -1 };
+    }
+
+    const sqrtDisc = Math.sqrt(discriminant);
+    const tNear = (-B - sqrtDisc) / (2.0 * A);
+    const tFar = (-B + sqrtDisc) / (2.0 * A);
+
+    return {
+      intersects: tFar >= 0,
+      tNear: parseFloat(tNear.toFixed(3)),
+      tFar: parseFloat(tFar.toFixed(3))
+    };
+  }
 }
+
 
 
 
