@@ -3120,6 +3120,32 @@ describe('Authalic Radius, Wagner IV & Meridional Arc (ProjectionManager)', () =
     });
 });
 
+describe('Richardson Number, Spacecraft Aerodynamic Drag & Rayleigh Depth (MCDEngine)', () => {
+    it('should compute Gradient Richardson Number and classify turbulence regime', () => {
+        // Turbulent shear case (Ri < 0.25)
+        const turb = MCDEngine.computeGradientRichardsonNumber(210, 0.001, 0.05, 0);
+        expect(turb.richardsonNumber).to.be.lessThan(0.25);
+        expect(turb.isTurbulent).to.equal(true);
+
+        // Strongly stable laminar case
+        const stable = MCDEngine.computeGradientRichardsonNumber(210, 0.010, 0.002, 0);
+        expect(stable.richardsonNumber).to.be.greaterThan(1.0);
+        expect(stable.isTurbulent).to.equal(false);
+    });
+
+    it('should calculate spacecraft orbital drag and Rayleigh optical depth', () => {
+        // MRO-like aerobraking at 120 km: 10 m^2, Cd = 2.2, 1000 kg, v = 4200 m/s
+        const drag = MCDEngine.computeOrbitalAerodynamicDrag(10.0, 2.2, 1000.0, 120.0, 4200.0);
+        expect(drag.dragForceNewtons).to.be.greaterThan(0);
+        expect(drag.decelerationMs2).to.be.greaterThan(0);
+
+        // Clean Rayleigh scattering optical depth in blue channel (0.44 µm)
+        const tauRayleigh = MCDEngine.computeRayleighScatteringOpticalDepth(0.44, 610.0);
+        expect(tauRayleigh).to.be.greaterThan(0);
+        expect(tauRayleigh).to.be.lessThan(0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

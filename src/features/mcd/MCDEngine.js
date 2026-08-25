@@ -480,7 +480,80 @@ export class MCDEngine {
       knudsenNumber: parseFloat(Kn.toFixed(2))
     };
   }
+
+  // --- Gradient Richardson Number, Spacecraft Aerodynamic Drag & Rayleigh Optical Depth Solvers ---
+
+  /**
+   * Calculate atmospheric Gradient Richardson Number (Ri) for dynamic shear turbulence.
+   * Ri = N^2 / S^2 = [ (g / theta) * (d_theta / dz) ] / [ (du/dz)^2 + (dv/dz)^2 ]
+   * @param {number} potentialTempK - Potential temperature in Kelvin
+   * @param {number} dThetaDz - Vertical potential temperature gradient (K/m)
+   * @param {number} duDz - Zonal wind shear (s^-1)
+   * @param {number} [dvDz=0] - Meridional wind shear (s^-1)
+   * @returns {{richardsonNumber: number, isTurbulent: boolean, regime: string}}
+   */
+  static computeGradientRichardsonNumber(potentialTempK, dThetaDz, duDz, dvDz = 0) {
+    const theta = Math.max(50, potentialTempK);
+    const N2 = (this.G_MARS / theta) * dThetaDz;
+    const S2 = Math.max(1e-8, duDz * duDz + dvDz * dvDz);
+
+    const Ri = N2 / S2;
+    const isTurbulent = Ri < 0.25;
+
+    let regime = 'Dynamically Stable (Laminar)';
+    if (Ri < 0) regime = 'Convectively Unstable (Overturning)';
+    else if (Ri < 0.25) regime = 'Turbulent Shear Instability (Kelvin-Helmholtz)';
+
+    return {
+      richardsonNumber: parseFloat(Ri.toFixed(3)),
+      isTurbulent,
+      regime
+    };
+  }
+
+  /**
+   * Calculate spacecraft aerodynamic drag force and orbital deceleration during upper atmospheric aerobraking.
+   * F_drag = 0.5 * Cd * A * rho * v^2
+   * @param {number} spacecraftAreaM2 - Spacecraft cross-sectional area in m^2 (e.g. 10 m^2 for MRO)
+   * @param {number} dragCoeffCd - Aerodynamic drag coefficient Cd (~2.2 in free-molecular flow)
+   * @param {number} spacecraftMassKg - Spacecraft mass in kg (e.g. 1000 kg)
+   * @param {number} altitudeKm - Orbital periapsis altitude in km (e.g. 120 km)
+   * @param {number} [orbitalSpeedMs=4200.0] - Spacecraft periapsis velocity in m/s
+   * @returns {{dragForceNewtons: number, decelerationMs2: number, atmosphericDensityKgM3: number}}
+   */
+  static computeOrbitalAerodynamicDrag(spacecraftAreaM2, dragCoeffCd = 2.2, spacecraftMassKg = 1000.0, altitudeKm = 120.0, orbitalSpeedMs = 4200.0) {
+    // Upper atmospheric density profile rho(z) = rho0 * exp(-z / H)
+    const H_m = 9000.0; // Scale height ~ 9 km in thermosphere
+    const rho0 = 0.015; // kg/m^3 at surface
+    const rho = rho0 * Math.exp(-(altitudeKm * 1000.0) / H_m);
+
+    const v = Math.max(100, orbitalSpeedMs);
+    const fDrag = 0.5 * dragCoeffCd * spacecraftAreaM2 * rho * v * v;
+    const decel = fDrag / Math.max(1, spacecraftMassKg);
+
+    return {
+      dragForceNewtons: parseFloat(fDrag.toFixed(3)),
+      decelerationMs2: parseFloat(decel.toExponential(3)),
+      atmosphericDensityKgM3: parseFloat(rho.toExponential(3))
+    };
+  }
+
+  /**
+   * Calculate clean molecular CO2 Rayleigh scattering optical depth.
+   * tau_Rayleigh = 0.0088 * (P / 101325) * lambda^(-4.05)
+   * @param {number} wavelengthMicrons - Wavelength in µm (e.g. 0.44 µm blue filter)
+   * @param {number} [surfacePressurePa=610.0] - Atmospheric surface pressure in Pa
+   * @returns {number} Molecular Rayleigh optical depth
+   */
+  static computeRayleighScatteringOpticalDepth(wavelengthMicrons, surfacePressurePa = 610.0) {
+    const lam = Math.max(0.1, wavelengthMicrons);
+    const pressureRatio = surfacePressurePa / 101325.0;
+    const tau = 0.0088 * pressureRatio * Math.pow(lam, -4.05);
+
+    return parseFloat(tau.toExponential(4));
+  }
 }
+
 
 
 
