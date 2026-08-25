@@ -556,7 +556,129 @@ export class ContourLayer {
     const hue = (1.0 - norm) * 240.0;
     return `hsl(${hue.toFixed(1)}, 85%, 50%)`;
   }
+
+  // --- Horn 3x3 Slope & Aspect, Terrain Curvature & Hypsometry Solvers ---
+
+  /**
+   * Calculate precise 8-neighbor Horn (1981) slope and aspect for a 3x3 elevation patch.
+   * [ z00, z10, z20 ]
+   * [ z01, z11, z21 ]
+   * [ z02, z12, z22 ]
+   * @param {Array<number>} patch3x3 - 9 elevation values in row-major order
+   * @param {number} [pixelSpacingMeters=100] - Horizontal cell resolution
+   * @returns {{slopeDeg: number, slopePercent: number, aspectDeg: number, compassDirection: string}}
+   */
+  static computeHornSlopeAspect(patch3x3, pixelSpacingMeters = 100) {
+    if (!patch3x3 || patch3x3.length < 9) {
+      return { slopeDeg: 0, slopePercent: 0, aspectDeg: 0, compassDirection: 'Flat' };
+    }
+
+    const [z00, z10, z20, z01, z11, z21, z02, z12, z22] = patch3x3;
+    const dx = pixelSpacingMeters;
+    const dy = pixelSpacingMeters;
+
+    // Horn weighted gradient
+    const dz_dx = ((z20 + 2 * z21 + z22) - (z00 + 2 * z01 + z02)) / (8.0 * dx);
+    const dz_dy = ((z02 + 2 * z12 + z22) - (z00 + 2 * z10 + z20)) / (8.0 * dy);
+
+    const grad = Math.hypot(dz_dx, dz_dy);
+    const slopeRad = Math.atan(grad);
+    const slopeDeg = slopeRad * 180.0 / Math.PI;
+    const slopePercent = grad * 100.0;
+
+    let aspectDeg = 0;
+    let compass = 'Flat';
+
+    if (grad > 1e-5) {
+      const aspectRad = Math.atan2(dz_dy, -dz_dx);
+      aspectDeg = (aspectRad * 180.0 / Math.PI + 90.0 + 360.0) % 360.0;
+
+      const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      const dirIdx = Math.round(aspectDeg / 45.0) % 8;
+      compass = directions[dirIdx];
+    }
+
+    return {
+      slopeDeg: parseFloat(slopeDeg.toFixed(2)),
+      slopePercent: parseFloat(slopePercent.toFixed(2)),
+      aspectDeg: parseFloat(aspectDeg.toFixed(1)),
+      compassDirection: compass
+    };
+  }
+
+  /**
+   * Compute 3x3 profile and planform terrain curvature (second spatial derivatives).
+   * @param {Array<number>} patch3x3 - 9 elevation values in row-major order
+   * @param {number} [pixelSpacingMeters=100] - Cell size
+   * @returns {{profileCurvature: number, planformCurvature: number, generalCurvature: number}}
+   */
+  static computeTerrainCurvature(patch3x3, pixelSpacingMeters = 100) {
+    if (!patch3x3 || patch3x3.length < 9) {
+      return { profileCurvature: 0, planformCurvature: 0, generalCurvature: 0 };
+    }
+
+    const [z00, z10, z20, z01, z11, z21, z02, z12, z22] = patch3x3;
+    const L = pixelSpacingMeters;
+    const L2 = L * L;
+
+    // Second derivatives
+    const d2z_dx2 = (z01 - 2 * z11 + z21) / L2;
+    const d2z_dy2 = (z10 - 2 * z11 + z12) / L2;
+    const d2z_dxdy = ((z22 - z02) - (z20 - z00)) / (4.0 * L2);
+
+    const dz_dx = (z21 - z01) / (2.0 * L);
+    const dz_dy = (z12 - z10) / (2.0 * L);
+    const p = dz_dx * dz_dx + dz_dy * dz_dy;
+
+    const profCurv = p > 0 ? -((dz_dx * dz_dx * d2z_dx2 + 2 * dz_dx * dz_dy * d2z_dxdy + dz_dy * dz_dy * d2z_dy2) / (p * Math.pow(1 + p, 1.5))) : 0;
+    const planCurv = p > 0 ? -((dz_dy * dz_dy * d2z_dx2 - 2 * dz_dx * dz_dy * d2z_dxdy + dz_dx * dz_dx * d2z_dy2) / Math.pow(p, 1.5)) : 0;
+    const genCurv = -(d2z_dx2 + d2z_dy2);
+
+    return {
+      profileCurvature: parseFloat(profCurv.toFixed(6)),
+      planformCurvature: parseFloat(planCurv.toFixed(6)),
+      generalCurvature: parseFloat(genCurv.toFixed(6))
+    };
+  }
+
+  /**
+   * Calculate cumulative hypsometric area distribution curve across elevation bins.
+   * @param {Array<number>} elevations - Array of elevation samples
+   * @param {number} [numBins=10] - Number of histogram bins
+   * @returns {Array<{elevation: number, cumulativeFraction: number, count: number}>}
+   */
+  static computeHypsometricAreaDistribution(elevations = [], numBins = 10) {
+    if (elevations.length === 0) return [];
+
+    const min = Math.min(...elevations);
+    const max = Math.max(...elevations);
+    const range = Math.max(1, max - min);
+    const binWidth = range / numBins;
+
+    const bins = new Array(numBins).fill(0);
+    elevations.forEach(z => {
+      const idx = Math.min(numBins - 1, Math.max(0, Math.floor((z - min) / binWidth)));
+      bins[idx]++;
+    });
+
+    let cumCount = 0;
+    const total = elevations.length;
+    const curve = [];
+
+    for (let i = 0; i < numBins; i++) {
+      cumCount += bins[i];
+      const binElev = min + (i + 0.5) * binWidth;
+      curve.push({
+        elevation: parseFloat(binElev.toFixed(1)),
+        cumulativeFraction: parseFloat((cumCount / total).toFixed(4)),
+        count: bins[i]
+      });
+    }
+
+    return curve;
+  }
 }
+
 
 
 

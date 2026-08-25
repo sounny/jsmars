@@ -203,3 +203,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute exact sub-solar ground coordinates and seasonal declination
 ?: AssertionError: expected +0 to be above +0
     at n.<anonymous> (unit.js:2233:42)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 09:45:36 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute exact 8-neighbor Horn slope and compass aspect
+?: AssertionError: expected 'W' to equal 'E'
+    at n.<anonymous> (unit.js:2269:42)

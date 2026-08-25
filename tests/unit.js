@@ -2253,6 +2253,40 @@ describe('Sub-Solar Coordinates, TOA Solar Insolation & Analemma (MarsTime)', ()
     });
 });
 
+describe('Horn 3x3 Slope, Aspect, Terrain Curvature & Hypsometry (ContourLayer)', () => {
+    it('should compute exact 8-neighbor Horn slope and compass aspect', () => {
+        // Uniform 10-degree eastward incline (dz/dx = +0.1763, dx = 100m)
+        // [ 0, 17.63, 35.26 ]
+        // [ 0, 17.63, 35.26 ]
+        // [ 0, 17.63, 35.26 ]
+        const patch = [
+            0, 17.63, 35.26,
+            0, 17.63, 35.26,
+            0, 17.63, 35.26
+        ];
+        const horn = ContourLayer.computeHornSlopeAspect(patch, 100);
+        expect(horn.slopeDeg).to.be.closeTo(10.0, 0.1);
+        expect(horn.compassDirection).to.equal('W');
+    });
+
+    it('should compute terrain curvature second derivatives and hypsometric curve', () => {
+        // Concave upward bowl: center lower than perimeter
+        const bowl = [
+            100, 50, 100,
+            50,   0,  50,
+            100, 50, 100
+        ];
+        const curv = ContourLayer.computeTerrainCurvature(bowl, 100);
+        expect(curv.generalCurvature).to.be.lessThan(0); // Concave upward
+
+        // Hypsometric distribution of 100 elevation samples
+        const samples = Array.from({ length: 100 }, (_, i) => i * 10 - 500);
+        const hyp = ContourLayer.computeHypsometricAreaDistribution(samples, 5);
+        expect(hyp.length).to.equal(5);
+        expect(hyp[4].cumulativeFraction).to.equal(1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
