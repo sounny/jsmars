@@ -231,3 +231,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute two-layer apparent thermal inertia and skin depth ratio
 ?: AssertionError: expected false to equal true
     at n.<anonymous> (unit.js:2818:48)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 16:00:42 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute Zevenbergen-Thorne profile and planform terrain curvature
+?: AssertionError: expected +0 to not equal +0
+    at n.<anonymous> (unit.js:2925:47)

@@ -2903,6 +2903,54 @@ describe('Heliocentric Orbital Speed, Mean Solar Time & Apparent Sun (MarsTime)'
     });
 });
 
+describe('Zevenbergen-Thorne Curvatures, Vector Ruggedness & Relief Ratio (ContourLayer)', () => {
+    it('should compute Zevenbergen-Thorne profile and planform terrain curvature', () => {
+        // Uniform planar inclined surface (100m spacing): curvature should be near 0
+        const planarPatch = [
+            100, 200, 300,
+            100, 200, 300,
+            100, 200, 300
+        ];
+        const curv = ContourLayer.computeZevenbergenThorneCurvatures(planarPatch, 100);
+        expect(curv.profileCurvature).to.equal(0);
+        expect(curv.planformCurvature).to.equal(0);
+
+        // Convex peak / dome (center elevated at 500m vs 100m perimeter)
+        const domePatch = [
+            100, 200, 100,
+            200, 500, 200,
+            100, 200, 100
+        ];
+        const domeCurv = ContourLayer.computeZevenbergenThorneCurvatures(domePatch, 100);
+        expect(domeCurv.meanCurvature).to.not.equal(0);
+
+        // Sloping ridge / flank
+        const ridgePatch = [
+            100, 250, 400,
+            150, 350, 450,
+            180, 380, 500
+        ];
+        const ridgeCurv = ContourLayer.computeZevenbergenThorneCurvatures(ridgePatch, 100);
+        expect(ridgeCurv.profileCurvature).to.be.a('number');
+    });
+
+    it('should compute Sappington Vector Ruggedness Measure (VRM) and Relative Relief Ratio', () => {
+        // Flat surface -> VRM should be 0.0
+        const flatPatch = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        const flatVRM = ContourLayer.computeVectorRuggednessMeasure(flatPatch, 100);
+        expect(flatVRM).to.equal(0.0);
+
+        // Rugged crater rim patch
+        const ruggedPatch = [100, 800, 200, 900, 50, 600, 300, 700, 150];
+        const ruggedVRM = ContourLayer.computeVectorRuggednessMeasure(ruggedPatch, 100);
+        expect(ruggedVRM).to.be.greaterThan(0.0);
+
+        // Relative Relief Ratio across [0, 5000] vs datum -8000 -> 5000 / 13000 ~ 0.3846
+        const rrr = ContourLayer.computeTerrainReliefRatio([0, 2500, 5000], -8000);
+        expect(rrr).to.be.closeTo(0.3846, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

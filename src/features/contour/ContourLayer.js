@@ -745,7 +745,102 @@ export class ContourLayer {
       reliefSpanMeters: parseFloat((max - min).toFixed(2))
     };
   }
+
+  // --- Zevenbergen-Thorne Quadratic Curvatures, Vector Ruggedness (VRM) & Relief Ratio Solvers ---
+
+  /**
+   * Calculate precise Zevenbergen-Thorne (1987) quadratic polynomial terrain curvatures.
+   * Fits z = A*x^2 + B*y^2 + C*x*y + D*x + E*y + F
+   * @param {Array<number>} patch3x3 - 9 elevation values in row-major order
+   * @param {number} [L=100] - Grid cell spacing in meters
+   * @returns {{profileCurvature: number, planformCurvature: number, meanCurvature: number}}
+   */
+  static computeZevenbergenThorneCurvatures(patch3x3 = [], L = 100) {
+    if (!patch3x3 || patch3x3.length < 9) {
+      return { profileCurvature: 0, planformCurvature: 0, meanCurvature: 0 };
+    }
+
+    const [z1, z2, z3, z4, z5, z6, z7, z8, z9] = patch3x3;
+    const L2 = L * L;
+
+    // Zevenbergen-Thorne polynomial coefficients
+    const D = (z6 - z4) / (2.0 * L);
+    const E = (z2 - z8) / (2.0 * L);
+    const A = (z4 + z6 - 2.0 * z5) / (2.0 * L2);
+    const B = (z2 + z8 - 2.0 * z5) / (2.0 * L2);
+    const C = (z3 + z7 - z1 - z9) / (4.0 * L2);
+
+    const p = D * D + E * E;
+    let kpr = 0;
+    let kp = 0;
+
+    if (p > 1e-8) {
+      kpr = -2.0 * (A * D * D + B * E * E + C * D * E) / (p * Math.pow(1.0 + p, 1.5));
+      kp = 2.0 * (B * D * D + A * E * E - C * D * E) / Math.pow(p, 1.5);
+    }
+
+    const H = p > 1e-8 ? 0.5 * (kpr + kp) : -(A + B);
+
+    return {
+      profileCurvature: parseFloat(kpr.toFixed(6)),
+      planformCurvature: parseFloat(kp.toFixed(6)),
+      meanCurvature: parseFloat(H.toFixed(6))
+    };
+  }
+
+  /**
+   * Calculate Sappington et al. (2007) Vector Ruggedness Measure (VRM) across a 3x3 patch.
+   * VRM quantifies terrain roughness independently of slope (0.0 = flat/uniform, 1.0 = extremely rugged).
+   * @param {Array<number>} patch3x3 - 9 elevation values in row-major order
+   * @param {number} [pixelSpacingMeters=100] - Cell size
+   * @returns {number} Vector Ruggedness Measure (0.0 to 1.0)
+   */
+  static computeVectorRuggednessMeasure(patch3x3 = [], pixelSpacingMeters = 100) {
+    if (!patch3x3 || patch3x3.length < 9) return 0.0;
+
+    let sumX = 0;
+    let sumY = 0;
+    let sumZ = 0;
+    const count = 9;
+
+    for (let i = 0; i < count; i++) {
+      const zVal = patch3x3[i];
+      // Slope and aspect proxy unit normal vector n = (-dz/dx, -dz/dy, 1) / |n|
+      const dz_dx = (patch3x3[Math.min(8, i + 1)] - patch3x3[Math.max(0, i - 1)]) / (2.0 * pixelSpacingMeters);
+      const dz_dy = (patch3x3[Math.min(8, i + 3)] - patch3x3[Math.max(0, i - 3)]) / (2.0 * pixelSpacingMeters);
+
+      const norm = Math.sqrt(dz_dx * dz_dx + dz_dy * dz_dy + 1.0);
+      sumX += -dz_dx / norm;
+      sumY += -dz_dy / norm;
+      sumZ += 1.0 / norm;
+    }
+
+    const resultantLength = Math.sqrt(sumX * sumX + sumY * sumY + sumZ * sumZ);
+    const vrm = 1.0 - (resultantLength / count);
+
+    return parseFloat(Math.max(0, Math.min(1.0, vrm)).toFixed(5));
+  }
+
+  /**
+   * Calculate Relative Relief Ratio (RRR) for terrain classification.
+   * @param {Array<number>} elevGrid - Elevation grid
+   * @param {number} [datumElev=-8000] - Minimum Mars datum reference
+   * @returns {number} Relative Relief Ratio (0 to 1)
+   */
+  static computeTerrainReliefRatio(elevGrid = [], datumElev = -8000) {
+    if (!elevGrid || elevGrid.length === 0) return 0;
+
+    const min = Math.min(...elevGrid);
+    const max = Math.max(...elevGrid);
+    const totalSpan = max - datumElev;
+
+    if (totalSpan <= 0) return 0;
+    const rrr = (max - min) / totalSpan;
+
+    return parseFloat(Math.max(0, Math.min(1.0, rrr)).toFixed(4));
+  }
 }
+
 
 
 
