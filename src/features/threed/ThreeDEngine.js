@@ -467,7 +467,78 @@ export class ThreeDEngine {
       isSunSynchronous: isSunSync
     };
   }
+
+  // --- Ground Swath Width, Triangle Facet Normal & Perspective Camera Solvers ---
+
+  /**
+   * Calculate camera or spectrometer ground swath footprint width across track.
+   * W = 2 * h * tan(FOV / 2)
+   * @param {number} altitudeKm - Spacecraft altitude above surface in km
+   * @param {number} [fovDegrees=30.0] - Camera cross-track Field of View in degrees
+   * @returns {{swathWidthKm: number, halfSwathWidthKm: number}}
+   */
+  static computeGroundSwathWidth(altitudeKm, fovDegrees = 30.0) {
+    const h = Math.max(0, altitudeKm);
+    const halfFovRad = (fovDegrees * Math.PI / 180.0) / 2.0;
+    const halfSwath = h * Math.tan(halfFovRad);
+
+    return {
+      swathWidthKm: parseFloat((halfSwath * 2.0).toFixed(3)),
+      halfSwathWidthKm: parseFloat(halfSwath.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate unit surface normal vector for a 3D triangle facet [p1, p2, p3].
+   * @param {[number, number, number]} p1 - Vertex 1 [x, y, z]
+   * @param {[number, number, number]} p2 - Vertex 2 [x, y, z]
+   * @param {[number, number, number]} p3 - Vertex 3 [x, y, z]
+   * @returns {{nx: number, ny: number, nz: number, area: number}}
+   */
+  static computeTriangleFacetNormal(p1, p2, p3) {
+    const v1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
+    const v2 = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
+
+    // Cross product v1 x v2
+    const cx = v1[1] * v2[2] - v1[2] * v2[1];
+    const cy = v1[2] * v2[0] - v1[0] * v2[2];
+    const cz = v1[0] * v2[1] - v1[1] * v2[0];
+
+    const len = Math.hypot(cx, cy, cz);
+    if (len < 1e-12) {
+      return { nx: 0, ny: 1, nz: 0, area: 0 };
+    }
+
+    return {
+      nx: parseFloat((cx / len).toFixed(6)),
+      ny: parseFloat((cy / len).toFixed(6)),
+      nz: parseFloat((cz / len).toFixed(6)),
+      area: parseFloat((len / 2.0).toFixed(6))
+    };
+  }
+
+  /**
+   * Pinhole perspective projection of a 3D world coordinate to 2D normalized screen space.
+   * @param {[number, number, number]} point3D - Target [x, y, z] in camera frame
+   * @param {number} [focalLength=1.0] - Camera focal length
+   * @returns {{screenX: number, screenY: number, inFrontOfCamera: boolean}}
+   */
+  static computePerspectiveProjection(point3D, focalLength = 1.0) {
+    const [x, y, z] = point3D;
+    const inFront = z > 0;
+    const safeZ = Math.max(1e-4, Math.abs(z));
+
+    const screenX = (focalLength * x) / safeZ;
+    const screenY = (focalLength * y) / safeZ;
+
+    return {
+      screenX: parseFloat(screenX.toFixed(4)),
+      screenY: parseFloat(screenY.toFixed(4)),
+      inFrontOfCamera: inFront
+    };
+  }
 }
+
 
 
 

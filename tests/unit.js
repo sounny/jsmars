@@ -2748,6 +2748,30 @@ describe('CRISM Carbonates, Olivine Fo# & Band Area Ratio (BandMathEngine)', () 
     });
 });
 
+describe('Ground Swath Width, Triangle Facet Normal & Perspective Camera (ThreeDEngine)', () => {
+    it('should calculate ground swath footprint width and 3D triangle normal', () => {
+        // Spacecraft at 300 km altitude with 30-degree FOV: Swath = 2 * 300 * tan(15) ~ 160.77 km
+        const swath = ThreeDEngine.computeGroundSwathWidth(300.0, 30.0);
+        expect(swath.swathWidthKm).to.be.closeTo(160.77, 0.5);
+        expect(swath.halfSwathWidthKm).to.be.closeTo(80.38, 0.5);
+
+        // Horizontal XY triangle in Z=0 plane: [0,0,0], [1,0,0], [0,1,0] -> normal should point +Z (0,0,1)
+        const norm = ThreeDEngine.computeTriangleFacetNormal([0, 0, 0], [1, 0, 0], [0, 1, 0]);
+        expect(norm.nx).to.equal(0);
+        expect(norm.ny).to.equal(0);
+        expect(norm.nz).to.equal(1.0);
+        expect(norm.area).to.equal(0.5);
+    });
+
+    it('should compute pinhole perspective projection to screen coordinates', () => {
+        // Point (10, 20, 100) with focal length 1.0 -> screenX = 10/100 = 0.1, screenY = 20/100 = 0.2
+        const proj = ThreeDEngine.computePerspectiveProjection([10, 20, 100], 1.0);
+        expect(proj.screenX).to.equal(0.1);
+        expect(proj.screenY).to.equal(0.2);
+        expect(proj.inFrontOfCamera).to.equal(true);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
