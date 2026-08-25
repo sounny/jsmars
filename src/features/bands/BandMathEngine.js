@@ -898,7 +898,88 @@ export class BandMathEngine {
       dynamicRange: parseFloat((maxVal - minVal).toFixed(4))
     };
   }
+
+  // --- Polyhydrated Sulfate (SINDEX2), OLINDEX3 & SAM Spectral Angle Solvers ---
+
+  /**
+   * Calculate CRISM SINDEX2 Polyhydrated Sulfate absorption index (gypsum/polyhydrated Mg-sulfate).
+   * SINDEX2 = 1 - (R2100 + R2400) / (2 * R2290)
+   * @param {object} bands - Map of band reflectances (B2100, B2290, B2400)
+   * @returns {{sindex2: number, hasPolyhydratedSulfate: boolean}}
+   */
+  static computeCRISMPolyhydratedSulfateIndex(bands = {}) {
+    const b2100 = bands.B2100 ?? 0.28;
+    const b2290 = bands.B2290 ?? 0.32;
+    const b2400 = bands.B2400 ?? 0.27;
+
+    const denom = 2.0 * b2290;
+    const numer = b2100 + b2400;
+    const sindex2 = denom > 0 ? 1.0 - (numer / denom) : 0;
+
+    return {
+      sindex2: parseFloat(Math.max(0, sindex2).toFixed(4)),
+      hasPolyhydratedSulfate: sindex2 > 0.04
+    };
+  }
+
+  /**
+   * Calculate standard Viviano-Beck (2014) CRISM OLINDEX3 (Olivine 1 µm parameter).
+   * OLINDEX3 = (R1690 / (0.1 * R1080 + 0.9 * R2530)) - 1
+   * @param {object} bands - Map of band reflectances (B1080, B1690, B2530)
+   * @returns {{olindex3: number, olivineAbundance: string}}
+   */
+  static computeCRISMOlivineIndex3(bands = {}) {
+    const b1080 = bands.B1080 ?? 0.20;
+    const b1690 = bands.B1690 ?? 0.28;
+    const b2530 = bands.B2530 ?? 0.22;
+
+    const denom = 0.1 * b1080 + 0.9 * b2530;
+    const val = denom > 0 ? (b1690 / denom) - 1.0 : 0;
+
+    let abundance = 'Negligible Olivine';
+    if (val > 0.15) abundance = 'High Olivine Cumulate (>30 vol%)';
+    else if (val > 0.05) abundance = 'Moderate Olivine Silicate';
+
+    return {
+      olindex3: parseFloat(Math.max(0, val).toFixed(4)),
+      olivineAbundance: abundance
+    };
+  }
+
+  /**
+   * Calculate Spectral Angle Mapper (SAM) vector angle and similarity score.
+   * theta = arccos( (r . t) / (||r|| * ||t||) )
+   * @param {Array<number>} spectrumReference - Reference endmember spectrum
+   * @param {Array<number>} spectrumTarget - Target unknown pixel spectrum
+   * @returns {{angleRadians: number, angleDegrees: number, isConfidentMatch: boolean}}
+   */
+  static computeSpectralAngleMetric(spectrumReference = [], spectrumTarget = []) {
+    const n = Math.min(spectrumReference.length, spectrumTarget.length);
+    if (n === 0) return { angleRadians: 0, angleDegrees: 0, isConfidentMatch: false };
+
+    let dot = 0;
+    let normRef = 0;
+    let normTgt = 0;
+
+    for (let i = 0; i < n; i++) {
+      dot += spectrumReference[i] * spectrumTarget[i];
+      normRef += spectrumReference[i] * spectrumReference[i];
+      normTgt += spectrumTarget[i] * spectrumTarget[i];
+    }
+
+    const denom = Math.sqrt(normRef) * Math.sqrt(normTgt);
+    const cosTheta = denom > 0 ? Math.max(-1.0, Math.min(1.0, dot / denom)) : 1.0;
+    const thetaRad = Math.acos(cosTheta);
+    const thetaDeg = thetaRad * 180.0 / Math.PI;
+
+    return {
+      angleRadians: parseFloat(thetaRad.toFixed(4)),
+      angleDegrees: parseFloat(thetaDeg.toFixed(2)),
+      isConfidentMatch: thetaDeg < 10.0 // Under 10 degrees is a tight spectral match
+    };
+  }
 }
+
 
 
 

@@ -3450,6 +3450,35 @@ describe('Range Resolution, SAR Sharpening & Basal Attenuation (RadarSounderEngi
     });
 });
 
+describe('SINDEX2 Sulfates, OLINDEX3 Olivine & SAM Angle (BandMathEngine)', () => {
+    it('should calculate CRISM SINDEX2 polyhydrated sulfate and OLINDEX3 olivine indices', () => {
+        // Gypsum polyhydrated sulfate signature (2.1 & 2.4 µm drops)
+        const sindex = BandMathEngine.computeCRISMPolyhydratedSulfateIndex({ B2100: 0.22, B2290: 0.32, B2400: 0.24 });
+        expect(sindex.sindex2).to.be.greaterThan(0.15);
+        expect(sindex.hasPolyhydratedSulfate).to.equal(true);
+
+        // Olivine 1 µm broad absorption parameter
+        const ol = BandMathEngine.computeCRISMOlivineIndex3({ B1080: 0.16, B1690: 0.30, B2530: 0.24 });
+        expect(ol.olindex3).to.be.greaterThan(0.15);
+        expect(ol.olivineAbundance).to.include('High Olivine');
+    });
+
+    it('should calculate Spectral Angle Mapper (SAM) vector angle and match confidence', () => {
+        // Near-identical spectra (same shape, small scaling)
+        const specA = [0.20, 0.25, 0.28, 0.22, 0.18];
+        const specB = [0.21, 0.26, 0.29, 0.23, 0.19];
+        const samMatch = BandMathEngine.computeSpectralAngleMetric(specA, specB);
+        expect(samMatch.angleDegrees).to.be.lessThan(3.0);
+        expect(samMatch.isConfidentMatch).to.equal(true);
+
+        // Orthogonal / distinct spectra
+        const specC = [0.50, 0.10, 0.05, 0.40, 0.60];
+        const samDiff = BandMathEngine.computeSpectralAngleMetric(specA, specC);
+        expect(samDiff.angleDegrees).to.be.greaterThan(25.0);
+        expect(samDiff.isConfidentMatch).to.equal(false);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
