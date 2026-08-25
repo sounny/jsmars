@@ -2719,6 +2719,35 @@ describe('Transient-to-Final Collapse, Ejecta Blanket & Cavity Volume (CSFDEngin
     });
 });
 
+describe('CRISM Carbonates, Olivine Fo# & Band Area Ratio (BandMathEngine)', () => {
+    it('should calculate CRISM diagnostic carbonate absorption indices', () => {
+        // Deep absorption at 2.50 µm and 3.90 µm -> strong carbonate signature
+        const carb = BandMathEngine.computeCarbonateIndices({
+            B2350: 0.30, B2500: 0.20, B2600: 0.30,
+            B3750: 0.25, B3900: 0.15, B4000: 0.25
+        });
+        expect(carb.bd2500_2).to.be.greaterThan(0.2);
+        expect(carb.bd3900).to.be.greaterThan(0.2);
+        expect(carb.hasCarbonateSignature).to.equal(true);
+    });
+
+    it('should estimate Olivine Forsterite Fo# number and Band Area Ratio (BAR)', () => {
+        // Minimum at 1.04 µm -> Pure Mg-rich Forsterite (Fo100)
+        const fo100 = BandMathEngine.computeOlivineForsteriteNumber(1.04);
+        expect(fo100.forsteriteNumber).to.equal(100.0);
+        expect(fo100.compositionName).to.include('Forsterite');
+
+        // Minimum at 1.07 µm -> Intermediate Olivine (Fo50)
+        const fo50 = BandMathEngine.computeOlivineForsteriteNumber(1.07);
+        expect(fo50.forsteriteNumber).to.be.closeTo(50.0, 1.0);
+
+        // Pure olivine: BAR = Area2 / Area1 < 0.1
+        const barOl = BandMathEngine.computeBandAreaRatio(0.5, 0.02);
+        expect(barOl.barRatio).to.be.lessThan(0.1);
+        expect(barOl.classification).to.include('Olivine');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

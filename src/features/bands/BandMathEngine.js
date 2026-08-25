@@ -652,7 +652,89 @@ export class BandMathEngine {
 
     return parseFloat(Math.max(-1.0, Math.min(1.0, r)).toFixed(4));
   }
+
+  // --- CRISM Carbonates, Olivine Fo# & Band Area Ratio (BAR) Solvers ---
+
+  /**
+   * Calculate CRISM diagnostic Carbonate absorption indices (BD2500_2 and BD3900).
+   * @param {object} bands - Map of band reflectances (B2350, B2500, B2600, B3750, B3900, B4000)
+   * @returns {{bd2500_2: number, bd3900: number, hasCarbonateSignature: boolean}}
+   */
+  static computeCarbonateIndices(bands = {}) {
+    const b2350 = bands.B2350 ?? 0.28;
+    const b2500 = bands.B2500 ?? 0.23;
+    const b2600 = bands.B2600 ?? 0.27;
+
+    const b3750 = bands.B3750 ?? 0.20;
+    const b3900 = bands.B3900 ?? 0.16;
+    const b4000 = bands.B4000 ?? 0.19;
+
+    const cont2500 = 0.5 * (b2350 + b2600);
+    const bd2500_2 = cont2500 > 0 ? 1.0 - (b2500 / cont2500) : 0;
+
+    const cont3900 = 0.5 * (b3750 + b4000);
+    const bd3900 = cont3900 > 0 ? 1.0 - (b3900 / cont3900) : 0;
+
+    const hasCarbonateSignature = bd2500_2 > 0.05 && bd3900 > 0.05;
+
+    return {
+      bd2500_2: parseFloat(Math.max(0, bd2500_2).toFixed(4)),
+      bd3900: parseFloat(Math.max(0, bd3900).toFixed(4)),
+      hasCarbonateSignature
+    };
+  }
+
+  /**
+   * Estimate Olivine Forsterite Number (Fo# = Mg / (Mg + Fe)) from 1 µm absorption center minimum.
+   * Fo100 (Forsterite) center ~ 1.04 µm, Fo0 (Fayalite) center ~ 1.10 µm.
+   * @param {number} minWavelengthMicrons - Observed 1 µm band minimum in µm (e.g. 1.055 µm)
+   * @returns {{forsteriteNumber: number, fayaliteNumber: number, compositionName: string}}
+   */
+  static computeOlivineForsteriteNumber(minWavelengthMicrons) {
+    const lam = Math.max(1.04, Math.min(1.10, minWavelengthMicrons));
+    const foFraction = 1.0 - (lam - 1.04) / 0.06;
+    const foNumber = Math.max(0, Math.min(100, foFraction * 100.0));
+    const faNumber = 100.0 - foNumber;
+
+    let comp = 'Magnesium-Rich Forsterite (Fo80-Fo100)';
+    if (foNumber < 30) {
+      comp = 'Iron-Rich Fayalite (Fo0-Fo30)';
+    } else if (foNumber < 70) {
+      comp = 'Intermediate Olivine (Hortonolite Fo30-Fo70)';
+    }
+
+    return {
+      forsteriteNumber: parseFloat(foNumber.toFixed(1)),
+      fayaliteNumber: parseFloat(faNumber.toFixed(1)),
+      compositionName: comp
+    };
+  }
+
+  /**
+   * Compute Band Area Ratio (BAR = Area 2 µm / Area 1 µm) for pyroxene / olivine mixtures.
+   * @param {number} band1Area - Integrated absorption area around 1 µm (µm * reflectance)
+   * @param {number} band2Area - Integrated absorption area around 2 µm (µm * reflectance)
+   * @returns {{barRatio: number, classification: string}}
+   */
+  static computeBandAreaRatio(band1Area, band2Area) {
+    const a1 = Math.max(1e-6, band1Area);
+    const a2 = Math.max(0, band2Area);
+    const bar = a2 / a1;
+
+    let cls = 'Orthopyroxene / High-Calcium Clinopyroxene';
+    if (bar < 0.1) {
+      cls = 'Pure Olivine Dominant (No 2 µm band)';
+    } else if (bar < 0.8) {
+      cls = 'Olivine-Pyroxene Mixture / Basaltic';
+    }
+
+    return {
+      barRatio: parseFloat(bar.toFixed(3)),
+      classification: cls
+    };
+  }
 }
+
 
 
 
