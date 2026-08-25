@@ -460,6 +460,76 @@ export class InvestigateTool {
         const T = (gSurface * scaleHeightM * molarMassKgMol) / R_univ;
         return parseFloat(T.toFixed(1));
     }
+
+    // --- Geothermal Heat Flow, Atmospheric Scale Height & Planck Radiance ---
+
+    /**
+     * Compute lithospheric geothermal temperature gradient and subsurface temperature at depth.
+     * dT/dz = q / k
+     * @param {number} [surfaceHeatFlowMwM2=30.0] - Surface geothermal heat flux in mW/m^2 (typical Mars ~ 30 mW/m^2)
+     * @param {number} [thermalConductivityW_MK=2.0] - Crustal thermal conductivity in W/(m K) (basalt ~ 2.0 W/m K)
+     * @param {number} [surfaceTempK=210.0] - Mean annual surface temperature in Kelvin
+     * @param {number} [depthKm=1.0] - Target subsurface depth in km
+     * @returns {{gradientKPerKm: number, tempAtDepthK: number}}
+     */
+    static computeGeothermalGradient(surfaceHeatFlowMwM2 = 30.0, thermalConductivityW_MK = 2.0, surfaceTempK = 210.0, depthKm = 1.0) {
+        const q_W = surfaceHeatFlowMwM2 * 1e-3; // W/m^2
+        const k = Math.max(0.01, thermalConductivityW_MK);
+        const gradientKPerM = q_W / k;
+        const gradientKPerKm = gradientKPerM * 1000.0;
+
+        const tempAtDepth = surfaceTempK + gradientKPerKm * Math.max(0, depthKm);
+
+        return {
+            gradientKPerKm: parseFloat(gradientKPerKm.toFixed(2)),
+            tempAtDepthK: parseFloat(tempAtDepth.toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate atmospheric scale height H = (R_univ * T) / (M * g).
+     * @param {number} temperatureK - Mean atmospheric temperature in Kelvin
+     * @param {string} [body='mars'] - Target planetary body
+     * @returns {number} Scale height in km
+     */
+    static computeScaleHeight(temperatureK, body = 'mars') {
+        const R_univ = 8.314462618; // J/(mol K)
+        const isMars = body.toLowerCase() === 'mars';
+        const g = isMars ? 3.72076 : (body.toLowerCase() === 'moon' ? 1.62 : 9.80665);
+        const molarMass = isMars ? 0.04401 : 0.02897; // kg/mol (CO2 vs Earth N2/O2)
+
+        const H_meters = (R_univ * Math.max(1, temperatureK)) / (molarMass * g);
+        return parseFloat((H_meters / 1000.0).toFixed(2));
+    }
+
+    /**
+     * Compute Planck blackbody spectral radiance B(lambda, T).
+     * B = (2 * h * c^2) / (lambda^5 * (exp(h*c / (lambda*k_B*T)) - 1))
+     * @param {number} wavelengthMicrons - Wavelength in micrometers (µm)
+     * @param {number} temperatureK - Temperature in Kelvin
+     * @returns {number} Spectral radiance in W / (m^2 sr µm)
+     */
+    static computeBlackbodySpectralRadiance(wavelengthMicrons, temperatureK) {
+        const h = 6.62607015e-34; // J s
+        const c = 299792458; // m/s
+        const kB = 1.380649e-23; // J/K
+
+        const lambdaM = Math.max(1e-9, wavelengthMicrons * 1e-6);
+        const T = Math.max(1, temperatureK);
+
+        const c1 = 2.0 * h * c * c;
+        const c2 = (h * c) / (kB * T);
+
+        const expTerm = Math.exp(c2 / lambdaM) - 1.0;
+        if (expTerm <= 0 || !Number.isFinite(expTerm)) return 0;
+
+        const radianceW_M3_Sr = c1 / (Math.pow(lambdaM, 5) * expTerm);
+        // Convert to per micrometer: 1 m = 1e6 µm
+        const radianceW_M2_Sr_Um = radianceW_M3_Sr * 1e-6;
+
+        return parseFloat(radianceW_M2_Sr_Um.toExponential(4));
+    }
 }
+
 
 

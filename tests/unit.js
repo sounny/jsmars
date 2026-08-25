@@ -2134,6 +2134,26 @@ describe('Line-of-Sight Horizon, Solar Phase Angle & Ray Tracing (ThreeDEngine)'
     });
 });
 
+describe('Lithospheric Geothermal Gradients & Atmospheric Scale Height (InvestigateTool)', () => {
+    it('should compute geothermal heat flux gradient and temperature at depth', () => {
+        // Mars heat flux q = 30 mW/m^2, basalt conductivity k = 2.0 W/m K -> gradient = 15 K/km
+        const geo = InvestigateTool.computeGeothermalGradient(30.0, 2.0, 210.0, 2.0);
+        expect(geo.gradientKPerKm).to.equal(15.0);
+        expect(geo.tempAtDepthK).to.equal(240.0); // 210 + 15 * 2
+    });
+
+    it('should calculate atmospheric scale height and Planck blackbody spectral radiance', () => {
+        // Mars T = 210 K -> Scale height ~ 10.68 km
+        const hScale = InvestigateTool.computeScaleHeight(210.0, 'mars');
+        expect(hScale).to.be.closeTo(10.68, 0.2);
+
+        // Planck radiance at 10 µm (thermal IR peak for ~250 K)
+        const rad = InvestigateTool.computeBlackbodySpectralRadiance(10.0, 250.0);
+        expect(rad).to.be.greaterThan(1.0);
+        expect(rad).to.be.lessThan(20.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
