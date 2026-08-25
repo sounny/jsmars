@@ -591,7 +591,75 @@ export class KRCEngine {
       heatFluxMw_M2: parseFloat(q_mW.toFixed(2))
     };
   }
+
+  // --- IR Atmospheric Window, Seasonal Frost Cap Recession & Harmonic Phase Velocity Solvers ---
+
+  /**
+   * Calculate atmospheric thermal infrared window spectral transmission (8-12 µm and 17-25 µm).
+   * @param {number} [dustTau=0.3] - Column dust optical depth
+   * @param {number} [surfacePressurePa=610.0] - Surface atmospheric pressure in Pa
+   * @returns {{windowTransmission: number, windowOpticalDepth: number}}
+   */
+  static computeAtmosphericInfraredWindowTransmission(dustTau = 0.3, surfacePressurePa = 610.0) {
+    const tauDust = Math.max(0, dustTau);
+    const pRatio = Math.max(0, surfacePressurePa) / 610.0;
+    // In thermal window, gas absorption is small (~0.02) and dust cross-section is ~0.35 of visible
+    const tauWin = tauDust * 0.35 + 0.02 * pRatio;
+    const trans = Math.exp(-tauWin);
+
+    return {
+      windowTransmission: parseFloat(trans.toFixed(4)),
+      windowOpticalDepth: parseFloat(tauWin.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate polar seasonal CO2 cap sublimation receding velocity in mm/sol.
+   * v_recede = [ (1 - A)*S_sun - eps*sigma*T_frost^4 ] / (rho_ice * L_subl)
+   * @param {number} solarInsolationW_M2 - Solar insolation incident on frost cap
+   * @param {number} [albedo=0.65] - CO2 frost cap albedo (~0.65)
+   * @param {number} [latentHeatSublimation=5.9e5] - Latent heat of sublimation (J/kg)
+   * @returns {{recessionRateMmPerSol: number, isReceding: boolean}}
+   */
+  static computeFrostCapRecessionRate(solarInsolationW_M2, albedo = 0.65, latentHeatSublimation = 5.9e5) {
+    const absorbed = (1.0 - Math.min(0.99, albedo)) * Math.max(0, solarInsolationW_M2);
+    const radLoss = this.MARS_EMISSIVITY * this.STEFAN_BOLTZMANN * Math.pow(this.CO2_FROST_POINT, 4);
+    const netFlux = absorbed - radLoss;
+
+    const rhoIce = 1600.0; // kg/m^3 for dry ice
+    const mRate = netFlux / latentHeatSublimation; // kg / (m^2 s)
+    const vMps = mRate / rhoIce; // m/s
+    const mmPerSol = vMps * this.MARS_SOL_SECONDS * 1000.0;
+
+    return {
+      recessionRateMmPerSol: parseFloat(mmPerSol.toFixed(2)),
+      isReceding: mmPerSol > 0
+    };
+  }
+
+  /**
+   * Calculate frequency-dependent harmonic thermal wave propagation speed and wavelength.
+   * v_thermal = sqrt(2 * omega * kappa),  lambda_thermal = 2 * pi * sqrt(2 * kappa / omega)
+   * @param {number} thermalInertia - Thermal inertia (SI)
+   * @param {number} [periodSeconds=88775.244] - Harmonic period in seconds
+   * @returns {{thermalWaveSpeedMmPerSol: number, thermalWavelengthCm: number}}
+   */
+  static computeHarmonicPhaseLagDepth(thermalInertia, periodSeconds = 88775.244) {
+    const cVol = this.DENSITY * this.SPECIFIC_HEAT;
+    const k = (thermalInertia * thermalInertia) / cVol;
+    const kappa = k / cVol; // Thermal diffusivity m^2/s
+
+    const omega = (2.0 * Math.PI) / periodSeconds;
+    const vMps = Math.sqrt(2.0 * omega * kappa);
+    const lambdaM = 2.0 * Math.PI * Math.sqrt(2.0 * kappa / omega);
+
+    return {
+      thermalWaveSpeedMmPerSol: parseFloat((vMps * this.MARS_SOL_SECONDS * 1000.0).toFixed(2)),
+      thermalWavelengthCm: parseFloat((lambdaM * 100.0).toFixed(2))
+    };
+  }
 }
+
 
 
 

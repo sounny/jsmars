@@ -3146,6 +3146,26 @@ describe('Richardson Number, Spacecraft Aerodynamic Drag & Rayleigh Depth (MCDEn
     });
 });
 
+describe('IR Window Transmission, Frost Recession & Phase Velocity (KRCEngine)', () => {
+    it('should calculate atmospheric IR window spectral transmission', () => {
+        const win = KRCEngine.computeAtmosphericInfraredWindowTransmission(0.3, 610.0);
+        expect(win.windowTransmission).to.be.greaterThan(0.8);
+        expect(win.windowOpticalDepth).to.be.lessThan(0.2);
+    });
+
+    it('should compute seasonal CO2 frost cap recession rate and harmonic phase velocity', () => {
+        // High spring insolation: 300 W/m^2 on CO2 cap
+        const recede = KRCEngine.computeFrostCapRecessionRate(300.0, 0.65);
+        expect(recede.recessionRateMmPerSol).to.be.greaterThan(0);
+        expect(recede.isReceding).to.equal(true);
+
+        // Diurnal thermal wave speed in sandy regolith (TI = 250)
+        const wave = KRCEngine.computeHarmonicPhaseLagDepth(250.0);
+        expect(wave.thermalWaveSpeedMmPerSol).to.be.greaterThan(0);
+        expect(wave.thermalWavelengthCm).to.be.greaterThan(10.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
