@@ -3003,6 +3003,34 @@ describe('CRISM Silica, Ferric Nanophase & Spectral Asymmetry (BandMathEngine)',
     });
 });
 
+describe('Poisson Age Likelihood & Crater Depth-to-Diameter (CSFDEngine)', () => {
+    it('should compute Poisson model age likelihood density', () => {
+        // Area = 100,000 km^2, observed 50 craters at test age 3.5 Ga
+        const pdf = CSFDEngine.computePoissonAgeProbabilityDensity(50, 1e5, 3.5);
+        expect(pdf.expectedCount).to.be.greaterThan(0);
+        expect(pdf.logLikelihood).to.be.a('number');
+    });
+
+    it('should compute Pike depth-to-diameter ratio and rim uplift geometry', () => {
+        // Simple crater (D = 2 km): d = 0.20 * 2 = 0.4 km
+        const simple = CSFDEngine.computeDepthToDiameterScaling(2.0);
+        expect(simple.depthKm).to.equal(0.4);
+        expect(simple.depthToDiameterRatio).to.equal(0.20);
+        expect(simple.morphologyType).to.include('Simple');
+
+        // Complex crater (D = 50 km): d ~ 0.36 * 50^0.51 ~ 2.6 km
+        const complex = CSFDEngine.computeDepthToDiameterScaling(50.0);
+        expect(complex.depthKm).to.be.greaterThan(2.0);
+        expect(complex.depthToDiameterRatio).to.be.lessThan(0.10);
+        expect(complex.morphologyType).to.include('Complex');
+
+        // Rim uplift & floor diameter
+        const geom = CSFDEngine.computeRimHeightAndFloorDiameter(50.0);
+        expect(geom.rimHeightMeters).to.be.greaterThan(1000.0);
+        expect(geom.floorDiameterKm).to.equal(20.0); // 40% of 50 km
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

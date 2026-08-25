@@ -634,7 +634,92 @@ export class CSFDEngine {
       volumeKm3: parseFloat(volume.toFixed(3))
     };
   }
+
+  // --- Poisson Age Likelihood, Depth-to-Diameter & Rim Geometry Solvers ---
+
+  /**
+   * Calculate Michael (2013) Poisson Model Age likelihood probability P(N | t).
+   * P(N | t) = (mu^N * exp(-mu)) / N!
+   * @param {number} observedCount - Number of observed craters in counting area
+   * @param {number} areaKm2 - Surface counting area in km^2
+   * @param {number} testAgeGa - Model surface age in Ga
+   * @returns {{expectedCount: number, poissonLikelihood: number, logLikelihood: number}}
+   */
+  static computePoissonAgeProbabilityDensity(observedCount, areaKm2, testAgeGa) {
+    const n1 = this.chronologyN1(Math.max(0.001, testAgeGa));
+    const mu = n1 * Math.max(1, areaKm2); // Expected count lambda = mu(t)
+
+    const N = Math.max(0, Math.round(observedCount));
+
+    // Log-Poisson likelihood: ln(P) = N*ln(mu) - mu - ln(N!)
+    // Stirling approximation for ln(N!)
+    let lnFact = 0;
+    if (N > 0) {
+      for (let i = 1; i <= Math.min(50, N); i++) lnFact += Math.log(i);
+      if (N > 50) {
+        lnFact = N * Math.log(N) - N + 0.5 * Math.log(2.0 * Math.PI * N);
+      }
+    }
+
+    const logP = N * Math.log(Math.max(1e-9, mu)) - mu - lnFact;
+    const P = Math.exp(Math.max(-700, Math.min(0, logP)));
+
+    return {
+      expectedCount: parseFloat(mu.toFixed(2)),
+      poissonLikelihood: parseFloat(P.toExponential(4)),
+      logLikelihood: parseFloat(logP.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate Pike (1980) depth-to-diameter ratio (d/D) for simple vs complex Martian craters.
+   * @param {number} diameterKm - Crater diameter in km
+   * @returns {{depthKm: number, depthToDiameterRatio: number, morphologyType: string}}
+   */
+  static computeDepthToDiameterScaling(diameterKm) {
+    const D = Math.max(0.01, diameterKm);
+    let d = 0;
+    let morph = 'Simple Bowl-Shaped';
+
+    if (D < 7.0) {
+      // Simple crater: d = 0.20 * D
+      d = 0.20 * D;
+    } else {
+      // Complex crater: d = 0.36 * D^0.51
+      d = 0.36 * Math.pow(D, 0.51);
+      morph = 'Complex (Central Peak & Terraces)';
+    }
+
+    const ratio = d / D;
+
+    return {
+      depthKm: parseFloat(d.toFixed(3)),
+      depthToDiameterRatio: parseFloat(ratio.toFixed(4)),
+      morphologyType: morph
+    };
+  }
+
+  /**
+   * Calculate crater rim uplift height (h_rim) and flat floor diameter (D_floor).
+   * @param {number} diameterKm - Crater diameter in km
+   * @returns {{rimHeightMeters: number, floorDiameterKm: number}}
+   */
+  static computeRimHeightAndFloorDiameter(diameterKm) {
+    const D = Math.max(0.01, diameterKm);
+    // Rim uplift height h_rim ~ 0.04 * D
+    const hRimKm = 0.04 * Math.pow(D, 0.95);
+    const hRimM = hRimKm * 1000.0;
+
+    // Floor diameter for complex craters D_floor ~ 0.40 * D
+    const dFloorKm = D >= 7.0 ? 0.40 * D : 0.0;
+
+    return {
+      rimHeightMeters: parseFloat(hRimM.toFixed(1)),
+      floorDiameterKm: parseFloat(dFloorKm.toFixed(2))
+    };
+  }
 }
+
 
 
 
