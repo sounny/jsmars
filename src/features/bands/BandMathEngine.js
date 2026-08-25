@@ -733,7 +733,96 @@ export class BandMathEngine {
       classification: cls
     };
   }
+
+  // --- CRISM Hydrated Silica, Nanophase Ferric & Spectral Asymmetry Solvers ---
+
+  /**
+   * Calculate CRISM diagnostic Hydrated Silica / Opal-A absorption index (BD2210_SIL).
+   * Distinguishes amorphous hydrated silica/opal from Al-smectite clays.
+   * @param {object} bands - Map of band reflectances (B2140, B2210, B2250)
+   * @returns {{bd2210_sil: number, isHydratedSilicaPresent: boolean}}
+   */
+  static computeCRISMSilicaIndex(bands = {}) {
+    const b2140 = bands.B2140 ?? 0.28;
+    const b2210 = bands.B2210 ?? 0.23;
+    const b2250 = bands.B2250 ?? 0.27;
+
+    const cont = 0.5 * (b2140 + b2250);
+    const bd2210_sil = cont > 0 ? 1.0 - (b2210 / cont) : 0;
+
+    return {
+      bd2210_sil: parseFloat(Math.max(0, bd2210_sil).toFixed(4)),
+      isHydratedSilicaPresent: bd2210_sil > 0.04
+    };
+  }
+
+  /**
+   * Calculate CRISM nanophase and crystalline Ferric Oxide Index (BD530_2).
+   * @param {object} bands - Map of band reflectances (B440, B530, B600)
+   * @returns {{bd530_2: number, ferricIntensity: string}}
+   */
+  static computeFerricNanophaseIndex(bands = {}) {
+    const b440 = bands.B440 ?? 0.15;
+    const b530 = bands.B530 ?? 0.20;
+    const b600 = bands.B600 ?? 0.28;
+
+    const cont = 0.5 * (b440 + b600);
+    const bd530 = cont > 0 ? 1.0 - (b530 / cont) : 0;
+
+    let intensity = 'Negligible / Unaltered Basalt';
+    if (bd530 > 0.12) {
+      intensity = 'High Crystalline Hematite / Dust';
+    } else if (bd530 > 0.04) {
+      intensity = 'Moderate Nanophase Ferric Oxide';
+    }
+
+    return {
+      bd530_2: parseFloat(Math.max(0, bd530).toFixed(4)),
+      ferricIntensity: intensity
+    };
+  }
+
+  /**
+   * Calculate absorption band asymmetry factor ASY = (Area_left - Area_right) / (Area_left + Area_right).
+   * @param {Array<number>} wavelengths - Band wavelengths in µm
+   * @param {Array<number>} continuumRemoved - Normalized continuum-removed spectrum (1.0 at shoulders)
+   * @param {number} centerIndex - Index of the absorption minimum
+   * @returns {{asymmetryFactor: number, skewDirection: string}}
+   */
+  static computeSpectralAsymmetry(wavelengths = [], continuumRemoved = [], centerIndex = 0) {
+    const n = Math.min(wavelengths.length, continuumRemoved.length);
+    if (n < 3 || centerIndex <= 0 || centerIndex >= n - 1) {
+      return { asymmetryFactor: 0.0, skewDirection: 'Symmetric' };
+    }
+
+    let aLeft = 0;
+    for (let i = 0; i < centerIndex; i++) {
+      const dw = Math.abs(wavelengths[i + 1] - wavelengths[i]);
+      const depth = Math.max(0, 1.0 - continuumRemoved[i]);
+      aLeft += depth * dw;
+    }
+
+    let aRight = 0;
+    for (let i = centerIndex; i < n - 1; i++) {
+      const dw = Math.abs(wavelengths[i + 1] - wavelengths[i]);
+      const depth = Math.max(0, 1.0 - continuumRemoved[i]);
+      aRight += depth * dw;
+    }
+
+    const total = aLeft + aRight;
+    const asy = total > 1e-6 ? (aLeft - aRight) / total : 0.0;
+
+    let skew = 'Symmetric';
+    if (asy > 0.1) skew = 'Left-Skewed (Shorter Wavelength Shoulder)';
+    else if (asy < -0.1) skew = 'Right-Skewed (Longer Wavelength Shoulder)';
+
+    return {
+      asymmetryFactor: parseFloat(asy.toFixed(3)),
+      skewDirection: skew
+    };
+  }
 }
+
 
 
 

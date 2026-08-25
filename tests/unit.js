@@ -2980,6 +2980,29 @@ describe('Temperature-Dependent Permittivity & Dielectric Mixing (RadarSounderEn
     });
 });
 
+describe('CRISM Silica, Ferric Nanophase & Spectral Asymmetry (BandMathEngine)', () => {
+    it('should compute CRISM hydrated silica index and ferric oxide nanophase intensity', () => {
+        // Hydrated silica with deep 2.21 µm absorption
+        const silica = BandMathEngine.computeCRISMSilicaIndex({ B2140: 0.30, B2210: 0.22, B2250: 0.29 });
+        expect(silica.bd2210_sil).to.be.greaterThan(0.05);
+        expect(silica.isHydratedSilicaPresent).to.equal(true);
+
+        // Hematite with strong 530 nm absorption
+        const ferric = BandMathEngine.computeFerricNanophaseIndex({ B440: 0.15, B530: 0.18, B600: 0.30 });
+        expect(ferric.bd530_2).to.be.greaterThan(0.10);
+        expect(ferric.ferricIntensity).to.include('Hematite');
+    });
+
+    it('should compute spectral absorption band asymmetry factor and skew direction', () => {
+        const wavelengths = [1.8, 1.9, 2.0, 2.1, 2.2];
+        // Right-skewed absorption profile (deeper tail on long wavelength side)
+        const cr = [1.0, 0.8, 0.5, 0.65, 0.95];
+        const asy = BandMathEngine.computeSpectralAsymmetry(wavelengths, cr, 2);
+        expect(asy.asymmetryFactor).to.be.a('number');
+        expect(asy.skewDirection).to.be.a('string');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
