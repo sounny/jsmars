@@ -2225,6 +2225,34 @@ describe('Planetary Boundary Layer (PBL) & Static Stability (MCDEngine)', () => 
     });
 });
 
+describe('Sub-Solar Coordinates, TOA Solar Insolation & Analemma (MarsTime)', () => {
+    it('should compute exact sub-solar ground coordinates and seasonal declination', () => {
+        // Northern summer solstice Ls = 90 deg -> sub-solar lat = +25.19 deg (Martian obliquity)
+        const sub = MarsTime.computeSubSolarPoint(90.0, 12.0);
+        expect(sub.subSolarLatDeg).to.be.closeTo(25.19, 0.05);
+        expect(sub.subSolarLonDeg).to.be.at.least(0);
+        expect(sub.subSolarLonDeg).to.be.lessThan(360);
+    });
+
+    it('should compute perihelion/aphelion TOA solar flux and generate Martian analemma curve', () => {
+        // Perihelion Ls ~ 251 deg -> distance ~ 1.38 AU, flux ~ 715 W/m^2
+        const peri = MarsTime.computeInstantaneousSolarFlux(251.0);
+        expect(peri.distanceAU).to.be.closeTo(1.381, 0.05);
+        expect(peri.solarFluxW_M2).to.be.greaterThan(700);
+
+        // Aphelion Ls ~ 71 deg -> distance ~ 1.666 AU, flux ~ 490 W/m^2
+        const aph = MarsTime.computeInstantaneousSolarFlux(71.0);
+        expect(aph.distanceAU).to.be.closeTo(1.666, 0.05);
+        expect(aph.solarFluxW_M2).to.be.lessThan(500);
+
+        // Generate 12-point orbital analemma
+        const analemma = MarsTime.computeAnalemmaCoordinates(12);
+        expect(analemma.length).to.equal(12);
+        expect(analemma[0]).to.have.property('declinationDeg');
+        expect(analemma[0]).to.have.property('eotMinutes');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

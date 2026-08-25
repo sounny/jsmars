@@ -447,6 +447,84 @@ export class MarsTime {
       aphelionLs: parseFloat(aphelionLs.toFixed(3))
     };
   }
+
+  // --- Sub-Solar Coordinates, Instantaneous Insolation & Analemma Solvers ---
+
+  /**
+   * Calculate exact sub-solar point coordinates (planetocentric latitude and East longitude).
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @param {number} [mtcHours=12.0] - Coordinated Mars Time (0-24 h)
+   * @returns {{subSolarLatDeg: number, subSolarLonDeg: number, solarDeclinationDeg: number}}
+   */
+  static computeSubSolarPoint(Ls, mtcHours = 12.0) {
+    const deltaRad = Math.asin(Math.sin(this.OBLIQUITY * Math.PI / 180.0) * Math.sin(Ls * Math.PI / 180.0));
+    const subSolarLatDeg = deltaRad * 180.0 / Math.PI;
+
+    // Subsolar longitude: where local solar time is 12:00
+    // Longitude = (12 - MTC - EoT) * 15 deg
+    const eot = this.computeEquationOfTime(Ls);
+    let lonDeg = (12.0 - mtcHours - eot.eotHours) * 15.0;
+    lonDeg = ((lonDeg % 360.0) + 360.0) % 360.0;
+
+    return {
+      subSolarLatDeg: parseFloat(subSolarLatDeg.toFixed(3)),
+      subSolarLonDeg: parseFloat(lonDeg.toFixed(3)),
+      solarDeclinationDeg: parseFloat(subSolarLatDeg.toFixed(3))
+    };
+  }
+
+  /**
+   * Compute instantaneous Mars-Sun distance and Top-of-Atmosphere (TOA) solar insolation.
+   * S = S_1AU / (r_AU)^2
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @returns {{distanceAU: number, distanceKm: number, solarFluxW_M2: number, ratioToMean: number}}
+   */
+  static computeInstantaneousSolarFlux(Ls) {
+    const e = this.ECCENTRICITY;
+    const a = this.SEMI_MAJOR_AXIS;
+
+    // True anomaly nu approx from Ls
+    const LsRad = Ls * Math.PI / 180.0;
+    const nuRad = LsRad - (250.99 * Math.PI / 180.0); // Offset relative to perihelion Ls ~ 251 deg
+
+    const rAU = (a * (1.0 - e * e)) / (1.0 + e * Math.cos(nuRad));
+    const rKm = rAU * 149597870.7; // 1 AU in km
+    const solarFlux = this.SOLAR_CONSTANT_1AU / (rAU * rAU);
+    const ratioToMean = solarFlux / this.SOLAR_CONSTANT_MARS;
+
+    return {
+      distanceAU: parseFloat(rAU.toFixed(5)),
+      distanceKm: parseFloat(rKm.toFixed(0)),
+      solarFluxW_M2: parseFloat(solarFlux.toFixed(2)),
+      ratioToMean: parseFloat(ratioToMean.toFixed(3))
+    };
+  }
+
+  /**
+   * Generate Martian Analemma curve data (Solar Declination vs Equation of Time).
+   * Unlike Earth's figure-8, Mars' analemma is a pronounced teardrop shape due to high orbital eccentricity.
+   * @param {number} [samples=24] - Number of points along orbit
+   * @returns {Array<{Ls: number, declinationDeg: number, eotMinutes: number}>}
+   */
+  static computeAnalemmaCoordinates(samples = 24) {
+    const points = [];
+    const step = 360.0 / samples;
+
+    for (let i = 0; i < samples; i++) {
+      const Ls = i * step;
+      const sub = this.computeSubSolarPoint(Ls, 12.0);
+      const eot = this.computeEquationOfTime(Ls);
+
+      points.push({
+        Ls: parseFloat(Ls.toFixed(1)),
+        declinationDeg: sub.subSolarLatDeg,
+        eotMinutes: eot.eotMinutes
+      });
+    }
+
+    return points;
+  }
 }
+
 
 

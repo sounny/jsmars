@@ -196,3 +196,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate convective PBL height and Deardorff velocity scale
 ?: AssertionError: expected 0.64 to be above 4
     at n.<anonymous> (unit.js:2209:39)
+
+
+### Automated 4-Hour Check Alert [2026-08-25 09:30:31 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute exact sub-solar ground coordinates and seasonal declination
+?: AssertionError: expected +0 to be above +0
+    at n.<anonymous> (unit.js:2233:42)
