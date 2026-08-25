@@ -721,7 +721,65 @@ export class ProjectionManager {
     const s = 1.0 / Math.max(0.001, Math.cos(phi));
     return parseFloat(s.toFixed(3));
   }
+
+  // --- Stereographic Point Scale, Parallel Length & Conic Constant Solvers ---
+
+  /**
+   * Calculate exact conformal point scale factor for general Oblique or Polar Stereographic projection.
+   * k = 2 / (1 + sin(phi0)*sin(phi) + cos(phi0)*cos(phi)*cos(lambda - lambda0))
+   * @param {number} latDeg - Point latitude
+   * @param {number} lonDeg - Point longitude
+   * @param {number} [centerLatDeg=90] - Projection center latitude (90 = North Pole)
+   * @param {number} [centerLonDeg=0] - Projection center longitude
+   * @returns {number} Conformal scale factor k (1.0 at center)
+   */
+  static computeStereographicPointScale(latDeg, lonDeg, centerLatDeg = 90, centerLonDeg = 0) {
+    const phi = latDeg * Math.PI / 180.0;
+    const lam = lonDeg * Math.PI / 180.0;
+    const phi0 = centerLatDeg * Math.PI / 180.0;
+    const lam0 = centerLonDeg * Math.PI / 180.0;
+
+    const cosC = Math.sin(phi0) * Math.sin(phi) + Math.cos(phi0) * Math.cos(phi) * Math.cos(lam - lam0);
+    const k = 2.0 / Math.max(1e-6, 1.0 + cosC);
+
+    return parseFloat(k.toFixed(4));
+  }
+
+  /**
+   * Calculate physical circumference length of a latitude parallel in km.
+   * L(phi) = 2 * pi * R * cos(phi)
+   * @param {number} latDeg - Latitude in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {number} Parallel circumference in km
+   */
+  static computeSinusoidalParallelLength(latDeg, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = Math.abs(latDeg) * Math.PI / 180.0;
+    const len = 2.0 * Math.PI * R * Math.cos(phi);
+
+    return parseFloat(len.toFixed(2));
+  }
+
+  /**
+   * Calculate cone constant n and apical opening half-angle for conic projections between standard parallels.
+   * n = (sin(phi1) + sin(phi2)) / 2
+   * @param {number} lat1Deg - Standard parallel 1
+   * @param {number} lat2Deg - Standard parallel 2
+   * @returns {{coneConstantN: number, apicalHalfAngleDeg: number}}
+   */
+  static computeConicConeConstant(lat1Deg, lat2Deg) {
+    const phi1 = lat1Deg * Math.PI / 180.0;
+    const phi2 = lat2Deg * Math.PI / 180.0;
+    const n = 0.5 * (Math.sin(phi1) + Math.sin(phi2));
+    const halfAngle = Math.asin(Math.max(-1.0, Math.min(1.0, n))) * 180.0 / Math.PI;
+
+    return {
+      coneConstantN: parseFloat(n.toFixed(4)),
+      apicalHalfAngleDeg: parseFloat(halfAngle.toFixed(2))
+    };
+  }
 }
+
 
 
 

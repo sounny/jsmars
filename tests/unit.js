@@ -2831,6 +2831,29 @@ describe('Two-Layer Apparent TI, Fourier Harmonics & Geothermal Flux (KRCEngine)
     });
 });
 
+describe('Stereographic Point Scale, Parallel Length & Conic Constant (ProjectionManager)', () => {
+    it('should calculate conformal point scale factor and latitude parallel length', () => {
+        // At North Pole (lat = 90, center = 90): scale k = 1.0
+        const kPole = ProjectionManager.computeStereographicPointScale(90, 0, 90, 0);
+        expect(kPole).to.equal(1.0);
+
+        // At equator (lat = 0, center = 90): scale k = 2.0
+        const kEq = ProjectionManager.computeStereographicPointScale(0, 0, 90, 0);
+        expect(kEq).to.equal(2.0);
+
+        // Mars equator circumference: 2 * pi * 3389.5 ~ 21296.81 km
+        const eqLen = ProjectionManager.computeSinusoidalParallelLength(0, 'mars');
+        expect(eqLen).to.be.closeTo(21296.81, 1.0);
+    });
+
+    it('should compute conic projection cone constant and apical opening angle', () => {
+        // Conic between 30 and 60 deg lat: n = (sin(30) + sin(60)) / 2 = (0.5 + 0.866) / 2 = 0.6830
+        const conic = ProjectionManager.computeConicConeConstant(30, 60);
+        expect(conic.coneConstantN).to.be.closeTo(0.6830, 0.001);
+        expect(conic.apicalHalfAngleDeg).to.be.greaterThan(40.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
