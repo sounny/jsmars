@@ -741,7 +741,77 @@ export class MarsTime {
       quarter: quarters[quarterIdx]
     };
   }
+
+  // --- Vis-Viva Velocity, Equation of Center Series & Insolation Fluctuation Solvers ---
+
+  /**
+   * Calculate orbital velocity using Vis-Viva equation v = sqrt(GM_sun * (2/r - 1/a)).
+   * @param {number} radialDistanceKm - Heliocentric distance r in km
+   * @returns {{orbitalVelocityKmS: number, orbitalVelocityMps: number}}
+   */
+  static computeVisVivaVelocity(radialDistanceKm) {
+    const GM_Sun = 1.32712440018e11; // km^3 / s^2
+    const aKm = this.SEMI_MAJOR_AXIS * 149597870.7; // ~227.94M km
+    const rKm = Math.max(1e6, radialDistanceKm);
+
+    const vKmS = Math.sqrt(GM_Sun * (2.0 / rKm - 1.0 / aKm));
+
+    return {
+      orbitalVelocityKmS: parseFloat(vKmS.toFixed(3)),
+      orbitalVelocityMps: parseFloat((vKmS * 1000.0).toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate high-order analytic series expansion of Mars Equation of the Center (nu - M).
+   * nu - M = (2e - e^3/4)*sin(M) + (5/4 * e^2)*sin(2M) + (13/12 * e^3)*sin(3M)
+   * @param {number} meanAnomalyDeg - Mean anomaly M in degrees (0-360)
+   * @returns {{equationOfCenterDeg: number, trueAnomalyDeg: number}}
+   */
+  static computeEquationOfCenterSeries(meanAnomalyDeg) {
+    const e = this.ECCENTRICITY;
+    const MRad = (meanAnomalyDeg % 360.0) * Math.PI / 180.0;
+
+    const term1 = (2.0 * e - Math.pow(e, 3) / 4.0) * Math.sin(MRad);
+    const term2 = (1.25 * Math.pow(e, 2)) * Math.sin(2.0 * MRad);
+    const term3 = (13.0 / 12.0 * Math.pow(e, 3)) * Math.sin(3.0 * MRad);
+
+    const eocRad = term1 + term2 + term3;
+    const eocDeg = eocRad * 180.0 / Math.PI;
+    let nuDeg = (meanAnomalyDeg + eocDeg) % 360.0;
+    if (nuDeg < 0) nuDeg += 360.0;
+
+    return {
+      equationOfCenterDeg: parseFloat(eocDeg.toFixed(4)),
+      trueAnomalyDeg: parseFloat(nuDeg.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate normalized seasonal solar flux ratio S(Ls) / S_mean.
+   * Ratio = [ (1 + e * cos(Ls - Ls_peri)) / (1 - e^2) ]^2
+   * @param {number} Ls - Solar Longitude in degrees (0-360)
+   * @returns {{insolationRatio: number, percentDeviationFromMean: number, isPerihelionSeason: boolean}}
+   */
+  static computeInsolationFluctuationRatio(Ls) {
+    const e = this.ECCENTRICITY;
+    const LsRad = (Ls % 360.0) * Math.PI / 180.0;
+    const periRad = 250.99 * Math.PI / 180.0;
+
+    const numerator = 1.0 + e * Math.cos(LsRad - periRad);
+    const denominator = 1.0 - e * e;
+    const factor = numerator / denominator;
+    const ratio = factor * factor;
+    const deviation = (ratio - 1.0) * 100.0;
+
+    return {
+      insolationRatio: parseFloat(ratio.toFixed(4)),
+      percentDeviationFromMean: parseFloat(deviation.toFixed(2)),
+      isPerihelionSeason: ratio > 1.10
+    };
+  }
 }
+
 
 
 

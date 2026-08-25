@@ -3401,6 +3401,32 @@ describe('Thermal Backflux, Pore Ice Conductivity & Diurnal Contrast (KRCEngine)
     });
 });
 
+describe('Vis-Viva Velocity, Equation of Center Series & Insolation (MarsTime)', () => {
+    it('should compute Vis-Viva orbital speed and Equation of Center series expansion', () => {
+        // At mean orbital radius ~ 227.9M km -> ~24.1 km/s
+        const speed = MarsTime.computeVisVivaVelocity(227.94e6);
+        expect(speed.orbitalVelocityKmS).to.be.greaterThan(23.0);
+        expect(speed.orbitalVelocityKmS).to.be.lessThan(26.0);
+
+        // At M = 90 deg, Equation of Center reaches ~ 10.7 degrees
+        const eoc = MarsTime.computeEquationOfCenterSeries(90.0);
+        expect(eoc.equationOfCenterDeg).to.be.greaterThan(9.0);
+        expect(eoc.equationOfCenterDeg).to.be.lessThan(12.0);
+    });
+
+    it('should calculate seasonal insolation fluctuation ratio across Martian orbit', () => {
+        // Near perihelion (Ls = 251 deg), solar flux is enhanced by > 20%
+        const peri = MarsTime.computeInsolationFluctuationRatio(251.0);
+        expect(peri.insolationRatio).to.be.greaterThan(1.15);
+        expect(peri.isPerihelionSeason).to.equal(true);
+
+        // Near aphelion (Ls = 71 deg), solar flux is reduced by > 15%
+        const aphel = MarsTime.computeInsolationFluctuationRatio(71.0);
+        expect(aphel.insolationRatio).to.be.lessThan(0.90);
+        expect(aphel.isPerihelionSeason).to.equal(false);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
