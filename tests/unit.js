@@ -3331,6 +3331,31 @@ describe('Grain Size Inversion, Flexural Profile & Pratt Isostasy (InvestigateTo
     });
 });
 
+describe('Direct Geodetic Destination, Cross-Track Error & Compactness (MeasureTool)', () => {
+    it('should solve the Direct Geodetic Problem for forward destination coordinates', () => {
+        // Start at equator (0, 0), travel 1000 km due North (0 deg bearing)
+        const dest = MeasureTool.computeDirectDestinationPoint(0, 0, 0, 1000.0, 'mars');
+        expect(dest.destLat).to.be.greaterThan(15.0);
+        expect(dest.destLat).to.be.lessThan(20.0);
+        expect(dest.destLon).to.be.closeTo(0.0, 0.1);
+    });
+
+    it('should calculate cross-track error and polygon isoperimetric compactness', () => {
+        // Point offset from equator track (0,0) -> (0,10) at (2, 5)
+        const xte = MeasureTool.computeCrossTrackErrorOffset(2, 5, 0, 0, 0, 10, 'mars');
+        expect(xte.crossTrackErrorKm).to.be.greaterThan(100.0);
+        expect(xte.alongTrackDistanceKm).to.be.greaterThan(0);
+
+        // Circular crater (Area = pi * R^2, Perimeter = 2 * pi * R -> C = 1.0)
+        const r = 10.0;
+        const area = Math.PI * r * r;
+        const perim = 2.0 * Math.PI * r;
+        const comp = MeasureTool.computePolygonCompactnessRatio(area, perim);
+        expect(comp.compactnessRatio).to.be.closeTo(1.0, 0.01);
+        expect(comp.shapeClass).to.include('Nearly Circular');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

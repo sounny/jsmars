@@ -1095,7 +1095,94 @@ export class MeasureTool {
             classification: cls
         };
     }
+
+    // --- Direct Geodetic Destination, Cross-Track Error & Compactness Solvers ---
+
+    /**
+     * Calculate destination coordinates (Direct Geodetic Problem) given start, initial bearing, and distance.
+     * @param {number} startLat - Start latitude in degrees
+     * @param {number} startLon - Start longitude in degrees
+     * @param {number} initialBearingDeg - Forward bearing angle in degrees (0 = North, 90 = East)
+     * @param {number} distanceKm - Geodesic distance in km
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{destLat: number, destLon: number, finalBearingDeg: number}}
+     */
+    static computeDirectDestinationPoint(startLat, startLon, initialBearingDeg, distanceKm, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const phi1 = startLat * Math.PI / 180.0;
+        const lam1 = startLon * Math.PI / 180.0;
+        const theta = initialBearingDeg * Math.PI / 180.0;
+        const delta = Math.max(0, distanceKm) / R; // Angular distance in radians
+
+        const phi2 = Math.asin(
+            Math.sin(phi1) * Math.cos(delta) + Math.cos(phi1) * Math.sin(delta) * Math.cos(theta)
+        );
+
+        const y = Math.sin(theta) * Math.sin(delta) * Math.cos(phi1);
+        const x = Math.cos(delta) - Math.sin(phi1) * Math.sin(phi2);
+        const lam2 = lam1 + Math.atan2(y, x);
+
+        let destLonDeg = lam2 * 180.0 / Math.PI;
+        destLonDeg = ((destLonDeg % 360.0) + 360.0) % 360.0;
+
+        // Final bearing back-azimuth
+        const yFinal = Math.sin(lam1 - lam2) * Math.cos(phi1);
+        const xFinal = Math.cos(phi2) * Math.sin(phi1) - Math.sin(phi2) * Math.cos(phi1) * Math.cos(lam1 - lam2);
+        let finalBearing = (Math.atan2(yFinal, xFinal) * 180.0 / Math.PI + 180.0) % 360.0;
+
+        return {
+            destLat: parseFloat((phi2 * 180.0 / Math.PI).toFixed(4)),
+            destLon: parseFloat(destLonDeg.toFixed(4)),
+            finalBearingDeg: parseFloat(finalBearing.toFixed(1))
+        };
+    }
+
+    /**
+     * Calculate perpendicular cross-track error distance (XTE) and along-track progress distance (ATE).
+     * @param {number} pointLat - Position latitude
+     * @param {number} pointLon - Position longitude
+     * @param {number} trackStartLat - Planned line start latitude
+     * @param {number} trackStartLon - Planned line start longitude
+     * @param {number} trackEndLat - Planned line end latitude
+     * @param {number} trackEndLon - Planned line end longitude
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{crossTrackErrorKm: number, alongTrackDistanceKm: number, isOffTrackToRight: boolean}}
+     */
+    static computeCrossTrackErrorOffset(pointLat, pointLon, trackStartLat, trackStartLon, trackEndLat, trackEndLon, body = 'mars') {
+        const res = this.computeCrossTrackDistance(pointLat, pointLon, trackStartLat, trackStartLon, trackEndLat, trackEndLon, body);
+
+        return {
+            crossTrackErrorKm: Math.abs(res.crossTrackKm),
+            alongTrackDistanceKm: res.alongTrackKm,
+            isOffTrackToRight: res.crossTrackKm > 0
+        };
+    }
+
+    /**
+     * Calculate 2D isoperimetric polygon compactness / circularity ratio (C = 4 * pi * Area / Perimeter^2).
+     * @param {number} areaKm2 - Polygon surface area in km^2
+     * @param {number} perimeterKm - Polygon perimeter length in km
+     * @returns {{compactnessRatio: number, shapeClass: string}}
+     */
+    static computePolygonCompactnessRatio(areaKm2, perimeterKm) {
+        const A = Math.max(0, areaKm2);
+        const P = Math.max(1e-4, perimeterKm);
+
+        const compactness = (4.0 * Math.PI * A) / (P * P);
+        const clampedC = Math.min(1.0, Math.max(0, compactness));
+
+        let shape = 'Highly Elongated / Irregular (C < 0.3)';
+        if (clampedC >= 0.8) shape = 'Nearly Circular / Equant Crater Rim (C >= 0.8)';
+        else if (clampedC >= 0.6) shape = 'Oval / Elliptical Caldera (0.6 - 0.8)';
+        else if (clampedC >= 0.3) shape = 'Moderately Elongated Valley / Graben (0.3 - 0.6)';
+
+        return {
+            compactnessRatio: parseFloat(clampedC.toFixed(3)),
+            shapeClass: shape
+        };
+    }
 }
+
 
 
 
