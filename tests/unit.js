@@ -2459,6 +2459,40 @@ describe('Topographic Self-Shadowing, Horizon Dip & Nodal Precession (ThreeDEngi
     });
 });
 
+describe('Crustal Magnetic Remanence, Multi-Layer Geotherms & Optical Extinction (InvestigateTool)', () => {
+    it('should calculate planetary dipole magnetic field vector components', () => {
+        // At magnetic equator (lat = 0) at surface (alt = 0): Br = 0, Btheta = -factor, Btotal = factor
+        const magEq = InvestigateTool.computeDipoleMagneticField(0, 0, 1e20, 'mars');
+        expect(magEq.Br_nT).to.equal(0);
+        expect(magEq.Btheta_nT).to.be.lessThan(0);
+        expect(magEq.Btotal_nT).to.be.greaterThan(0);
+        expect(magEq.inclinationDeg).to.equal(0);
+
+        // At magnetic North pole (lat = 90): Br > 0, Btheta = 0, inclination = 90 deg
+        const magPole = InvestigateTool.computeDipoleMagneticField(90, 0, 1e20, 'mars');
+        expect(magPole.Br_nT).to.be.greaterThan(0);
+        expect(magPole.Btheta_nT).to.be.closeTo(0, 0.01);
+        expect(magPole.inclinationDeg).to.equal(90.0);
+    });
+
+    it('should compute multi-layer crustal geotherm and Beer-Lambert transmittance', () => {
+        // 2 km megaregolith (k = 1.5 W/m K) + 8 km basalt (k = 2.5 W/m K) with q = 30 mW/m^2, T_surf = 210 K
+        // dT1 = (0.03 / 1.5) * 2000 = 40 K -> T1 = 250 K
+        // dT2 = (0.03 / 2.5) * 8000 = 96 K -> T2 = 346 K
+        const geo = InvestigateTool.computeMultiLayerGeotherm([
+            { thicknessKm: 2, thermalConductivityW_MK: 1.5, name: 'Megaregolith' },
+            { thicknessKm: 8, thermalConductivityW_MK: 2.5, name: 'Basaltic Crust' }
+        ], 30.0, 210.0);
+        expect(geo.totalCrustThicknessKm).to.equal(10.0);
+        expect(geo.tempAtBaseK).to.equal(346.0);
+
+        // Optical transmittance for tau = 0.5 at 60 deg zenith (airmass = 2.0) -> T = exp(-1.0) ~ 0.3679
+        const opt = InvestigateTool.computeAtmosphericTransmittance(0.5, 60);
+        expect(opt.airmass).to.be.closeTo(2.0, 0.01);
+        expect(opt.transmittance).to.be.closeTo(0.3679, 0.005);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

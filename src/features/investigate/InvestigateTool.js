@@ -529,7 +529,107 @@ export class InvestigateTool {
 
         return parseFloat(radianceW_M2_Sr_Um.toExponential(4));
     }
+
+    // --- Crustal Magnetic Field, Multi-Layer Geotherm & Transmittance Solvers ---
+
+    /**
+     * Calculate dipole crustal/planetary magnetic field vector components (Br, Btheta, |B|) in nanoTesla.
+     * @param {number} magneticLatitudeDeg - Magnetic latitude (-90 to +90)
+     * @param {number} altitudeKm - Altitude above planetary surface in km
+     * @param {number} [dipoleMomentAm2=1e20] - Magnetic dipole moment in A m^2 (crustal remanence anomaly)
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{Br_nT: number, Btheta_nT: number, Btotal_nT: number, inclinationDeg: number}}
+     */
+    static computeDipoleMagneticField(magneticLatitudeDeg, altitudeKm, dipoleMomentAm2 = 1e20, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon' ? 1737.4 : 3389.5) * 1000.0; // meters
+        const r = R + Math.max(0, altitudeKm * 1000.0);
+        const mu0 = 4.0 * Math.PI * 1e-7; // T m / A
+
+        const latRad = magneticLatitudeDeg * Math.PI / 180.0;
+        const sinLat = Math.sin(latRad);
+        const cosLat = Math.cos(latRad);
+
+        const factor = (mu0 * dipoleMomentAm2) / (4.0 * Math.PI * Math.pow(r, 3)); // Tesla
+
+        const Br_T = factor * 2.0 * sinLat;
+        const Btheta_T = -factor * cosLat;
+        const Btotal_T = factor * Math.sqrt(1.0 + 3.0 * sinLat * sinLat);
+
+        // Convert Tesla to nanoTesla (1 T = 1e9 nT)
+        const Br_nT = Br_T * 1e9;
+        const Btheta_nT = Btheta_T * 1e9;
+        const Btotal_nT = Btotal_T * 1e9;
+
+        // Magnetic inclination I = atan2(Br, -Btheta)
+        const incDeg = Math.atan2(Br_nT, -Btheta_nT) * 180.0 / Math.PI;
+
+        return {
+            Br_nT: parseFloat(Br_nT.toFixed(2)),
+            Btheta_nT: parseFloat(Btheta_nT.toFixed(2)),
+            Btotal_nT: parseFloat(Btotal_nT.toFixed(2)),
+            inclinationDeg: parseFloat(incDeg.toFixed(2))
+        };
+    }
+
+    /**
+     * Compute steady-state lithospheric geotherm across multi-layer stratigraphy.
+     * @param {Array<{thicknessKm: number, thermalConductivityW_MK: number, name: string}>} layers
+     * @param {number} [surfaceHeatFlowMwM2=30.0] - Geothermal heat flux (mW/m^2)
+     * @param {number} [surfaceTempK=210.0] - Surface temperature (K)
+     * @returns {{totalCrustThicknessKm: number, tempAtBaseK: number, layerBoundaries: Array<object>}}
+     */
+    static computeMultiLayerGeotherm(layers = [], surfaceHeatFlowMwM2 = 30.0, surfaceTempK = 210.0) {
+        const q_W = surfaceHeatFlowMwM2 * 1e-3; // W/m^2
+        let currentZ = 0;
+        let currentT = surfaceTempK;
+        const boundaries = [{ depthKm: 0, tempK: currentT, layer: 'Surface' }];
+
+        layers.forEach((l, idx) => {
+            const dz = l.thicknessKm || 1.0;
+            const k = Math.max(0.01, l.thermalConductivityW_MK || 2.0);
+            const dT = (q_W / k) * (dz * 1000.0);
+
+            currentZ += dz;
+            currentT += dT;
+
+            boundaries.push({
+                layerIndex: idx + 1,
+                name: l.name || `Layer ${idx + 1}`,
+                depthKm: parseFloat(currentZ.toFixed(2)),
+                tempK: parseFloat(currentT.toFixed(2)),
+                deltaTK: parseFloat(dT.toFixed(2))
+            });
+        });
+
+        return {
+            totalCrustThicknessKm: parseFloat(currentZ.toFixed(2)),
+            tempAtBaseK: parseFloat(currentT.toFixed(2)),
+            layerBoundaries: boundaries
+        };
+    }
+
+    /**
+     * Calculate direct atmospheric optical transmittance via Beer-Lambert extinction law.
+     * T = exp(-tau / cos(theta_z))
+     * @param {number} opticalDepthTau - Atmospheric column optical depth (dust/gas tau)
+     * @param {number} solarZenithAngleDeg - Solar zenith angle in degrees (0 = overhead, 90 = horizon)
+     * @returns {{transmittance: number, airmass: number, directFluxFractionPercent: number}}
+     */
+    static computeAtmosphericTransmittance(opticalDepthTau = 0.5, solarZenithAngleDeg = 45) {
+        const zRad = Math.min(88.0, Math.max(0, solarZenithAngleDeg)) * Math.PI / 180.0;
+        const airmass = 1.0 / Math.cos(zRad);
+        const tau = Math.max(0, opticalDepthTau);
+
+        const transmittance = Math.exp(-tau * airmass);
+
+        return {
+            transmittance: parseFloat(transmittance.toFixed(4)),
+            airmass: parseFloat(airmass.toFixed(3)),
+            directFluxFractionPercent: parseFloat((transmittance * 100.0).toFixed(2))
+        };
+    }
 }
+
 
 
 
