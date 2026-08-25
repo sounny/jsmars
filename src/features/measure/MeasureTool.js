@@ -989,7 +989,114 @@ export class MeasureTool {
             depthBelowSurfaceKm: parseFloat(maxDepthKm.toFixed(3))
         };
     }
+
+    // --- Ellipsoidal Geodetic Arc, Girard Spherical Excess & Sinuosity Solvers ---
+
+    /**
+     * Calculate high-precision Andoyer-Lambert ellipsoidal geodetic distance on oblate planet.
+     * @param {number} lat1 - Point 1 latitude
+     * @param {number} lon1 - Point 1 longitude
+     * @param {number} lat2 - Point 2 latitude
+     * @param {number} lon2 - Point 2 longitude
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{ellipsoidalDistanceKm: number, sphericalDistanceKm: number, differenceKm: number}}
+     */
+    static computeEllipsoidalGeodeticDistance(lat1, lon1, lat2, lon2, body = 'mars') {
+        const isMars = body.toLowerCase() === 'mars';
+        const a = isMars ? 3396.19 : (body.toLowerCase() === 'moon' ? 1737.4 : 6378.14);
+        const b = isMars ? 3376.20 : (body.toLowerCase() === 'moon' ? 1737.4 : 6356.75);
+        const f = (a - b) / a;
+
+        const phi1 = lat1 * Math.PI / 180.0;
+        const lam1 = lon1 * Math.PI / 180.0;
+        const phi2 = lat2 * Math.PI / 180.0;
+        const lam2 = lon2 * Math.PI / 180.0;
+
+        // Reduced latitudes tan(beta) = (1 - f) * tan(phi)
+        const beta1 = Math.atan((1.0 - f) * Math.tan(phi1));
+        const beta2 = Math.atan((1.0 - f) * Math.tan(phi2));
+        const dLam = lam2 - lam1;
+
+        // Spherical distance on unit sphere
+        const cosSigma = Math.sin(beta1) * Math.sin(beta2) + Math.cos(beta1) * Math.cos(beta2) * Math.cos(dLam);
+        const sigma = Math.acos(Math.max(-1.0, Math.min(1.0, cosSigma)));
+
+        if (sigma < 1e-10) {
+            return { ellipsoidalDistanceKm: 0, sphericalDistanceKm: 0, differenceKm: 0 };
+        }
+
+        const sinSigma = Math.sin(sigma);
+        const P = (Math.sin(beta1) + Math.sin(beta2)) / (2.0 * Math.cos(sigma / 2.0));
+        const Q = (Math.sin(beta2) - Math.sin(beta1)) / (2.0 * Math.sin(sigma / 2.0));
+
+        const deltaS = f * (sigma * (P * P + Q * Q) - sinSigma * (P * P - Q * Q));
+        const sEllips = a * (sigma - deltaS);
+        const sSphere = a * sigma;
+
+        return {
+            ellipsoidalDistanceKm: parseFloat(sEllips.toFixed(3)),
+            sphericalDistanceKm: parseFloat(sSphere.toFixed(3)),
+            differenceKm: parseFloat((sEllips - sSphere).toFixed(3))
+        };
+    }
+
+    /**
+     * Calculate Girard's spherical triangle angular excess and solid angle in steradians.
+     * @param {number} lat1
+     * @param {number} lon1
+     * @param {number} lat2
+     * @param {number} lon2
+     * @param {number} lat3
+     * @param {number} lon3
+     * @returns {{excessRadians: number, excessDegrees: number, solidAngleSteradians: number}}
+     */
+    static computeGreatCircleExcessAngle(lat1, lon1, lat2, lon2, lat3, lon3) {
+        const areaRes = this.computeSphericalPolygonArea([[lat1, lon1], [lat2, lon2], [lat3, lon3]], 'mars');
+        const excessRad = areaRes.sphericalExcessRad;
+
+        return {
+            excessRadians: parseFloat(excessRad.toFixed(6)),
+            excessDegrees: parseFloat((excessRad * 180.0 / Math.PI).toFixed(4)),
+            solidAngleSteradians: parseFloat(excessRad.toFixed(6))
+        };
+    }
+
+    /**
+     * Calculate channel/valley path sinuosity index (S = Actual Length / Straight-line Distance).
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Polyline vertices
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{sinuosity: number, actualLengthKm: number, straightLengthKm: number, classification: string}}
+     */
+    static computePathSinuosity(latlngs = [], body = 'mars') {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length < 2) {
+            return { sinuosity: 1.0, actualLengthKm: 0, straightLengthKm: 0, classification: 'Straight' };
+        }
+
+        const segs = this.computeSegmentMetrics(coords, body);
+        const actualLen = segs.length > 0 ? segs[segs.length - 1].cumulativeKm : 0;
+
+        const start = coords[0];
+        const end = coords[coords.length - 1];
+        const straightSeg = this.computeSegmentMetrics([start, end], body);
+        const straightLen = straightSeg.length > 0 ? straightSeg[0].distanceKm : 0;
+
+        const sinuosity = straightLen > 0 ? actualLen / straightLen : 1.0;
+
+        let cls = 'Straight (<1.05)';
+        if (sinuosity >= 1.5) cls = 'Meandering (>1.5)';
+        else if (sinuosity >= 1.2) cls = 'Sinuous (1.2-1.5)';
+        else if (sinuosity >= 1.05) cls = 'Low Sinuosity (1.05-1.2)';
+
+        return {
+            sinuosity: parseFloat(sinuosity.toFixed(3)),
+            actualLengthKm: parseFloat(actualLen.toFixed(3)),
+            straightLengthKm: parseFloat(straightLen.toFixed(3)),
+            classification: cls
+        };
+    }
 }
+
 
 
 

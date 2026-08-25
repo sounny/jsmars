@@ -3074,6 +3074,33 @@ describe('Lithospheric Flexure, Free-Air Gravity & Regolith Density (Investigate
     });
 });
 
+describe('Ellipsoidal Geodesy, Girard Excess & Sinuosity (MeasureTool)', () => {
+    it('should compute Andoyer-Lambert ellipsoidal geodetic arc distance', () => {
+        // Equator span from 0 to 45 deg lon on Mars ellipsoid
+        const ell = MeasureTool.computeEllipsoidalGeodeticDistance(0, 0, 0, 45, 'mars');
+        expect(ell.ellipsoidalDistanceKm).to.be.greaterThan(2500.0);
+        expect(ell.sphericalDistanceKm).to.be.greaterThan(2500.0);
+
+        // Girard spherical excess of a spherical triangle
+        const girard = MeasureTool.computeGreatCircleExcessAngle(0, 0, 0, 90, 90, 0);
+        expect(girard.excessDegrees).to.be.closeTo(90.0, 1.0); // Tri-rectangular octant has E = 90 deg = pi/2 rad
+    });
+
+    it('should compute path sinuosity for channels and valleys', () => {
+        // Meandering path with turns
+        const track = [
+            [0, 0],
+            [1, 2],
+            [0, 4],
+            [1, 6],
+            [0, 8]
+        ];
+        const sinu = MeasureTool.computePathSinuosity(track, 'mars');
+        expect(sinu.sinuosity).to.be.greaterThan(1.0);
+        expect(sinu.classification).to.be.a('string');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
