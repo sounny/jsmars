@@ -3301,6 +3301,36 @@ describe('Thermal Tides, Volumetric Dust Cross-Section & Scale Height (MCDEngine
     });
 });
 
+describe('Grain Size Inversion, Flexural Profile & Pratt Isostasy (InvestigateTool)', () => {
+    it('should invert effective regolith grain size from thermal inertia', () => {
+        // Dune sand with TI = 250 -> medium/fine sand (~350 microns)
+        const sand = InvestigateTool.computeEffectiveGrainSizeFromThermalInertia(250.0, 610.0);
+        expect(sand.grainSizeMicrons).to.be.greaterThan(100.0);
+        expect(sand.WentworthClass).to.include('Sand');
+
+        // Fine airfall dust with TI = 50 -> fine silt / dust (<10 microns)
+        const dust = InvestigateTool.computeEffectiveGrainSizeFromThermalInertia(50.0, 610.0);
+        expect(dust.grainSizeMicrons).to.be.lessThan(20.0);
+    });
+
+    it('should calculate axisymmetric flexural deflection profile and Pratt isostasy', () => {
+        // Center of Olympus Mons load: max downward deflection
+        const center = InvestigateTool.computeAxisymmetricFlexuralProfile(0.0, 5.0, 180.0);
+        expect(center.deflectionKm).to.equal(5.0);
+        expect(center.isBulgeForebulge).to.equal(false);
+
+        // Distant peripheral flexural forebulge (r ~ 3.5 * alpha -> negative w)
+        const bulge = InvestigateTool.computeAxisymmetricFlexuralProfile(180.0 * 2.0, 5.0, 180.0);
+        expect(bulge.deflectionKm).to.be.lessThan(0);
+        expect(bulge.isBulgeForebulge).to.equal(true);
+
+        // Pratt isostatic density for 10 km plateau
+        const pratt = InvestigateTool.computePrattIsostaticDensity(10.0, 100.0, 2900.0);
+        expect(pratt.prattDensityKgM3).to.be.lessThan(2900.0);
+        expect(pratt.densityDeficitKgM3).to.be.greaterThan(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

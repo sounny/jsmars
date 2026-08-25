@@ -773,7 +773,79 @@ export class InvestigateTool {
         const rhoBulk = (1.0 - phi) * grainDensityKgM3 + phi * poreDensityKgM3;
         return parseFloat(rhoBulk.toFixed(1));
     }
+
+    // --- Grain Size Inversion, Axisymmetric Flexural Moat & Pratt Isostasy Solvers ---
+
+    /**
+     * Invert effective regolith grain size (in mm and microns) from thermal inertia (Piqueux & Christensen 2011).
+     * d_grain = 0.05 * (I / 100)^2.2 mm
+     * @param {number} thermalInertia - Thermal inertia (SI units: J m^-2 K^-1 s^-1/2)
+     * @param {number} [pressurePa=610.0] - Ambient surface pressure in Pa
+     * @returns {{grainSizeMm: number, grainSizeMicrons: number, WentworthClass: string}}
+     */
+    static computeEffectiveGrainSizeFromThermalInertia(thermalInertia, pressurePa = 610.0) {
+        const I = Math.max(20, thermalInertia);
+        const pRatio = Math.pow(610.0 / Math.max(10, pressurePa), 0.2);
+        const dMm = 0.05 * Math.pow(I / 100.0, 2.2) * pRatio;
+        const dMicrons = dMm * 1000.0;
+
+        let wClass = 'Very Fine Silt / Airborne Dust (<10 µm)';
+        if (dMicrons > 2000) wClass = 'Granules / Pebbles / Duricrust (>2 mm)';
+        else if (dMicrons > 500) wClass = 'Coarse Sand (500-2000 µm)';
+        else if (dMicrons > 125) wClass = 'Medium / Fine Sand (125-500 µm)';
+        else if (dMicrons > 63) wClass = 'Very Fine Sand (63-125 µm)';
+        else if (dMicrons > 10) wClass = 'Coarse Silt (10-63 µm)';
+
+        return {
+            grainSizeMm: parseFloat(dMm.toFixed(3)),
+            grainSizeMicrons: parseFloat(dMicrons.toFixed(1)),
+            WentworthClass: wClass
+        };
+    }
+
+    /**
+     * Calculate 1D axisymmetric lithospheric flexural deflection profile w(r) for volcanic loading.
+     * w(r) = w0 * exp(-r / alpha) * cos(r / alpha)
+     * @param {number} distanceRadiusKm - Radial distance from volcanic load center in km (r)
+     * @param {number} [centralDeflectionKm=5.0] - Maximum central downward deflection w0 in km
+     * @param {number} [flexuralParameterKm=180.0] - Flexural wavelength parameter alpha in km
+     * @returns {{deflectionKm: number, deflectionMeters: number, isBulgeForebulge: boolean}}
+     */
+    static computeAxisymmetricFlexuralProfile(distanceRadiusKm, centralDeflectionKm = 5.0, flexuralParameterKm = 180.0) {
+        const r = Math.max(0, distanceRadiusKm);
+        const alpha = Math.max(10, flexuralParameterKm);
+        const arg = r / alpha;
+
+        const w = centralDeflectionKm * Math.exp(-arg) * Math.cos(arg);
+
+        return {
+            deflectionKm: parseFloat(w.toFixed(3)),
+            deflectionMeters: parseFloat((w * 1000.0).toFixed(1)),
+            isBulgeForebulge: w < 0 // Negative deflection = flexural forebulge / peripheral uplift
+        };
+    }
+
+    /**
+     * Calculate Pratt-Hayford isostatic crustal column density variation.
+     * rho(h) = rho0 * (D / (D + h))
+     * @param {number} topographyHeightKm - Topographic elevation above datum in km
+     * @param {number} [compensationDepthKm=100.0] - Depth of isostatic compensation in km (D)
+     * @param {number} [referenceDensityKgM3=2900.0] - Reference crustal density
+     * @returns {{prattDensityKgM3: number, densityDeficitKgM3: number}}
+     */
+    static computePrattIsostaticDensity(topographyHeightKm, compensationDepthKm = 100.0, referenceDensityKgM3 = 2900.0) {
+        const h = topographyHeightKm;
+        const D = Math.max(10, compensationDepthKm);
+        const rhoPratt = referenceDensityKgM3 * (D / (D + h));
+        const deficit = referenceDensityKgM3 - rhoPratt;
+
+        return {
+            prattDensityKgM3: parseFloat(rhoPratt.toFixed(1)),
+            densityDeficitKgM3: parseFloat(deficit.toFixed(1))
+        };
+    }
 }
+
 
 
 
