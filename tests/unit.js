@@ -2431,6 +2431,34 @@ describe('CRISM Summary Parameters, Convex Hull & Spectral Correlation (BandMath
     });
 });
 
+describe('Topographic Self-Shadowing, Horizon Dip & Nodal Precession (ThreeDEngine)', () => {
+    it('should calculate local terrain facet self-shadowing and incidence angle', () => {
+        // Sun elevation = 30 deg in South (az = 180). North-facing slope (aspect = 0, slope = 40 deg)
+        // dAz = 180 deg -> cos(i) = sin(30)*cos(40) + cos(30)*sin(40)*cos(180) = 0.5*0.766 - 0.866*0.6428 = 0.383 - 0.5567 < 0 -> shadowed
+        const shadow = ThreeDEngine.computeTopographicSelfShadow(40, 0, 30, 180);
+        expect(shadow.isIlluminated).to.equal(false);
+        expect(shadow.cosIncidence).to.equal(0);
+        expect(shadow.localIncidenceDeg).to.be.greaterThan(90.0);
+
+        // Sun-facing slope (aspect = 180, slope = 30, sun elev = 45, sun az = 180) -> illuminated
+        const lit = ThreeDEngine.computeTopographicSelfShadow(30, 180, 45, 180);
+        expect(lit.isIlluminated).to.equal(true);
+        expect(lit.cosIncidence).to.be.greaterThan(0.9);
+    });
+
+    it('should compute astronomical horizon dip angle and orbital nodal precession rate', () => {
+        // 400 km altitude orbiter over Mars (R = 3389.5 km)
+        // cos(dip) = 3389.5 / 3789.5 ~ 0.8944 -> dip ~ 26.56 deg
+        const dip = ThreeDEngine.computeHorizonDipAngle(400);
+        expect(dip.dipAngleDeg).to.be.closeTo(26.56, 0.1);
+
+        // Sun-synchronous MRO orbit (a = 3790 km, inc = 92.8 deg)
+        const orb = ThreeDEngine.computeOrbitalPrecessionRate(3790, 0.001, 92.8);
+        expect(orb.precessionDegPerDay).to.be.closeTo(0.524, 0.05);
+        expect(orb.isSunSynchronous).to.equal(true);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

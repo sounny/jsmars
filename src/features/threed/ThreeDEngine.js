@@ -380,7 +380,95 @@ export class ThreeDEngine {
       tFar: parseFloat(tFar.toFixed(3))
     };
   }
+
+  // --- Topographic Self-Shadowing, Horizon Dip & Nodal Precession Solvers ---
+
+  /**
+   * Calculate local terrain facet illumination incidence and self-shadowing.
+   * cos(i) = sin(h_sun) * cos(beta) + cos(h_sun) * sin(beta) * cos(az_sun - az_aspect)
+   * @param {number} slopeDeg - Local terrain slope angle beta (0 = horizontal)
+   * @param {number} aspectDeg - Downhill aspect azimuth (0 = North, 90 = East, 180 = South, 270 = West)
+   * @param {number} solarElevationDeg - Solar altitude angle h_sun (-90 to +90)
+   * @param {number} solarAzimuthDeg - Solar azimuth angle phi_sun (0 to 360)
+   * @returns {{isIlluminated: boolean, cosIncidence: number, localIncidenceDeg: number}}
+   */
+  static computeTopographicSelfShadow(slopeDeg, aspectDeg, solarElevationDeg, solarAzimuthDeg) {
+    if (solarElevationDeg <= 0) {
+      return { isIlluminated: false, cosIncidence: 0, localIncidenceDeg: 90.0 };
+    }
+
+    const beta = slopeDeg * Math.PI / 180.0;
+    const hSun = solarElevationDeg * Math.PI / 180.0;
+    const dAz = (solarAzimuthDeg - aspectDeg) * Math.PI / 180.0;
+
+    const cosI = Math.sin(hSun) * Math.cos(beta) + Math.cos(hSun) * Math.sin(beta) * Math.cos(dAz);
+    const clampedCos = Math.max(-1.0, Math.min(1.0, cosI));
+    const incDeg = Math.acos(clampedCos) * 180.0 / Math.PI;
+
+    return {
+      isIlluminated: clampedCos > 0,
+      cosIncidence: parseFloat(Math.max(0, clampedCos).toFixed(4)),
+      localIncidenceDeg: parseFloat(incDeg.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate astronomical horizon dip (depression) angle for an elevated camera or orbiter.
+   * theta_dip = arccos(R / (R + h))
+   * @param {number} altitudeKm - Observer height above planetary surface in km
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{dipAngleDeg: number, dipAngleRad: number, apparentHorizonArcDeg: number}}
+   */
+  static computeHorizonDipAngle(altitudeKm, body = 'mars') {
+    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const h = Math.max(0, altitudeKm);
+
+    const cosDip = R / (R + h);
+    const dipRad = Math.acos(Math.max(0, Math.min(1.0, cosDip)));
+    const dipDeg = dipRad * 180.0 / Math.PI;
+
+    return {
+      dipAngleDeg: parseFloat(dipDeg.toFixed(3)),
+      dipAngleRad: parseFloat(dipRad.toFixed(5)),
+      apparentHorizonArcDeg: parseFloat((dipDeg * 2.0).toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate orbital plane nodal precession rate due to planetary J2 oblateness.
+   * dOmega/dt = -1.5 * J2 * (R / p)^2 * n * cos(i)
+   * @param {number} [semiMajorAxisKm=3790] - Orbit semi-major axis (e.g. 3790 km for 400 km altitude MRO)
+   * @param {number} [eccentricity=0.001] - Orbit eccentricity
+   * @param {number} [inclinationDeg=92.8] - Orbit inclination in degrees (e.g. 92.8° for Sun-synchronous MRO)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{precessionDegPerDay: number, isSunSynchronous: boolean}}
+   */
+  static computeOrbitalPrecessionRate(semiMajorAxisKm = 3790, eccentricity = 0.001, inclinationDeg = 92.8, body = 'mars') {
+    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3396.19; // km
+    const GM = body.toLowerCase() === 'moon' ? 4902.8 : 42828.37; // km^3/s^2
+    const J2 = body.toLowerCase() === 'moon' ? 2.03e-4 : 1.96045e-3; // Mars J2 harmonic
+
+    const a = Math.max(R + 50, semiMajorAxisKm);
+    const e = Math.max(0, Math.min(0.9, eccentricity));
+    const incRad = inclinationDeg * Math.PI / 180.0;
+
+    const p = a * (1.0 - e * e); // Semi-latus rectum
+    const n = Math.sqrt(GM / Math.pow(a, 3)); // Mean motion (rad/s)
+
+    // Precession rate in rad/s
+    const dOmega_dt = -1.5 * J2 * Math.pow(R / p, 2) * n * Math.cos(incRad);
+    const degPerDay = dOmega_dt * (180.0 / Math.PI) * 86400.0;
+
+    // Mars heliocentric orbital motion is ~0.524 deg/day (360 deg / 686.98 days)
+    const isSunSync = Math.abs(degPerDay - 0.524) < 0.05;
+
+    return {
+      precessionDegPerDay: parseFloat(degPerDay.toFixed(4)),
+      isSunSynchronous: isSunSync
+    };
+  }
 }
+
 
 
 
