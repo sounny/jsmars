@@ -3031,6 +3031,29 @@ describe('Poisson Age Likelihood & Crater Depth-to-Diameter (CSFDEngine)', () =>
     });
 });
 
+describe('Hapke Photometry, Pixel Resolution & Camera Look (ThreeDEngine)', () => {
+    it('should compute Hapke particulate bidirectional reflectance', () => {
+        // High sun at normal emission (mu0 = 1.0, mu = 1.0, g = 0 deg)
+        const hapke0 = ThreeDEngine.computeHapkePhotometricReflectance(1.0, 1.0, 0.0, 0.25);
+        expect(hapke0).to.be.greaterThan(0);
+
+        // Oblique incidence (mu0 = 0.5, mu = 0.8, g = 30 deg)
+        const hapkeOblique = ThreeDEngine.computeHapkePhotometricReflectance(0.5, 0.8, 30.0, 0.25);
+        expect(hapkeOblique).to.be.lessThan(hapke0);
+    });
+
+    it('should compute camera Ground Sampling Distance (GSD) and 3D look vector', () => {
+        // HiRISE-like parameters: 300 km altitude, 12 µm pixel, 12,000 mm focal length -> GSD ~ 0.30 m/pixel
+        const hirise = ThreeDEngine.computePixelGroundResolution(300.0, 12.0, 12000.0);
+        expect(hirise.gsdMetersPerPixel).to.be.closeTo(0.30, 0.05);
+        expect(hirise.gsdCmPerPixel).to.be.closeTo(30.0, 5.0);
+
+        // 3D look vector from (0,0, 300km) to (0,0, 0km)
+        const look = ThreeDEngine.computeCameraLookVector(0, 0, 0, 0);
+        expect(Math.hypot(look.vx, look.vy, look.vz)).to.be.closeTo(1.0, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

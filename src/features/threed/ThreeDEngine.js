@@ -537,7 +537,90 @@ export class ThreeDEngine {
       inFrontOfCamera: inFront
     };
   }
+
+  // --- Hapke Photometry, Ground Sampling Distance (GSD) & Camera Look Solvers ---
+
+  /**
+   * Calculate Hapke (1981/1993) bidirectional reflectance for particulate planetary surfaces.
+   * r = (w / (4*pi)) * (mu0 / (mu0 + mu)) * [ (1 + B(g))*p(g) + H(mu0)*H(mu) - 1 ]
+   * @param {number} cosIncidence - Cosine of incidence angle (mu0 = cos(i))
+   * @param {number} cosEmission - Cosine of emission angle (mu = cos(e))
+   * @param {number} phaseAngleDeg - Solar phase angle in degrees (g)
+   * @param {number} [singleScatteringAlbedo=0.25] - Single-scattering albedo w (0.25 for Mars dust)
+   * @returns {number} Bidirectional reflectance factor
+   */
+  static computeHapkePhotometricReflectance(cosIncidence, cosEmission, phaseAngleDeg, singleScatteringAlbedo = 0.25) {
+    const mu0 = Math.max(1e-4, cosIncidence);
+    const mu = Math.max(1e-4, cosEmission);
+    const w = Math.max(0.01, Math.min(0.99, singleScatteringAlbedo));
+    const gRad = phaseAngleDeg * Math.PI / 180.0;
+
+    // Opposition surge B(g) ~ B0 / (1 + tan(g/2)/h_surge)
+    const B0 = 1.0;
+    const hSurge = 0.05;
+    const Bg = B0 / (1.0 + Math.tan(gRad / 2.0) / hSurge);
+
+    // Isotropic particle phase function p(g) ~ 1.0
+    const pg = 1.0;
+
+    // Chandrasekhar H-functions approximation: H(x) = (1 + 2*x) / (1 + 2*x*sqrt(1 - w))
+    const gamma = Math.sqrt(1.0 - w);
+    const H_mu0 = (1.0 + 2.0 * mu0) / (1.0 + 2.0 * mu0 * gamma);
+    const H_mu = (1.0 + 2.0 * mu) / (1.0 + 2.0 * mu * gamma);
+
+    const term = (1.0 + Bg) * pg + H_mu0 * H_mu - 1.0;
+    const r = (w / (4.0 * Math.PI)) * (mu0 / (mu0 + mu)) * term;
+
+    return parseFloat(Math.max(0, r).toFixed(5));
+  }
+
+  /**
+   * Calculate camera Ground Sampling Distance (GSD) / native pixel resolution in meters/pixel.
+   * GSD = (h * p) / f
+   * @param {number} altitudeKm - Spacecraft orbital altitude in km (e.g. 250 km)
+   * @param {number} [sensorPixelPitchMicrons=6.0] - Physical pixel pitch on detector in µm (e.g. 12 µm for HiRISE)
+   * @param {number} [focalLengthMm=500.0] - Camera focal length in mm (e.g. 12000 mm for HiRISE)
+   * @returns {{gsdMetersPerPixel: number, gsdCmPerPixel: number}}
+   */
+  static computePixelGroundResolution(altitudeKm, sensorPixelPitchMicrons = 6.0, focalLengthMm = 500.0) {
+    const hM = altitudeKm * 1000.0;
+    const pM = sensorPixelPitchMicrons * 1e-6;
+    const fM = focalLengthMm * 1e-3;
+
+    const gsdM = (hM * pM) / Math.max(1e-4, fM);
+    const gsdCm = gsdM * 100.0;
+
+    return {
+      gsdMetersPerPixel: parseFloat(gsdM.toFixed(3)),
+      gsdCmPerPixel: parseFloat(gsdCm.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate 3D unit camera line-of-sight look vector towards surface coordinate.
+   * @param {number} latDeg - Target latitude
+   * @param {number} lonDeg - Target longitude
+   * @param {number} [cameraLatDeg=0] - Camera sub-spacecraft latitude
+   * @param {number} [cameraLonDeg=0] - Camera sub-spacecraft longitude
+   * @returns {{vx: number, vy: number, vz: number}} Unit line-of-sight direction vector
+   */
+  static computeCameraLookVector(latDeg, lonDeg, cameraLatDeg = 0, cameraLonDeg = 0) {
+    const pTarget = this.geographicToCartesian(latDeg, lonDeg, 0);
+    const pCam = this.geographicToCartesian(cameraLatDeg, cameraLonDeg, 300); // 300 km altitude
+
+    const dx = pTarget.x - pCam.x;
+    const dy = pTarget.y - pCam.y;
+    const dz = pTarget.z - pCam.z;
+    const len = Math.hypot(dx, dy, dz);
+
+    return {
+      vx: parseFloat((dx / len).toFixed(5)),
+      vy: parseFloat((dy / len).toFixed(5)),
+      vz: parseFloat((dz / len).toFixed(5))
+    };
+  }
 }
+
 
 
 
