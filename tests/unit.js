@@ -3529,6 +3529,28 @@ describe('Rectilinear Footprint, Dip Horizon & Surface Radiance (ThreeDEngine)',
     });
 });
 
+describe('Sutherland Viscosity, Buoyancy Frequency & Eddy Diffusivity (MCDEngine)', () => {
+    it('should compute Sutherland dynamic viscosity and Brunt-Väisälä buoyancy frequency', () => {
+        // CO2 viscosity at 210 K
+        const visc = MCDEngine.computeSutherlandDynamicViscosity(210.0);
+        expect(visc.dynamicViscosityPaS).to.be.greaterThan(1e-5);
+        expect(visc.kinematicViscosityM2S).to.be.greaterThan(1e-4);
+
+        // Stable atmosphere: lapse rate 3.0 K/km < dry adiabatic 4.65 K/km
+        const bv = MCDEngine.computeAtmosphericBruntVaisalaFrequency(210.0, 3.0, 4.65);
+        expect(bv.frequencyRadS).to.be.greaterThan(0.005);
+        expect(bv.isConvectivelyStable).to.equal(true);
+        expect(bv.periodSeconds).to.be.lessThan(1200.0);
+    });
+
+    it('should calculate Troen & Mahrt turbulent boundary layer eddy diffusivity', () => {
+        // Friction velocity 0.5 m/s, PBL height 4000m, altitude 1000m
+        const eddy = MCDEngine.computeTurbulentEddyDiffusivity(0.5, 4000.0, 1000.0);
+        expect(eddy.eddyDiffusivityM2S).to.be.greaterThan(50.0);
+        expect(eddy.pblFraction).to.equal(0.25);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

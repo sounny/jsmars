@@ -616,7 +616,87 @@ export class MCDEngine {
       localTempK: parseFloat(localT.toFixed(1))
     };
   }
+
+  // --- Sutherland Viscosity, Brunt-Väisälä Frequency & Turbulent Eddy Diffusivity Solvers ---
+
+  /**
+   * Calculate high-precision CO2 dynamic viscosity using Sutherland's formula.
+   * mu(T) = mu0 * (T / T0)^(3/2) * (T0 + S) / (T + S)
+   * @param {number} temperatureK - Temperature in Kelvin (100K to 350K)
+   * @returns {{dynamicViscosityPaS: number, kinematicViscosityM2S: number}}
+   */
+  static computeSutherlandDynamicViscosity(temperatureK) {
+    const T = Math.max(50.0, temperatureK);
+    const T0 = 273.15;
+    const S = 240.0; // Sutherland constant for CO2 in K
+    const mu0 = 1.37e-5; // Pa * s at 273.15 K
+
+    const mu = mu0 * Math.pow(T / T0, 1.5) * ((T0 + S) / (T + S));
+    const rho = 610.0 / (this.R_SPECIFIC_CO2 * T); // kg/m^3 at 610 Pa datum
+    const nu = mu / rho; // Kinematic viscosity m^2/s
+
+    return {
+      dynamicViscosityPaS: parseFloat(mu.toExponential(4)),
+      kinematicViscosityM2S: parseFloat(nu.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate atmospheric Brunt-Väisälä buoyancy frequency from environmental lapse rate.
+   * N = sqrt( (g / T) * (Gamma_d - Gamma) )
+   * @param {number} temperatureK - Local layer temperature in Kelvin
+   * @param {number} environmentalLapseRateKPerKm - Observed temperature lapse rate -dT/dz in K/km
+   * @param {number} [dryAdiabaticLapseRateKPerKm=4.65] - Martian dry adiabatic lapse rate Gamma_d = g/cp (~4.65 K/km)
+   * @returns {{frequencyRadS: number, periodSeconds: number, isConvectivelyStable: boolean}}
+   */
+  static computeAtmosphericBruntVaisalaFrequency(temperatureK, environmentalLapseRateKPerKm, dryAdiabaticLapseRateKPerKm = 4.65) {
+    const T = Math.max(50.0, temperatureK);
+    const dGamma = (dryAdiabaticLapseRateKPerKm - environmentalLapseRateKPerKm) / 1000.0; // K / m
+    const N2 = (this.G_MARS / T) * dGamma;
+
+    if (N2 <= 0) {
+      return {
+        frequencyRadS: 0.0,
+        periodSeconds: Infinity,
+        isConvectivelyStable: false
+      };
+    }
+
+    const N = Math.sqrt(N2);
+    const period = (2.0 * Math.PI) / N;
+
+    return {
+      frequencyRadS: parseFloat(N.toFixed(5)),
+      periodSeconds: parseFloat(period.toFixed(1)),
+      isConvectivelyStable: true
+    };
+  }
+
+  /**
+   * Calculate Troen & Mahrt (1986) boundary layer vertical eddy diffusivity K_z.
+   * K_z = kappa * u* * z * (1 - z / h_pbl)^2
+   * @param {number} frictionVelocityMs - Surface friction velocity u* in m/s
+   * @param {number} pblHeightMeters - Planetary Boundary Layer height in meters
+   * @param {number} altitudeMeters - Altitude inside PBL in meters
+   * @returns {{eddyDiffusivityM2S: number, pblFraction: number}}
+   */
+  static computeTurbulentEddyDiffusivity(frictionVelocityMs, pblHeightMeters, altitudeMeters) {
+    const kappa = 0.40; // Von Kármán constant
+    const uStar = Math.max(0.01, frictionVelocityMs);
+    const h = Math.max(100.0, pblHeightMeters);
+    const z = Math.max(0.1, Math.min(h, altitudeMeters));
+
+    const zRatio = z / h;
+    const factor = Math.pow(1.0 - zRatio, 2);
+    const Kz = kappa * uStar * z * factor;
+
+    return {
+      eddyDiffusivityM2S: parseFloat(Kz.toFixed(2)),
+      pblFraction: parseFloat(zRatio.toFixed(3))
+    };
+  }
 }
+
 
 
 
