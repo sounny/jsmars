@@ -308,3 +308,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute camera Ground Sampling Distance (GSD) and sensor FOV angles
 ?: AssertionError: expected 20.8333 to equal 0.25
     at n.<anonymous> (unit.js:4686:37)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 10:31:07 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate aerodynamic dust saltation threshold and scale height vertical gradient
+?: AssertionError: expected 1.91 to be close to 0.866 +/- 0.05
+    at n.<anonymous> (unit.js:4247:56)

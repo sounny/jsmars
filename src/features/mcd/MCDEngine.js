@@ -997,7 +997,92 @@ export class MCDEngine {
       phiHeatDimensionless: parseFloat(phiH.toFixed(4))
     };
   }
+
+  // --- Saltation Threshold, Static Stability & Deardorff CBL Depth Solvers ---
+
+  /**
+   * Calculate Greeley-Iversen fluid threshold friction velocity u*_t for Martian sand saltation with interparticle cohesion.
+   * u*_t = A * sqrt( (rho_p * g * d) / rho + gamma_inter / (rho * d) )
+   * @param {number} [particleDiameterMicrons=100.0] - Sand grain diameter in µm (~100 µm most easily lifted on Mars)
+   * @param {number} [surfaceDensityKgM3=0.015] - Surface atmospheric density in kg/m^3
+   * @param {number} [particleDensityKgM3=2500.0] - Basalt sand mineral density
+   * @returns {{thresholdFrictionVelocityMs: number, thresholdShearStressPa: number, optimumDiameterMicrons: number}}
+   */
+  static computeDustCohesionSaltationThreshold(particleDiameterMicrons = 100.0, surfaceDensityKgM3 = 0.015, particleDensityKgM3 = 2500.0) {
+    const d = Math.max(1.0, particleDiameterMicrons) * 1e-6; // meters
+    const rho = Math.max(1e-4, surfaceDensityKgM3);
+    const rhoP = Math.max(500.0, particleDensityKgM3);
+    const g = this.G_MARS;
+
+    const A = 0.118; // Dimensionless threshold coefficient
+    const gammaInter = 3.0e-4; // Interparticle cohesion factor N/m
+
+    const gravityTerm = (rhoP * g * d) / rho;
+    const cohesionTerm = gammaInter / (rho * d);
+    const uStarT = A * Math.sqrt(gravityTerm + cohesionTerm);
+    const tauThresh = rho * uStarT * uStarT;
+
+    return {
+      thresholdFrictionVelocityMs: parseFloat(uStarT.toFixed(3)),
+      thresholdShearStressPa: parseFloat(tauThresh.toFixed(4)),
+      optimumDiameterMicrons: 100.0
+    };
+  }
+
+  /**
+   * Calculate atmospheric static stability metric S = (Gamma_d - Gamma) / T.
+   * @param {number} layerTempK - Atmospheric layer temperature in Kelvin
+   * @param {number} environmentalLapseRateKPerKm - Observed lapse rate -dT/dz (K/km)
+   * @param {number} [dryAdiabaticLapseRateKPerKm=4.65] - Dry adiabatic lapse rate (K/km)
+   * @returns {{staticStabilityParameterPerMeter: number, isConvectivelyStable: boolean}}
+   */
+  static computeAtmosphericStaticStabilityParameter(layerTempK, environmentalLapseRateKPerKm, dryAdiabaticLapseRateKPerKm = 4.65) {
+    const T = Math.max(50.0, layerTempK);
+    const dGamma = (dryAdiabaticLapseRateKPerKm - environmentalLapseRateKPerKm) / 1000.0; // K / m
+    const S = dGamma / T;
+
+    return {
+      staticStabilityParameterPerMeter: parseFloat(S.toExponential(4)),
+      isConvectivelyStable: S > 0
+    };
+  }
+
+  /**
+   * Calculate Deardorff convective Planetary Boundary Layer (PBL) diurnal equilibrium height.
+   * z_i = sqrt( (2 * B_0 * t) / gamma_theta )
+   * @param {number} surfaceSensibleHeatW_M2 - Surface sensible heat flux in W/m^2
+   * @param {number} [cappingLapseRateKPerM=0.003] - Potential temperature inversion lapse rate above PBL
+   * @param {number} [heatingDurationSeconds=21600.0] - Solar diurnal heating duration in seconds (6 hours)
+   * @param {number} [surfaceTempK=220.0] - Surface temperature in Kelvin
+   * @param {number} [surfaceDensityKgM3=0.015] - Surface atmospheric density in kg/m^3
+   * @returns {{pblHeightMeters: number, pblHeightKm: number, buoyancyFluxM2S3: number}}
+   */
+  static computeConvectiveBoundaryLayerDeardorffHeight(
+    surfaceSensibleHeatW_M2,
+    cappingLapseRateKPerM = 0.003,
+    heatingDurationSeconds = 21600.0,
+    surfaceTempK = 220.0,
+    surfaceDensityKgM3 = 0.015
+  ) {
+    const cp = 800.0; // J/(kg K)
+    const flux = Math.max(0.1, surfaceSensibleHeatW_M2);
+    const rho = Math.max(1e-4, surfaceDensityKgM3);
+    const T0 = Math.max(50.0, surfaceTempK);
+
+    const b0 = (this.G_MARS / T0) * (flux / (rho * cp));
+    const gamma = Math.max(1e-5, cappingLapseRateKPerM);
+    const t = Math.max(100.0, heatingDurationSeconds);
+
+    const zi = Math.sqrt((2.0 * b0 * t) / gamma);
+
+    return {
+      pblHeightMeters: parseFloat(zi.toFixed(1)),
+      pblHeightKm: parseFloat((zi / 1000.0).toFixed(3)),
+      buoyancyFluxM2S3: parseFloat(b0.toExponential(4))
+    };
+  }
 }
+
 
 
 

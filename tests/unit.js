@@ -4695,6 +4695,31 @@ describe('Lommel-Seeliger Reflectance, Camera GSD & FOV Angles (ThreeDEngine)', 
     });
 });
 
+describe('Saltation Threshold, Static Stability & Deardorff CBL (MCDEngine)', () => {
+    it('should calculate Greeley-Iversen fluid threshold friction velocity for Martian sand saltation with cohesion', () => {
+        // d = 100 µm = 1e-4 m, rho = 0.015 kg/m^3, rho_p = 2500, g = 3.72076
+        // gravityTerm = (2500 * 3.72076 * 1e-4) / 0.015 = 0.93019 / 0.015 = 62.0127
+        // cohesionTerm = 3e-4 / (0.015 * 1e-4) = 3e-4 / 1.5e-6 = 200.0
+        // u*_t = 0.118 * sqrt(62.0127 + 200.0) = 0.118 * sqrt(262.0127) = 0.118 * 16.1868 ~ 1.910 m/s
+        const salt = MCDEngine.computeDustCohesionSaltationThreshold(100.0, 0.015, 2500.0);
+        expect(salt.thresholdFrictionVelocityMs).to.be.closeTo(1.910, 0.02);
+        expect(salt.optimumDiameterMicrons).to.equal(100.0);
+    });
+
+    it('should compute atmospheric static stability and Deardorff CBL diurnal depth', () => {
+        // T = 200 K, Gamma_obs = 3.65 K/km, Gamma_d = 4.65 K/km -> dGamma = 1.0 K/km = 0.001 K/m -> S = 0.001 / 200 = 5e-6 m^-1
+        const stab = MCDEngine.computeAtmosphericStaticStabilityParameter(200.0, 3.65, 4.65);
+        expect(stab.staticStabilityParameterPerMeter).to.equal(5e-6);
+        expect(stab.isConvectivelyStable).to.be.true;
+
+        // H_sens = 20 W/m^2, T0 = 220 K, rho = 0.015 kg/m^3, cp = 800 -> B0 = (3.72076 / 220) * (20 / 12) = 0.01691 * 1.6667 ~ 0.02819 m^2/s^3
+        // zi = sqrt(2 * 0.02819 * 21600 / 0.003) = sqrt(1217.7 / 0.003) = sqrt(405900) ~ 637.1 m
+        const cbl = MCDEngine.computeConvectiveBoundaryLayerDeardorffHeight(20.0, 0.003, 21600.0, 220.0, 0.015);
+        expect(cbl.pblHeightMeters).to.be.closeTo(637.1, 5.0);
+        expect(cbl.pblHeightKm).to.be.closeTo(0.637, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
