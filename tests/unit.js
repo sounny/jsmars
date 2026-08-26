@@ -4472,6 +4472,32 @@ describe('Hapke Surge, Ground Footprint & Horizon Depression (ThreeDEngine)', ()
     });
 });
 
+describe('Bulk Richardson Number, Convective Velocity & Eddy Diffusivity (MCDEngine)', () => {
+    it('should calculate bulk Richardson number across boundary layer shear', () => {
+        // dTheta = -2.0 K (unstable), dZ = 100 m, dU = 5 m/s, theta0 = 210 K
+        // Ri_b = (3.72076 / 210) * (-2 * 100) / 25 = 0.017718 * (-200) / 25 = -0.1417
+        const rib = MCDEngine.computeBulkRichardsonNumber(-2.0, 100.0, 5.0, 0.0, 210.0);
+        expect(rib.bulkRichardsonNumber).to.be.closeTo(-0.1417, 0.005);
+        expect(rib.isConvectivelyUnstable).to.be.true;
+        expect(rib.isTurbulent).to.be.true;
+    });
+
+    it('should compute Deardorff convective velocity scale and PBL eddy thermal diffusivity', () => {
+        // H_sens = 25 W/m^2, zi = 5000 m (5 km), rho = 0.015, cp = 800, theta0 = 210 K
+        // wTheta0 = 25 / 12 = 2.0833 -> B0 = (3.72076 / 210) * 2.0833 = 0.03691 m^2/s^3
+        // w* = (0.03691 * 5000)^(1/3) = (184.56)^(1/3) ~ 5.693 m/s
+        const conv = MCDEngine.computeConvectiveVelocityScale(25.0, 5000.0, 210.0, 0.015);
+        expect(conv.convectiveVelocityMs).to.be.closeTo(5.693, 0.05);
+
+        // u* = 0.5 m/s, z = 50 m, L = -100 m (unstable)
+        // phi_h = 1 / sqrt(1 - 16 * 50 / -100) = 1 / sqrt(1 + 8) = 1 / 3 ~ 0.3333
+        // Kh = (0.4 * 0.5 * 50) / 0.3333 = 10 / 0.3333 ~ 30.0 m^2/s
+        const kh = MCDEngine.computePBLEddyThermalDiffusivity(0.5, 50.0, -100.0);
+        expect(kh.phiHeatDimensionless).to.be.closeTo(0.3333, 0.005);
+        expect(kh.eddyDiffusivityKhM2S).to.be.closeTo(30.0, 0.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

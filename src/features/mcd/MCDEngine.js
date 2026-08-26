@@ -914,7 +914,91 @@ export class MCDEngine {
       scaleHeightChangeMPerKm: parseFloat(changeMPerKm.toFixed(2))
     };
   }
+
+  // --- Bulk Richardson Number, Convective Velocity & Eddy Thermal Diffusivity Solvers ---
+
+  /**
+   * Calculate atmospheric bulk Richardson number (Ri_b) across a boundary layer interval.
+   * Ri_b = (g / theta_v0) * (Delta_theta_v * Delta_z) / ( (Delta_u)^2 + (Delta_v)^2 )
+   * @param {number} deltaThetaV - Virtual potential temperature difference across layer in K
+   * @param {number} deltaZ - Layer thickness in meters
+   * @param {number} deltaU - Zonal wind velocity difference in m/s
+   * @param {number} [deltaV=0] - Meridional wind velocity difference in m/s
+   * @param {number} [thetaV0=210.0] - Reference base potential temperature in Kelvin
+   * @returns {{bulkRichardsonNumber: number, isConvectivelyUnstable: boolean, isTurbulent: boolean}}
+   */
+  static computeBulkRichardsonNumber(deltaThetaV, deltaZ, deltaU, deltaV = 0, thetaV0 = 210.0) {
+    const dZ = Math.max(1.0, deltaZ);
+    const theta0 = Math.max(50.0, thetaV0);
+    const shearSq = Math.max(1e-6, deltaU * deltaU + deltaV * deltaV);
+
+    const rib = (this.G_MARS / theta0) * (deltaThetaV * dZ) / shearSq;
+
+    return {
+      bulkRichardsonNumber: parseFloat(rib.toFixed(4)),
+      isConvectivelyUnstable: rib < 0,
+      isTurbulent: rib < 0.25
+    };
+  }
+
+  /**
+   * Calculate Deardorff convective boundary layer scaling velocity w*.
+   * w* = [ (g / theta_0) * (H_sens / (rho * cp)) * z_i ]^(1/3)
+   * @param {number} sensibleHeatFluxW_M2 - Surface sensible heat flux in W/m^2
+   * @param {number} pblHeightMeters - Planetary Boundary Layer height in meters (z_i)
+   * @param {number} [surfaceTempK=210.0] - Near-surface potential temperature in Kelvin
+   * @param {number} [surfaceDensityKgM3=0.015] - Surface atmospheric density
+   * @returns {{convectiveVelocityMs: number, buoyancyFluxM2S3: number}}
+   */
+  static computeConvectiveVelocityScale(sensibleHeatFluxW_M2, pblHeightMeters, surfaceTempK = 210.0, surfaceDensityKgM3 = 0.015) {
+    const cp = 800.0; // J/(kg K)
+    const rho = Math.max(1e-4, surfaceDensityKgM3);
+    const theta0 = Math.max(50.0, surfaceTempK);
+    const zi = Math.max(10.0, pblHeightMeters);
+    const flux = Math.max(0, sensibleHeatFluxW_M2);
+
+    const wTheta0 = flux / (rho * cp); // Kinematic heat flux K m/s
+    const buoyancyFlux = (this.G_MARS / theta0) * wTheta0; // m^2 / s^3
+    const wStar = Math.pow(buoyancyFlux * zi, 1.0 / 3.0);
+
+    return {
+      convectiveVelocityMs: parseFloat(wStar.toFixed(3)),
+      buoyancyFluxM2S3: parseFloat(buoyancyFlux.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate Businger-Dyer unstable boundary layer turbulent thermal eddy diffusivity K_h.
+   * K_h = kappa * u* * z * (1 - 16 * z / L)^(1/2)
+   * @param {number} frictionVelocityMs - Surface friction velocity u* in m/s
+   * @param {number} altitudeMeters - Altitude z above ground in meters
+   * @param {number} moninObukhovLengthM - Monin-Obukhov stability length L in meters (negative for unstable)
+   * @returns {{eddyDiffusivityKhM2S: number, phiHeatDimensionless: number}}
+   */
+  static computePBLEddyThermalDiffusivity(frictionVelocityMs, altitudeMeters, moninObukhovLengthM) {
+    const kappa = 0.40;
+    const uStar = Math.max(0.001, frictionVelocityMs);
+    const z = Math.max(0.1, altitudeMeters);
+    const L = moninObukhovLengthM; // negative in convective conditions
+
+    let phiH = 1.0;
+    if (L < 0) {
+      // Unstable: phi_h = (1 - 16 * z / L)^(-1/2)
+      phiH = 1.0 / Math.sqrt(1.0 - 16.0 * (z / L));
+    } else if (L > 0) {
+      // Stable: phi_h = 1 + 5 * z / L
+      phiH = 1.0 + 5.0 * (z / L);
+    }
+
+    const Kh = (kappa * uStar * z) / Math.max(0.1, phiH);
+
+    return {
+      eddyDiffusivityKhM2S: parseFloat(Kh.toFixed(3)),
+      phiHeatDimensionless: parseFloat(phiH.toFixed(4))
+    };
+  }
 }
+
 
 
 
