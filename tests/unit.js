@@ -4163,6 +4163,32 @@ describe('CRISM BD1900r2, TES Carbonate & Spectral Information Divergence (BandM
     });
 });
 
+describe('Rim Height, Excavation Depth & Clark-Evans Index (CSFDEngine)', () => {
+    it('should compute complex crater rim height scaling and transient excavation depth', () => {
+        // D = 20 km complex crater -> h_rim = 0.036 * 20^0.49 ~ 0.1558 km = 155.8 m
+        const rim = CSFDEngine.computeComplexCraterRimHeight(20.0);
+        expect(rim.rimHeightKm).to.be.closeTo(0.1558, 0.005);
+        expect(rim.rimHeightMeters).to.be.closeTo(155.8, 5.0);
+
+        // D_t = 10 km transient crater -> d_e = 10 / (3 * sqrt(2)) ~ 2.357 km
+        const depth = CSFDEngine.computeTransientCavityExcavationDepth(10.0);
+        expect(depth.excavationDepthKm).to.be.closeTo(2.357, 0.01);
+        expect(depth.transientDepthRatio).to.be.closeTo(0.2357, 0.005);
+    });
+
+    it('should calculate Clark-Evans nearest-neighbor spatial aggregation index', () => {
+        // lambda = 0.01 craters/km^2 -> r_exp = 0.5 / sqrt(0.01) = 5.0 km. With r_A = 5.0 km -> R = 1.0 (CSR)
+        const csr = CSFDEngine.computeClarkEvansAggregationIndex(5.0, 0.01);
+        expect(csr.aggregationIndexR).to.equal(1.0);
+        expect(csr.spatialClass).to.equal('Random (Poisson)');
+
+        // Clustered: r_A = 2.5 km -> R = 0.5
+        const clustered = CSFDEngine.computeClarkEvansAggregationIndex(2.5, 0.01);
+        expect(clustered.aggregationIndexR).to.equal(0.5);
+        expect(clustered.spatialClass).to.equal('Clustered / Secondaries');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

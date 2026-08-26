@@ -1037,7 +1037,70 @@ export class CSFDEngine {
       meltMassKg: parseFloat(meltMassKg.toExponential(4))
     };
   }
+
+  // --- Complex Rim Height, Excavation Depth & Clark-Evans Aggregation Solvers ---
+
+  /**
+   * Calculate complex impact crater rim height scaling above surrounding pre-impact terrain.
+   * h_rim = 0.036 * D^0.49 (km)
+   * @param {number} diameterKm - Rim-to-rim crater diameter in km
+   * @returns {{rimHeightKm: number, rimHeightMeters: number}}
+   */
+  static computeComplexCraterRimHeight(diameterKm) {
+    const D = Math.max(0.1, diameterKm);
+    const hKm = 0.036 * Math.pow(D, 0.49);
+    const hM = hKm * 1000.0;
+
+    return {
+      rimHeightKm: parseFloat(hKm.toFixed(4)),
+      rimHeightMeters: parseFloat(hM.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate maximum depth of transient cavity excavation (pre-collapse floor depth).
+   * d_e = D_t / (3 * sqrt(2)) ~ 0.2357 * D_t
+   * @param {number} transientDiameterKm - Transient crater diameter in km
+   * @returns {{excavationDepthKm: number, excavationDepthMeters: number, transientDepthRatio: number}}
+   */
+  static computeTransientCavityExcavationDepth(transientDiameterKm) {
+    const Dt = Math.max(0.1, transientDiameterKm);
+    const deKm = Dt / (3.0 * Math.SQRT2);
+    const deM = deKm * 1000.0;
+
+    return {
+      excavationDepthKm: parseFloat(deKm.toFixed(3)),
+      excavationDepthMeters: parseFloat(deM.toFixed(1)),
+      transientDepthRatio: parseFloat((deKm / Dt).toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate Clark-Evans spatial aggregation / clustering index R = 2 * r_A * sqrt(lambda).
+   * R = 1.0 (CSR), R < 1.0 (Clustered), R > 1.0 (Dispersed)
+   * @param {number} meanObservedDistanceKm - Mean observed nearest-neighbor distance r_A in km
+   * @param {number} craterDensityPerKm2 - Spatial density lambda = N / Area
+   * @returns {{aggregationIndexR: number, expectedDistanceKm: number, spatialClass: string}}
+   */
+  static computeClarkEvansAggregationIndex(meanObservedDistanceKm, craterDensityPerKm2) {
+    const rA = Math.max(0.001, meanObservedDistanceKm);
+    const lambda = Math.max(1e-9, craterDensityPerKm2);
+
+    const rExp = 1.0 / (2.0 * Math.sqrt(lambda));
+    const R = rA / rExp;
+
+    let sClass = 'Random (Poisson)';
+    if (R < 0.8) sClass = 'Clustered / Secondaries';
+    else if (R > 1.2) sClass = 'Uniform / Regular';
+
+    return {
+      aggregationIndexR: parseFloat(R.toFixed(3)),
+      expectedDistanceKm: parseFloat(rExp.toFixed(3)),
+      spatialClass: sClass
+    };
+  }
 }
+
 
 
 
