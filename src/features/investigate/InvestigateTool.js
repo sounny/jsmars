@@ -921,7 +921,86 @@ export class InvestigateTool {
             attractionPerMeterMGal: parseFloat(perMeter_mGal.toFixed(4))
         };
     }
+
+    // --- Airy Crustal Root, Flexural Rigidity & Buried Point Mass Gravity Solvers ---
+
+    /**
+     * Calculate Airy-Heiskanen isostatic crustal compensation root thickness in meters and km.
+     * t_root = h * (rho_c / (rho_m - rho_c))
+     * @param {number} topographyMeters - Surface elevation / topography height in meters
+     * @param {number} [crustDensityKgM3=2900.0] - Crustal density in kg/m^3
+     * @param {number} [mantleDensityKgM3=3500.0] - Upper mantle density in kg/m^3
+     * @returns {{rootThicknessMeters: number, rootThicknessKm: number, totalCrustalColumnKm: number}}
+     */
+    static computeAiryRootThickness(topographyMeters, crustDensityKgM3 = 2900.0, mantleDensityKgM3 = 3500.0) {
+        const h = Math.max(0, topographyMeters);
+        const rhoC = crustDensityKgM3;
+        const rhoM = mantleDensityKgM3;
+        const deltaRho = Math.max(10.0, rhoM - rhoC);
+
+        const rootM = h * (rhoC / deltaRho);
+        const rootKm = rootM / 1000.0;
+        const totalColKm = 50.0 + (h / 1000.0) + rootKm; // 50 km reference crust
+
+        return {
+            rootThicknessMeters: parseFloat(rootM.toFixed(1)),
+            rootThicknessKm: parseFloat(rootKm.toFixed(3)),
+            totalCrustalColumnKm: parseFloat(totalColKm.toFixed(3))
+        };
+    }
+
+    /**
+     * Calculate lithospheric flexural rigidity D.
+     * D = (E * Te^3) / (12 * (1 - nu^2))
+     * @param {number} elasticThicknessKm - Effective elastic thickness Te in km
+     * @param {number} [youngsModulusGPa=100.0] - Young's modulus E in GPa
+     * @param {number} [poissonRatio=0.25] - Poisson's ratio nu
+     * @returns {{flexuralRigidityNm: number, log10Rigidity: number}}
+     */
+    static computeFlexuralRigidityD(elasticThicknessKm, youngsModulusGPa = 100.0, poissonRatio = 0.25) {
+        const E = youngsModulusGPa * 1e9; // Pa
+        const nu = poissonRatio;
+        const TeM = Math.max(0.1, elasticThicknessKm) * 1000.0;
+
+        const D = (E * Math.pow(TeM, 3)) / (12.0 * (1.0 - nu * nu));
+
+        return {
+            flexuralRigidityNm: parseFloat(D.toExponential(4)),
+            log10Rigidity: parseFloat(Math.log10(D).toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate vertical gravity anomaly delta_g_z from a buried spherical point mass in mGal.
+     * delta_g_z = (G * M * z) / (x^2 + z^2)^(3/2) * 1e5 mGal
+     * @param {number} massKg - Buried excess mass in kg
+     * @param {number} depthMeters - Depth to mass center in meters (z)
+     * @param {number} [offsetDistanceMeters=0] - Horizontal offset distance x in meters
+     * @returns {{gravityAnomalyMGal: number, peakAnomalyMGal: number}}
+     */
+    static computePointMassGravityAnomaly(massKg, depthMeters, offsetDistanceMeters = 0) {
+        const G = 6.67430e-11;
+        const M = Math.max(0, massKg);
+        const z = Math.max(1.0, depthMeters);
+        const x = offsetDistanceMeters;
+
+        const r2 = x * x + z * z;
+        const r3 = Math.pow(r2, 1.5);
+
+        const gz_ms2 = (G * M * z) / r3;
+        const gz_mGal = gz_ms2 * 1e5;
+
+        // Peak anomaly directly above mass (x = 0)
+        const peak_ms2 = (G * M) / (z * z);
+        const peak_mGal = peak_ms2 * 1e5;
+
+        return {
+            gravityAnomalyMGal: parseFloat(gz_mGal.toFixed(3)),
+            peakAnomalyMGal: parseFloat(peak_mGal.toFixed(3))
+        };
+    }
 }
+
 
 
 

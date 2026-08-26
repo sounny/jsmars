@@ -3786,6 +3786,31 @@ describe('Acoustic Sound Speed, Ekman Spiral & Column Mass (MCDEngine)', () => {
     });
 });
 
+describe('Airy Crustal Root, Flexural Rigidity & Gravity Anomalies (InvestigateTool)', () => {
+    it('should compute Airy isostatic crustal root thickness and lithospheric rigidity D', () => {
+        // 2000m mountain on Mars (rho_c = 2900, rho_m = 3500 -> deltaRho = 600) -> root ~ 9666.7 m (~9.67 km)
+        const root = InvestigateTool.computeAiryRootThickness(2000.0, 2900.0, 3500.0);
+        expect(root.rootThicknessKm).to.be.closeTo(9.67, 0.05);
+        expect(root.totalCrustalColumnKm).to.be.closeTo(61.67, 0.05);
+
+        // Te = 50 km lithosphere (E = 100 GPa, nu = 0.25) -> D ~ 1.11e24 N m
+        const flex = InvestigateTool.computeFlexuralRigidityD(50.0, 100.0, 0.25);
+        expect(flex.flexuralRigidityNm).to.be.greaterThan(1e24);
+        expect(flex.log10Rigidity).to.be.closeTo(24.05, 0.1);
+    });
+
+    it('should calculate vertical gravity anomaly from buried spherical mass', () => {
+        // Buried mass 10^15 kg at 10 km depth
+        const grav = InvestigateTool.computePointMassGravityAnomaly(1e15, 10000.0, 0);
+        expect(grav.peakAnomalyMGal).to.be.greaterThan(50.0);
+        expect(grav.peakAnomalyMGal).to.be.lessThan(100.0);
+
+        // At 10 km horizontal offset (x = z = 10 km) -> anomaly = peak / (2^1.5) ~ 0.3535 * peak
+        const gravOffset = InvestigateTool.computePointMassGravityAnomaly(1e15, 10000.0, 10000.0);
+        expect(gravOffset.gravityAnomalyMGal).to.be.closeTo(grav.peakAnomalyMGal * 0.3535, 0.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
