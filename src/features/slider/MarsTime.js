@@ -1097,7 +1097,84 @@ export class MarsTime {
       isAfternoon: hDeg > 0
     };
   }
+
+  // --- Radial Velocity, Declination Rate & Sol-to-Day Solvers ---
+
+  /**
+   * Calculate orbital radial velocity dr/dt of Mars relative to the Sun.
+   * dr/dt = (n * a * e * sin(nu)) / sqrt(1 - e^2)
+   * @param {number} trueAnomalyDeg - True anomaly in degrees (0 to 360)
+   * @param {number} [semiMajorAxisAU=1.52368] - Semi-major axis in AU
+   * @param {number} [eccentricity=0.0934] - Orbit eccentricity
+   * @returns {{radialVelocityKmS: number, radialVelocityMps: number, isRecedingFromSun: boolean}}
+   */
+  static computeRadialDistanceRateOfChange(trueAnomalyDeg, semiMajorAxisAU = 1.52368, eccentricity = 0.0934) {
+    const aKm = semiMajorAxisAU * 149597870.7; // ~227.94M km
+    const e = eccentricity;
+    const nuRad = trueAnomalyDeg * Math.PI / 180.0;
+
+    // Mars mean motion n = 2*pi / T_orbit (T_orbit = 686.98 * 86400 s)
+    const tOrbitSec = 686.98 * 86400.0;
+    const nRadS = (2.0 * Math.PI) / tOrbitSec;
+
+    const dr_dt_KmS = (nRadS * aKm * e * Math.sin(nuRad)) / Math.sqrt(1.0 - e * e);
+    const dr_dt_Mps = dr_dt_KmS * 1000.0;
+
+    return {
+      radialVelocityKmS: parseFloat(dr_dt_KmS.toFixed(4)),
+      radialVelocityMps: parseFloat(dr_dt_Mps.toFixed(2)),
+      isRecedingFromSun: dr_dt_KmS > 0
+    };
+  }
+
+  /**
+   * Calculate rate of change of solar declination d(delta)/dt in degrees per sol.
+   * d(delta)/dLs = (sin(epsilon) * cos(Ls)) / sqrt(1 - sin^2(epsilon) * sin^2(Ls))
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @param {number} [obliquityDeg=25.19] - Mars planetary obliquity
+   * @returns {{declinationRateDegPerSol: number, isApproachingSolstice: boolean}}
+   */
+  static computeSolarDeclinationRateOfChange(LsDeg, obliquityDeg = 25.19) {
+    const epsRad = obliquityDeg * Math.PI / 180.0;
+    const LsRad = LsDeg * Math.PI / 180.0;
+
+    const sinEps = Math.sin(epsRad);
+    const sinLs = Math.sin(LsRad);
+    const cosLs = Math.cos(LsRad);
+
+    const cosDec = Math.sqrt(Math.max(1e-4, 1.0 - sinEps * sinEps * sinLs * sinLs));
+    const dDec_dLs = (sinEps * cosLs) / cosDec;
+
+    // Mean motion dLs/dt ~ 360 deg / 668.6 sols ~ 0.5384 deg/sol
+    const dLs_dt_degPerSol = 0.5384;
+    const rateDegPerSol = dDec_dLs * dLs_dt_degPerSol;
+
+    return {
+      declinationRateDegPerSol: parseFloat(rateDegPerSol.toFixed(4)),
+      isApproachingSolstice: Math.abs(rateDegPerSol) < 0.1
+    };
+  }
+
+  /**
+   * Convert Martian Sols into Earth standard SI calendar solar days.
+   * 1 Sol = 88775.244 seconds = 1.02749125 Earth days
+   * @param {number} numSols - Number of Martian sols
+   * @returns {{earthDays: number, earthHours: number, totalSeconds: number}}
+   */
+  static convertMarsSolsToEarthDays(numSols) {
+    const s = Math.max(0, numSols);
+    const totalSec = s * 88775.244;
+    const earthDays = totalSec / 86400.0;
+    const earthHours = totalSec / 3600.0;
+
+    return {
+      earthDays: parseFloat(earthDays.toFixed(4)),
+      earthHours: parseFloat(earthHours.toFixed(2)),
+      totalSeconds: parseFloat(totalSec.toFixed(1))
+    };
+  }
 }
+
 
 
 

@@ -4543,6 +4543,29 @@ describe('Smectite Index, THEMIS B10/B9 & Normalized Depth (BandMathEngine)', ()
     });
 });
 
+describe('Radial Velocity, Declination Rate & Sol-to-Day (MarsTime)', () => {
+    it('should calculate orbital radial velocity dr/dt of Mars relative to Sun', () => {
+        // True anomaly nu = 90° -> sin(90°) = 1.0 -> dr/dt = (n * a * e) / sqrt(1 - e^2)
+        // n = 2*pi / (686.98 * 86400) = 1.0585e-7 rad/s, a = 227.939M km, e = 0.0934
+        // dr/dt = (1.0585e-7 * 227.939e6 * 0.0934) / sqrt(1 - 0.00872) = 2.2536 / 0.99563 ~ 2.2635 km/s
+        const rad = MarsTime.computeRadialDistanceRateOfChange(90.0, 1.52368, 0.0934);
+        expect(rad.radialVelocityKmS).to.be.closeTo(2.2635, 0.02);
+        expect(rad.isRecedingFromSun).to.be.true;
+    });
+
+    it('should compute solar declination rate of change and convert sols to Earth solar days', () => {
+        // At equinox Ls = 0°, cos(0) = 1, sin(0) = 0 -> dDec/dLs = sin(25.19°) ~ 0.4256 -> rate = 0.4256 * 0.5384 ~ 0.2291 deg/sol
+        const decRate = MarsTime.computeSolarDeclinationRateOfChange(0.0, 25.19);
+        expect(decRate.declinationRateDegPerSol).to.be.closeTo(0.2291, 0.005);
+        expect(decRate.isApproachingSolstice).to.be.false;
+
+        // 1000 Sols -> 1000 * 88775.244 / 86400 = 1027.49125 Earth days
+        const conv = MarsTime.convertMarsSolsToEarthDays(1000);
+        expect(conv.earthDays).to.be.closeTo(1027.4913, 0.01);
+        expect(conv.totalSeconds).to.equal(88775244.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
