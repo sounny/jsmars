@@ -1344,7 +1344,103 @@ export class MeasureTool {
             alongTrackProgressKm: res.alongTrackKm
         };
     }
+
+    // --- Initial/Final Azimuth, Along-Track Closest Approach & Polygon Perimeter Solvers ---
+
+    /**
+     * Calculate initial and final great-circle geodetic course azimuths in degrees.
+     * @param {number} lat1 - Start latitude in degrees
+     * @param {number} lon1 - Start longitude in degrees
+     * @param {number} lat2 - End latitude in degrees
+     * @param {number} lon2 - End longitude in degrees
+     * @returns {{initialAzimuthDeg: number, finalAzimuthDeg: number, backAzimuthDeg: number}}
+     */
+    static computeInitialAndFinalCourseAzimuth(lat1, lon1, lat2, lon2) {
+        const phi1 = lat1 * Math.PI / 180.0;
+        const phi2 = lat2 * Math.PI / 180.0;
+        const dLam = ((lon2 - lon1 + 540.0) % 360.0 - 180.0) * Math.PI / 180.0;
+
+        // Initial bearing alpha1
+        const y1 = Math.sin(dLam) * Math.cos(phi2);
+        const x1 = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLam);
+        let alpha1 = Math.atan2(y1, x1) * 180.0 / Math.PI;
+        alpha1 = (alpha1 + 360.0) % 360.0;
+
+        // Final bearing alpha2 (bearing arriving at destination)
+        const y2 = Math.sin(dLam) * Math.cos(phi1);
+        const x2 = -Math.sin(phi1) * Math.cos(phi2) + Math.cos(phi1) * Math.sin(phi2) * Math.cos(dLam);
+        let alpha2 = Math.atan2(y2, x2) * 180.0 / Math.PI;
+        alpha2 = (alpha2 + 360.0) % 360.0;
+
+        // Back azimuth (reverse direction from destination back to start)
+        const backAz = (alpha2 + 180.0) % 360.0;
+
+        return {
+            initialAzimuthDeg: parseFloat(alpha1.toFixed(2)),
+            finalAzimuthDeg: parseFloat(alpha2.toFixed(2)),
+            backAzimuthDeg: parseFloat(backAz.toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate along-track great-circle distance to the closest point of approach.
+     * d_at = R * arccos( cos(d13/R) / cos(d_xt/R) )
+     * @param {number} pointLat - Tracked location latitude
+     * @param {number} pointLon - Tracked location longitude
+     * @param {number} pathStartLat - Line start latitude
+     * @param {number} pathStartLon - Line start longitude
+     * @param {number} pathEndLat - Line end latitude
+     * @param {number} pathEndLon - Line end longitude
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{alongTrackKm: number, alongTrackMeters: number}}
+     */
+    static computeAlongTrackDistanceToClosestApproach(pointLat, pointLon, pathStartLat, pathStartLon, pathEndLat, pathEndLon, body = 'mars') {
+        const res = this.computeCrossTrackDistance(pointLat, pointLon, pathStartLat, pathStartLon, pathEndLat, pathEndLon, body);
+
+        return {
+            alongTrackKm: res.alongTrackKm,
+            alongTrackMeters: parseFloat((res.alongTrackKm * 1000.0).toFixed(1))
+        };
+    }
+
+    /**
+     * Calculate total closed perimeter length of a spherical polygon.
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Array of polygon vertices
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{perimeterKm: number, perimeterMeters: number, edgeCount: number}}
+     */
+    static computeSphericalPolygonPerimeter(latlngs = [], body = 'mars') {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length < 2) return { perimeterKm: 0, perimeterMeters: 0, edgeCount: 0 };
+
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        let totalDist = 0;
+
+        for (let i = 0; i < coords.length; i++) {
+            const p1 = coords[i];
+            const p2 = coords[(i + 1) % coords.length];
+
+            const phi1 = p1[0] * Math.PI / 180.0;
+            const lam1 = p1[1] * Math.PI / 180.0;
+            const phi2 = p2[0] * Math.PI / 180.0;
+            const lam2 = p2[1] * Math.PI / 180.0;
+
+            const d = 2.0 * Math.asin(Math.sqrt(
+                Math.pow(Math.sin((phi2 - phi1) / 2.0), 2) +
+                Math.cos(phi1) * Math.cos(phi2) * Math.pow(Math.sin((lam2 - lam1) / 2.0), 2)
+            ));
+
+            totalDist += d * R;
+        }
+
+        return {
+            perimeterKm: parseFloat(totalDist.toFixed(3)),
+            perimeterMeters: parseFloat((totalDist * 1000.0).toFixed(1)),
+            edgeCount: coords.length
+        };
+    }
 }
+
 
 
 

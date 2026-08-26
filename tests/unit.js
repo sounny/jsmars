@@ -4048,6 +4048,33 @@ describe('Infinite Slab Gravity, Density Inversion & Thermal Conductivity (Inves
     });
 });
 
+describe('Course Azimuth, Along-Track Closest Approach & Polygon Perimeter (MeasureTool)', () => {
+    it('should compute initial, final, and back course azimuths along great-circle geodesics', () => {
+        // Due East along Equator (0°N, 0°E) to (0°N, 90°E) -> initial = 90°, final = 90°, back = 270°
+        const azEq = MeasureTool.computeInitialAndFinalCourseAzimuth(0.0, 0.0, 0.0, 90.0);
+        expect(azEq.initialAzimuthDeg).to.equal(90.0);
+        expect(azEq.finalAzimuthDeg).to.equal(90.0);
+        expect(azEq.backAzimuthDeg).to.equal(270.0);
+
+        // Due North along prime meridian (0°N, 0°E) to (60°N, 0°E) -> initial = 0°, final = 0°, back = 180°
+        const azMer = MeasureTool.computeInitialAndFinalCourseAzimuth(0.0, 0.0, 60.0, 0.0);
+        expect(azMer.initialAzimuthDeg).to.equal(0.0);
+        expect(azMer.finalAzimuthDeg).to.equal(0.0);
+        expect(azMer.backAzimuthDeg).to.equal(180.0);
+    });
+
+    it('should calculate along-track distance to closest approach and spherical polygon perimeter', () => {
+        // Path from (0°N, 0°E) to (0°N, 90°E). Target at (30°N, 45°E) -> closest approach along track is at 45°E (along-track d = (45/180)*pi*3389.5 ~ 2662.15 km)
+        const at = MeasureTool.computeAlongTrackDistanceToClosestApproach(30.0, 45.0, 0.0, 0.0, 0.0, 90.0, 'mars');
+        expect(at.alongTrackKm).to.be.closeTo(2662.15, 2.0);
+
+        // Spherical triangle: (0,0), (0,90), (90,0). Each of 3 sides is 90° arc = (pi/2)*3389.5 ~ 5324.3 km -> Total perimeter ~ 15972.9 km
+        const perim = MeasureTool.computeSphericalPolygonPerimeter([[0, 0], [0, 90], [90, 0]], 'mars');
+        expect(perim.perimeterKm).to.be.closeTo(15972.9, 10.0);
+        expect(perim.edgeCount).to.equal(3);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
