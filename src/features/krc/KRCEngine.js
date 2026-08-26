@@ -878,7 +878,81 @@ export class KRCEngine {
       isHeatingSurface: flux > 0
     };
   }
+
+  // --- Annual Skin Depth Ratio, Equilibrium Surface Temperature & Geothermal Profile Solvers ---
+
+  /**
+   * Calculate exact annual-to-diurnal thermal skin depth amplification ratio.
+   * ratio = sqrt( P_annual / P_diurnal ) = sqrt( 668.6 ) ~ 25.857
+   * @param {number} [solsPerYear=668.6] - Number of Martian solar days (sols) per year
+   * @returns {{skinDepthRatio: number, seasonalPenetrationFactor: number}}
+   */
+  static computeAnnualToDiurnalSkinDepthRatio(solsPerYear = 668.6) {
+    const ratio = Math.sqrt(Math.max(1.0, solsPerYear));
+
+    return {
+      skinDepthRatio: parseFloat(ratio.toFixed(3)),
+      seasonalPenetrationFactor: parseFloat(ratio.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate radiative equilibrium surface temperature including solar insolation and geothermal heat flow.
+   * T_eq = [ ( (1 - A) * S0 * cos(i) + F_geo ) / (eps * sigma) ]^(1/4)
+   * @param {number} [solarInsolationW_M2=500.0] - Solar flux at top of surface in W/m^2
+   * @param {number} [incidenceAngleDeg=0.0] - Solar incidence angle in degrees
+   * @param {number} [albedo=0.25] - Bolometric surface albedo
+   * @param {number} [geothermalFluxMwM2=30.0] - Basal geothermal heat flux in mW/m^2
+   * @param {number} [emissivity=0.95] - Thermal infrared emissivity
+   * @returns {{equilibriumTempK: number, absorbedSolarFluxW_M2: number, geothermalFluxW_M2: number}}
+   */
+  static computeEquilibriumSurfaceTemperatureWithGeothermal(solarInsolationW_M2 = 500.0, incidenceAngleDeg = 0.0, albedo = 0.25, geothermalFluxMwM2 = 30.0, emissivity = 0.95) {
+    const s0 = Math.max(0, solarInsolationW_M2);
+    const incRad = Math.abs(incidenceAngleDeg) * Math.PI / 180.0;
+    const cosI = Math.max(0, Math.cos(incRad));
+    const A = Math.max(0, Math.min(0.99, albedo));
+    const fGeo = Math.max(0, geothermalFluxMwM2) * 1e-3; // W/m^2
+    const eps = Math.max(0.01, Math.min(1.0, emissivity));
+
+    const absorbedSolar = (1.0 - A) * s0 * cosI;
+    const totalInflow = absorbedSolar + fGeo;
+    const denom = eps * this.STEFAN_BOLTZMANN;
+
+    const tEq = Math.pow(totalInflow / denom, 0.25);
+
+    return {
+      equilibriumTempK: parseFloat(tEq.toFixed(2)),
+      absorbedSolarFluxW_M2: parseFloat(absorbedSolar.toFixed(2)),
+      geothermalFluxW_M2: parseFloat(fGeo.toFixed(5))
+    };
+  }
+
+  /**
+   * Calculate 1D steady-state subsurface geothermal temperature profile.
+   * T(z) = T_surf + (q / k) * z
+   * @param {number} [surfaceTempK=210.0] - Mean annual surface temperature in Kelvin
+   * @param {number} [geothermalHeatFlowMwM2=30.0] - Basal geothermal heat flow in mW/m^2
+   * @param {number} [crustThermalConductivity=2.0] - Crustal thermal conductivity in W/(m K)
+   * @param {number} [depthKm=5.0] - Subsurface depth in km
+   * @returns {{temperatureAtDepthK: number, geothermalGradientKPerKm: number, depthMeters: number}}
+   */
+  static computeSubsurfaceGeothermalTemperatureProfile(surfaceTempK = 210.0, geothermalHeatFlowMwM2 = 30.0, crustThermalConductivity = 2.0, depthKm = 5.0) {
+    const q_W = geothermalHeatFlowMwM2 * 1e-3;
+    const k = Math.max(0.01, crustThermalConductivity);
+    const gradKPerM = q_W / k;
+    const gradKPerKm = gradKPerM * 1000.0;
+    const zM = Math.max(0, depthKm) * 1000.0;
+
+    const tDepth = surfaceTempK + gradKPerM * zM;
+
+    return {
+      temperatureAtDepthK: parseFloat(tDepth.toFixed(2)),
+      geothermalGradientKPerKm: parseFloat(gradKPerKm.toFixed(2)),
+      depthMeters: parseFloat(zM.toFixed(1))
+    };
+  }
 }
+
 
 
 

@@ -4075,6 +4075,27 @@ describe('Course Azimuth, Along-Track Closest Approach & Polygon Perimeter (Meas
     });
 });
 
+describe('Skin Depth Ratio, Equilibrium Temp & Subsurface Geotherm (KRCEngine)', () => {
+    it('should compute exact annual-to-diurnal thermal skin depth amplification ratio', () => {
+        // Mars year has 668.6 sols -> ratio = sqrt(668.6) ~ 25.857
+        const skin = KRCEngine.computeAnnualToDiurnalSkinDepthRatio(668.6);
+        expect(skin.skinDepthRatio).to.be.closeTo(25.857, 0.01);
+        expect(skin.seasonalPenetrationFactor).to.be.closeTo(25.86, 0.05);
+    });
+
+    it('should calculate equilibrium surface temperature with geothermal heat flow and subsurface geotherm', () => {
+        // S0 = 500 W/m^2, i = 0°, A = 0.25 -> absorbed = 375 W/m^2. With eps = 0.95 -> Teq ~ [375 / (0.95 * 5.67037e-8)]^0.25 ~ 288.94 K
+        const teq = KRCEngine.computeEquilibriumSurfaceTemperatureWithGeothermal(500.0, 0.0, 0.25, 30.0, 0.95);
+        expect(teq.equilibriumTempK).to.be.closeTo(288.9, 0.5);
+        expect(teq.absorbedSolarFluxW_M2).to.equal(375.0);
+
+        // Geotherm: T_surf = 210 K, q = 30 mW/m^2, k = 2.0 W/(m K) -> gradient = 15 K/km. At depth = 5 km -> T = 210 + 75 = 285.0 K
+        const geo = KRCEngine.computeSubsurfaceGeothermalTemperatureProfile(210.0, 30.0, 2.0, 5.0);
+        expect(geo.temperatureAtDepthK).to.equal(285.0);
+        expect(geo.geothermalGradientKPerKm).to.equal(15.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
