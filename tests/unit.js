@@ -4894,6 +4894,35 @@ describe('Equation of Center, Solar Declination & Equation of Time (MarsTime)', 
     });
 });
 
+describe('CRISM HCPINDEX, THEMIS Slope & Absorption Asymmetry (BandMathEngine)', () => {
+    it('should calculate CRISM high-calcium pyroxene index HCPINDEX', () => {
+        // r1815 = 0.25, r2060 = 0.20, r2530 = 0.28
+        // continuum = 0.68 * 0.25 + 0.32 * 0.28 = 0.17 + 0.0896 = 0.2596
+        // index = 1 - (0.20 / 0.2596) = 1 - 0.7704 = 0.2296 (>0.04 -> hasHCP: true)
+        const hcp = BandMathEngine.computeCRISMHighCalciumPyroxeneIndex(0.25, 0.20, 0.28);
+        expect(hcp.hcpIndex).to.be.closeTo(0.2296, 0.005);
+        expect(hcp.hasHCP).to.be.true;
+
+        // Flat continuum (no absorption) r2060 = continuum = 0.2596 -> index = 0.0
+        const noHcp = BandMathEngine.computeCRISMHighCalciumPyroxeneIndex(0.25, 0.2596, 0.28);
+        expect(noHcp.hcpIndex).to.be.closeTo(0.0, 0.005);
+        expect(noHcp.hasHCP).to.be.false;
+    });
+
+    it('should compute THEMIS thermal infrared emissivity slope and spectral asymmetry', () => {
+        // E_B4 (8.56 µm) = 0.90, E_B9 (12.57 µm) = 0.98 -> dE = 0.08, dLam = 4.01 µm -> slope = 0.08 / 4.01 ~ 0.01995 µm^-1 (>0.015)
+        const themis = BandMathEngine.computeTHEMISEmissivitySpectralSlope(0.90, 0.98, 8.56, 12.57);
+        expect(themis.emissivitySlopePerUm).to.be.closeTo(0.01995, 0.001);
+        expect(themis.isMaficSloped).to.be.true;
+
+        // Absorption feature: rLeft = 0.30, rCenter = 0.22, rRight = 0.35
+        // asym = (0.22 - 0.30) / (0.35 - 0.30) = -0.08 / 0.05 = -1.6 (< 0.5 -> isLeftSkewed: true)
+        const asym = BandMathEngine.computeSpectralAbsorptionAsymmetry(0.30, 0.22, 0.35);
+        expect(asym.asymmetryRatio).to.equal(-1.6);
+        expect(asym.isLeftSkewed).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

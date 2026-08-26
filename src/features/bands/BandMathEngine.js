@@ -1398,7 +1398,71 @@ export class BandMathEngine {
       isConvex: kappa > 1.0
     };
   }
+
+  // --- CRISM HCPINDEX, THEMIS Slope & Absorption Asymmetry Solvers ---
+
+  /**
+   * Calculate CRISM High-Calcium Pyroxene (HCP / Augite / Diopside) 2.0 µm band depth index HCPINDEX.
+   * HCPINDEX = 1.0 - ( R2060 / ( 0.68 * R1815 + 0.32 * R2530 ) )
+   * @param {number} r1815 - Reflectance at 1.815 µm shoulder
+   * @param {number} r2060 - Reflectance at 2.060 µm pyroxene absorption minimum
+   * @param {number} r2530 - Reflectance at 2.530 µm shoulder
+   * @returns {{hcpIndex: number, hasHCP: boolean}}
+   */
+  static computeCRISMHighCalciumPyroxeneIndex(r1815, r2060, r2530) {
+    const continuum = 0.68 * r1815 + 0.32 * r2530;
+    const denom = Math.max(1e-4, continuum);
+    const index = 1.0 - (r2060 / denom);
+
+    return {
+      hcpIndex: parseFloat(index.toFixed(4)),
+      hasHCP: index > 0.04
+    };
+  }
+
+  /**
+   * Calculate THEMIS longwave thermal infrared emissivity spectral slope across the Si-O reststrahlen band.
+   * Slope = (E_9 - E_4) / (lambda_9 - lambda_4)
+   * @param {number} emissB4 - Emissivity in THEMIS Band 4 (~8.56 µm)
+   * @param {number} emissB9 - Emissivity in THEMIS Band 9 (~12.57 µm)
+   * @param {number} [waveB4=8.56] - Center wavelength of Band 4 in µm
+   * @param {number} [waveB9=12.57] - Center wavelength of Band 9 in µm
+   * @returns {{emissivitySlopePerUm: number, isMaficSloped: boolean}}
+   */
+  static computeTHEMISEmissivitySpectralSlope(emissB4, emissB9, waveB4 = 8.56, waveB9 = 12.57) {
+    const dLam = Math.max(0.1, waveB9 - waveB4);
+    const dE = emissB9 - emissB4;
+    const slope = dE / dLam;
+
+    return {
+      emissivitySlopePerUm: parseFloat(slope.toFixed(5)),
+      isMaficSloped: slope > 0.015
+    };
+  }
+
+  /**
+   * Calculate absorption feature spectral asymmetry and skewness parameter.
+   * Asym = (R_center - R_left) / (R_right - R_left)
+   * @param {number} rLeft - Left shoulder reflectance
+   * @param {number} rCenter - Band center reflectance
+   * @param {number} rRight - Right shoulder reflectance
+   * @returns {{asymmetryRatio: number, isLeftSkewed: boolean}}
+   */
+  static computeSpectralAbsorptionAsymmetry(rLeft, rCenter, rRight) {
+    const denom = rRight - rLeft;
+    if (Math.abs(denom) < 1e-5) {
+      return { asymmetryRatio: 0.5, isLeftSkewed: false };
+    }
+
+    const asym = (rCenter - rLeft) / denom;
+
+    return {
+      asymmetryRatio: parseFloat(asym.toFixed(4)),
+      isLeftSkewed: asym < 0.5
+    };
+  }
 }
+
 
 
 
