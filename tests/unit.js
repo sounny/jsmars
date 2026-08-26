@@ -5239,6 +5239,34 @@ describe('Macroscopic Roughness, Gas Conductivity & Volatiles (KRCEngine)', () =
     });
 });
 
+describe('CRIM Multi-Phase Mixtures, Fresnel Zone & Transmission Loss (RadarSounderEngine)', () => {
+    it('should calculate effective dielectric permittivity using Complex Refractive Index Model (CRIM)', () => {
+        // Ice 90% (eps = 3.15, n = 1.7748), Rock 10% (eps = 7.5, n = 2.7386)
+        // n_eff = 0.9 * 1.7748 + 0.1 * 2.7386 = 1.5973 + 0.2739 = 1.8712 -> eps_eff = (1.8712)^2 = 3.501
+        const crim = RadarSounderEngine.computeComplexRefractiveIndexMixture(
+            { ice: 0.90, rock: 0.10 },
+            { ice: 3.15, rock: 7.5, void: 1.0 }
+        );
+        expect(crim.effectiveRefractiveIndex).to.be.closeTo(1.8712, 0.005);
+        expect(crim.effectivePermittivity).to.be.closeTo(3.501, 0.02);
+        expect(crim.phaseVelocityKmS).to.be.closeTo(160200.0, 1000.0);
+    });
+
+    it('should compute subsurface Fresnel zone footprint diameter and two-way interface transmission loss', () => {
+        // z = 500 m, freq = 20 MHz in ice eps = 3.15 (v = 1.689e8 m/s -> lambda = 8.445 m)
+        // term = (8.445 * 500) / 2 + (8.445)^2 / 16 = 2111.25 + 4.46 = 2115.71 -> d_F = 2 * sqrt(2115.71) = 2 * 46.0 = 92.0 m
+        const fresnel = RadarSounderEngine.computeFresnelZoneFootprintDiameter(500.0, 20e6, 3.15);
+        expect(fresnel.fresnelDiameterMeters).to.be.closeTo(92.0, 1.0);
+        expect(fresnel.wavelengthInMediumMeters).to.be.closeTo(8.45, 0.05);
+
+        // Overlying boundary with -10 dB reflectivity (R_lin = 0.1)
+        // T_1way = 0.9 -> T_2way = 0.81 -> loss = -10*log10(0.81) = 0.915 dB
+        const trans = RadarSounderEngine.computeTwoWayInterfaceTransmissionLoss([-10.0]);
+        expect(trans.twoWayTransmissionFraction).to.equal(0.81);
+        expect(trans.totalTransmissionLossDb).to.be.closeTo(0.915, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1304,7 +1304,88 @@ export class RadarSounderEngine {
       rayleighParameter: parseFloat(gRayleigh.toFixed(4))
     };
   }
+
+  // --- CRIM Multi-Phase Mixture, Fresnel Zone & Transmission Loss Solvers ---
+
+  /**
+   * Calculate effective dielectric permittivity of a multi-phase mixture using Complex Refractive Index Model (CRIM).
+   * sqrt(eps_eff) = sum( f_i * sqrt(eps_i) )
+   * @param {Object} volFractions - Volumetric fractions { ice: 0.8, rock: 0.15, void: 0.05 }
+   * @param {Object} [epsComponents={ ice: 3.15, rock: 7.5, void: 1.0 }] - Component relative permittivities
+   * @returns {{effectivePermittivity: number, effectiveRefractiveIndex: number, phaseVelocityKmS: number}}
+   */
+  static computeComplexRefractiveIndexMixture(volFractions = {}, epsComponents = { ice: 3.15, rock: 7.5, void: 1.0 }) {
+    let sumN = 0;
+    let totalFraction = 0;
+
+    for (const key of Object.keys(volFractions)) {
+      const f = Math.max(0, volFractions[key] || 0);
+      const eps = Math.max(1.0, epsComponents[key] || 1.0);
+      const n = Math.sqrt(eps);
+      sumN += f * n;
+      totalFraction += f;
+    }
+
+    // Normalize if fractions don't sum exactly to 1.0
+    const nEff = totalFraction > 0 ? sumN / totalFraction : 1.0;
+    const epsEff = Math.pow(nEff, 2);
+    const vPhaseKmS = (RadarSounderEngine.C * 1e-3) / nEff;
+
+    return {
+      effectivePermittivity: parseFloat(epsEff.toFixed(4)),
+      effectiveRefractiveIndex: parseFloat(nEff.toFixed(4)),
+      phaseVelocityKmS: parseFloat(vPhaseKmS.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate first Fresnel zone footprint diameter d_F at depth z inside medium.
+   * d_F = 2 * sqrt( (lambda_m * z) / 2 + (lambda_m^2) / 16 )
+   * @param {number} depthMeters - Depth z inside medium in meters
+   * @param {number} [freqHz=20e6] - Radar carrier frequency (20 MHz for SHARAD)
+   * @param {number} [epsMedium=3.15] - Dielectric permittivity of medium
+   * @returns {{fresnelDiameterMeters: number, wavelengthInMediumMeters: number}}
+   */
+  static computeFresnelZoneFootprintDiameter(depthMeters, freqHz = 20e6, epsMedium = 3.15) {
+    const z = Math.max(0, depthMeters);
+    const eps = Math.max(1.0, epsMedium);
+    const v = RadarSounderEngine.C / Math.sqrt(eps);
+    const lambdaM = v / Math.max(1e3, freqHz);
+
+    const term = (lambdaM * z) / 2.0 + Math.pow(lambdaM, 2) / 16.0;
+    const dFresnelM = 2.0 * Math.sqrt(term);
+
+    return {
+      fresnelDiameterMeters: parseFloat(dFresnelM.toFixed(2)),
+      wavelengthInMediumMeters: parseFloat(lambdaM.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate cumulative two-way transmission power loss through an overlying stack of dielectric boundaries.
+   * T_total = prod_{i=1}^n (1 - 10^(R_i / 10))^2
+   * @param {Array<number>} reflectivityDbList - Array of Fresnel interface power reflectivities in dB (e.g. [-10, -15])
+   * @returns {{twoWayTransmissionFraction: number, totalTransmissionLossDb: number}}
+   */
+  static computeTwoWayInterfaceTransmissionLoss(reflectivityDbList = []) {
+    let tTotal = 1.0;
+
+    for (const rDb of reflectivityDbList) {
+      const rLinear = Math.min(0.999, Math.pow(10, rDb / 10.0));
+      const tOneWay = 1.0 - rLinear;
+      const tTwoWay = tOneWay * tOneWay;
+      tTotal *= tTwoWay;
+    }
+
+    const lossDb = tTotal > 0 ? -10.0 * Math.log10(tTotal) : 999.0;
+
+    return {
+      twoWayTransmissionFraction: parseFloat(tTotal.toFixed(4)),
+      totalTransmissionLossDb: parseFloat(lossDb.toFixed(3))
+    };
+  }
 }
+
 
 
 
