@@ -995,7 +995,87 @@ export class ThreeDEngine {
       apparentDiameterDeg: parseFloat((thetaDeg * 2.0).toFixed(3))
     };
   }
+
+  // --- Hapke Opposition Surge, Footprint Bounds & Horizon Depression Solvers ---
+
+  /**
+   * Calculate Hapke Shadow-Hiding Opposition Surge (SHOS) parameter.
+   * B_SH(g) = B0 / (1 + tan(g / 2) / h_s)
+   * @param {number} phaseAngleDeg - Solar phase angle in degrees (g)
+   * @param {number} [amplitudeB0=1.0] - Opposition surge amplitude parameter
+   * @param {number} [widthParamHs=0.05] - Angular half-width parameter h_s (~0.05 for Mars regolith)
+   * @returns {{oppositionSurgeFactor: number, surgeEnhancementPercent: number}}
+   */
+  static computeHapkeShadowHidingSurge(phaseAngleDeg, amplitudeB0 = 1.0, widthParamHs = 0.05) {
+    const gRad = Math.abs(phaseAngleDeg) * Math.PI / 180.0;
+    const hs = Math.max(1e-4, widthParamHs);
+    const b0 = Math.max(0, amplitudeB0);
+
+    const bSh = b0 / (1.0 + Math.tan(gRad / 2.0) / hs);
+    const pct = bSh * 100.0;
+
+    return {
+      oppositionSurgeFactor: parseFloat(bSh.toFixed(4)),
+      surgeEnhancementPercent: parseFloat(pct.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate rectangular camera ground swath footprint vertices relative to sub-satellite nadir.
+   * @param {number} altitudeKm - Spacecraft altitude above datum in km
+   * @param {number} [fovHorizontalDeg=20.0] - Horizontal cross-track FOV in degrees
+   * @param {number} [fovVerticalDeg=15.0] - Vertical along-track FOV in degrees
+   * @returns {{widthKm: number, lengthKm: number, areaKm2: number, cornersKm: Array<[number, number]>}}
+   */
+  static computeOrbitalGroundFootprintPolygon(altitudeKm, fovHorizontalDeg = 20.0, fovVerticalDeg = 15.0) {
+    const H = Math.max(0, altitudeKm);
+    const halfFovX = (fovHorizontalDeg * Math.PI / 180.0) / 2.0;
+    const halfFovY = (fovVerticalDeg * Math.PI / 180.0) / 2.0;
+
+    const halfW = H * Math.tan(halfFovX);
+    const halfL = H * Math.tan(halfFovY);
+
+    const widthKm = halfW * 2.0;
+    const lengthKm = halfL * 2.0;
+    const areaKm2 = widthKm * lengthKm;
+
+    const corners = [
+      [-halfW, -halfL],
+      [halfW, -halfL],
+      [halfW, halfL],
+      [-halfW, halfL]
+    ];
+
+    return {
+      widthKm: parseFloat(widthKm.toFixed(3)),
+      lengthKm: parseFloat(lengthKm.toFixed(3)),
+      areaKm2: parseFloat(areaKm2.toFixed(2)),
+      cornersKm: corners.map(([x, y]) => [parseFloat(x.toFixed(3)), parseFloat(y.toFixed(3))])
+    };
+  }
+
+  /**
+   * Calculate orbital horizon depression / dip angle.
+   * theta_dep = arccos( R / (R + H) )
+   * @param {number} spacecraftAltitudeKm - Orbital altitude above surface in km
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{depressionAngleDeg: number, depressionAngleRad: number}}
+   */
+  static computeHorizonDepressionAngle(spacecraftAltitudeKm, body = 'mars') {
+    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const H = Math.max(0, spacecraftAltitudeKm);
+
+    const cosDip = R / (R + H);
+    const dipRad = Math.acos(Math.max(0, Math.min(1.0, cosDip)));
+    const dipDeg = dipRad * 180.0 / Math.PI;
+
+    return {
+      depressionAngleDeg: parseFloat(dipDeg.toFixed(3)),
+      depressionAngleRad: parseFloat(dipRad.toFixed(5))
+    };
+  }
 }
+
 
 
 

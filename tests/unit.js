@@ -4445,6 +4445,33 @@ describe('Cassini-Soldner Projection & Tissot Area Distortion (ProjectionManager
     });
 });
 
+describe('Hapke Surge, Ground Footprint & Horizon Depression (ThreeDEngine)', () => {
+    it('should compute Hapke shadow-hiding opposition surge factor and enhancement', () => {
+        // Zero phase angle g = 0 -> B_SH = 1.0 / (1 + 0) = 1.0 (100% surge enhancement)
+        const surge0 = ThreeDEngine.computeHapkeShadowHidingSurge(0.0, 1.0, 0.05);
+        expect(surge0.oppositionSurgeFactor).to.equal(1.0);
+        expect(surge0.surgeEnhancementPercent).to.equal(100.0);
+
+        // Phase angle g = 5° -> tan(2.5°) ~ 0.04366 -> B_SH = 1.0 / (1 + 0.04366 / 0.05) = 1.0 / 1.8732 ~ 0.5338
+        const surge5 = ThreeDEngine.computeHapkeShadowHidingSurge(5.0, 1.0, 0.05);
+        expect(surge5.oppositionSurgeFactor).to.be.closeTo(0.5338, 0.005);
+    });
+
+    it('should calculate camera ground footprint polygon and orbital horizon depression angle', () => {
+        // Altitude H = 250 km, FOV = 20° x 15°
+        // width = 2 * 250 * tan(10°) ~ 88.163 km, length = 2 * 250 * tan(7.5°) ~ 65.823 km
+        const fp = ThreeDEngine.computeOrbitalGroundFootprintPolygon(250.0, 20.0, 15.0);
+        expect(fp.widthKm).to.be.closeTo(88.163, 0.05);
+        expect(fp.lengthKm).to.be.closeTo(65.823, 0.05);
+        expect(fp.areaKm2).to.be.closeTo(5803.14, 5.0);
+        expect(fp.cornersKm.length).to.equal(4);
+
+        // Mars R = 3389.5 km, H = 250 km -> cos(dip) = 3389.5 / 3639.5 = 0.9313 -> dip = acos(0.9313) ~ 21.36°
+        const dep = ThreeDEngine.computeHorizonDepressionAngle(250.0, 'mars');
+        expect(dep.depressionAngleDeg).to.be.closeTo(21.36, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
