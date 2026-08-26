@@ -1099,7 +1099,77 @@ export class CSFDEngine {
       spatialClass: sClass
     };
   }
+
+  // --- R-Plot Differential Value, Secondary Screening & Fractional Error Solvers ---
+
+  /**
+   * Calculate standard planetary R-plot relative differential density value for a diameter bin.
+   * R = (N * d_geom^3) / (Area * delta_D)
+   * @param {number} count - Number of craters observed in the diameter bin
+   * @param {number} dMinKm - Lower diameter bound in km
+   * @param {number} dMaxKm - Upper diameter bound in km
+   * @param {number} [countAreaKm2=1e6] - Surface counting area in km^2
+   * @returns {{rValue: number, dGeometricMeanKm: number, deltaDKm: number}}
+   */
+  static computeRelativeCraterRValue(count, dMinKm, dMaxKm, countAreaKm2 = 1e6) {
+    const N = Math.max(0, count);
+    const d1 = Math.max(1e-4, dMinKm);
+    const d2 = Math.max(d1 + 1e-4, dMaxKm);
+    const A = Math.max(1, countAreaKm2);
+
+    const dGeom = Math.sqrt(d1 * d2);
+    const deltaD = d2 - d1;
+    const rVal = (N * Math.pow(dGeom, 3)) / (A * deltaD);
+
+    return {
+      rValue: parseFloat(rVal.toExponential(4)),
+      dGeometricMeanKm: parseFloat(dGeom.toFixed(3)),
+      deltaDKm: parseFloat(deltaD.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate secondary crater exclusion/screening buffer radius around large primary impact crater.
+   * r_screen = 5.0 * D_primary
+   * @param {number} primaryDiameterKm - Diameter of primary impact structure in km
+   * @returns {{screeningRadiusKm: number, screeningRadiusMeters: number, exclusionAreaKm2: number}}
+   */
+  static computeSecondaryScreeningRadius(primaryDiameterKm) {
+    const D = Math.max(0, primaryDiameterKm);
+    const rScreenKm = 5.0 * D;
+    const rScreenM = rScreenKm * 1000.0;
+    const areaKm2 = Math.PI * Math.pow(rScreenKm, 2);
+
+    return {
+      screeningRadiusKm: parseFloat(rScreenKm.toFixed(2)),
+      screeningRadiusMeters: parseFloat(rScreenM.toFixed(1)),
+      exclusionAreaKm2: parseFloat(areaKm2.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate fractional 1-sigma Poisson statistical model age uncertainty.
+   * sigma_T / T = 1 / sqrt(N)
+   * @param {number} craterCount - Total number of craters N fitted to the isochron
+   * @returns {{fractionalError: number, percentError: number, isStatisticallyRobust: boolean}}
+   */
+  static computeFractionalPoissonAgeError(craterCount) {
+    const N = Math.max(0, craterCount);
+    if (N === 0) {
+      return { fractionalError: 1.0, percentError: 100.0, isStatisticallyRobust: false };
+    }
+
+    const frac = 1.0 / Math.sqrt(N);
+    const pct = frac * 100.0;
+
+    return {
+      fractionalError: parseFloat(frac.toFixed(4)),
+      percentError: parseFloat(pct.toFixed(2)),
+      isStatisticallyRobust: N >= 30
+    };
+  }
 }
+
 
 
 

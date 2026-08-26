@@ -4371,6 +4371,31 @@ describe('Chirp Compression, Basal Reflectivity & Specific Attenuation (RadarSou
     });
 });
 
+describe('R-Plot Value, Secondary Screening & Fractional Poisson Error (CSFDEngine)', () => {
+    it('should compute standard planetary R-plot relative value for diameter bin', () => {
+        // N = 10 craters, d1 = 1 km, d2 = 1.414 km -> dGeom = 1.1892 km, deltaD = 0.414 km, Area = 1e6 km^2
+        // R = 10 * (1.1892)^3 / (1e6 * 0.414) = 10 * 1.6818 / 414000 = 16.818 / 414000 ~ 4.062e-5
+        const rVal = CSFDEngine.computeRelativeCraterRValue(10, 1.0, Math.SQRT2, 1e6);
+        expect(rVal.dGeometricMeanKm).to.be.closeTo(1.189, 0.01);
+        expect(rVal.deltaDKm).to.be.closeTo(0.414, 0.01);
+        expect(rVal.rValue).to.be.closeTo(4.062e-5, 2e-6);
+    });
+
+    it('should calculate secondary crater screening radius and fractional Poisson model age error', () => {
+        // D_primary = 20 km -> r_screen = 5 * 20 = 100 km, area = pi * 100^2 ~ 31415.9 km^2
+        const screen = CSFDEngine.computeSecondaryScreeningRadius(20.0);
+        expect(screen.screeningRadiusKm).to.equal(100.0);
+        expect(screen.screeningRadiusMeters).to.equal(100000.0);
+        expect(screen.exclusionAreaKm2).to.be.closeTo(31415.9, 1.0);
+
+        // N = 100 craters -> fractional error = 1 / sqrt(100) = 0.10 (10.0%), robust = true
+        const err = CSFDEngine.computeFractionalPoissonAgeError(100);
+        expect(err.fractionalError).to.equal(0.1);
+        expect(err.percentError).to.equal(10.0);
+        expect(err.isStatisticallyRobust).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
