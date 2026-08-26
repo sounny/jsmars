@@ -4797,6 +4797,39 @@ describe('True Anomaly Angular Rate, Sub-Solar Zenith & Day-to-Sol (MarsTime)', 
     });
 });
 
+describe('Interlayer Heat Flux, Seasonal TI & Atmospheric Downwelling (KRCEngine)', () => {
+    it('should calculate discrete finite-difference conductive interlayer heat flux', () => {
+        // T_upper = 220 K, T_lower = 210 K, dz = 0.05 m, k = 0.05 W/(m K)
+        // dT = -10 K -> flux = -0.05 * (-10 / 0.05) = +10.0 W/m^2 (upward)
+        const fluxUp = KRCEngine.computeSubsurfaceInterlayerHeatFlux(220.0, 210.0, 0.05, 0.05);
+        expect(fluxUp.conductiveFluxW_M2).to.equal(10.0);
+        expect(fluxUp.isHeatFlowingDownward).to.be.false;
+
+        // T_upper = 200 K, T_lower = 230 K -> dT = +30 -> flux = -0.05 * (30 / 0.05) = -30.0 W/m^2 (downward)
+        const fluxDown = KRCEngine.computeSubsurfaceInterlayerHeatFlux(200.0, 230.0, 0.05, 0.05);
+        expect(fluxDown.conductiveFluxW_M2).to.equal(-30.0);
+        expect(fluxDown.isHeatFlowingDownward).to.be.true;
+    });
+
+    it('should compute seasonal apparent thermal inertia modulation and downwelling IR flux', () => {
+        // Base TI = 250 tiu, Ls = 250.99° (perihelion) -> factor = 1 + 0.15 = 1.15 -> TI_app = 287.5 tiu (+15%)
+        const periTI = KRCEngine.computeSeasonalApparentThermalInertiaModulation(250.0, 250.99, 0.15);
+        expect(periTI.apparentThermalInertia).to.equal(287.5);
+        expect(periTI.percentModulation).to.equal(15.0);
+
+        // At aphelion Ls = 70.99° -> factor = 1 - 0.15 = 0.85 -> TI_app = 212.5 tiu (-15%)
+        const aphTI = KRCEngine.computeSeasonalApparentThermalInertiaModulation(250.0, 70.99, 0.15);
+        expect(aphTI.apparentThermalInertia).to.equal(212.5);
+        expect(aphTI.percentModulation).to.equal(-15.0);
+
+        // T_air = 210 K, tau = 0.5, P = 610 Pa -> tau_IR = 0.175 -> epsDust = 1 - exp(-0.175) ~ 0.1605, epsGas = 0.08 -> epsAtm ~ 0.2405
+        // flux = 0.2405 * 5.670374e-8 * (210)^4 = 0.2405 * 110.28 ~ 26.52 W/m^2
+        const ir = KRCEngine.computeAtmosphericThermalInfraredDownwellingFlux(210.0, 0.5, 610.0);
+        expect(ir.downwellingFluxW_M2).to.be.closeTo(26.52, 0.5);
+        expect(ir.atmosphericEmissivity).to.be.closeTo(0.2405, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

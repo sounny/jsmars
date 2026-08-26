@@ -1081,7 +1081,77 @@ export class KRCEngine {
       isCooling: fNet > 0
     };
   }
+
+  // --- Interlayer Heat Flux, Seasonal TI Modulation & Downwelling Solvers ---
+
+  /**
+   * Calculate discrete Kieffer finite-difference conductive heat flux between subsurface layers.
+   * F_{i+1/2} = -k * (T_{i+1} - T_i) / Delta_z
+   * @param {number} tempUpperK - Upper layer temperature in Kelvin
+   * @param {number} tempLowerK - Lower layer temperature in Kelvin
+   * @param {number} layerThicknessMeters - Distance between layer centers in meters
+   * @param {number} [thermalConductivityW_MK=0.05] - Intermediate layer thermal conductivity
+   * @returns {{conductiveFluxW_M2: number, isHeatFlowingDownward: boolean}}
+   */
+  static computeSubsurfaceInterlayerHeatFlux(tempUpperK, tempLowerK, layerThicknessMeters, thermalConductivityW_MK = 0.05) {
+    const dz = Math.max(1e-5, layerThicknessMeters);
+    const k = Math.max(1e-4, thermalConductivityW_MK);
+    const dT = tempLowerK - tempUpperK;
+    const flux = -k * (dT / dz); // Positive when flowing upward, negative downward
+
+    return {
+      conductiveFluxW_M2: parseFloat(flux.toFixed(4)),
+      isHeatFlowingDownward: flux < 0
+    };
+  }
+
+  /**
+   * Calculate seasonal modulation of apparent thermal inertia across eccentric Mars orbit.
+   * I_app(Ls) = I_0 * (1 + beta * cos(Ls - Ls_peri))
+   * @param {number} baseThermalInertia - Baseline thermal inertia in tiu
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @param {number} [modulationFactor=0.15] - Seasonal modulation coefficient beta (~0.15 for Mars)
+   * @returns {{apparentThermalInertia: number, percentModulation: number}}
+   */
+  static computeSeasonalApparentThermalInertiaModulation(baseThermalInertia, LsDeg, modulationFactor = 0.15) {
+    const i0 = Math.max(10, baseThermalInertia);
+    const beta = Math.max(0, Math.min(0.5, modulationFactor));
+    const dLsRad = (LsDeg - 250.99) * Math.PI / 180.0; // Offset relative to perihelion Ls = 251 deg
+
+    const factor = 1.0 + beta * Math.cos(dLsRad);
+    const iApp = i0 * factor;
+    const pctMod = (factor - 1.0) * 100.0;
+
+    return {
+      apparentThermalInertia: parseFloat(iApp.toFixed(2)),
+      percentModulation: parseFloat(pctMod.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate downward atmospheric thermal infrared flux with CO2 gas band and dust opacity.
+   * F_atm = sigma * T_air^4 * ( 1 - exp(-0.35 * tau) + 0.08 * (P / 610) )
+   * @param {number} airTempK - Near-surface atmospheric air temperature in Kelvin
+   * @param {number} dustOpticalDepthTau - Visible dust optical depth tau
+   * @param {number} [surfacePressurePa=610.0] - Surface atmospheric pressure in Pa
+   * @returns {{downwellingFluxW_M2: number, atmosphericEmissivity: number}}
+   */
+  static computeAtmosphericThermalInfraredDownwellingFlux(airTempK, dustOpticalDepthTau, surfacePressurePa = 610.0) {
+    const tauIR = Math.max(0.001, dustOpticalDepthTau * 0.35);
+    const pRatio = Math.max(0.01, surfacePressurePa) / 610.0;
+    const epsDust = 1.0 - Math.exp(-tauIR);
+    const epsGas = 0.08 * pRatio;
+    const epsAtm = Math.min(1.0, epsDust + epsGas);
+
+    const flux = epsAtm * this.STEFAN_BOLTZMANN * Math.pow(Math.max(10, airTempK), 4);
+
+    return {
+      downwellingFluxW_M2: parseFloat(flux.toFixed(2)),
+      atmosphericEmissivity: parseFloat(epsAtm.toFixed(4))
+    };
+  }
 }
+
 
 
 
