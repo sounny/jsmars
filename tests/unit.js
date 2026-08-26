@@ -4589,6 +4589,33 @@ describe('Specific Heat Model, Damping Ratio & Net Radiative Loss (KRCEngine)', 
     });
 });
 
+describe('Great-Circle Midpoint, Spherical Cap & Cross-Track Deviation (MeasureTool)', () => {
+    it('should calculate exact spherical great-circle midpoint between two planetary coordinates', () => {
+        // Point 1: (0°N, 0°E), Point 2: (0°N, 90°E) -> Midpoint should be exactly (0°N, 45°E)
+        const midEquator = MeasureTool.computeGreatCircleMidpoint(0.0, 0.0, 0.0, 90.0);
+        expect(midEquator.midLatDeg).to.be.closeTo(0.0, 0.01);
+        expect(midEquator.midLonDeg).to.be.closeTo(45.0, 0.01);
+
+        // Point 1: (10°N, 20°E), Point 2: (50°N, 20°E) -> Midpoint along meridian: (30°N, 20°E)
+        const midMeridian = MeasureTool.computeGreatCircleMidpoint(10.0, 20.0, 50.0, 20.0);
+        expect(midMeridian.midLatDeg).to.be.closeTo(30.0, 0.01);
+        expect(midMeridian.midLonDeg).to.be.closeTo(20.0, 0.01);
+    });
+
+    it('should compute spacecraft horizon spherical cap area and along-track deviation', () => {
+        // Mars R = 3389.5 km, H = 250 km (MRO altitude)
+        // Cap area = 2 * pi * 3389.5^2 * (250 / 3639.5) = 2 * pi * 11488710.25 * 0.06869 ~ 4.958e6 km^2 (~3.43% surface fraction)
+        const cap = MeasureTool.computeSpacecraftSphericalCapArea(250.0, 'mars');
+        expect(cap.capAreaKm2).to.be.closeTo(4958100.0, 5000.0);
+        expect(cap.surfaceFractionPercent).to.be.closeTo(3.43, 0.05);
+
+        // Point on path: Start (0, 0), End (0, 30), Point (0, 15) -> crossTrack = 0, alongTrack ~ 15 deg * 59.16 km/deg = 887.38 km
+        const dev = MeasureTool.computeAlongTrackCrossTrackDeviation(0.0, 15.0, 0.0, 0.0, 0.0, 30.0, 'mars');
+        expect(dev.crossTrackKm).to.be.closeTo(0.0, 0.01);
+        expect(dev.alongTrackKm).to.be.closeTo(887.38, 1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

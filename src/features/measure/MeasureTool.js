@@ -1521,7 +1521,85 @@ export class MeasureTool {
             groundVelocityMs: parseFloat(vGroundMs.toFixed(2))
         };
     }
+
+    // --- Great-Circle Midpoint, Spherical Cap Area & Cross-Track Deviation Solvers ---
+
+    /**
+     * Calculate exact spherical great-circle midpoint coordinates between two points.
+     * @param {number} lat1 - Start latitude in degrees
+     * @param {number} lon1 - Start longitude in degrees
+     * @param {number} lat2 - End latitude in degrees
+     * @param {number} lon2 - End longitude in degrees
+     * @returns {{midLatDeg: number, midLonDeg: number}}
+     */
+    static computeGreatCircleMidpoint(lat1, lon1, lat2, lon2) {
+        const phi1 = lat1 * Math.PI / 180.0;
+        const lam1 = lon1 * Math.PI / 180.0;
+        const phi2 = lat2 * Math.PI / 180.0;
+        const lam2 = lon2 * Math.PI / 180.0;
+
+        const dLam = lam2 - lam1;
+        const Bx = Math.cos(phi2) * Math.cos(dLam);
+        const By = Math.cos(phi2) * Math.sin(dLam);
+
+        const phiM = Math.atan2(
+            Math.sin(phi1) + Math.sin(phi2),
+            Math.hypot(Math.cos(phi1) + Bx, By)
+        );
+        let lamM = lam1 + Math.atan2(By, Math.cos(phi1) + Bx);
+        let lonDeg = lamM * 180.0 / Math.PI;
+        while (lonDeg > 360) lonDeg -= 360;
+        while (lonDeg < 0) lonDeg += 360;
+
+        return {
+            midLatDeg: parseFloat((phiM * 180.0 / Math.PI).toFixed(4)),
+            midLonDeg: parseFloat(lonDeg.toFixed(4))
+        };
+    }
+
+    /**
+     * Calculate spacecraft horizon ground coverage spherical cap area on planetary surface.
+     * A_cap = 2 * pi * R^2 * (H / (R + H))
+     * @param {number} altitudeKm - Spacecraft altitude above surface in km
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{capAreaKm2: number, surfaceFractionPercent: number}}
+     */
+    static computeSpacecraftSphericalCapArea(altitudeKm, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const H = Math.max(0, altitudeKm);
+
+        const totalArea = 4.0 * Math.PI * R * R;
+        const capArea = 2.0 * Math.PI * R * R * (H / (R + H));
+        const fraction = (capArea / totalArea) * 100.0;
+
+        return {
+            capAreaKm2: parseFloat(capArea.toFixed(2)),
+            surfaceFractionPercent: parseFloat(fraction.toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate cross-track and along-track deviation of a point from a reference course.
+     * @param {number} lat - Point latitude
+     * @param {number} lon - Point longitude
+     * @param {number} startLat - Course start latitude
+     * @param {number} startLon - Course start longitude
+     * @param {number} endLat - Course end latitude
+     * @param {number} endLon - Course end longitude
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{crossTrackKm: number, alongTrackKm: number, isRightOfCourse: boolean}}
+     */
+    static computeAlongTrackCrossTrackDeviation(lat, lon, startLat, startLon, endLat, endLon, body = 'mars') {
+        const res = this.computeCrossTrackDistance(lat, lon, startLat, startLon, endLat, endLon, body);
+
+        return {
+            crossTrackKm: res.crossTrackKm,
+            alongTrackKm: res.alongTrackKm,
+            isRightOfCourse: res.crossTrackKm > 0
+        };
+    }
 }
+
 
 
 
