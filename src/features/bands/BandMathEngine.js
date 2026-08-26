@@ -1052,7 +1052,98 @@ export class BandMathEngine {
       isConcaveAbsorption: c < -0.02
     };
   }
+
+  // --- CRISM BD2100r Sulfate, SAM Classifier & NDDI Dust Solvers ---
+
+  /**
+   * Calculate CRISM diagnostic BD2100r Monohydrated Sulfate (kieserite) absorption index (Viviano-Beck 2014).
+   * BD2100r = 1.0 - ( R_2132 / ( a * R_1930 + b * R_2250 ) )
+   * @param {object} bands - Map of band reflectances (B1930, B2132, B2250)
+   * @returns {{bd2100r: number, isMonohydratedSulfate: boolean}}
+   */
+  static computeCRISMBd2100rIndex(bands = {}) {
+    const r1930 = bands.B1930 ?? 0.28;
+    const r2132 = bands.B2132 ?? 0.22;
+    const r2250 = bands.B2250 ?? 0.27;
+
+    // a = (2250 - 2132) / (2250 - 1930) = 118 / 320 = 0.36875
+    const a = 118.0 / 320.0;
+    const b = 1.0 - a;
+    const continuum = a * r1930 + b * r2250;
+
+    const bd = continuum > 0 ? 1.0 - (r2132 / continuum) : 0;
+
+    return {
+      bd2100r: parseFloat(Math.max(0, bd).toFixed(4)),
+      isMonohydratedSulfate: bd > 0.04
+    };
+  }
+
+  /**
+   * Calculate Spectral Angle Mapper (SAM) angular distance and match quality between spectra.
+   * theta = arccos( (r . t) / ( ||r|| * ||t|| ) )
+   * @param {Array<number>} referenceSpectrum - Laboratory reference endmember reflectance vector
+   * @param {Array<number>} targetSpectrum - Observed pixel reflectance vector
+   * @returns {{angleRadians: number, angleDegrees: number, matchScorePercent: number}}
+   */
+  static computeSpectralAngleMapperScore(referenceSpectrum = [], targetSpectrum = []) {
+    const n = Math.min(referenceSpectrum.length, targetSpectrum.length);
+    if (n === 0) return { angleRadians: 0, angleDegrees: 0, matchScorePercent: 100 };
+
+    let dot = 0;
+    let normR = 0;
+    let normT = 0;
+
+    for (let i = 0; i < n; i++) {
+      const r = referenceSpectrum[i] || 0;
+      const t = targetSpectrum[i] || 0;
+      dot += r * t;
+      normR += r * r;
+      normT += t * t;
+    }
+
+    const denom = Math.sqrt(normR) * Math.sqrt(normT);
+    const cosTheta = denom > 0 ? Math.max(-1.0, Math.min(1.0, dot / denom)) : 1.0;
+    const thetaRad = Math.acos(cosTheta);
+    const thetaDeg = thetaRad * 180.0 / Math.PI;
+
+    // Match score: 100% when angle = 0, decaying with angle
+    const score = Math.max(0, (1.0 - thetaRad / (Math.PI / 2.0)) * 100.0);
+
+    return {
+      angleRadians: parseFloat(thetaRad.toFixed(4)),
+      angleDegrees: parseFloat(thetaDeg.toFixed(2)),
+      matchScorePercent: parseFloat(score.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate Normalized Difference Dust Index (NDDI) between Visible and NIR reflectance channels.
+   * NDDI = (R_NIR - R_Vis) / (R_NIR + R_Vis)
+   * @param {number} rVisible - Blue/Visible reflectance (e.g. 0.44 µm or 0.53 µm)
+   * @param {number} rNearIR - Near-Infrared reflectance (e.g. 0.77 µm or 1.0 µm)
+   * @returns {{nddi: number, dustClassification: string}}
+   */
+  static computeNormalizedDifferenceDustIndex(rVisible, rNearIR) {
+    const denom = rNearIR + rVisible;
+    if (denom <= 0) return { nddi: 0, dustClassification: 'Indeterminate' };
+
+    const nddi = (rNearIR - rVisible) / denom;
+
+    let cls = 'Low Dust / Dark Basaltic Rock';
+    if (nddi > 0.35) {
+      cls = 'High Bright Airfall Dust Mantle';
+    } else if (nddi > 0.15) {
+      cls = 'Intermediate Dust / Altered Soil';
+    }
+
+    return {
+      nddi: parseFloat(nddi.toFixed(4)),
+      dustClassification: cls
+    };
+  }
 }
+
 
 
 

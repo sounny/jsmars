@@ -3903,6 +3903,28 @@ describe('Two-Way Attenuation, Radar Equation & Reflectivity Permittivity (Radar
     });
 });
 
+describe('BD2100r Sulfate, SAM Classifier & NDDI Dust (BandMathEngine)', () => {
+    it('should compute CRISM BD2100r monohydrated sulfate absorption parameter', () => {
+        // Monohydrated sulfate (kieserite) signature at 2.13 µm
+        const sulf = BandMathEngine.computeCRISMBd2100rIndex({ B1930: 0.28, B2132: 0.22, B2250: 0.27 });
+        expect(sulf.bd2100r).to.be.greaterThan(0.15);
+        expect(sulf.isMonohydratedSulfate).to.equal(true);
+    });
+
+    it('should calculate Spectral Angle Mapper (SAM) angular distance and Normalized Difference Dust Index', () => {
+        // Identical spectra -> angle = 0, score = 100%
+        const specA = [0.20, 0.25, 0.30, 0.28, 0.22];
+        const samIdentical = BandMathEngine.computeSpectralAngleMapperScore(specA, specA);
+        expect(samIdentical.angleDegrees).to.equal(0.0);
+        expect(samIdentical.matchScorePercent).to.equal(100.0);
+
+        // Bright airfall dust: high NIR (0.45) vs low Visible (0.20) -> NDDI ~ (0.45 - 0.20) / (0.45 + 0.20) ~ 0.3846
+        const nddi = BandMathEngine.computeNormalizedDifferenceDustIndex(0.20, 0.45);
+        expect(nddi.nddi).to.be.closeTo(0.385, 0.01);
+        expect(nddi.dustClassification).to.include('Dust');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
