@@ -1234,7 +1234,92 @@ export class CSFDEngine {
       impliedAgeGa: parseFloat(age.toFixed(3))
     };
   }
+
+  // --- Multi-Bin Differential Frequency, Impact Melt & Transient Excavation Solvers ---
+
+  /**
+   * Calculate multi-bin differential crater frequency and power density spectrum.
+   * dN/dD = deltaN / (deltaD * A)
+   * @param {Array<{diameter: number}>} craters - Array of crater objects with diameter in meters
+   * @param {number} [countAreaKm2=1e6] - Total counting area in km^2
+   * @param {number} [binWidthRatio=Math.SQRT2] - Bin width ratio factor (sqrt(2) standard)
+   * @returns {Array<{dMinKm: number, dMaxKm: number, dMeanKm: number, count: number, dNdDKm3: number}>}
+   */
+  static computeMultiBinDifferentialFrequency(craters = [], countAreaKm2 = 1e6, binWidthRatio = Math.SQRT2) {
+    const diametersKm = craters
+      .map(c => (typeof c.diameter === 'number' ? c.diameter / 1000.0 : 1.0))
+      .filter(d => d > 0);
+
+    const bins = [];
+    let dMin = 0.1;
+    const factor = Math.max(1.1, binWidthRatio);
+
+    for (let b = 0; b < 10; b++) {
+      const dMax = dMin * factor;
+      const dMean = Math.sqrt(dMin * dMax);
+      const deltaD = dMax - dMin;
+
+      const inBin = diametersKm.filter(d => d >= dMin && d < dMax).length;
+      const dNdD = inBin / (deltaD * Math.max(1.0, countAreaKm2));
+
+      bins.push({
+        dMinKm: parseFloat(dMin.toFixed(3)),
+        dMaxKm: parseFloat(dMax.toFixed(3)),
+        dMeanKm: parseFloat(dMean.toFixed(3)),
+        count: inBin,
+        dNdDKm3: parseFloat(dNdD.toExponential(4))
+      });
+
+      dMin = dMax;
+    }
+
+    return bins;
+  }
+
+  /**
+   * Calculate impact kinetic energy to melt volume scaling for hypervelocity cratering.
+   * V_melt = c * E_kin / (rho_target * Delta_H_melt)
+   * @param {number} impactEnergyJoules - Impact kinetic energy in Joules
+   * @param {number} [targetDensityKgM3=2900.0] - Target basaltic crust density in kg/m^3
+   * @returns {{meltVolumeM3: number, meltVolumeKm3: number, meltMassKg: number}}
+   */
+  static computeImpactMeltVolume(impactEnergyJoules, targetDensityKgM3 = 2900.0) {
+    const E = Math.max(0, impactEnergyJoules);
+    const rho = Math.max(500.0, targetDensityKgM3);
+    const deltaH = 4.5e6; // Specific energy for melting basalt J/kg
+    const meltEfficiency = 0.025; // ~2.5% of kinetic energy partitions into phase change
+
+    const meltMassKg = (meltEfficiency * E) / deltaH;
+    const meltVolM3 = meltMassKg / rho;
+    const meltVolKm3 = meltVolM3 * 1e-9;
+
+    return {
+      meltVolumeM3: parseFloat(meltVolM3.toExponential(4)),
+      meltVolumeKm3: parseFloat(meltVolKm3.toExponential(4)),
+      meltMassKg: parseFloat(meltMassKg.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate transient crater excavation depth and volume from transient diameter.
+   * d_exc = 0.33 * D_t,  V_exc = (1/3) * pi * (D_t / 2)^2 * d_exc
+   * @param {number} transientDiameterKm - Transient crater diameter in km
+   * @returns {{excavationDepthKm: number, excavationDepthMeters: number, excavationVolumeKm3: number}}
+   */
+  static computeTransientExcavationDepth(transientDiameterKm) {
+    const Dt = Math.max(0.001, transientDiameterKm);
+    const dExcKm = 0.33 * Dt;
+    const rKm = Dt / 2.0;
+    const vExcKm3 = (1.0 / 3.0) * Math.PI * rKm * rKm * dExcKm;
+
+    return {
+      excavationDepthKm: parseFloat(dExcKm.toFixed(3)),
+      excavationDepthMeters: parseFloat((dExcKm * 1000.0).toFixed(1)),
+      excavationVolumeKm3: parseFloat(vExcKm3.toFixed(3))
+    };
+  }
 }
+
 
 
 

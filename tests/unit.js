@@ -4720,6 +4720,31 @@ describe('Saltation Threshold, Static Stability & Deardorff CBL (MCDEngine)', ()
     });
 });
 
+describe('Differential Frequency, Impact Melt & Transient Excavation (CSFDEngine)', () => {
+    it('should calculate multi-bin differential crater frequency and impact melt volume', () => {
+        // Craters: 1000m (1km), 1200m (1.2km) in area 1e6 km^2
+        const diff = CSFDEngine.computeMultiBinDifferentialFrequency([{ diameter: 1000 }, { diameter: 1200 }], 1e6);
+        expect(diff.length).to.equal(10);
+        expect(diff[0].dMinKm).to.equal(0.1);
+
+        // Impact kinetic energy: E = 1e18 Joules (~239 Megatons)
+        // meltMass = 0.025 * 1e18 / 4.5e6 = 2.5e16 / 4.5e6 ~ 5.555e9 kg
+        // meltVol = 5.555e9 / 2900 ~ 1.915e6 m^3 ~ 0.001915 km^3
+        const melt = CSFDEngine.computeImpactMeltVolume(1e18, 2900.0);
+        expect(melt.meltMassKg).to.be.closeTo(5.555e9, 1e7);
+        expect(melt.meltVolumeM3).to.be.closeTo(1.915e6, 1e4);
+    });
+
+    it('should calculate transient crater excavation depth and volume', () => {
+        // D_t = 10 km -> d_exc = 0.33 * 10 = 3.3 km (3300 m)
+        // V_exc = (1/3) * pi * 5^2 * 3.3 = (1/3) * pi * 25 * 3.3 = 86.393 km^3
+        const exc = CSFDEngine.computeTransientExcavationDepth(10.0);
+        expect(exc.excavationDepthKm).to.equal(3.3);
+        expect(exc.excavationDepthMeters).to.equal(3300.0);
+        expect(exc.excavationVolumeKm3).to.be.closeTo(86.393, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
