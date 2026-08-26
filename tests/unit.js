@@ -3697,6 +3697,28 @@ describe('Path Loss, Refraction Angle & Clutter Ratio (RadarSounderEngine)', () 
     });
 });
 
+describe('CRISM BD1900r Hydration, Pyroxene & Curvature (BandMathEngine)', () => {
+    it('should compute CRISM BD1900r hydration parameter with exact linear baseline', () => {
+        // Hydrated clay absorption at 1.93 µm (R1815=0.25, R1930=0.20, R2132=0.24)
+        const hyd = BandMathEngine.computeCRISMBd1900rIndex({ B1815: 0.25, B1930: 0.20, B2132: 0.24 });
+        expect(hyd.bd1900r).to.be.greaterThan(0.15);
+        expect(hyd.bd1900r).to.be.lessThan(0.25);
+        expect(hyd.isHydratedPhyllosilicate).to.equal(true);
+    });
+
+    it('should calculate pyroxene band contrast metric and continuum curvature', () => {
+        // Clinopyroxene (HCP) signature
+        const pyx = BandMathEngine.computePyroxeneBandCenterMetric({ B1815: 0.25, B1930: 0.24, B2120: 0.28, B2140: 0.24 });
+        expect(pyx.hcpIndex).to.be.greaterThan(0.05);
+        expect(pyx.dominantPyroxene).to.include('Clinopyroxene');
+
+        // Continuum curvature (concave absorption feature: center < shoulders)
+        const curv = BandMathEngine.computeSpectralContinuumCurvature(0.30, 0.25, 0.30);
+        expect(curv.curvature).to.be.lessThan(-0.10);
+        expect(curv.isConcaveAbsorption).to.equal(true);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

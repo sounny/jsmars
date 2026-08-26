@@ -978,7 +978,82 @@ export class BandMathEngine {
       isConfidentMatch: thetaDeg < 10.0 // Under 10 degrees is a tight spectral match
     };
   }
+
+  // --- CRISM BD1900r Hydration, HCP/LCP Pyroxene & Continuum Curvature Solvers ---
+
+  /**
+   * Calculate CRISM BD1900r structural H2O / hydration parameter with exact linear baseline weights (Viviano-Beck 2014).
+   * BD1900r = 1.0 - ( R_1930 / ( a * R_1815 + b * R_2132 ) ) where a = (2132 - 1930)/(2132 - 1815)
+   * @param {object} bands - Map of band reflectances (B1815, B1930, B2132)
+   * @returns {{bd1900r: number, isHydratedPhyllosilicate: boolean}}
+   */
+  static computeCRISMBd1900rIndex(bands = {}) {
+    const b1815 = bands.B1815 ?? 0.25;
+    const b1930 = bands.B1930 ?? 0.21;
+    const b2132 = bands.B2132 ?? 0.24;
+
+    const a = (2132.0 - 1930.0) / (2132.0 - 1815.0); // ~0.63722
+    const b = 1.0 - a; // ~0.36278
+
+    const continuum = a * b1815 + b * b2132;
+    const bd = continuum > 0 ? 1.0 - (b1930 / continuum) : 0;
+
+    return {
+      bd1900r: parseFloat(Math.max(0, bd).toFixed(4)),
+      isHydratedPhyllosilicate: bd > 0.05
+    };
+  }
+
+  /**
+   * Calculate diagnostic High-Calcium vs Low-Calcium Pyroxene band center contrast metric.
+   * @param {object} bands - Map of band reflectances (B1815, B1930, B2120, B2140)
+   * @returns {{hcpIndex: number, lcpIndex: number, dominantPyroxene: string}}
+   */
+  static computePyroxeneBandCenterMetric(bands = {}) {
+    const b1815 = bands.B1815 ?? 0.26;
+    const b1930 = bands.B1930 ?? 0.24;
+    const b2120 = bands.B2120 ?? 0.25;
+    const b2140 = bands.B2140 ?? 0.23;
+
+    const hcp = (b2120 + b2140) > 0 ? (b2120 - b2140) / (b2120 + b2140) : 0;
+    const lcp = (b1815 + b1930) > 0 ? (b1815 - b1930) / (b1815 + b1930) : 0;
+
+    let dom = 'Undifferentiated Pyroxene';
+    if (hcp > 0.03 && hcp > lcp) {
+      dom = 'Clinopyroxene (High-Calcium Augite / Diopside)';
+    } else if (lcp > 0.03) {
+      dom = 'Orthopyroxene (Low-Calcium Enstatite / Hypersthene)';
+    }
+
+    return {
+      hcpIndex: parseFloat(hcp.toFixed(4)),
+      lcpIndex: parseFloat(lcp.toFixed(4)),
+      dominantPyroxene: dom
+    };
+  }
+
+  /**
+   * Calculate spectral continuum slope curvature parameter.
+   * C = (2 * R_center) / (R_left + R_right) - 1.0
+   * @param {number} rLeft - Left shoulder reflectance
+   * @param {number} rCenter - Center reflectance
+   * @param {number} rRight - Right shoulder reflectance
+   * @returns {{curvature: number, isConvexShoulder: boolean, isConcaveAbsorption: boolean}}
+   */
+  static computeSpectralContinuumCurvature(rLeft, rCenter, rRight) {
+    const denom = rLeft + rRight;
+    if (denom <= 0) return { curvature: 0, isConvexShoulder: false, isConcaveAbsorption: false };
+
+    const c = (2.0 * rCenter) / denom - 1.0;
+
+    return {
+      curvature: parseFloat(c.toFixed(4)),
+      isConvexShoulder: c > 0.02,
+      isConcaveAbsorption: c < -0.02
+    };
+  }
 }
+
 
 
 
