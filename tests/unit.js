@@ -4863,6 +4863,37 @@ describe('Clutter Discrimination, Snell Refraction & Slant Path Delay (RadarSoun
     });
 });
 
+describe('Equation of Center, Solar Declination & Equation of Time (MarsTime)', () => {
+    it('should calculate Mars orbital Equation of the Center C = nu - M', () => {
+        // At M = 90 deg, e = 0.0934 -> C ~ (2*0.0934 - 0.0934^3/4)*sin(90) + (5/4*0.0934^2)*sin(180) ~ 0.1866 rad = 10.69 deg
+        const eq90 = MarsTime.computeMarsEquationOfCenter(90.0, 0.0934);
+        expect(eq90.equationOfCenterDeg).to.be.closeTo(10.69, 0.1);
+        expect(eq90.trueAnomalyDeg).to.be.closeTo(100.69, 0.1);
+
+        // At perihelion M = 0 deg -> C = 0 deg
+        const eq0 = MarsTime.computeMarsEquationOfCenter(0.0, 0.0934);
+        expect(eq0.equationOfCenterDeg).to.equal(0.0);
+        expect(eq0.trueAnomalyDeg).to.equal(0.0);
+    });
+
+    it('should compute sub-solar declination and Mars Equation of Time in minutes', () => {
+        // Ls = 90 deg (Northern Summer Solstice) -> delta_sun = +25.19 deg (axial tilt)
+        const summer = MarsTime.computeSubSolarDeclination(90.0, 25.19);
+        expect(summer.subSolarLatitudeDeg).to.be.closeTo(25.19, 0.05);
+        expect(summer.isNorthernSummer).to.be.true;
+
+        // Ls = 270 deg (Southern Summer / Northern Winter) -> delta_sun = -25.19 deg
+        const winter = MarsTime.computeSubSolarDeclination(270.0, 25.19);
+        expect(winter.subSolarLatitudeDeg).to.be.closeTo(-25.19, 0.05);
+        expect(winter.isNorthernSummer).to.be.false;
+
+        // At M = 90 deg -> C = 10.69 deg -> EoT = 10.69 * 4 min/deg ~ 42.76 Martian minutes
+        const eot = MarsTime.computeEquationOfTimeMinutes(0.0, 90.0);
+        expect(eot.equationOfTimeMinutes).to.be.closeTo(42.76, 0.5);
+        expect(eot.isSunFast).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

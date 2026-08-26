@@ -1249,7 +1249,80 @@ export class MarsTime {
       solsFormatted: `${sols.toFixed(2)} Sols`
     };
   }
+
+  // --- Equation of Center, Sub-Solar Declination & Equation of Time Solvers ---
+
+  /**
+   * Calculate Mars orbital Equation of the Center C = nu - M using elliptic Fourier series expansion.
+   * C = (2e - e^3/4) * sin(M) + (5/4 * e^2) * sin(2M) + (13/12 * e^3) * sin(3M)
+   * @param {number} meanAnomalyDeg - Mean anomaly M in degrees (0 to 360)
+   * @param {number} [eccentricity=0.0934] - Orbit eccentricity (0.0934 for Mars)
+   * @returns {{equationOfCenterDeg: number, equationOfCenterRad: number, trueAnomalyDeg: number}}
+   */
+  static computeMarsEquationOfCenter(meanAnomalyDeg, eccentricity = 0.0934) {
+    const e = Math.max(0, Math.min(0.5, eccentricity));
+    const mRad = meanAnomalyDeg * Math.PI / 180.0;
+
+    const term1 = (2.0 * e - (1.0 / 4.0) * Math.pow(e, 3)) * Math.sin(mRad);
+    const term2 = (5.0 / 4.0) * Math.pow(e, 2) * Math.sin(2.0 * mRad);
+    const term3 = (13.0 / 12.0) * Math.pow(e, 3) * Math.sin(3.0 * mRad);
+
+    const cRad = term1 + term2 + term3;
+    const cDeg = cRad * 180.0 / Math.PI;
+    let nuDeg = meanAnomalyDeg + cDeg;
+    while (nuDeg < 0) nuDeg += 360;
+    while (nuDeg >= 360) nuDeg -= 360;
+
+    return {
+      equationOfCenterDeg: parseFloat(cDeg.toFixed(4)),
+      equationOfCenterRad: parseFloat(cRad.toFixed(5)),
+      trueAnomalyDeg: parseFloat(nuDeg.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate exact solar declination / sub-solar planetocentric latitude delta_sun from Solar Longitude (Ls).
+   * sin(delta_sun) = sin(obliquity) * sin(Ls)
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @param {number} [obliquityDeg=25.19] - Mars axial tilt / obliquity in degrees
+   * @returns {{subSolarLatitudeDeg: number, subSolarLatitudeRad: number, isNorthernSummer: boolean}}
+   */
+  static computeSubSolarDeclination(LsDeg, obliquityDeg = 25.19) {
+    const epsRad = obliquityDeg * Math.PI / 180.0;
+    const lsRad = LsDeg * Math.PI / 180.0;
+
+    const sinDec = Math.sin(epsRad) * Math.sin(lsRad);
+    const decRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinDec)));
+    const decDeg = decRad * 180.0 / Math.PI;
+
+    return {
+      subSolarLatitudeDeg: parseFloat(decDeg.toFixed(4)),
+      subSolarLatitudeRad: parseFloat(decRad.toFixed(5)),
+      isNorthernSummer: decDeg > 0
+    };
+  }
+
+  /**
+   * Calculate Mars Equation of Time (EoT = LTST - LMST) in Martian minutes.
+   * EoT = (nu - M) * (24 * 60 / 360) = C * 4 min/deg
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @param {number} [meanAnomalyDeg=null] - Optional mean anomaly (if null, calculated from Ls - 250.99)
+   * @returns {{equationOfTimeMinutes: number, equationOfTimeHours: number, isSunFast: boolean}}
+   */
+  static computeEquationOfTimeMinutes(LsDeg, meanAnomalyDeg = null) {
+    const mDeg = meanAnomalyDeg !== null ? meanAnomalyDeg : (LsDeg - 250.99 + 360) % 360;
+    const eqCenter = this.computeMarsEquationOfCenter(mDeg);
+    const eotMin = eqCenter.equationOfCenterDeg * 4.0; // 4 minutes per degree of longitude
+    const eotHours = eotMin / 60.0;
+
+    return {
+      equationOfTimeMinutes: parseFloat(eotMin.toFixed(2)),
+      equationOfTimeHours: parseFloat(eotHours.toFixed(4)),
+      isSunFast: eotMin > 0
+    };
+  }
 }
+
 
 
 
