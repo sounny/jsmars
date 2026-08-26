@@ -5032,6 +5032,41 @@ describe('Thermal Diffusion Time, Frost Feedback & Geothermal Offset (KRCEngine)
     });
 });
 
+describe('Dielectric Quality Factor, Ice-Dust Inversion & Rough Interface (RadarSounderEngine)', () => {
+    it('should calculate dielectric quality factor Q and loss regime', () => {
+        // Pure water ice loss tangent tan(delta) = 0.001 -> Q = 1000.0 (Low Loss)
+        const qIce = RadarSounderEngine.computeDielectricQualityFactor(0.001);
+        expect(qIce.qualityFactorQ).to.equal(1000.0);
+        expect(qIce.lossRegime).to.include('Low Loss');
+
+        // Conductive regolith tan(delta) = 0.05 -> Q = 20.0 (High Loss)
+        const qReg = RadarSounderEngine.computeDielectricQualityFactor(0.05);
+        expect(qReg.qualityFactorQ).to.equal(20.0);
+        expect(qReg.lossRegime).to.include('High Loss');
+    });
+
+    it('should invert ice-to-dust volumetric ratio and compute rough interface scattering loss', () => {
+        // Pure ice eps = 3.15 -> n = 1.7748, Dust eps = 7.5 -> n = 2.7386
+        // If bulk eps = 3.15 -> phi_ice = 1.0 (100% ice), phi_dust = 0.0
+        const invPure = RadarSounderEngine.invertIceDustVolumeFraction(3.15, 3.15, 7.5);
+        expect(invPure.iceFraction).to.equal(1.0);
+        expect(invPure.dustFraction).to.equal(0.0);
+        expect(invPure.icePercentage).to.equal(100.0);
+
+        // NPLD bulk eps = 3.25 -> n = 1.8028 -> phi_ice = (2.7386 - 1.8028) / (2.7386 - 1.7748) = 0.9358 / 0.9638 ~ 0.9709 (97.09% ice)
+        const invNpld = RadarSounderEngine.invertIceDustVolumeFraction(3.25, 3.15, 7.5);
+        expect(invNpld.icePercentage).to.be.closeTo(97.09, 0.2);
+        expect(invNpld.dustPercentage).to.be.closeTo(2.91, 0.2);
+
+        // Smooth reflectivity = -10.0 dB, sigma_h = 0.2 m, freq = 20 MHz (lambda = 8.44 m in ice eps = 3.15)
+        // km = 2*pi / 8.44 ~ 0.744 rad/m -> g_r = 4 * (0.744 * 0.2)^2 = 4 * (0.1488)^2 = 4 * 0.02214 ~ 0.0886
+        // loss_dB = 0.0886 * 4.3429 ~ 0.38 dB -> rough_dB = -10.38 dB
+        const rough = RadarSounderEngine.computeRoughInterfaceScatteringLoss(-10.0, 0.2, 20e6, 3.15, 0.0);
+        expect(rough.roughnessScatteringLossDb).to.be.closeTo(0.38, 0.05);
+        expect(rough.roughReflectivityDb).to.be.closeTo(-10.38, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

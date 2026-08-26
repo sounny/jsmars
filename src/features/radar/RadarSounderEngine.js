@@ -1224,7 +1224,88 @@ export class RadarSounderEngine {
       slantPathDistanceMeters: parseFloat(slantDistM.toFixed(2))
     };
   }
+
+  // --- Quality Factor, Ice-Dust Inversion & Rough Interface Scattering Solvers ---
+
+  /**
+   * Calculate dielectric quality factor Q = 1 / tan(delta) and RF loss regime.
+   * @param {number} lossTangent - Dielectric loss tangent tan(delta)
+   * @returns {{qualityFactorQ: number, lossRegime: string}}
+   */
+  static computeDielectricQualityFactor(lossTangent) {
+    const tanD = Math.max(1e-6, lossTangent);
+    const Q = 1.0 / tanD;
+
+    let regime = 'Extremely Low Loss / Transparent (Pure Ice)';
+    if (Q < 50) regime = 'High Loss / Strongly Attenuating (Conductive Regolith)';
+    else if (Q < 250) regime = 'Moderate Loss (Dirty Ice / Permafrost)';
+    else if (Q < 1000) regime = 'Low Loss (Polar Ice Cap)';
+
+    return {
+      qualityFactorQ: parseFloat(Q.toFixed(1)),
+      lossRegime: regime
+    };
+  }
+
+  /**
+   * Invert pure water ice volumetric fraction phi_ice from observed bulk radar permittivity.
+   * phi_ice = (sqrt(eps_dust) - sqrt(eps_bulk)) / (sqrt(eps_dust) - sqrt(eps_ice))
+   * @param {number} bulkPermittivity - Observed bulk dielectric permittivity (e.g. 3.25 for NPLD)
+   * @param {number} [epsIce=3.15] - Pure ice permittivity
+   * @param {number} [epsDust=7.5] - Silicate dust / basalt grain permittivity
+   * @returns {{iceFraction: number, dustFraction: number, icePercentage: number, dustPercentage: number}}
+   */
+  static invertIceDustVolumeFraction(bulkPermittivity, epsIce = 3.15, epsDust = 7.5) {
+    const nBulk = Math.sqrt(Math.max(1.0, bulkPermittivity));
+    const nIce = Math.sqrt(Math.max(1.0, epsIce));
+    const nDust = Math.sqrt(Math.max(1.0, epsDust));
+
+    const denom = nDust - nIce;
+    let phiIce = denom > 0 ? (nDust - nBulk) / denom : 1.0;
+    phiIce = Math.max(0.0, Math.min(1.0, phiIce));
+    const phiDust = 1.0 - phiIce;
+
+    return {
+      iceFraction: parseFloat(phiIce.toFixed(4)),
+      dustFraction: parseFloat(phiDust.toFixed(4)),
+      icePercentage: parseFloat((phiIce * 100.0).toFixed(2)),
+      dustPercentage: parseFloat((phiDust * 100.0).toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate coherent radar power reflectivity reduction due to interface surface RMS roughness (Rayleigh criterion).
+   * R_rough = R_smooth * exp( -4 * k_m^2 * sigma_h^2 * cos^2(theta) )
+   * @param {number} smoothReflectivityDb - Fresnel smooth interface reflectivity in dB
+   * @param {number} surfaceRmsRoughnessMeters - Root-mean-square surface roughness height sigma_h (meters)
+   * @param {number} [freqHz=20e6] - Center frequency (20 MHz for SHARAD)
+   * @param {number} [epsMedium=3.15] - Relative permittivity of overlying medium
+   * @param {number} [incidenceAngleDeg=0.0] - Incidence angle in degrees
+   * @returns {{roughReflectivityDb: number, roughnessScatteringLossDb: number, rayleighParameter: number}}
+   */
+  static computeRoughInterfaceScatteringLoss(smoothReflectivityDb, surfaceRmsRoughnessMeters, freqHz = 20e6, epsMedium = 3.15, incidenceAngleDeg = 0.0) {
+    const sigmaH = Math.max(0, surfaceRmsRoughnessMeters);
+    const eps = Math.max(1.0, epsMedium);
+    const v = RadarSounderEngine.C / Math.sqrt(eps);
+    const lambdaM = v / Math.max(1e3, freqHz);
+    const km = (2.0 * Math.PI) / lambdaM; // Wavenumber in medium
+
+    const thetaRad = (Math.max(0, Math.min(89.9, incidenceAngleDeg)) * Math.PI) / 180.0;
+    const cosTheta = Math.cos(thetaRad);
+
+    const gRayleigh = 4.0 * Math.pow(km * sigmaH * cosTheta, 2);
+    // Attenuation factor: exp(-g) => in dB: -g * 10 * log10(e) = -g * 4.3429
+    const lossDb = gRayleigh * 4.3429448;
+    const roughDb = smoothReflectivityDb - lossDb;
+
+    return {
+      roughReflectivityDb: parseFloat(roughDb.toFixed(2)),
+      roughnessScatteringLossDb: parseFloat(lossDb.toFixed(2)),
+      rayleighParameter: parseFloat(gRayleigh.toFixed(4))
+    };
+  }
 }
+
 
 
 
