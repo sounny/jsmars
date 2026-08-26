@@ -951,7 +951,77 @@ export class KRCEngine {
       depthMeters: parseFloat(zM.toFixed(1))
     };
   }
+
+  // --- Downwelling Flux, Phase Lag & Effective Bolometric Temperature Solvers ---
+
+  /**
+   * Calculate atmospheric downward thermal infrared flux at surface.
+   * F_atm = eps_atm * sigma * T_air^4
+   * @param {number} [airTempK=210.0] - Effective near-surface air temperature in Kelvin
+   * @param {number} [dustTau=0.3] - Column dust optical depth
+   * @param {number} [surfacePressurePa=610.0] - Surface pressure in Pa
+   * @returns {{downwellingFluxW_M2: number, atmosphericEmissivity: number}}
+   */
+  static computeAtmosphericDownwellingThermalFlux(airTempK = 210.0, dustTau = 0.3, surfacePressurePa = 610.0) {
+    const tau = Math.max(0.01, dustTau);
+    const p = Math.max(0, surfacePressurePa);
+    const epsAtm = 0.12 + 0.20 * (1.0 - Math.exp(-tau)) + 0.05 * Math.min(1.0, p / 610.0);
+    const flux = epsAtm * this.STEFAN_BOLTZMANN * Math.pow(Math.max(1, airTempK), 4);
+
+    return {
+      downwellingFluxW_M2: parseFloat(flux.toFixed(2)),
+      atmosphericEmissivity: parseFloat(epsAtm.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate diurnal subsurface thermal wave propagation phase lag.
+   * Delta_t = (z / delta) * (P_sol / (2 * pi))
+   * @param {number} depthMeters - Subsurface depth in meters
+   * @param {number} thermalInertia - Regolith thermal inertia (tiu)
+   * @param {number} [periodSeconds=88775.244] - Thermal period (1 Sol)
+   * @returns {{phaseLagHours: number, phaseLagRadians: number, amplitudeDecayRatio: number}}
+   */
+  static computeThermalWavePhaseLag(depthMeters, thermalInertia, periodSeconds = 88775.244) {
+    const skin = this.computeSkinDepth(thermalInertia, periodSeconds);
+    const delta = Math.max(1e-4, skin.skinDepthMeters);
+    const z = Math.max(0, depthMeters);
+
+    const phaseRad = z / delta;
+    const periodHours = periodSeconds / 3600.0;
+    const phaseLagHours = (phaseRad / (2.0 * Math.PI)) * periodHours;
+    const ampRatio = Math.exp(-z / delta);
+
+    return {
+      phaseLagHours: parseFloat(phaseLagHours.toFixed(2)),
+      phaseLagRadians: parseFloat(phaseRad.toFixed(3)),
+      amplitudeDecayRatio: parseFloat(ampRatio.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate effective bolometric radiating surface temperature.
+   * T_eff = [ ((1 - A_B) * S) / (eps * sigma) ]^(1/4)
+   * @param {number} solarFluxW_M2 - Direct incident solar flux in W/m^2
+   * @param {number} [bondAlbedo=0.25] - Bolometric Bond albedo
+   * @param {number} [emissivity=0.95] - Surface thermal infrared emissivity
+   * @returns {{effectiveTempK: number, absorbedSolarFluxW_M2: number}}
+   */
+  static computeEffectiveBolometricTemperature(solarFluxW_M2, bondAlbedo = 0.25, emissivity = 0.95) {
+    const s0 = Math.max(0, solarFluxW_M2);
+    const A = Math.max(0, Math.min(0.99, bondAlbedo));
+    const eps = Math.max(0.01, Math.min(1.0, emissivity));
+
+    const absorbed = (1.0 - A) * s0;
+    const tEff = Math.pow(absorbed / (eps * this.STEFAN_BOLTZMANN), 0.25);
+
+    return {
+      effectiveTempK: parseFloat(tEff.toFixed(2)),
+      absorbedSolarFluxW_M2: parseFloat(absorbed.toFixed(2))
+    };
+  }
 }
+
 
 
 

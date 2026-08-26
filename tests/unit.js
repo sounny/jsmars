@@ -4296,6 +4296,29 @@ describe('Spherical Excess, Rhumb Mid-Lat & Ground Velocity (MeasureTool)', () =
     });
 });
 
+describe('Downwelling Flux, Phase Lag & Effective Bolometric Temp (KRCEngine)', () => {
+    it('should compute atmospheric downwelling thermal IR flux and effective emissivity', () => {
+        // T_air = 210 K, tau = 0.3, P = 610 Pa -> eps_atm = 0.12 + 0.20 * (1 - exp(-0.3)) + 0.05 = 0.12 + 0.0518 + 0.05 ~ 0.2218
+        // Flux = 0.2218 * 5.67037e-8 * 210^4 ~ 24.46 W/m^2
+        const flux = KRCEngine.computeAtmosphericDownwellingThermalFlux(210.0, 0.3, 610.0);
+        expect(flux.atmosphericEmissivity).to.be.closeTo(0.2218, 0.005);
+        expect(flux.downwellingFluxW_M2).to.be.closeTo(24.46, 0.5);
+    });
+
+    it('should calculate diurnal subsurface thermal phase lag and effective bolometric radiating temperature', () => {
+        // TI = 250 tiu -> skin depth ~ 0.035 m = 3.5 cm. At depth z = 3.5 cm -> phase lag = 1 rad ~ (1 / 2pi) * 24.66h ~ 3.92 hours
+        const lag = KRCEngine.computeThermalWavePhaseLag(0.035, 250.0);
+        expect(lag.phaseLagRadians).to.be.closeTo(1.0, 0.05);
+        expect(lag.phaseLagHours).to.be.closeTo(3.92, 0.2);
+        expect(lag.amplitudeDecayRatio).to.be.closeTo(Math.exp(-1), 0.02);
+
+        // Solar flux S = 500 W/m^2, Bond albedo = 0.25, eps = 0.95 -> absorbed = 375 W/m^2 -> T_eff = (375 / (0.95 * 5.67037e-8))^0.25 ~ 288.94 K
+        const teff = KRCEngine.computeEffectiveBolometricTemperature(500.0, 0.25, 0.95);
+        expect(teff.absorbedSolarFluxW_M2).to.equal(375.0);
+        expect(teff.effectiveTempK).to.be.closeTo(288.94, 0.2);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
