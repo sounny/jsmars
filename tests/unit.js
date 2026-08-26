@@ -4641,6 +4641,31 @@ describe('Clutter Look Angle, Fresnel Matrix & Pulse Width (RadarSounderEngine)'
     });
 });
 
+describe('Transverse Mercator Forward/Inverse & Meridian Convergence (ProjectionManager)', () => {
+    it('should calculate Transverse Mercator forward and inverse projections accurately', () => {
+        // Point on central meridian: (10°N, 0°E), centerLat = 0, centerLon = 0, k0 = 1.0, Mars R = 3389.5 km
+        // x = 0, y = 3389.5 * (10 * pi / 180) ~ 591.587 km
+        const fwd = ProjectionManager.forwardTransverseMercator(10.0, 0.0, 0.0, 0.0, 1.0, 'mars');
+        expect(fwd.x).to.be.closeTo(0.0, 0.01);
+        expect(fwd.y).to.be.closeTo(591.587, 0.5);
+
+        // Inverse projection from (0, 591.587) back to (10, 0)
+        const inv = ProjectionManager.inverseTransverseMercator(fwd.x, fwd.y, 0.0, 0.0, 1.0, 'mars');
+        expect(inv.latDeg).to.be.closeTo(10.0, 0.01);
+        expect(inv.lonDeg).to.be.closeTo(0.0, 0.01);
+    });
+
+    it('should compute Transverse Mercator meridian convergence angle', () => {
+        // At equator lat = 0° -> gamma = 0°
+        const convEq = ProjectionManager.computeTransverseMercatorMeridianConvergence(0.0, 15.0, 0.0);
+        expect(convEq).to.equal(0.0);
+
+        // At lat = 45°, dLam = 30° -> tan(30) * sin(45) = 0.57735 * 0.7071 ~ 0.40825 -> gamma = atan(0.40825) ~ 22.21°
+        const convMid = ProjectionManager.computeTransverseMercatorMeridianConvergence(45.0, 30.0, 0.0);
+        expect(convMid).to.be.closeTo(22.21, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

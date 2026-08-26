@@ -1305,7 +1305,96 @@ export class ProjectionManager {
       isEqualArea: isEqArea
     };
   }
+
+  // --- Transverse Mercator & Meridian Convergence Solvers ---
+
+  /**
+   * Forward Transverse Mercator projection (Gauss-Krüger conformal transverse cylindrical).
+   * x = k0 * R * atanh(cos(phi) * sin(dLam))
+   * y = k0 * R * (atan(tan(phi) / cos(dLam)) - phi0)
+   * @param {number} latDeg - Latitude in degrees
+   * @param {number} lonDeg - Longitude in degrees
+   * @param {number} [centerLatDeg=0.0] - Latitude of origin
+   * @param {number} [centerLonDeg=0.0] - Central meridian
+   * @param {number} [k0=0.9996] - Central meridian scale factor
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{x: number, y: number, scaleFactor: number}} Projected coordinates in km
+   */
+  static forwardTransverseMercator(latDeg, lonDeg, centerLatDeg = 0.0, centerLonDeg = 0.0, k0 = 0.9996, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = latDeg * Math.PI / 180.0;
+    const phi0 = centerLatDeg * Math.PI / 180.0;
+    const dLam = to180(lonDeg - centerLonDeg) * Math.PI / 180.0;
+
+    const B = Math.cos(phi) * Math.sin(dLam);
+    const clampedB = Math.max(-0.9999, Math.min(0.9999, B));
+
+    const x = 0.5 * k0 * R * Math.log((1.0 + clampedB) / (1.0 - clampedB));
+    const y = k0 * R * (Math.atan2(Math.tan(phi), Math.cos(dLam)) - phi0);
+    const k = k0 / Math.sqrt(Math.max(1e-4, 1.0 - clampedB * clampedB));
+
+    return {
+      x: parseFloat(x.toFixed(3)),
+      y: parseFloat(y.toFixed(3)),
+      scaleFactor: parseFloat(k.toFixed(4))
+    };
+  }
+
+  /**
+   * Inverse Transverse Mercator projection.
+   * D = y / (k0 * R) + phi0
+   * phi = asin(sin(D) / cosh(x / (k0 * R)))
+   * dLam = atan(sinh(x / (k0 * R)) / cos(D))
+   * @param {number} xKm - Projected easting in km
+   * @param {number} yKm - Projected northing in km
+   * @param {number} [centerLatDeg=0.0] - Latitude of origin
+   * @param {number} [centerLonDeg=0.0] - Central meridian
+   * @param {number} [k0=0.9996] - Central meridian scale factor
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{latDeg: number, lonDeg: number}} Unprojected coordinates
+   */
+  static inverseTransverseMercator(xKm, yKm, centerLatDeg = 0.0, centerLonDeg = 0.0, k0 = 0.9996, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi0 = centerLatDeg * Math.PI / 180.0;
+
+    const D = yKm / (k0 * R) + phi0;
+    const xTerm = xKm / (k0 * R);
+
+    const coshX = Math.cosh(xTerm);
+    const sinhX = Math.sinh(xTerm);
+
+    const sinPhi = Math.sin(D) / coshX;
+    const phi = Math.asin(Math.max(-1.0, Math.min(1.0, sinPhi)));
+    const dLam = Math.atan2(sinhX, Math.cos(D));
+
+    const lat = phi * 180.0 / Math.PI;
+    const lon = centerLonDeg + dLam * 180.0 / Math.PI;
+
+    return {
+      latDeg: parseFloat(lat.toFixed(4)),
+      lonDeg: parseFloat(to180(lon).toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate Grid Convergence angle (gamma) for Transverse Mercator projection.
+   * gamma = atan(tan(dLam) * sin(phi))
+   * @param {number} latDeg - Latitude in degrees
+   * @param {number} lonDeg - Longitude in degrees
+   * @param {number} [centerLonDeg=0.0] - Central meridian
+   * @returns {number} Grid convergence in degrees
+   */
+  static computeTransverseMercatorMeridianConvergence(latDeg, lonDeg, centerLonDeg = 0.0) {
+    const phi = latDeg * Math.PI / 180.0;
+    const dLam = to180(lonDeg - centerLonDeg) * Math.PI / 180.0;
+
+    const tanGamma = Math.tan(dLam) * Math.sin(phi);
+    const gammaDeg = Math.atan(tanGamma) * 180.0 / Math.PI;
+
+    return parseFloat(gammaDeg.toFixed(3));
+  }
 }
+
 
 
 
