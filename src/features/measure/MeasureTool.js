@@ -1257,7 +1257,95 @@ export class MeasureTool {
             constantBearingDeg: res.constantBearingDeg
         };
     }
+
+    // --- Direct Geodesic Destination, Girard Spherical Excess & Cross-Track Error Solvers ---
+
+    /**
+     * Calculate direct geodetic destination point given start point, initial azimuth, and distance.
+     * phi2 = asin( sin(phi1)*cos(d/R) + cos(phi1)*sin(d/R)*cos(theta) )
+     * lam2 = lam1 + atan2( sin(theta)*sin(d/R)*cos(phi1), cos(d/R) - sin(phi1)*sin(phi2) )
+     * @param {number} startLat - Departure latitude in degrees
+     * @param {number} startLon - Departure longitude in degrees
+     * @param {number} initialBearingDeg - Forward azimuth direction in degrees (0 to 360)
+     * @param {number} distanceKm - Geodesic arc distance in km
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{destLat: number, destLon: number, finalBearingDeg: number}}
+     */
+    static computeGeodesicDirectDestination(startLat, startLon, initialBearingDeg, distanceKm, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const phi1 = startLat * Math.PI / 180.0;
+        const lam1 = startLon * Math.PI / 180.0;
+        const theta = initialBearingDeg * Math.PI / 180.0;
+        const delta = distanceKm / R; // Angular distance in radians
+
+        const sinPhi1 = Math.sin(phi1);
+        const cosPhi1 = Math.cos(phi1);
+        const sinDelta = Math.sin(delta);
+        const cosDelta = Math.cos(delta);
+
+        const sinPhi2 = sinPhi1 * cosDelta + cosPhi1 * sinDelta * Math.cos(theta);
+        const phi2 = Math.asin(Math.max(-1.0, Math.min(1.0, sinPhi2)));
+
+        const y = Math.sin(theta) * sinDelta * cosPhi1;
+        const x = cosDelta - sinPhi1 * sinPhi2;
+        const lam2 = lam1 + Math.atan2(y, x);
+
+        let destLon = lam2 * 180.0 / Math.PI;
+        destLon = ((destLon % 360.0) + 360.0) % 360.0;
+
+        // Final bearing theta2
+        const yF = Math.sin(lam1 - lam2) * Math.cos(phi1);
+        const xF = Math.cos(phi2) * Math.sin(phi1) - Math.sin(phi2) * Math.cos(phi1) * Math.cos(lam1 - lam2);
+        let finalBearing = (Math.atan2(yF, xF) * 180.0 / Math.PI + 180.0) % 360.0;
+
+        return {
+            destLat: parseFloat((phi2 * 180.0 / Math.PI).toFixed(4)),
+            destLon: parseFloat(destLon.toFixed(4)),
+            finalBearingDeg: parseFloat(finalBearing.toFixed(1))
+        };
+    }
+
+    /**
+     * Calculate spherical polygon surface area using Girard's theorem (Spherical Excess E = sum(interior angles) - (n-2)*pi).
+     * @param {Array<[number, number]|L.LatLng>} latlngs - Array of polygon vertices
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{areaKm2: number, sphericalExcessSteradians: number}}
+     */
+    static computeSphericalPolygonGirardExcess(latlngs = [], body = 'mars') {
+        const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
+        if (coords.length < 3) return { areaKm2: 0, sphericalExcessSteradians: 0 };
+
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const res = this.computeSphericalPolygonArea(coords, body);
+
+        return {
+            areaKm2: res.areaKm2,
+            sphericalExcessSteradians: res.sphericalExcessRad
+        };
+    }
+
+    /**
+     * Calculate perpendicular cross-track error distance from great-circle corridor.
+     * @param {number} pointLat - Tracked location latitude
+     * @param {number} pointLon - Tracked location longitude
+     * @param {number} pathStartLat - Reference corridor start latitude
+     * @param {number} pathStartLon - Reference corridor start longitude
+     * @param {number} pathEndLat - Reference corridor end latitude
+     * @param {number} pathEndLon - Reference corridor end longitude
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{crossTrackErrorKm: number, alongTrackProgressKm: number}}
+     */
+    static computeCrossTrackErrorDistance(pointLat, pointLon, pathStartLat, pathStartLon, pathEndLat, pathEndLon, body = 'mars') {
+        const res = this.computeCrossTrackDistance(pointLat, pointLon, pathStartLat, pathStartLon, pathEndLat, pathEndLon, body);
+
+        return {
+            crossTrackErrorKm: Math.abs(res.crossTrackKm),
+            signedCrossTrackKm: res.crossTrackKm,
+            alongTrackProgressKm: res.alongTrackKm
+        };
+    }
 }
+
 
 
 

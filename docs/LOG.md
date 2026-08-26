@@ -252,3 +252,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute radar free-space spherical spreading path loss and wavelength
 ?: AssertionError: expected 106.43 to be above 120
     at n.<anonymous> (unit.js:3681:39)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 01:15:32 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Girard spherical excess polygon area and cross-track error distance
+?: AssertionError: expected -591.579 to be close to 591.6 +/- 10
+    at n.<anonymous> (unit.js:3833:44)

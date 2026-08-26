@@ -3811,6 +3811,30 @@ describe('Airy Crustal Root, Flexural Rigidity & Gravity Anomalies (InvestigateT
     });
 });
 
+describe('Direct Geodesic, Girard Excess & Cross-Track Error (MeasureTool)', () => {
+    it('should compute direct geodesic destination point on Mars sphere', () => {
+        // Start at (0°, 0°), travel 591.6 km due East (bearing = 90°) -> ~10° East on Mars
+        const dest = MeasureTool.computeGeodesicDirectDestination(0.0, 0.0, 90.0, 591.6, 'mars');
+        expect(dest.destLat).to.be.closeTo(0.0, 0.1);
+        expect(dest.destLon).to.be.closeTo(10.0, 0.2);
+        expect(dest.finalBearingDeg).to.be.closeTo(90.0, 1.0);
+    });
+
+    it('should calculate Girard spherical excess polygon area and cross-track error distance', () => {
+        // Octant triangle (0,0), (0,90), (90,0) -> 1/8 of Mars sphere ~ 1.808e7 km^2
+        const tri = [[0.0, 0.0], [0.0, 90.0], [90.0, 0.0]];
+        const area = MeasureTool.computeSphericalPolygonGirardExcess(tri, 'mars');
+        expect(area.areaKm2).to.be.greaterThan(1.5e7);
+        expect(area.areaKm2).to.be.lessThan(2.0e7);
+
+        // Point at (10°N, 5°E) relative to equatorial path from (0,0) to (0,10)
+        // Perpendicular cross-track distance should be ~10° lat distance (~591.6 km)
+        const xt = MeasureTool.computeCrossTrackErrorDistance(10.0, 5.0, 0.0, 0.0, 0.0, 10.0, 'mars');
+        expect(xt.crossTrackErrorKm).to.be.closeTo(591.6, 10.0);
+        expect(xt.alongTrackProgressKm).to.be.closeTo(295.8, 10.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
