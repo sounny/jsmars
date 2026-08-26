@@ -3742,6 +3742,29 @@ describe('NPF Production Isochron, Geometric Binning & R-Plot (CSFDEngine)', () 
     });
 });
 
+describe('Horn Hillshade, Perspective GSD & Normal Vectors (ThreeDEngine)', () => {
+    it('should calculate Horn shaded relief hillshade intensity and solar incidence', () => {
+        // Flat horizontal terrain (slope = 0) with Sun at 45 deg elevation -> cos(i) = sin(45) ~ 0.7071
+        const hs = ThreeDEngine.computeHornHillshadeValue(0.0, 0.0, 45.0, 180.0, 0.15);
+        expect(hs.cosIncidence).to.be.closeTo(0.7071, 0.01);
+        expect(hs.hillshadeIntensity).to.be.greaterThan(0.70);
+        expect(hs.isShadowed).to.equal(false);
+    });
+
+    it('should compute camera Ground Sample Distance (GSD) and 3D normal vector from slope/aspect', () => {
+        // HiRISE-scale camera: 250 km orbit, 12,000 mm focal length, 12 µm pixel -> 0.25 m/pixel (25 cm)
+        const gsd = ThreeDEngine.computePerspectiveGSD(250.0, 12000.0, 12.0);
+        expect(gsd.gsdMetersPerPixel).to.equal(0.25);
+        expect(gsd.gsdCmPerPixel).to.equal(25.0);
+
+        // East-facing 30° slope (slope = 30, aspect = 90° East)
+        const norm = ThreeDEngine.computeSurfaceNormalFromSlopeAspect(30.0, 90.0);
+        expect(norm.nx).to.be.closeTo(-0.5, 0.01);
+        expect(norm.ny).to.be.closeTo(0.866, 0.01);
+        expect(norm.nz).to.be.closeTo(0.0, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

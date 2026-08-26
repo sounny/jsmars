@@ -777,7 +777,86 @@ export class ThreeDEngine {
       isIlluminated: cosI > 0
     };
   }
+
+  // --- Horn Analytical Hillshade, Perspective GSD & Normal From Slope/Aspect Solvers ---
+
+  /**
+   * Calculate Horn (1981) shaded relief hillshade intensity from surface slope and aspect.
+   * cos(i) = sin(alt_sun) * cos(slope) + cos(alt_sun) * sin(slope) * cos(az_sun - aspect)
+   * @param {number} slopeDeg - Terrain slope in degrees (0 = flat)
+   * @param {number} aspectDeg - Downhill aspect direction in degrees (0 = North, 90 = East, 180 = South, 270 = West)
+   * @param {number} sunAltitudeDeg - Solar elevation angle above horizon in degrees
+   * @param {number} sunAzimuthDeg - Solar azimuth angle in degrees (0 to 360)
+   * @param {number} [ambient=0.15] - Ambient lighting factor (0.0 to 1.0)
+   * @returns {{hillshadeIntensity: number, cosIncidence: number, isShadowed: boolean}}
+   */
+  static computeHornHillshadeValue(slopeDeg, aspectDeg, sunAltitudeDeg, sunAzimuthDeg, ambient = 0.15) {
+    if (sunAltitudeDeg <= 0) {
+      return { hillshadeIntensity: ambient, cosIncidence: 0, isShadowed: true };
+    }
+
+    const slopeRad = slopeDeg * Math.PI / 180.0;
+    const aspectRad = aspectDeg * Math.PI / 180.0;
+    const sunAltRad = sunAltitudeDeg * Math.PI / 180.0;
+    const sunAzRad = sunAzimuthDeg * Math.PI / 180.0;
+
+    const cosI = Math.sin(sunAltRad) * Math.cos(slopeRad) +
+                 Math.cos(sunAltRad) * Math.sin(slopeRad) * Math.cos(sunAzRad - aspectRad);
+
+    const clampedCos = Math.max(0, cosI);
+    const intensity = ambient + (1.0 - ambient) * clampedCos;
+
+    return {
+      hillshadeIntensity: parseFloat(intensity.toFixed(4)),
+      cosIncidence: parseFloat(clampedCos.toFixed(4)),
+      isShadowed: cosI <= 0
+    };
+  }
+
+  /**
+   * Calculate perspective camera Ground Sample Distance (GSD).
+   * GSD = (H * pixelPitch) / focalLength
+   * @param {number} altitudeKm - Spacecraft or camera altitude in km
+   * @param {number} focalLengthMm - Camera optical focal length in mm
+   * @param {number} [pixelPitchMicrons=12.0] - Physical pixel pitch on sensor in microns
+   * @returns {{gsdMetersPerPixel: number, gsdCmPerPixel: number}}
+   */
+  static computePerspectiveGSD(altitudeKm, focalLengthMm, pixelPitchMicrons = 12.0) {
+    const H = Math.max(0, altitudeKm) * 1000.0; // meters
+    const f = Math.max(1e-3, focalLengthMm) * 1e-3; // meters
+    const p = Math.max(1e-6, pixelPitchMicrons) * 1e-6; // meters
+
+    const gsdM = (H * p) / f;
+    const gsdCm = gsdM * 100.0;
+
+    return {
+      gsdMetersPerPixel: parseFloat(gsdM.toFixed(4)),
+      gsdCmPerPixel: parseFloat(gsdCm.toFixed(2))
+    };
+  }
+
+  /**
+   * Convert surface slope and aspect angles to a 3D unit surface normal vector.
+   * @param {number} slopeDeg - Surface slope in degrees (0 = horizontal)
+   * @param {number} aspectDeg - Downhill aspect direction in degrees (0 = North, 90 = East, 180 = South, 270 = West)
+   * @returns {{nx: number, ny: number, nz: number}} Unit normal vector where +Y is up, +X is East, +Z is South
+   */
+  static computeSurfaceNormalFromSlopeAspect(slopeDeg, aspectDeg) {
+    const beta = slopeDeg * Math.PI / 180.0;
+    const psi = aspectDeg * Math.PI / 180.0;
+
+    const nx = -Math.sin(beta) * Math.sin(psi);
+    const ny = Math.cos(beta);
+    const nz = -Math.sin(beta) * Math.cos(psi);
+
+    return {
+      nx: parseFloat(nx.toFixed(5)),
+      ny: parseFloat(ny.toFixed(5)),
+      nz: parseFloat(nz.toFixed(5))
+    };
+  }
 }
+
 
 
 
