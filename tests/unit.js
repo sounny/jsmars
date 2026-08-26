@@ -5159,6 +5159,31 @@ describe('Transient Inversion, Ejecta Blanket & Central Peak (CSFDEngine)', () =
     });
 });
 
+describe('Thermal Wind Shear, Scale Height Profile & TKE Dissipation (MCDEngine)', () => {
+    it('should calculate thermal wind vertical shear gradient and Coriolis parameter', () => {
+        // Lat = 45 deg, dT/dy = -0.01 K/km (-10 K per 1000 km, colder towards pole)
+        // f = 2 * 7.0882e-5 * sin(45 deg) = 1.41764e-4 * 0.707106 = 1.0024e-4 rad/s
+        // du_g/dz = - (3.72076 / (1.0024e-4 * 210)) * (-1e-5) = (3.72076 / 0.02105) * 1e-5 = 176.75 * 1e-5 = 1.7675e-3 s^-1 = 1.768 (m/s)/km
+        const wind = MCDEngine.computeThermalWindShearGradient(-0.01, 210.0, 45.0, 3.72076);
+        expect(wind.thermalWindShearPerKm).to.be.closeTo(1.768, 0.05);
+        expect(wind.coriolisParameterRadS).to.be.closeTo(1.002e-4, 0.005e-4);
+    });
+
+    it('should compute local scale height profile and boundary layer TKE dissipation rate', () => {
+        // T = 210 K, M = 43.34 g/mol -> R_spec = 8.31446 / 0.04334 = 191.84 J/(kg K)
+        // H = (191.84 * 210) / 3.72076 = 40286.4 / 3.72076 = 10827.4 m = 10.827 km
+        const h = MCDEngine.computeAtmosphericScaleHeightProfile(210.0, 43.34, 3.72076);
+        expect(h.scaleHeightKm).to.be.closeTo(10.827, 0.05);
+        expect(h.specificGasConstant).to.be.closeTo(191.84, 0.1);
+
+        // w_* = 2.0 m/s -> w_*^3 = 8.0 m^3/s^3, z_i = 4000 m, z = 2000 m (z/zi = 0.5)
+        // shape = 0.8 - 0.3 * 0.5 = 0.65 -> epsilon = (8.0 / 4000) * 0.65 = 0.002 * 0.65 = 1.3e-3 m^2/s^3
+        const tke = MCDEngine.computeAtmosphericTurbulentKineticEnergyDissipation(2.0, 4000.0, 2000.0);
+        expect(tke.tkeDissipationM2S3).to.be.closeTo(1.3e-3, 0.05e-3);
+        expect(tke.normalizedHeight).to.equal(0.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

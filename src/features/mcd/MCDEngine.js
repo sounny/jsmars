@@ -1162,7 +1162,90 @@ export class MCDEngine {
       isStable: isStable
     };
   }
+
+  // --- Thermal Wind Shear, Local Scale Height & TKE Dissipation Solvers ---
+
+  /**
+   * Calculate vertical thermal wind shear gradient du_g/dz from meridional temperature gradient.
+   * du_g/dz = - (g / (f * T_0)) * (dT/dy)
+   * @param {number} meridionalTempGradientKPerKm - Meridional temperature gradient dT/dy in K/km (positive = warmer poleward)
+   * @param {number} [meanTempK=210.0] - Mean layer atmospheric temperature in Kelvin
+   * @param {number} [latitudeDeg=45.0] - Latitude in degrees
+   * @param {number} [gravityMps2=3.72076] - Mars surface gravity (m/s^2)
+   * @returns {{thermalWindShearPerKm: number, thermalWindShearPerSec: number, coriolisParameterRadS: number}}
+   */
+  static computeThermalWindShearGradient(meridionalTempGradientKPerKm, meanTempK = 210.0, latitudeDeg = 45.0, gravityMps2 = 3.72076) {
+    const g = Math.max(0.1, gravityMps2);
+    const T0 = Math.max(50.0, meanTempK);
+    const phiRad = (Math.max(-89.9, Math.min(89.9, latitudeDeg)) * Math.PI) / 180.0;
+
+    // Mars rotation rate Omega = 7.0882e-5 rad/s -> f = 2 * Omega * sin(phi)
+    const omega = 7.0882e-5;
+    const f = 2.0 * omega * Math.sin(phiRad);
+    const fAbs = Math.max(1e-7, Math.abs(f));
+
+    // dT/dy in K/m: meridionalTempGradientKPerKm * 1e-3
+    const dT_dy_KPerM = meridionalTempGradientKPerKm * 1e-3;
+
+    // du_g/dz in s^-1 = -(g / (f * T0)) * dT/dy
+    const shearPerSec = -(g / (f * T0)) * dT_dy_KPerM;
+    const shearPerKm = shearPerSec * 1000.0; // (m/s) per km of altitude
+
+    return {
+      thermalWindShearPerKm: parseFloat(shearPerKm.toFixed(3)),
+      thermalWindShearPerSec: parseFloat(shearPerSec.toExponential(4)),
+      coriolisParameterRadS: parseFloat(f.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate local atmospheric scale height H = (R_spec * T) / g.
+   * @param {number} temperatureK - Atmospheric temperature in Kelvin
+   * @param {number} [meanMolecularWeightG_Mol=43.34] - Mean molecular weight in g/mol (43.34 for Mars CO2 atmosphere)
+   * @param {number} [gravityMps2=3.72076] - Surface gravitational acceleration in m/s^2
+   * @returns {{scaleHeightKm: number, scaleHeightMeters: number, specificGasConstant: number}}
+   */
+  static computeAtmosphericScaleHeightProfile(temperatureK, meanMolecularWeightG_Mol = 43.34, gravityMps2 = 3.72076) {
+    const T = Math.max(10.0, temperatureK);
+    const M_kg = Math.max(1.0, meanMolecularWeightG_Mol) * 1e-3; // kg/mol
+    const g = Math.max(0.1, gravityMps2);
+    const R_univ = 8.314462618; // J/(mol K)
+
+    const R_spec = R_univ / M_kg; // ~191.84 J/(kg K)
+    const H_meters = (R_spec * T) / g;
+    const H_km = H_meters / 1000.0;
+
+    return {
+      scaleHeightKm: parseFloat(H_km.toFixed(3)),
+      scaleHeightMeters: parseFloat(H_meters.toFixed(1)),
+      specificGasConstant: parseFloat(R_spec.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate Turbulent Kinetic Energy (TKE) dissipation rate epsilon in the convective Planetary Boundary Layer.
+   * epsilon = (w_*^3 / z_i) * (0.8 - 0.3 * (z / z_i))
+   * @param {number} convectiveVelocityMs - Convective velocity scale w_* in m/s
+   * @param {number} pblHeightMeters - Boundary layer inversion height z_i in meters
+   * @param {number} heightAboveSurfaceMeters - Measurement height z in meters
+   * @returns {{tkeDissipationM2S3: number, normalizedHeight: number}}
+   */
+  static computeAtmosphericTurbulentKineticEnergyDissipation(convectiveVelocityMs, pblHeightMeters, heightAboveSurfaceMeters) {
+    const wStar = Math.max(0.01, convectiveVelocityMs);
+    const zi = Math.max(10.0, pblHeightMeters);
+    const z = Math.max(0.0, Math.min(zi, heightAboveSurfaceMeters));
+
+    const normZ = z / zi;
+    const shapeFactor = Math.max(0.1, 0.8 - 0.3 * normZ);
+    const epsilon = (Math.pow(wStar, 3) / zi) * shapeFactor;
+
+    return {
+      tkeDissipationM2S3: parseFloat(epsilon.toExponential(4)),
+      normalizedHeight: parseFloat(normZ.toFixed(3))
+    };
+  }
 }
+
 
 
 
