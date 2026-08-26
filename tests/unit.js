@@ -3858,6 +3858,30 @@ describe('Subsurface Attenuation, TI Inversion & Heat Diffusion (KRCEngine)', ()
     });
 });
 
+describe('Radial Orbital Velocity, Specific Energy & Solar Zenith Vectors (MarsTime)', () => {
+    it('should compute Mars orbital radial velocity dr/dt and specific mechanical energy', () => {
+        // At nu = 90° (moving outward toward aphelion) -> positive radial velocity ~ 2.25 km/s
+        const rDot = MarsTime.computeRadialOrbitalVelocity(90.0);
+        expect(rDot.radialVelocityKmS).to.be.closeTo(2.25, 0.15);
+        expect(rDot.isMovingAwayFromSun).to.equal(true);
+
+        // Vis-viva specific orbital energy: v = 24.13 km/s at r = 227.94e6 km
+        const energy = MarsTime.computeVisVivaSpecificOrbitalEnergy(227.94e6, 24.13);
+        expect(energy.specificEnergyMjPerKg).to.be.closeTo(-291.1, 5.0);
+        expect(energy.semiMajorAxisEquivalentKm).to.be.closeTo(227.94e6, 5e6);
+    });
+
+    it('should compute 3D topocentric unit solar vector components (East, North, Zenith)', () => {
+        // Solar noon (H = 0) at equator (lat = 0) with overhead Sun (declination = 0)
+        // Vector should point straight up (+Zenith = 1.0, East = 0, North = 0)
+        const sVec = MarsTime.computePlanetocentricSolarZenithVector(0.0, 0.0, 0.0);
+        expect(sVec.sZenith).to.equal(1.0);
+        expect(sVec.sEast).to.equal(0.0);
+        expect(sVec.sNorth).to.equal(0.0);
+        expect(sVec.cosZenith).to.equal(1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

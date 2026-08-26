@@ -883,7 +883,80 @@ export class MarsTime {
       radialDistanceKm: parseFloat(rKm.toFixed(0))
     };
   }
+
+  // --- Radial Orbital Velocity, Specific Orbital Energy & Solar Zenith Vector Solvers ---
+
+  /**
+   * Calculate heliocentric radial velocity of Mars (dr/dt) along its orbit in km/s.
+   * dr/dt = (n * a * e * sin(nu)) / sqrt(1 - e^2)
+   * @param {number} trueAnomalyDeg - True anomaly nu in degrees (0 to 360)
+   * @param {number} [semiMajorAxisAU=1.52368] - Semi-major axis in AU
+   * @param {number} [eccentricity=0.0934] - Orbit eccentricity
+   * @returns {{radialVelocityKmS: number, radialVelocityMps: number, isMovingAwayFromSun: boolean}}
+   */
+  static computeRadialOrbitalVelocity(trueAnomalyDeg, semiMajorAxisAU = 1.52368, eccentricity = 0.0934) {
+    const GM_Sun = 1.32712440018e11; // km^3 / s^2
+    const aKm = semiMajorAxisAU * 149597870.7;
+    const e = eccentricity;
+    const nuRad = trueAnomalyDeg * Math.PI / 180.0;
+
+    // Mean motion n in rad/s
+    const n = Math.sqrt(GM_Sun / Math.pow(aKm, 3));
+    const rDot = (n * aKm * e * Math.sin(nuRad)) / Math.sqrt(1.0 - e * e);
+
+    return {
+      radialVelocityKmS: parseFloat(rDot.toFixed(4)),
+      radialVelocityMps: parseFloat((rDot * 1000.0).toFixed(2)),
+      isMovingAwayFromSun: rDot > 0
+    };
+  }
+
+  /**
+   * Calculate specific Keplerian mechanical energy (vis-viva energy epsilon) in MJ/kg (km^2/s^2).
+   * epsilon = v^2 / 2 - GM / r = -GM / (2 * a)
+   * @param {number} radialDistanceKm - Distance to Sun center in km
+   * @param {number} orbitalVelocityKmS - Instantaneous orbital velocity in km/s
+   * @returns {{specificEnergyMjPerKg: number, semiMajorAxisEquivalentKm: number}}
+   */
+  static computeVisVivaSpecificOrbitalEnergy(radialDistanceKm, orbitalVelocityKmS) {
+    const GM_Sun = 1.32712440018e11; // km^3 / s^2
+    const r = Math.max(1e6, radialDistanceKm);
+    const v = orbitalVelocityKmS;
+
+    const epsilon = (v * v) / 2.0 - GM_Sun / r; // km^2 / s^2
+    const aEquiv = -GM_Sun / (2.0 * epsilon);
+
+    return {
+      specificEnergyMjPerKg: parseFloat(epsilon.toFixed(3)),
+      semiMajorAxisEquivalentKm: parseFloat(aEquiv.toFixed(0))
+    };
+  }
+
+  /**
+   * Calculate 3D topocentric unit solar vector (East, North, Zenith).
+   * @param {number} latitudeDeg - Latitude in degrees
+   * @param {number} solarDeclinationDeg - Solar declination in degrees (delta)
+   * @param {number} hourAngleDeg - Solar hour angle in degrees (H)
+   * @returns {{sEast: number, sNorth: number, sZenith: number, cosZenith: number}}
+   */
+  static computePlanetocentricSolarZenithVector(latitudeDeg, solarDeclinationDeg, hourAngleDeg) {
+    const phi = latitudeDeg * Math.PI / 180.0;
+    const delta = solarDeclinationDeg * Math.PI / 180.0;
+    const H = hourAngleDeg * Math.PI / 180.0;
+
+    const sEast = -Math.cos(delta) * Math.sin(H);
+    const sNorth = Math.sin(delta) * Math.cos(phi) - Math.cos(delta) * Math.sin(phi) * Math.cos(H);
+    const sZenith = Math.sin(phi) * Math.sin(delta) + Math.cos(phi) * Math.cos(delta) * Math.cos(H);
+
+    return {
+      sEast: parseFloat(sEast.toFixed(5)),
+      sNorth: parseFloat(sNorth.toFixed(5)),
+      sZenith: parseFloat(sZenith.toFixed(5)),
+      cosZenith: parseFloat(Math.max(0, sZenith).toFixed(5))
+    };
+  }
 }
+
 
 
 
