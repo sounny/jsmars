@@ -30,7 +30,7 @@ import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -5181,6 +5181,33 @@ describe('Thermal Wind Shear, Scale Height Profile & TKE Dissipation (MCDEngine)
         const tke = MCDEngine.computeAtmosphericTurbulentKineticEnergyDissipation(2.0, 4000.0, 2000.0);
         expect(tke.tkeDissipationM2S3).to.be.closeTo(1.3e-3, 0.05e-3);
         expect(tke.normalizedHeight).to.equal(0.5);
+    });
+});
+
+describe('Spherical Excess, Andoyer Geodesic & Vertex Deflections (GeoUtil)', () => {
+    it('should calculate spherical excess E, solid angle, and surface area for spherical polygons', () => {
+        // Tri-rectangular spherical triangle on Mars (three 90-degree angles = 1/8th of sphere)
+        // sum = 270 deg, expected = 180 deg -> E = 90 deg = pi/2 rad = 1.5708 rad (1/8th of 4*pi)
+        // Area = (pi/2) * (3389.5)^2 = 1.570796 * 1.14887e7 = 18,046,432 km^2
+        const octant = computeSphericalExcess([90, 90, 90], 'mars');
+        expect(octant.sphericalExcessDeg).to.equal(90.0);
+        expect(octant.solidAngleSteradians).to.be.closeTo(1.5708, 0.001);
+        expect(octant.surfaceAreaKm2).to.be.closeTo(18046432.0, 1000.0);
+    });
+
+    it('should compute second-order Andoyer ellipsoidal geodesic distance and polyline deflection angles', () => {
+        // Equator endpoints (0, 0) to (0, 60) on Mars (a = 3396.2, f = 0.00589)
+        const andoyer = computeEllipsoidalGeodesicDistanceAndoyer(0, 0, 0, 60, 'mars');
+        expect(andoyer.ellipsoidalDistanceKm).to.be.greaterThan(3500.0);
+        expect(andoyer.sphericalDistanceKm).to.be.greaterThan(3500.0);
+
+        // Path: (0, 0) -> (10, 0) [heading North: 0 deg] -> (10, 10) [heading East: 90 deg]
+        // Turn at vertex 1: deflection = 90 deg (Right turn)
+        const path = [[0, 0], [10, 0], [10, 10]];
+        const defs = computePolylineDeflectionAngles(path);
+        expect(defs).to.have.lengthOf(1);
+        expect(defs[0].deflectionAngleDeg).to.be.closeTo(90.0, 1.0);
+        expect(defs[0].isRightTurn).to.be.true;
     });
 });
 

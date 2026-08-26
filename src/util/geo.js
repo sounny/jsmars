@@ -704,5 +704,118 @@ export function computeSphericalRhumbLineDistance(lat1, lon1, lat2, lon2, body =
   };
 }
 
+/**
+ * Calculate spherical excess E and solid angle in steradians for a spherical polygon with interior vertex angles.
+ * E = sum(alpha_i) - (n - 2) * pi
+ * @param {Array<number>} anglesDegrees - Interior vertex angles in degrees
+ * @param {string} [body='mars'] - Planetary body key
+ * @returns {{sphericalExcessRad: number, sphericalExcessDeg: number, solidAngleSteradians: number, surfaceAreaKm2: number}}
+ */
+export function computeSphericalExcess(anglesDegrees = [], body = 'mars') {
+  const n = anglesDegrees.length;
+  if (n < 3) {
+    return { sphericalExcessRad: 0, sphericalExcessDeg: 0, solidAngleSteradians: 0, surfaceAreaKm2: 0 };
+  }
+
+  const R = BODIES[body]?.meanRadius || 3389.5;
+  const sumRad = anglesDegrees.reduce((acc, deg) => acc + (deg * Math.PI / 180.0), 0);
+  const expectedRad = (n - 2) * Math.PI;
+  const excessRad = Math.max(0, sumRad - expectedRad);
+  const excessDeg = excessRad * 180.0 / Math.PI;
+
+  const areaKm2 = excessRad * R * R;
+
+  return {
+    sphericalExcessRad: parseFloat(excessRad.toFixed(5)),
+    sphericalExcessDeg: parseFloat(excessDeg.toFixed(4)),
+    solidAngleSteradians: parseFloat(excessRad.toFixed(5)),
+    surfaceAreaKm2: parseFloat(areaKm2.toFixed(2))
+  };
+}
+
+/**
+ * Calculate ellipsoidal geodesic distance using the Andoyer-Lambert second-order flattening correction.
+ * @param {number} lat1 - Start latitude (degrees)
+ * @param {number} lon1 - Start longitude (degrees)
+ * @param {number} lat2 - End latitude (degrees)
+ * @param {number} lon2 - End longitude (degrees)
+ * @param {string} [body='mars'] - Target planetary body
+ * @returns {{ellipsoidalDistanceKm: number, sphericalDistanceKm: number, flatteningCorrectionKm: number}}
+ */
+export function computeEllipsoidalGeodesicDistanceAndoyer(lat1, lon1, lat2, lon2, body = 'mars') {
+  const b = BODIES[body] || BODIES.mars;
+  const a = b.equatorialRadius;
+  const f = b.flattening;
+
+  // Reduced latitudes beta1, beta2: tan(beta) = (1 - f) * tan(phi)
+  const phi1Rad = lat1 * Math.PI / 180.0;
+  const phi2Rad = lat2 * Math.PI / 180.0;
+  const beta1 = Math.atan((1.0 - f) * Math.tan(phi1Rad));
+  const beta2 = Math.atan((1.0 - f) * Math.tan(phi2Rad));
+
+  const dLam = ((lon2 - lon1) * Math.PI / 180.0);
+
+  // Spherical distance sigma on auxiliary sphere
+  const sinB1 = Math.sin(beta1), cosB1 = Math.cos(beta1);
+  const sinB2 = Math.sin(beta2), cosB2 = Math.cos(beta2);
+  const cosD = sinB1 * sinB2 + cosB1 * cosB2 * Math.cos(dLam);
+  const sigma = Math.acos(Math.max(-1.0, Math.min(1.0, cosD)));
+
+  if (sigma < 1e-7) {
+    return { ellipsoidalDistanceKm: 0, sphericalDistanceKm: 0, flatteningCorrectionKm: 0 };
+  }
+
+  const sinSigma = Math.sin(sigma);
+  const sinB_sum = sinB1 + sinB2;
+  const cosB_sum = cosB1 + cosB2;
+  const K = sinB_sum * sinB_sum;
+  const L = cosB_sum * cosB_sum;
+
+  const H = (K / (2.0 * Math.pow(Math.cos(sigma / 2.0), 2))) + (L / (2.0 * Math.pow(Math.sin(sigma / 2.0), 2)));
+  const dSigma = (f / 8.0) * (H * (sigma - sinSigma) - (K - L) * (sigma + sinSigma));
+
+  const distEllKm = a * (sigma + dSigma);
+  const sSphKm = haversineDistance(lat1, lon1, lat2, lon2, body);
+  const diffKm = distEllKm - sSphKm;
+
+  return {
+    ellipsoidalDistanceKm: parseFloat(distEllKm.toFixed(3)),
+    sphericalDistanceKm: parseFloat(sSphKm.toFixed(3)),
+    flatteningCorrectionKm: parseFloat(diffKm.toFixed(3))
+  };
+}
+
+/**
+ * Calculate vertex deflection angles along a planetary traverse / groundtrack polyline.
+ * @param {Array<[number, number]>} points - Array of [lat, lon] coordinates
+ * @returns {Array<{vertexIndex: number, deflectionAngleDeg: number, isRightTurn: boolean}>}
+ */
+export function computePolylineDeflectionAngles(points = []) {
+  if (points.length < 3) return [];
+
+  const deflections = [];
+  for (let i = 1; i < points.length - 1; i++) {
+    const pPrev = points[i - 1];
+    const pCurr = points[i];
+    const pNext = points[i + 1];
+
+    const azIn = azimuth(pPrev[0], pPrev[1], pCurr[0], pCurr[1]);
+    const azOut = azimuth(pCurr[0], pCurr[1], pNext[0], pNext[1]);
+
+    let dAz = azOut - azIn;
+    while (dAz > 180) dAz -= 360;
+    while (dAz < -180) dAz += 360;
+
+    deflections.push({
+      vertexIndex: i,
+      deflectionAngleDeg: parseFloat(Math.abs(dAz).toFixed(2)),
+      isRightTurn: dAz > 0
+    });
+  }
+
+  return deflections;
+}
+
+
 
 
