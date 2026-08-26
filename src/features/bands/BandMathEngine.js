@@ -1221,7 +1221,73 @@ export class BandMathEngine {
       similarityScore: parseFloat(similarity.toFixed(4))
     };
   }
+
+  // --- CRISM Olivine Extended, TES Quartz Ratio & Band Asymmetry Solvers ---
+
+  /**
+   * Calculate standard CRISM extended olivine 1 µm/2 µm absorption index.
+   * OLINDEX = R_1690 / ( 0.70 * R_1330 + 0.30 * R_2530 ) - 1.0
+   * @param {number} r1690 - Reflectance at 1.69 µm (olivine peak)
+   * @param {number} r1330 - Reflectance at 1.33 µm (left shoulder)
+   * @param {number} r2530 - Reflectance at 2.53 µm (right shoulder)
+   * @returns {{olivineIndex: number, hasOlivineSignature: boolean}}
+   */
+  static computeCRISMOlivineIndexExtended(r1690, r1330, r2530) {
+    const cont = 0.70 * r1330 + 0.30 * r2530;
+    if (cont <= 0) return { olivineIndex: 0, hasOlivineSignature: false };
+
+    const val = (r1690 / cont) - 1.0;
+    return {
+      olivineIndex: parseFloat(val.toFixed(4)),
+      hasOlivineSignature: val > 0.03
+    };
+  }
+
+  /**
+   * Calculate TES Quartz / Silicate Reststrahlen band ratio.
+   * QRATIO = eps_1120 / eps_1000
+   * @param {number} eps1120 - Emissivity at 1120 cm^-1 (~8.93 µm quartz reststrahlen peak)
+   * @param {number} eps1000 - Emissivity at 1000 cm^-1 (~10.0 µm silicate absorption trough)
+   * @returns {{quartzRatio: number, isEnrichedInSilica: boolean}}
+   */
+  static computeTESQuartzSilicateRatio(eps1120, eps1000) {
+    const e1000 = Math.max(0.01, eps1000);
+    const ratio = eps1120 / e1000;
+
+    return {
+      quartzRatio: parseFloat(ratio.toFixed(4)),
+      isEnrichedInSilica: ratio > 1.05
+    };
+  }
+
+  /**
+   * Calculate spectral absorption band asymmetry parameter from half-maximum wavelengths.
+   * A_asym = [ (lambda_right - lambda_min) - (lambda_min - lambda_left) ] / (lambda_right - lambda_left)
+   * @param {number} lambdaMin - Wavelength of minimum absorption (µm)
+   * @param {number} lambdaLeftHalf - Wavelength of left half-maximum depth (µm)
+   * @param {number} lambdaRightHalf - Wavelength of right half-maximum depth (µm)
+   * @returns {{asymmetryRatio: number, skewDescription: string, fwhmMicrons: number}}
+   */
+  static computeAbsorptionBandAsymmetryRatio(lambdaMin, lambdaLeftHalf, lambdaRightHalf) {
+    const fwhm = Math.abs(lambdaRightHalf - lambdaLeftHalf);
+    if (fwhm <= 0) return { asymmetryRatio: 0, skewDescription: 'Symmetric', fwhmMicrons: 0 };
+
+    const leftSpan = lambdaMin - lambdaLeftHalf;
+    const rightSpan = lambdaRightHalf - lambdaMin;
+    const asym = (rightSpan - leftSpan) / fwhm;
+
+    let skew = 'Symmetric';
+    if (asym > 0.15) skew = 'Right-Skewed (Longer wavelength tail)';
+    else if (asym < -0.15) skew = 'Left-Skewed (Shorter wavelength tail)';
+
+    return {
+      asymmetryRatio: parseFloat(asym.toFixed(4)),
+      skewDescription: skew,
+      fwhmMicrons: parseFloat(fwhm.toFixed(4))
+    };
+  }
 }
+
 
 
 

@@ -280,3 +280,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate H2O water ice saturation vapor pressure and saturation mixing ratio
 ?: AssertionError: expected 0.16295 to be below 0.01
     at n.<anonymous> (unit.js:4023:56)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 07:30:50 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate CRISM SINDEX2 polyhydrated sulfate and OLINDEX3 olivine indices
+?: AssertionError: expected NaN to be above 0.15
+    at n.<anonymous> (unit.js:3462:35)

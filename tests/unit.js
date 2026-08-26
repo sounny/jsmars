@@ -4396,6 +4396,29 @@ describe('R-Plot Value, Secondary Screening & Fractional Poisson Error (CSFDEngi
     });
 });
 
+describe('OLINDEX Extended, Quartz Ratio & Band Asymmetry (BandMathEngine)', () => {
+    it('should calculate CRISM extended olivine index and TES Quartz Reststrahlen ratio', () => {
+        // r1690 = 0.32, r1330 = 0.28, r2530 = 0.24 -> cont = 0.7 * 0.28 + 0.3 * 0.24 = 0.196 + 0.072 = 0.268 -> val = 0.32 / 0.268 - 1 = 1.194 - 1 = 0.194
+        const ol = BandMathEngine.computeCRISMOlivineIndexExtended(0.32, 0.28, 0.24);
+        expect(ol.olivineIndex).to.be.closeTo(0.194, 0.005);
+        expect(ol.hasOlivineSignature).to.be.true;
+
+        // eps1120 = 0.98, eps1000 = 0.88 -> ratio = 0.98 / 0.88 ~ 1.1136 (> 1.05 -> silica enriched)
+        const qz = BandMathEngine.computeTESQuartzSilicateRatio(0.98, 0.88);
+        expect(qz.quartzRatio).to.be.closeTo(1.1136, 0.005);
+        expect(qz.isEnrichedInSilica).to.be.true;
+    });
+
+    it('should compute absorption band asymmetry from half-maximum depths', () => {
+        // lambdaMin = 1.95 µm, leftHalf = 1.90 µm, rightHalf = 2.05 µm -> fwhm = 0.15 µm
+        // leftSpan = 0.05 µm, rightSpan = 0.10 µm -> asym = (0.10 - 0.05) / 0.15 = 0.05 / 0.15 ~ +0.3333 (Right-Skewed)
+        const asym = BandMathEngine.computeAbsorptionBandAsymmetryRatio(1.95, 1.90, 2.05);
+        expect(asym.fwhmMicrons).to.be.closeTo(0.15, 0.001);
+        expect(asym.asymmetryRatio).to.be.closeTo(0.3333, 0.005);
+        expect(asym.skewDescription).to.equal('Right-Skewed (Longer wavelength tail)');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
