@@ -5067,6 +5067,35 @@ describe('Dielectric Quality Factor, Ice-Dust Inversion & Rough Interface (Radar
     });
 });
 
+describe('True Solar Right Ascension, LMST to LTST & Seasons (MarsTime)', () => {
+    it('should calculate True Solar Right Ascension on the celestial sphere', () => {
+        // At vernal equinox Ls = 0 deg -> alpha = 0 deg
+        const ra0 = MarsTime.computeTrueSolarRightAscension(0.0);
+        expect(ra0.rightAscensionDeg).to.be.closeTo(0.0, 0.01);
+        expect(ra0.rightAscensionHours).to.be.closeTo(0.0, 0.01);
+
+        // At summer solstice Ls = 90 deg -> alpha = 90 deg = 6.0 hours
+        const ra90 = MarsTime.computeTrueSolarRightAscension(90.0);
+        expect(ra90.rightAscensionDeg).to.be.closeTo(90.0, 0.01);
+        expect(ra90.rightAscensionHours).to.be.closeTo(6.0, 0.01);
+    });
+
+    it('should convert LMST to LTST with Equation of Time and retrieve Mars season metadata', () => {
+        // At Ls = 90 deg -> LMST = 12.0000 -> convertLMSTtoLTST returns valid sol-hour string
+        const conv = MarsTime.convertLMSTtoLTST(12.0, 90.0);
+        expect(conv.ltstHours).to.be.within(0, 24);
+        expect(conv.formattedLTST).to.match(/^\d{2}:\d{2}:\d{2}$/);
+
+        // Ls = 135 deg -> Q2 Summer in North, Winter in South (50% progress into season)
+        const s135 = MarsTime.getMarsSeasonMetadata(135.0);
+        expect(s135.seasonIndex).to.equal(1);
+        expect(s135.northernSeason).to.equal('Summer');
+        expect(s135.southernSeason).to.equal('Winter');
+        expect(s135.seasonProgressPercent).to.equal(50.0);
+        expect(s135.solQuadrant).to.include('Q2');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

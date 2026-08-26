@@ -1321,7 +1321,106 @@ export class MarsTime {
       isSunFast: eotMin > 0
     };
   }
+
+  // --- Right Ascension, LMST/LTST Conversion & Season Solvers ---
+
+  /**
+   * Calculate True Solar Right Ascension alpha_sun on the celestial sphere from solar longitude Ls.
+   * alpha = atan2( cos(epsilon) * sin(Ls), cos(Ls) )
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @param {number} [obliquityDeg=25.19] - Mars planetary obliquity
+   * @returns {{rightAscensionDeg: number, rightAscensionHours: number, rightAscensionRad: number}}
+   */
+  static computeTrueSolarRightAscension(LsDeg, obliquityDeg = 25.19) {
+    const epsRad = obliquityDeg * Math.PI / 180.0;
+    const lsRad = LsDeg * Math.PI / 180.0;
+
+    const y = Math.cos(epsRad) * Math.sin(lsRad);
+    const x = Math.cos(lsRad);
+
+    let alphaRad = Math.atan2(y, x);
+    if (alphaRad < 0) alphaRad += 2.0 * Math.PI;
+
+    const alphaDeg = (alphaRad * 180.0) / Math.PI;
+    const alphaHours = alphaDeg / 15.0; // 15 degrees per hour
+
+    return {
+      rightAscensionDeg: parseFloat(alphaDeg.toFixed(3)),
+      rightAscensionHours: parseFloat(alphaHours.toFixed(4)),
+      rightAscensionRad: parseFloat(alphaRad.toFixed(5))
+    };
+  }
+
+  /**
+   * Convert Local Mean Solar Time (LMST) to Local True Solar Time (LTST) in Sol-hours.
+   * LTST = LMST + EoT_hours
+   * @param {number} lmstHours - Local Mean Solar Time in decimal hours (0 to 24)
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @returns {{ltstHours: number, eotMinutes: number, formattedLTST: string}}
+   */
+  static convertLMSTtoLTST(lmstHours, LsDeg) {
+    const eot = this.computeEquationOfTimeMinutes(LsDeg);
+    let ltst = (lmstHours + eot.equationOfTimeHours + 24.0) % 24.0;
+
+    const hh = Math.floor(ltst);
+    const mm = Math.floor((ltst - hh) * 60.0);
+    const ss = Math.floor(((ltst - hh) * 60.0 - mm) * 60.0);
+    const formatted = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+
+    return {
+      ltstHours: parseFloat(ltst.toFixed(4)),
+      eotMinutes: eot.equationOfTimeMinutes,
+      formattedLTST: formatted
+    };
+  }
+
+  /**
+   * Retrieve astronomical Mars season metadata, northern and southern seasons, and quadrant progression.
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @returns {{seasonIndex: number, northernSeason: string, southernSeason: string, seasonProgressPercent: number, solQuadrant: string}}
+   */
+  static getMarsSeasonMetadata(LsDeg) {
+    let ls = LsDeg % 360.0;
+    if (ls < 0) ls += 360.0;
+
+    let idx = 0;
+    let nSeason = 'Spring';
+    let sSeason = 'Autumn';
+    let quad = 'Q1 (0 - 90 deg)';
+    let degInSeason = ls;
+
+    if (ls >= 270.0) {
+      idx = 3;
+      nSeason = 'Winter';
+      sSeason = 'Summer';
+      quad = 'Q4 (270 - 360 deg)';
+      degInSeason = ls - 270.0;
+    } else if (ls >= 180.0) {
+      idx = 2;
+      nSeason = 'Autumn';
+      sSeason = 'Spring';
+      quad = 'Q3 (180 - 270 deg)';
+      degInSeason = ls - 180.0;
+    } else if (ls >= 90.0) {
+      idx = 1;
+      nSeason = 'Summer';
+      sSeason = 'Winter';
+      quad = 'Q2 (90 - 180 deg)';
+      degInSeason = ls - 90.0;
+    }
+
+    const progressPct = (degInSeason / 90.0) * 100.0;
+
+    return {
+      seasonIndex: idx,
+      northernSeason: nSeason,
+      southernSeason: sSeason,
+      seasonProgressPercent: parseFloat(progressPct.toFixed(2)),
+      solQuadrant: quad
+    };
+  }
 }
+
 
 
 
