@@ -30,7 +30,7 @@ import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -5355,6 +5355,35 @@ describe('Impactor Energy, Schmidt-Housen Scaling & Morphometry (CSFDEngine)', (
         expect(morph.apparentDepthMeters).to.equal(400.0);
         expect(morph.excavationDepthMeters).to.equal(200.0);
         expect(morph.totalRimFloorDepthMeters).to.equal(480.0);
+    });
+});
+
+describe('Bounding Circle, Great Circle Intersection & Ellipse Area (GeoUtil)', () => {
+    it('should calculate spherical enclosing bounding circle and ellipse surface area', () => {
+        // Square centered at (0, 0) with half-width 5 deg
+        const sq = [[-5, -5], [-5, 5], [5, 5], [5, -5]];
+        const circle = computeSphericalBoundingCircle(sq, 'mars');
+        expect(circle.centerLat).to.be.closeTo(0.0, 0.01);
+        expect(circle.centerLon).to.be.closeTo(0.0, 0.01);
+        expect(circle.radiusKm).to.be.greaterThan(400.0);
+
+        // Elliptical caldera semi-major = 10 km, semi-minor = 6 km -> Area = pi * 10 * 6 = 188.50 km^2
+        // Eccentricity = sqrt(1 - 36/100) = sqrt(0.64) = 0.80
+        const ellipse = computePlanetaryEllipseSurfaceArea(10.0, 6.0);
+        expect(ellipse.surfaceAreaKm2).to.be.closeTo(188.50, 0.1);
+        expect(ellipse.eccentricity).to.equal(0.8);
+        expect(ellipse.flattening).to.equal(0.4);
+    });
+
+    it('should compute exact intersection coordinates of two great circles', () => {
+        // Circle 1: Equator (lat 0, lon -90 to lon +90)
+        // Circle 2: Prime Meridian (lon 0, lat -90 to lat +90)
+        // Intersection point: (0, 0) and antipodal point (0, 180)
+        const isect = computeGreatCircleIntersection(0, -90, 0, 90, -90, 0, 90, 0);
+        expect(Math.abs(isect.lat)).to.be.lessThan(0.01);
+        expect(Math.abs(isect.antipodalLat)).to.be.lessThan(0.01);
+        expect([0, 180]).to.include(Math.round(Math.abs(isect.lon)));
+        expect([0, 180]).to.include(Math.round(Math.abs(isect.antipodalLon)));
     });
 });
 

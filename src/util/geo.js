@@ -816,6 +816,129 @@ export function computePolylineDeflectionAngles(points = []) {
   return deflections;
 }
 
+/**
+ * Calculate the enclosing bounding circle (centroid and bounding radius in km) for a collection of points.
+ * @param {Array<[number, number]>} points - Array of [lat, lon] coordinates
+ * @param {string} [body='mars'] - Planetary body key
+ * @returns {{centerLat: number, centerLon: number, radiusKm: number}}
+ */
+export function computeSphericalBoundingCircle(points = [], body = 'mars') {
+  if (!points || points.length === 0) {
+    return { centerLat: 0, centerLon: 0, radiusKm: 0 };
+  }
+
+  if (points.length === 1) {
+    return { centerLat: points[0][0], centerLon: points[0][1], radiusKm: 0 };
+  }
+
+  // Centroid computation via 3D unit cartesian vectors
+  let x = 0, y = 0, z = 0;
+  for (const pt of points) {
+    const latRad = pt[0] * Math.PI / 180.0;
+    const lonRad = pt[1] * Math.PI / 180.0;
+    x += Math.cos(latRad) * Math.cos(lonRad);
+    y += Math.cos(latRad) * Math.sin(lonRad);
+    z += Math.sin(latRad);
+  }
+
+  const n = points.length;
+  x /= n; y /= n; z /= n;
+  const hyp = Math.hypot(x, y);
+
+  const cLat = Math.atan2(z, hyp) * 180.0 / Math.PI;
+  const cLon = Math.atan2(y, x) * 180.0 / Math.PI;
+
+  // Find maximum spherical distance from centroid to any vertex
+  let maxDistKm = 0;
+  for (const pt of points) {
+    const d = haversineDistance(cLat, cLon, pt[0], pt[1], body);
+    if (d > maxDistKm) maxDistKm = d;
+  }
+
+  return {
+    centerLat: parseFloat(cLat.toFixed(4)),
+    centerLon: parseFloat(to180(cLon).toFixed(4)),
+    radiusKm: parseFloat(maxDistKm.toFixed(3))
+  };
+}
+
+/**
+ * Calculate the intersection coordinates between two great circles on a sphere.
+ * (Circle 1 defined by points 1A and 1B, Circle 2 defined by points 2A and 2B).
+ * @param {number} lat1A - Point 1A latitude
+ * @param {number} lon1A - Point 1A longitude
+ * @param {number} lat1B - Point 1B latitude
+ * @param {number} lon1B - Point 1B longitude
+ * @param {number} lat2A - Point 2A latitude
+ * @param {number} lon2A - Point 2A longitude
+ * @param {number} lat2B - Point 2B latitude
+ * @param {number} lon2B - Point 2B longitude
+ * @returns {{lat: number, lon: number, antipodalLat: number, antipodalLon: number}}
+ */
+export function computeGreatCircleIntersection(lat1A, lon1A, lat1B, lon1B, lat2A, lon2A, lat2B, lon2B) {
+  const p1A = sphericalToCartesian(lat1A, lon1A, 1.0);
+  const p1B = sphericalToCartesian(lat1B, lon1B, 1.0);
+  const p2A = sphericalToCartesian(lat2A, lon2A, 1.0);
+  const p2B = sphericalToCartesian(lat2B, lon2B, 1.0);
+
+  // Normal vector to plane 1 = p1A x p1B
+  const n1 = [
+    p1A.y * p1B.z - p1A.z * p1B.y,
+    p1A.z * p1B.x - p1A.x * p1B.z,
+    p1A.x * p1B.y - p1A.y * p1B.x
+  ];
+
+  // Normal vector to plane 2 = p2A x p2B
+  const n2 = [
+    p2A.y * p2B.z - p2A.z * p2B.y,
+    p2A.z * p2B.x - p2A.x * p2B.z,
+    p2A.x * p2B.y - p2A.y * p2B.x
+  ];
+
+  // Line of intersection vector = n1 x n2
+  const L = [
+    n1[1] * n2[2] - n1[2] * n2[1],
+    n1[2] * n2[0] - n1[0] * n2[2],
+    n1[0] * n2[1] - n1[1] * n2[0]
+  ];
+
+  const mag = Math.hypot(L[0], L[1], L[2]);
+  if (mag < 1e-10) {
+    return { lat: 0, lon: 0, antipodalLat: 0, antipodalLon: 0 };
+  }
+
+  const pInt = cartesianToSpherical(L[0] / mag, L[1] / mag, L[2] / mag);
+
+  return {
+    lat: parseFloat(pInt.lat.toFixed(4)),
+    lon: parseFloat(to180(pInt.lon).toFixed(4)),
+    antipodalLat: parseFloat((-pInt.lat).toFixed(4)),
+    antipodalLon: parseFloat(to180(pInt.lon + 180).toFixed(4))
+  };
+}
+
+/**
+ * Calculate surface area and eccentricity of an elliptical feature on a planetary surface.
+ * @param {number} semiMajorKm - Semi-major axis in km
+ * @param {number} semiMinorKm - Semi-minor axis in km
+ * @returns {{surfaceAreaKm2: number, eccentricity: number, flattening: number}}
+ */
+export function computePlanetaryEllipseSurfaceArea(semiMajorKm, semiMinorKm) {
+  const a = Math.max(0.001, semiMajorKm);
+  const b = Math.max(0.001, Math.min(a, semiMinorKm));
+
+  const area = Math.PI * a * b;
+  const ecc = Math.sqrt(Math.max(0, 1.0 - (b * b) / (a * a)));
+  const flat = (a - b) / a;
+
+  return {
+    surfaceAreaKm2: parseFloat(area.toFixed(2)),
+    eccentricity: parseFloat(ecc.toFixed(4)),
+    flattening: parseFloat(flat.toFixed(4))
+  };
+}
+
+
 
 
 

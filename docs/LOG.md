@@ -370,3 +370,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute subsolar coordinates and topocentric solar zenith irradiance
 ?: AssertionError: expected 129.62 to be close to 180 +/- 1
     at n.<anonymous> (unit.js:5326:49)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 21:00:57 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute exact intersection coordinates of two great circles
+?: AssertionError: expected +0 to equal 180
+    at n.<anonymous> (unit.js:5385:39)
