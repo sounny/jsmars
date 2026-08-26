@@ -287,3 +287,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate CRISM SINDEX2 polyhydrated sulfate and OLINDEX3 olivine indices
 ?: AssertionError: expected NaN to be above 0.15
     at n.<anonymous> (unit.js:3462:35)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 07:45:39 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should project forward Gnomonic perspective coordinates
+?: AssertionError: expected undefined to equal true
+    at n.<anonymous> (unit.js:3363:31)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 07:46:25 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should forward and inverse project coordinates under transverse Cassini-Soldner projection
+?: AssertionError: expected 600.517 to be close to 591.95 +/- 2
+    at n.<anonymous> (unit.js:4428:33)

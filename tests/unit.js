@@ -4419,6 +4419,32 @@ describe('OLINDEX Extended, Quartz Ratio & Band Asymmetry (BandMathEngine)', () 
     });
 });
 
+describe('Cassini-Soldner Projection & Tissot Area Distortion (ProjectionManager)', () => {
+    it('should forward and inverse project coordinates under transverse Cassini-Soldner projection', () => {
+        // Mars R = 3389.5 km, origin (0°, 0°), point (10°N, 10°E)
+        // x = 3389.5 * asin(cos(10°) * sin(10°)) = 3389.5 * asin(0.9848 * 0.1736) = 3389.5 * asin(0.1710) = 3389.5 * 0.1718 rad ~ 582.47 km
+        const csFwd = ProjectionManager.forwardCassiniSoldner(10.0, 10.0, 0.0, 0.0, 'mars');
+        expect(csFwd.xKm).to.be.closeTo(582.47, 1.0);
+        expect(csFwd.yKm).to.be.closeTo(600.52, 1.0);
+
+        const csInv = ProjectionManager.inverseCassiniSoldner(csFwd.xKm, csFwd.yKm, 0.0, 0.0, 'mars');
+        expect(csInv.latDeg).to.be.closeTo(10.0, 0.01);
+        expect(csInv.lonDeg).to.be.closeTo(10.0, 0.01);
+    });
+
+    it('should calculate Tissot indicatrix areal magnification scale factor', () => {
+        // Sinusoidal equal-area -> areaScale = 1.0, isEqualArea = true
+        const sinu = ProjectionManager.computeTissotAreaDistortionScale(45.0, 'sinusoidal');
+        expect(sinu.areaScale).to.equal(1.0);
+        expect(sinu.isEqualArea).to.be.true;
+
+        // Mercator at 60° latitude -> sec(60°) = 2.0 -> areaScale = 4.0, isConformal = true
+        const merc = ProjectionManager.computeTissotAreaDistortionScale(60.0, 'mercator');
+        expect(merc.areaScale).to.be.closeTo(4.0, 0.05);
+        expect(merc.isConformal).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1197,7 +1197,116 @@ export class ProjectionManager {
       convergenceAngleRad: parseFloat(gammaRad.toFixed(5))
     };
   }
+
+  // --- Cassini-Soldner Projection, Inverse Gnomonic & Tissot Area Distortion Solvers ---
+
+  /**
+   * Forward Cassini-Soldner transverse cylindrical projection (used for high-resolution narrow orbital swaths).
+   * x = R * asin(cos(phi) * sin(lambda - lambda0))
+   * y = R * ( atan(tan(phi) / cos(lambda - lambda0)) - phi0 )
+   * @param {number} latDeg - Point latitude in degrees
+   * @param {number} lonDeg - Point longitude in degrees
+   * @param {number} [lat0Deg=0.0] - Projection origin latitude in degrees
+   * @param {number} [lon0Deg=0.0] - Central meridian longitude in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{xKm: number, yKm: number}} Projected coordinates in km
+   */
+  static forwardCassiniSoldner(latDeg, lonDeg, lat0Deg = 0.0, lon0Deg = 0.0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = latDeg * Math.PI / 180.0;
+    const dLam = to180(lonDeg - lon0Deg) * Math.PI / 180.0;
+    const phi0 = lat0Deg * Math.PI / 180.0;
+
+    const x = R * Math.asin(Math.cos(phi) * Math.sin(dLam));
+    const y = R * (Math.atan2(Math.tan(phi), Math.cos(dLam)) - phi0);
+
+    return {
+      xKm: parseFloat(x.toFixed(3)),
+      yKm: parseFloat(y.toFixed(3))
+    };
+  }
+
+  /**
+   * Inverse Cassini-Soldner projection.
+   * @param {number} xKm - Projected X in km
+   * @param {number} yKm - Projected Y in km
+   * @param {number} [lat0Deg=0.0] - Projection origin latitude
+   * @param {number} [lon0Deg=0.0] - Central meridian longitude
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{latDeg: number, lonDeg: number}} Unprojected coordinates
+   */
+  static inverseCassiniSoldner(xKm, yKm, lat0Deg = 0.0, lon0Deg = 0.0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi0 = lat0Deg * Math.PI / 180.0;
+
+    const D = yKm / R + phi0;
+    const xR = xKm / R;
+
+    const sinPhi = Math.sin(D) * Math.cos(xR);
+    const phi = Math.asin(Math.max(-1.0, Math.min(1.0, sinPhi)));
+    const dLam = Math.atan2(Math.tan(xR), Math.cos(D));
+
+    return {
+      latDeg: parseFloat((phi * 180.0 / Math.PI).toFixed(4)),
+      lonDeg: parseFloat(to180(lon0Deg + dLam * 180.0 / Math.PI).toFixed(4))
+    };
+  }
+
+  /**
+   * Inverse Gnomonic (tangent plane) projection.
+   * @param {number} xKm - Projected X in km
+   * @param {number} yKm - Projected Y in km
+   * @param {number} [centerLatDeg=0.0] - Tangent center latitude
+   * @param {number} [centerLonDeg=0.0] - Tangent center longitude
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{latDeg: number, lonDeg: number}} Unprojected coordinates
+   */
+  static inverseGnomonic(xKm, yKm, centerLatDeg = 0.0, centerLonDeg = 0.0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi0 = centerLatDeg * Math.PI / 180.0;
+    const lam0 = centerLonDeg * Math.PI / 180.0;
+
+    const rho = Math.hypot(xKm, yKm);
+    if (rho < 1e-6) {
+      return { latDeg: centerLatDeg, lonDeg: to180(centerLonDeg) };
+    }
+
+    const c = Math.atan(rho / R);
+    const sinC = Math.sin(c);
+    const cosC = Math.cos(c);
+
+    const sinPhi = cosC * Math.sin(phi0) + (yKm * sinC * Math.cos(phi0)) / rho;
+    const phi = Math.asin(Math.max(-1.0, Math.min(1.0, sinPhi)));
+
+    const yTerm = rho * Math.cos(phi0) * cosC - yKm * Math.sin(phi0) * sinC;
+    const dLam = Math.atan2(xKm * sinC, yTerm);
+    const lam = lam0 + dLam;
+
+    return {
+      latDeg: parseFloat((phi * 180.0 / Math.PI).toFixed(4)),
+      lonDeg: parseFloat(to180(lam * 180.0 / Math.PI).toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate exact Tissot's indicatrix areal magnification scale factor s = h * k.
+   * @param {number} latDeg - Latitude in degrees
+   * @param {string} [projType='mercator'] - Projection type
+   * @returns {{areaScale: number, isConformal: boolean, isEqualArea: boolean}}
+   */
+  static computeTissotAreaDistortionScale(latDeg, projType = 'mercator') {
+    const tissot = this.computeTissotIndicatrix(latDeg, projType);
+    const isEqArea = Math.abs(tissot.areaScale - 1.0) < 1e-3;
+    const isConf = Math.abs(tissot.a - tissot.b) < 1e-3;
+
+    return {
+      areaScale: tissot.areaScale,
+      isConformal: isConf,
+      isEqualArea: isEqArea
+    };
+  }
 }
+
 
 
 
