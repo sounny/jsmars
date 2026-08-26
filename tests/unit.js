@@ -5329,6 +5329,35 @@ describe('Heliocentric Distance, Subsolar Coordinates & Topocentric Irradiance (
     });
 });
 
+describe('Impactor Energy, Schmidt-Housen Scaling & Morphometry (CSFDEngine)', () => {
+    it('should calculate impactor mass and kinetic energy in Joules and Megatons TNT', () => {
+        // L = 100 m, v = 12.0 km/s (12,000 m/s), rho = 3000 kg/m^3
+        // Vol = (pi / 6) * 100^3 = 523,598.77 m^3 -> Mass = 523,598.77 * 3000 = 1.5708e9 kg
+        // Energy = 0.5 * 1.5708e9 * (1.2e4)^2 = 0.5 * 1.5708e9 * 1.44e8 = 1.131e17 J
+        // MT TNT = 1.131e17 / 4.184e15 = 27.03 MT
+        const impact = CSFDEngine.computeImpactorKineticEnergyJoules(100.0, 12.0, 3000.0);
+        expect(impact.projectileMassKg).to.be.closeTo(1.571e9, 0.01e9);
+        expect(impact.kineticEnergyJoules).to.be.closeTo(1.131e17, 0.01e17);
+        expect(impact.energyMegatonsTNT).to.be.closeTo(27.03, 0.5);
+    });
+
+    it('should compute Schmidt-Housen transient cavity diameter and simple crater morphometry', () => {
+        // L = 100 m, v = 12 km/s, angle = 45 deg, rho_imp = 3000, rho_targ = 2600, g = 3.72
+        const scaling = CSFDEngine.computeSchmidtHousenTransientDiameter(100.0, 12.0, 45.0, 3000.0, 2600.0, 3.72076);
+        expect(scaling.transientDiameterMeters).to.be.greaterThan(1200.0);
+        expect(scaling.transientDiameterMeters).to.be.lessThan(2500.0);
+        expect(scaling.excavationDepthMeters).to.be.closeTo(scaling.transientDiameterMeters / 3.0, 0.5);
+
+        // Simple bowl crater D_f = 2.0 km (2000 m)
+        // hRim = 0.04 * 2000 = 80 m, dApp = 0.20 * 2000 = 400 m, dExc = 200 m, dTotal = 480 m
+        const morph = CSFDEngine.computeSimpleCraterMorphometryProfile(2.0);
+        expect(morph.rimHeightMeters).to.equal(80.0);
+        expect(morph.apparentDepthMeters).to.equal(400.0);
+        expect(morph.excavationDepthMeters).to.equal(200.0);
+        expect(morph.totalRimFloorDepthMeters).to.equal(480.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

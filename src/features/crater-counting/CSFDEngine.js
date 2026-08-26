@@ -1507,7 +1507,88 @@ export class CSFDEngine {
       hasCentralPeak: true
     };
   }
+
+  // --- Impactor Kinetic Energy, Schmidt-Housen Scaling & Morphometry Solvers ---
+
+  /**
+   * Calculate impactor projectile mass and kinetic energy in Joules and Megatons TNT equivalent.
+   * E_k = 0.5 * m * v^2 = (pi / 12) * rho_imp * L^3 * v^2
+   * @param {number} impactorDiameterMeters - Impactor projectile diameter L in meters
+   * @param {number} impactVelocityKmS - Impact velocity in km/s (e.g. 10 to 15 km/s for Mars)
+   * @param {number} [impactorDensityKgM3=3000.0] - Impactor bulk density in kg/m^3 (3000 for chondrite, 7800 for iron)
+   * @returns {{projectileMassKg: number, kineticEnergyJoules: number, energyMegatonsTNT: number}}
+   */
+  static computeImpactorKineticEnergyJoules(impactorDiameterMeters, impactVelocityKmS, impactorDensityKgM3 = 3000.0) {
+    const L = Math.max(0.1, impactorDiameterMeters);
+    const vMs = Math.max(0.1, impactVelocityKmS) * 1000.0;
+    const rho = Math.max(100.0, impactorDensityKgM3);
+
+    const volumeM3 = (Math.PI / 6.0) * Math.pow(L, 3);
+    const massKg = volumeM3 * rho;
+    const energyJ = 0.5 * massKg * Math.pow(vMs, 2);
+    const energyMT = energyJ / 4.184e15; // 1 MT TNT = 4.184e15 J
+
+    return {
+      projectileMassKg: parseFloat(massKg.toExponential(4)),
+      kineticEnergyJoules: parseFloat(energyJ.toExponential(4)),
+      energyMegatonsTNT: parseFloat(energyMT.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate transient crater diameter using Schmidt-Housen-Gault gravity-dominated scaling laws (Schmidt & Housen 1987).
+   * D_tc = 1.161 * (rho_imp / rho_targ)^(1/3) * L^0.78 * v^0.44 * g^(-0.22) * sin(theta)^(1/3)
+   * @param {number} impactorDiameterMeters - Impactor diameter L in meters
+   * @param {number} impactVelocityKmS - Impact velocity in km/s
+   * @param {number} [impactAngleDeg=45.0] - Impact angle from horizontal in degrees (most probable is 45 deg)
+   * @param {number} [impactorDensityKgM3=3000.0] - Impactor density in kg/m^3
+   * @param {number} [targetDensityKgM3=2600.0] - Target crustal density in kg/m^3
+   * @param {number} [gravityMps2=3.72076] - Surface gravitational acceleration in m/s^2
+   * @returns {{transientDiameterMeters: number, transientDiameterKm: number, excavationDepthMeters: number}}
+   */
+  static computeSchmidtHousenTransientDiameter(impactorDiameterMeters, impactVelocityKmS, impactAngleDeg = 45.0, impactorDensityKgM3 = 3000.0, targetDensityKgM3 = 2600.0, gravityMps2 = 3.72076) {
+    const L = Math.max(0.1, impactorDiameterMeters);
+    const v = Math.max(0.1, impactVelocityKmS) * 1000.0; // in m/s
+    const thetaRad = (Math.max(1.0, Math.min(90.0, impactAngleDeg)) * Math.PI) / 180.0;
+    const rhoImp = Math.max(100.0, impactorDensityKgM3);
+    const rhoTarg = Math.max(100.0, targetDensityKgM3);
+    const g = Math.max(0.1, gravityMps2);
+
+    const densityRatio = Math.pow(rhoImp / rhoTarg, 1.0 / 3.0);
+    const sinAngle = Math.pow(Math.sin(thetaRad), 1.0 / 3.0);
+
+    const Dtc = 1.161 * densityRatio * Math.pow(L, 0.78) * Math.pow(v, 0.44) * Math.pow(g, -0.22) * sinAngle;
+    const excavationDepth = Dtc / 3.0; // Transient excavation depth is ~1/3 of transient diameter
+
+    return {
+      transientDiameterMeters: parseFloat(Dtc.toFixed(1)),
+      transientDiameterKm: parseFloat((Dtc / 1000.0).toFixed(3)),
+      excavationDepthMeters: parseFloat(excavationDepth.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate classic simple bowl-shaped crater morphometry dimensions (Pike 1977, Melosh 1989).
+   * @param {number} finalDiameterKm - Final rim-to-rim diameter in km
+   * @returns {{rimHeightMeters: number, apparentDepthMeters: number, excavationDepthMeters: number, totalRimFloorDepthMeters: number}}
+   */
+  static computeSimpleCraterMorphometryProfile(finalDiameterKm) {
+    const D = Math.max(0.001, finalDiameterKm) * 1000.0; // in meters
+
+    const hRim = 0.04 * D;          // Rim uplift height above pre-impact surface
+    const dApparent = 0.20 * D;     // Depth below pre-impact surface
+    const dExcavation = 0.10 * D;   // Depth of excavated pre-impact rock
+    const dTotal = hRim + dApparent; // Total rim crest to crater floor depth (~0.24 D)
+
+    return {
+      rimHeightMeters: parseFloat(hRim.toFixed(1)),
+      apparentDepthMeters: parseFloat(dApparent.toFixed(1)),
+      excavationDepthMeters: parseFloat(dExcavation.toFixed(1)),
+      totalRimFloorDepthMeters: parseFloat(dTotal.toFixed(1))
+    };
+  }
 }
+
 
 
 
