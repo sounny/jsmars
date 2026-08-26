@@ -938,6 +938,100 @@ export function computePlanetaryEllipseSurfaceArea(semiMajorKm, semiMinorKm) {
   };
 }
 
+// --- Somigliana Theoretical Gravity, Latitude Conversion & Rhumb Line Solvers ---
+
+/**
+ * Calculate theoretical normal surface gravity g(phi) on an oblate planetary ellipsoid (Somigliana equation).
+ * g(phi) = g_e * ( (1 + k * sin^2(phi)) / sqrt(1 - e^2 * sin^2(phi)) )
+ * @param {number} latDeg - Observer latitude in degrees (-90 to +90)
+ * @param {number} [equatorialGravity=3.71] - Equatorial surface gravity in m/s^2 (3.71 m/s^2 for Mars)
+ * @param {number} [polarGravity=3.73] - Polar surface gravity in m/s^2 (3.73 m/s^2 for Mars)
+ * @param {number} [semiMajorKm=3396.19] - Equatorial semi-major radius a in km
+ * @param {number} [semiMinorKm=3376.20] - Polar semi-minor radius b in km
+ * @returns {{normalGravityMps2: number, latitudeDeg: number, gravityRatio: number}}
+ */
+export function computeSomiglianaTheoreticalGravity(latDeg, equatorialGravity = 3.71, polarGravity = 3.73, semiMajorKm = 3396.19, semiMinorKm = 3376.20) {
+  const phiRad = (Math.max(-90.0, Math.min(90.0, latDeg)) * Math.PI) / 180.0;
+  const ge = Math.max(0.1, equatorialGravity);
+  const gp = Math.max(0.1, polarGravity);
+  const a = Math.max(1.0, semiMajorKm);
+  const b = Math.max(1.0, Math.min(a, semiMinorKm));
+
+  const k = (b * gp - a * ge) / (a * ge);
+  const e2 = (a * a - b * b) / (a * a);
+  const sin2Phi = Math.pow(Math.sin(phiRad), 2);
+
+  const gPhi = ge * ((1.0 + k * sin2Phi) / Math.sqrt(Math.max(1e-6, 1.0 - e2 * sin2Phi)));
+
+  return {
+    normalGravityMps2: parseFloat(gPhi.toFixed(4)),
+    latitudeDeg: parseFloat(latDeg.toFixed(2)),
+    gravityRatio: parseFloat((gPhi / ge).toFixed(5))
+  };
+}
+
+/**
+ * Convert between Planetographic latitude and Planetocentric latitude on an oblate spheroid.
+ * tan(phi_c) = (1 - f)^2 * tan(phi_g)
+ * @param {number} planetographicLatDeg - Planetographic latitude in degrees (-90 to +90)
+ * @param {number} [flattening=0.005886] - Ellipsoidal flattening f = (a - b) / a (0.005886 for Mars)
+ * @returns {{planetocentricLatDeg: number, planetographicLatDeg: number, differenceDeg: number}}
+ */
+export function convertPlanetographicToPlanetocentricLatitude(planetographicLatDeg, flattening = 0.005886) {
+  const phiG = Math.max(-90.0, Math.min(90.0, planetographicLatDeg));
+  const f = Math.max(0.0, Math.min(0.5, flattening));
+
+  if (Math.abs(Math.abs(phiG) - 90.0) < 1e-6) {
+    return {
+      planetocentricLatDeg: phiG,
+      planetographicLatDeg: phiG,
+      differenceDeg: 0.0
+    };
+  }
+
+  const phiGRad = (phiG * Math.PI) / 180.0;
+  const factor = Math.pow(1.0 - f, 2);
+  const tanPhiC = factor * Math.tan(phiGRad);
+  const phiCRad = Math.atan(tanPhiC);
+  const phiCDeg = (phiCRad * 180.0) / Math.PI;
+
+  return {
+    planetocentricLatDeg: parseFloat(phiCDeg.toFixed(4)),
+    planetographicLatDeg: parseFloat(phiG.toFixed(4)),
+    differenceDeg: parseFloat((phiG - phiCDeg).toFixed(4))
+  };
+}
+
+/**
+ * Calculate constant-bearing Rhumb Line (loxodrome) heading azimuth angle between two planetary coordinates.
+ * @param {number} lat1 - Starting latitude in degrees
+ * @param {number} lon1 - Starting longitude in degrees
+ * @param {number} lat2 - Ending latitude in degrees
+ * @param {number} lon2 - Ending longitude in degrees
+ * @returns {{bearingDeg: number, dLonDeg: number, isEastward: boolean}}
+ */
+export function computeGreatCircleRhumbLineHeading(lat1, lon1, lat2, lon2) {
+  const phi1 = (lat1 * Math.PI) / 180.0;
+  const phi2 = (lat2 * Math.PI) / 180.0;
+
+  let dLon = lon2 - lon1;
+  while (dLon > 180) dLon -= 360;
+  while (dLon < -180) dLon += 360;
+  const dLonRad = (dLon * Math.PI) / 180.0;
+
+  const dPsi = Math.log(Math.tan(Math.PI / 4.0 + phi2 / 2.0) / Math.max(1e-10, Math.tan(Math.PI / 4.0 + phi1 / 2.0)));
+  const thetaRad = Math.atan2(dLonRad, dPsi);
+  let bearingDeg = (thetaRad * 180.0) / Math.PI;
+  bearingDeg = (bearingDeg + 360.0) % 360.0;
+
+  return {
+    bearingDeg: parseFloat(bearingDeg.toFixed(2)),
+    dLonDeg: parseFloat(dLon.toFixed(4)),
+    isEastward: dLon > 0
+  };
+}
+
+
 
 
 

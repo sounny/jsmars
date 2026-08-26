@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -5699,6 +5699,41 @@ describe('Boundary Layer Friction, Sensible Heat Flux & Scale Height (MCDEngine)
         const scale = MCDEngine.computeAtmosphericScaleHeightProfile(220.0, 43.34, 3.72076);
         expect(scale.scaleHeightKm).to.be.closeTo(11.34, 0.05);
         expect(scale.scaleHeightMeters).to.be.closeTo(11343.2, 5.0);
+    });
+});
+
+describe('Somigliana Theoretical Gravity, Planetographic Latitude & Rhumb Lines (GeoUtil)', () => {
+    it('should calculate Somigliana theoretical normal gravity on oblate Mars ellipsoid', () => {
+        // Equator (0 deg): g = 3.71 m/s^2
+        const eq = computeSomiglianaTheoreticalGravity(0.0, 3.71, 3.73, 3396.19, 3376.20);
+        expect(eq.normalGravityMps2).to.equal(3.71);
+        expect(eq.gravityRatio).to.equal(1.0);
+
+        // Pole (90 deg): g = 3.73 m/s^2
+        const pole = computeSomiglianaTheoreticalGravity(90.0, 3.71, 3.73, 3396.19, 3376.20);
+        expect(pole.normalGravityMps2).to.equal(3.73);
+        expect(pole.gravityRatio).to.be.greaterThan(1.0);
+
+        // Mid-latitude (45 deg): g ~ 3.72 m/s^2
+        const mid = computeSomiglianaTheoreticalGravity(45.0, 3.71, 3.73, 3396.19, 3376.20);
+        expect(mid.normalGravityMps2).to.be.closeTo(3.72, 0.01);
+    });
+
+    it('should convert planetographic to planetocentric latitude and calculate rhumb line heading', () => {
+        // Planetographic 45° with Mars flattening f = 0.005886
+        // tan(phi_c) = (1 - 0.005886)^2 * tan(45°) = (0.994114)^2 * 1.0 = 0.98826 -> phi_c = 44.6606°
+        const conv = convertPlanetographicToPlanetocentricLatitude(45.0, 0.005886);
+        expect(conv.planetocentricLatDeg).to.be.closeTo(44.6606, 0.01);
+        expect(conv.differenceDeg).to.be.closeTo(0.3394, 0.01);
+
+        // Rhumb line heading due East along latitude (lat1 = 10, lon1 = 0) to (lat2 = 10, lon2 = 50) -> bearing = 90°
+        const east = computeGreatCircleRhumbLineHeading(10.0, 0.0, 10.0, 50.0);
+        expect(east.bearingDeg).to.equal(90.0);
+        expect(east.isEastward).to.be.true;
+
+        // Rhumb line heading due North (lat1 = 0, lon1 = 20) to (lat2 = 60, lon2 = 20) -> bearing = 0°
+        const north = computeGreatCircleRhumbLineHeading(0.0, 20.0, 60.0, 20.0);
+        expect(north.bearingDeg).to.equal(0.0);
     });
 });
 
