@@ -3719,6 +3719,29 @@ describe('CRISM BD1900r Hydration, Pyroxene & Curvature (BandMathEngine)', () =>
     });
 });
 
+describe('NPF Production Isochron, Geometric Binning & R-Plot (CSFDEngine)', () => {
+    it('should compute exact 11th-order Neukum Production Function cumulative density', () => {
+        // NPF at D = 1 km, Age = 1.0 Ga -> ~4.13e-4 craters/km^2 (log10 ~ -3.38)
+        const npf = CSFDEngine.computeNeukumProductionValue(1.0, 1.0);
+        expect(npf.cumulativeNDensityPerKm2).to.be.greaterThan(1e-4);
+        expect(npf.cumulativeNDensityPerKm2).to.be.lessThan(1e-3);
+        expect(npf.log10N).to.be.closeTo(-3.38, 0.2);
+    });
+
+    it('should calculate logarithmic bin boundaries and single-bin R-plot frequency', () => {
+        // Geometric sqrt(2) bin around D = 1.0 km -> lower ~ 0.841, upper ~ 1.189, deltaD ~ 0.348
+        const bin = CSFDEngine.computeGeometricBinBoundaries(1.0, Math.SQRT2);
+        expect(bin.dLowerKm).to.be.closeTo(0.841, 0.01);
+        expect(bin.dUpperKm).to.be.closeTo(1.189, 0.01);
+        expect(bin.deltaDKm).to.be.closeTo(0.348, 0.01);
+
+        // 100 craters in 1 km bin across 10^6 km^2
+        const r = CSFDEngine.computeRPlotValue(100, 1.0, bin.deltaDKm, 1e6);
+        expect(r.rValue).to.be.greaterThan(1e-4);
+        expect(r.errorRValue).to.be.lessThan(r.rValue);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

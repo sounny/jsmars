@@ -893,7 +893,86 @@ export class CSFDEngine {
       logLikelihood: parseFloat(logLikelihood.toFixed(3))
     };
   }
+
+  // --- Neukum Production Function, Geometric Binning & R-Plot Value Solvers ---
+
+  /**
+   * Evaluate the exact 11th-order Neukum Production Function (NPF) cumulative crater frequency.
+   * log10(N(>D)) = sum( a_j * (log10(D))^j ) * (N1(t) / N1(1 Ga))
+   * @param {number} diameterKm - Crater diameter in km
+   * @param {number} [ageGa=1.0] - Model surface age in Ga
+   * @returns {{cumulativeNDensityPerKm2: number, log10N: number, n1GaScaling: number}}
+   */
+  static computeNeukumProductionValue(diameterKm, ageGa = 1.0) {
+    const D = Math.max(0.001, diameterKm);
+    const logD = Math.log10(D);
+
+    let logN_1Ga = 0;
+    for (let j = 0; j < this.NPF_COEFFS.length; j++) {
+      logN_1Ga += this.NPF_COEFFS[j] * Math.pow(logD, j);
+    }
+
+    const n1 = this.chronologyN1(Math.max(0.001, ageGa));
+    const n1_1Ga = Math.pow(10, this.NPF_COEFFS[0]);
+    const scaling = n1 / n1_1Ga;
+
+    const nPerKm2 = Math.pow(10, logN_1Ga) * scaling;
+
+    return {
+      cumulativeNDensityPerKm2: parseFloat(nPerKm2.toExponential(4)),
+      log10N: parseFloat((logN_1Ga + Math.log10(scaling)).toFixed(3)),
+      n1GaScaling: parseFloat(scaling.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate standard geometric pseudo-logarithmic diameter bin boundaries.
+   * D_lower = D / 2^(1/4),  D_upper = D * 2^(1/4),  D_center = D,  Delta_D = D_upper - D_lower
+   * @param {number} diameterCenterKm - Geometric bin center diameter in km
+   * @param {number} [factor=Math.SQRT2] - Bin expansion factor (sqrt(2) standard)
+   * @returns {{dLowerKm: number, dUpperKm: number, dCenterKm: number, deltaDKm: number}}
+   */
+  static computeGeometricBinBoundaries(diameterCenterKm, factor = Math.SQRT2) {
+    const halfFactor = Math.pow(factor, 0.5); // 2^(1/4) ~ 1.1892
+    const dCenter = Math.max(0.001, diameterCenterKm);
+    const dLower = dCenter / halfFactor;
+    const dUpper = dCenter * halfFactor;
+    const deltaD = dUpper - dLower;
+
+    return {
+      dLowerKm: parseFloat(dLower.toFixed(4)),
+      dUpperKm: parseFloat(dUpper.toFixed(4)),
+      dCenterKm: parseFloat(dCenter.toFixed(4)),
+      deltaDKm: parseFloat(deltaD.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate Planetary Relative Crater Frequency (R-plot) value for a single diameter bin.
+   * R = (N * D_center^3) / (A * Delta_D)
+   * @param {number} countInBin - Number of craters in the bin
+   * @param {number} dCenterKm - Geometric mean / center diameter in km
+   * @param {number} binWidthKm - Delta D in km
+   * @param {number} [countAreaKm2=1e6] - Total counting area in km^2
+   * @returns {{rValue: number, rValueScientific: string, errorRValue: number}}
+   */
+  static computeRPlotValue(countInBin, dCenterKm, binWidthKm, countAreaKm2 = 1e6) {
+    const N = Math.max(0, countInBin);
+    const D3 = Math.pow(Math.max(0.001, dCenterKm), 3);
+    const denom = Math.max(1, countAreaKm2) * Math.max(1e-6, binWidthKm);
+
+    const r = (N * D3) / denom;
+    const sigmaN = Math.sqrt(N);
+    const sigmaR = (sigmaN * D3) / denom;
+
+    return {
+      rValue: parseFloat(r.toExponential(4)),
+      rValueScientific: r.toExponential(3),
+      errorRValue: parseFloat(sigmaR.toExponential(4))
+    };
+  }
 }
+
 
 
 
