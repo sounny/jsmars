@@ -4498,6 +4498,28 @@ describe('Bulk Richardson Number, Convective Velocity & Eddy Diffusivity (MCDEng
     });
 });
 
+describe('NPF Slope, Strength-Gravity Transition & Isochron Offset (CSFDEngine)', () => {
+    it('should calculate local logarithmic slope derivative of Neukum Production Function at D = 1 km', () => {
+        // At D = 1 km, log10(D) = 0 -> slope = a1 = -3.5332, diffIndex = -(-3.5332 - 1) = 4.5332
+        const slope = CSFDEngine.computeNeukumProductionSlopeDerivative(1.0);
+        expect(slope.slopeDerivative).to.be.closeTo(-3.5332, 0.001);
+        expect(slope.differentialPowerIndex).to.be.closeTo(4.5332, 0.001);
+    });
+
+    it('should compute crater scaling strength-to-gravity transition diameter and isochron cumulative offset', () => {
+        // Y = 10 MPa (1e7 Pa), rho = 2900 kg/m^3, g = 3.72076 m/s^2 -> D_t = 1e7 / (2900 * 3.72076) = 1e7 / 10790.2 = 926.77 m ~ 0.927 km
+        const trans = CSFDEngine.computeStrengthToGravityTransitionDiameter(1e7, 2900.0, 'mars');
+        expect(trans.transitionDiameterKm).to.be.closeTo(0.927, 0.01);
+        expect(trans.transitionDiameterMeters).to.be.closeTo(926.8, 1.0);
+
+        // Reference 1 Ga chronology N(1) = 2.68e-14*(exp(6.93)-1) + 4.13e-4 = 2.68e-14 * 1021.49 + 4.13e-4 ~ 4.13e-4
+        // If observed N(1) = 8.26e-4 -> ratio ~ 2.0
+        const off = CSFDEngine.computeIsochronCumulativeOffset(4.13e-4, 1.0);
+        expect(off.densityRatioTo1Ga).to.be.closeTo(1.0, 0.05);
+        expect(off.impliedAgeGa).to.be.closeTo(1.0, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

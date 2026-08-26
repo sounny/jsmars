@@ -1168,7 +1168,74 @@ export class CSFDEngine {
       isStatisticallyRobust: N >= 30
     };
   }
+
+  // --- Neukum Polynomial Derivative, Strength-Gravity Transition & Isochron Offset Solvers ---
+
+  /**
+   * Calculate local logarithmic slope derivative s(D) = d(log10 N) / d(log10 D) of Neukum Production Function.
+   * @param {number} diameterKm - Crater diameter in km
+   * @returns {{slopeDerivative: number, differentialPowerIndex: number}}
+   */
+  static computeNeukumProductionSlopeDerivative(diameterKm) {
+    const D = Math.max(0.01, diameterKm);
+    const logD = Math.log10(D);
+
+    let dLogN_dLogD = 0;
+    for (let j = 1; j < this.NPF_COEFFS.length; j++) {
+      dLogN_dLogD += j * this.NPF_COEFFS[j] * Math.pow(logD, j - 1);
+    }
+
+    // Differential power index b = -(dLogN/dLogD - 1)
+    const diffIndex = -(dLogN_dLogD - 1.0);
+
+    return {
+      slopeDerivative: parseFloat(dLogN_dLogD.toFixed(4)),
+      differentialPowerIndex: parseFloat(diffIndex.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate crater scaling strength-to-gravity transition diameter D_t.
+   * D_t = Y / (rho_t * g)
+   * @param {number} [targetCohesionYieldStrengthPa=1e7] - Target rock yield strength Y (e.g. 10 MPa for basalt)
+   * @param {number} [targetDensityKgM3=2900.0] - Target rock density in kg/m^3
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{transitionDiameterKm: number, transitionDiameterMeters: number}}
+   */
+  static computeStrengthToGravityTransitionDiameter(targetCohesionYieldStrengthPa = 1e7, targetDensityKgM3 = 2900.0, body = 'mars') {
+    const g = body.toLowerCase() === 'moon' ? 1.62 : 3.72076;
+    const Y = Math.max(1e3, targetCohesionYieldStrengthPa);
+    const rhoT = Math.max(100.0, targetDensityKgM3);
+
+    const dMeters = Y / (rhoT * g);
+    const dKm = dMeters / 1000.0;
+
+    return {
+      transitionDiameterKm: parseFloat(dKm.toFixed(3)),
+      transitionDiameterMeters: parseFloat(dMeters.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate cumulative crater density vertical offset ratio relative to 1 Ga standard reference isochron.
+   * Ratio = N(1)_obs / N(1)_1Ga
+   * @param {number} observedN1PerKm2 - Observed cumulative density of craters >= 1 km per km^2
+   * @param {number} [referenceAgeGa=1.0] - Reference age (default 1.0 Ga)
+   * @returns {{densityRatioTo1Ga: number, impliedAgeGa: number}}
+   */
+  static computeIsochronCumulativeOffset(observedN1PerKm2, referenceAgeGa = 1.0) {
+    const n1Ref = this.chronologyN1(referenceAgeGa);
+    const n1Obs = Math.max(0, observedN1PerKm2);
+    const ratio = n1Ref > 0 ? n1Obs / n1Ref : 0;
+    const age = this.estimateAgeFromN1(n1Obs);
+
+    return {
+      densityRatioTo1Ga: parseFloat(ratio.toFixed(4)),
+      impliedAgeGa: parseFloat(age.toFixed(3))
+    };
+  }
 }
+
 
 
 
