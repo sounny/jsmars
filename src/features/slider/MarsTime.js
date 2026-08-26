@@ -1419,7 +1419,99 @@ export class MarsTime {
       solQuadrant: quad
     };
   }
+
+  // --- Heliocentric Distance, Subsolar Coordinates & Topocentric Irradiance ---
+
+  /**
+   * Calculate exact heliocentric Mars-Sun distance in AU and kilometers for a given Solar Longitude (Ls).
+   * r = a * (1 - e^2) / (1 + e * cos(Ls - Ls_perihelion))
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @returns {{distanceAU: number, distanceKm: number, isNearPerihelion: boolean}}
+   */
+  static computeHeliocentricDistanceAU(LsDeg) {
+    const a = 1.523679; // Semi-major axis in AU
+    const e = 0.09340;  // Eccentricity
+    const lsPerihelionDeg = 251.0; // Perihelion Ls
+
+    const nuRad = ((LsDeg - lsPerihelionDeg) * Math.PI) / 180.0;
+    const rAU = (a * (1.0 - e * e)) / (1.0 + e * Math.cos(nuRad));
+    const rKm = rAU * 149597870.7; // 1 AU in km
+
+    return {
+      distanceAU: parseFloat(rAU.toFixed(5)),
+      distanceKm: parseFloat(rKm.toFixed(0)),
+      isNearPerihelion: Math.abs(((LsDeg - lsPerihelionDeg + 540) % 360) - 180) < 45.0
+    };
+  }
+
+  /**
+   * Calculate subsolar point latitude and longitude on Mars.
+   * delta_s = asin(sin(epsilon) * sin(Ls))
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @param {number} [MTC_Hours=12.0] - Coordinated Mars Time in hours (0 to 24)
+   * @returns {{subsolarLatDeg: number, subsolarLonDeg: number, declinationRad: number}}
+   */
+  static computeSubsolarPoint(LsDeg, MTC_Hours = 12.0) {
+    const epsRad = (25.19 * Math.PI) / 180.0; // Mars obliquity
+    const lsRad = (LsDeg * Math.PI) / 180.0;
+
+    const sinDelta = Math.sin(epsRad) * Math.sin(lsRad);
+    const deltaRad = Math.asin(sinDelta);
+    const subLatDeg = (deltaRad * 180.0) / Math.PI;
+
+    // Subsolar longitude: at MTC = 12h, subsolar meridian is at 0 deg (prime meridian Airy-0)
+    // Plus Equation of Time correction
+    const eot = MarsTime.computeEquationOfTime(LsDeg);
+    const eotHours = eot.eotHours !== undefined ? eot.eotHours : (eot.eotMinutes || 0) / 60.0;
+    let subLonDeg = ((12.0 - (MTC_Hours + eotHours)) * 15.0) % 360.0;
+    if (subLonDeg > 180.0) subLonDeg -= 360.0;
+    if (subLonDeg < -180.0) subLonDeg += 360.0;
+
+    return {
+      subsolarLatDeg: parseFloat(subLatDeg.toFixed(4)),
+      subsolarLonDeg: parseFloat(subLonDeg.toFixed(4)),
+      declinationRad: parseFloat(deltaRad.toFixed(5))
+    };
+  }
+
+  /**
+   * Calculate topocentric solar zenith angle and Top-of-Atmosphere (TOA) direct solar irradiance.
+   * cos(theta_z) = sin(phi) * sin(delta_s) + cos(phi) * cos(delta_s) * cos(h)
+   * F_toa = (S_0 / r^2) * max(0, cos(theta_z))
+   * @param {number} targetLatDeg - Target surface latitude in degrees (-90 to +90)
+   * @param {number} targetLonDeg - Target surface longitude in degrees (-180 to +180)
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @param {number} [MTC_Hours=12.0] - Coordinated Mars Time in hours
+   * @returns {{solarZenithAngleDeg: number, directSolarIrradianceW_M2: number, isSunlit: boolean}}
+   */
+  static computeTopocentricSolarZenithAndIrradiance(targetLatDeg, targetLonDeg, LsDeg, MTC_Hours = 12.0) {
+    const sub = MarsTime.computeSubsolarPoint(LsDeg, MTC_Hours);
+    const dist = MarsTime.computeHeliocentricDistanceAU(LsDeg);
+
+    const phiRad = (targetLatDeg * Math.PI) / 180.0;
+    const deltaRad = sub.declinationRad;
+
+    // Local hour angle h in radians = (targetLonDeg - subsolarLonDeg)
+    let dLonDeg = targetLonDeg - sub.subsolarLonDeg;
+    while (dLonDeg > 180) dLonDeg -= 360;
+    while (dLonDeg < -180) dLonDeg += 360;
+    const hRad = (dLonDeg * Math.PI) / 180.0;
+
+    const cosZenith = Math.sin(phiRad) * Math.sin(deltaRad) + Math.cos(phiRad) * Math.cos(deltaRad) * Math.cos(hRad);
+    const cosZClamped = Math.max(-1.0, Math.min(1.0, cosZenith));
+    const zenithDeg = (Math.acos(cosZClamped) * 180.0) / Math.PI;
+
+    const S0 = 588.6; // Solar constant at 1 AU for Mars mean distance baseline (1361 / 1.523679^2 ~ 586-590 W/m^2)
+    const fluxTOA = Math.max(0.0, (1361.0 / Math.pow(dist.distanceAU, 2)) * Math.max(0.0, cosZenith));
+
+    return {
+      solarZenithAngleDeg: parseFloat(zenithDeg.toFixed(2)),
+      directSolarIrradianceW_M2: parseFloat(fluxTOA.toFixed(2)),
+      isSunlit: cosZenith > 0.0
+    };
+  }
 }
+
 
 
 

@@ -356,3 +356,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate effective bolometric brightness temperature for sub-pixel shadowed mixtures
 ?: AssertionError: expected 258.99 to be close to 256.45 +/- 0.1
     at n.<anonymous> (unit.js:5220:44)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 20:31:47 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute subsolar coordinates and topocentric solar zenith irradiance
+?: AssertionError: expected NaN to be close to 0 +/- 0.5
+    at n.<anonymous> (unit.js:5320:48)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 20:33:06 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute subsolar coordinates and topocentric solar zenith irradiance
+?: AssertionError: expected 129.62 to be close to 180 +/- 1
+    at n.<anonymous> (unit.js:5326:49)

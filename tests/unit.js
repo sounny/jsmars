@@ -5297,6 +5297,38 @@ describe('BD1400 Hydration, Carbonate BD2500 & Second Derivative (BandMathEngine
     });
 });
 
+describe('Heliocentric Distance, Subsolar Coordinates & Topocentric Irradiance (MarsTime)', () => {
+    it('should calculate heliocentric Mars-Sun distance in AU and identify perihelion', () => {
+        // At Ls = 251.0 (perihelion): r = 1.523679 * (1 - 0.09340^2) / (1 + 0.09340) = 1.523679 * (1 - 0.09340) = 1.38136 AU
+        const perihelion = MarsTime.computeHeliocentricDistanceAU(251.0);
+        expect(perihelion.distanceAU).to.be.closeTo(1.38136, 0.005);
+        expect(perihelion.isNearPerihelion).to.be.true;
+
+        // At Ls = 71.0 (aphelion): r = 1.523679 * (1 - 0.09340^2) / (1 - 0.09340) = 1.523679 * (1 + 0.09340) = 1.66600 AU
+        const aphelion = MarsTime.computeHeliocentricDistanceAU(71.0);
+        expect(aphelion.distanceAU).to.be.closeTo(1.66600, 0.005);
+        expect(aphelion.isNearPerihelion).to.be.false;
+    });
+
+    it('should compute subsolar coordinates and topocentric solar zenith irradiance', () => {
+        // At Ls = 90 (Northern Summer Solstice): subsolar lat = +25.19 deg
+        const sub = MarsTime.computeSubsolarPoint(90.0, 12.0);
+        expect(sub.subsolarLatDeg).to.be.closeTo(25.19, 0.05);
+
+        // At target location directly at subsolar point (lat = 25.19, lon = sub.subsolarLonDeg) -> zenith = 0 deg, max irradiance
+        const noon = MarsTime.computeTopocentricSolarZenithAndIrradiance(25.19, sub.subsolarLonDeg, 90.0, 12.0);
+        expect(noon.solarZenithAngleDeg).to.be.closeTo(0.0, 0.5);
+        expect(noon.isSunlit).to.be.true;
+        expect(noon.directSolarIrradianceW_M2).to.be.greaterThan(450.0);
+
+        // Night side (same latitude +25.19 deg, opposite longitude +180 deg) -> cos(zenith) = -cos(50.38 deg) -> zenith = 129.62 deg, irradiance = 0
+        const night = MarsTime.computeTopocentricSolarZenithAndIrradiance(25.19, sub.subsolarLonDeg + 180.0, 90.0, 12.0);
+        expect(night.solarZenithAngleDeg).to.be.closeTo(129.62, 0.5);
+        expect(night.isSunlit).to.be.false;
+        expect(night.directSolarIrradianceW_M2).to.equal(0.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
