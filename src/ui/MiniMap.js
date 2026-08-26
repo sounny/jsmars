@@ -33,10 +33,10 @@ export class MiniMap {
 
     this.miniMap = new L.Control.MiniMap(miniLayer, {
       toggleDisplay: true,
-      minimized: false,
+      minimized: true,
       position: 'bottomright',
-      width: 160,
-      height: 120,
+      width: 140,
+      height: 95,
       zoomLevelOffset: -4,
       zoomLevelFixed: false,
       centerFixed: false,
