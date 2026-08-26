@@ -3925,6 +3925,29 @@ describe('BD2100r Sulfate, SAM Classifier & NDDI Dust (BandMathEngine)', () => {
     });
 });
 
+describe('Strength-Gravity Transition, Linear Age & Impact Melt (CSFDEngine)', () => {
+    it('should compute target strength-to-gravity transition scaling diameter', () => {
+        // Cohesive rock Y = 10 MPa (1e7 Pa), rho = 2900, g = 3.72 -> D_tg ~ 926.8 m (~0.927 km)
+        const dtg = CSFDEngine.computeStrengthGravityTransitionDiameter(1e7, 2900.0, 3.72076);
+        expect(dtg.transitionDiameterKm).to.be.closeTo(0.927, 0.02);
+        expect(dtg.regimeDescription).to.include('strength-dominated');
+    });
+
+    it('should calculate linear Amazonian crater retention age and impact shock melt volume', () => {
+        // N(>1 km) = 4.13e-4 craters/km^2 -> 1.0 Ga
+        const age = CSFDEngine.computeCraterRetentionAgeLinear(4.13e-4);
+        expect(age.ageGa).to.be.closeTo(1.0, 0.01);
+        expect(age.ageMa).to.be.closeTo(1000.0, 10.0);
+        expect(age.epoch).to.include('Amazonian');
+
+        // Transient crater Dt = 20 km at v = 10 km/s -> melt volume ~ 15.3 km^3
+        const melt = CSFDEngine.computeExcavatedMeltVolume(20.0, 10.0);
+        expect(melt.meltVolumeKm3).to.be.greaterThan(10.0);
+        expect(melt.meltVolumeKm3).to.be.lessThan(25.0);
+        expect(melt.meltMassKg).to.be.greaterThan(1e13);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

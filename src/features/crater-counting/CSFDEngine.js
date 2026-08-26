@@ -971,7 +971,74 @@ export class CSFDEngine {
       errorRValue: parseFloat(sigmaR.toExponential(4))
     };
   }
+
+  // --- Strength-to-Gravity Transition, Linear Retention Age & Impact Melt Solvers ---
+
+  /**
+   * Calculate impact cratering target strength-to-gravity transition scaling diameter.
+   * D_tg = Y / (rho_target * g)
+   * @param {number} [targetYieldStrengthPa=1e7] - Target rock cohesive yield strength (10 MPa for hard basalt)
+   * @param {number} [targetDensityKgM3=2900.0] - Target crustal rock density in kg/m^3
+   * @param {number} [gravityMs2=3.72076] - Planetary surface gravity in m/s^2
+   * @returns {{transitionDiameterMeters: number, transitionDiameterKm: number, regimeDescription: string}}
+   */
+  static computeStrengthGravityTransitionDiameter(targetYieldStrengthPa = 1e7, targetDensityKgM3 = 2900.0, gravityMs2 = 3.72076) {
+    const Y = Math.max(1e3, targetYieldStrengthPa);
+    const rho = Math.max(100.0, targetDensityKgM3);
+    const g = Math.max(0.1, gravityMs2);
+
+    const DtgM = Y / (rho * g);
+    const DtgKm = DtgM / 1000.0;
+
+    return {
+      transitionDiameterMeters: parseFloat(DtgM.toFixed(1)),
+      transitionDiameterKm: parseFloat(DtgKm.toFixed(3)),
+      regimeDescription: 'Craters D < D_tg are strength-dominated; D > D_tg are gravity-dominated'
+    };
+  }
+
+  /**
+   * Calculate linear crater retention age for Amazonian terrains (t < 3.0 Ga).
+   * t = N(>1 km) / a0(1 Ga)
+   * @param {number} cumulativeN1DensityPerKm2 - Cumulative density of craters D >= 1 km per km^2
+   * @returns {{ageGa: number, ageMa: number, epoch: string}}
+   */
+  static computeCraterRetentionAgeLinear(cumulativeN1DensityPerKm2) {
+    const n1 = Math.max(0, cumulativeN1DensityPerKm2);
+    // a0 at 1 Ga is ~ 4.13e-4 craters / km^2
+    const a0_1Ga = 4.13e-4;
+    const ageGa = n1 / a0_1Ga;
+    const ageMa = ageGa * 1000.0;
+
+    return {
+      ageGa: parseFloat(ageGa.toFixed(4)),
+      ageMa: parseFloat(ageMa.toFixed(1)),
+      epoch: ageGa >= 3.0 ? 'Hesperian / Noachian (Non-linear regime)' : (ageGa >= 1.0 ? 'Middle/Early Amazonian' : 'Late Amazonian')
+    };
+  }
+
+  /**
+   * Calculate impact shock-melt production volume from transient crater diameter.
+   * V_melt = 0.00015 * D_t^3.85 * (v / 10)^1.7 (Grieve & Cintala 1992)
+   * @param {number} transientDiameterKm - Transient crater cavity diameter in km
+   * @param {number} [impactVelocityKmS=10.0] - Impact velocity in km/s (typical Mars ~ 10 km/s)
+   * @returns {{meltVolumeKm3: number, meltMassKg: number}}
+   */
+  static computeExcavatedMeltVolume(transientDiameterKm, impactVelocityKmS = 10.0) {
+    const Dt = Math.max(0.1, transientDiameterKm);
+    const v = Math.max(1.0, impactVelocityKmS);
+
+    const vFactor = Math.pow(v / 10.0, 1.7);
+    const vMeltKm3 = 0.00015 * Math.pow(Dt, 3.85) * vFactor;
+    const meltMassKg = vMeltKm3 * 1e9 * 2800.0; // 2800 kg/m^3 melt density
+
+    return {
+      meltVolumeKm3: parseFloat(vMeltKm3.toExponential(4)),
+      meltMassKg: parseFloat(meltMassKg.toExponential(4))
+    };
+  }
 }
+
 
 
 
