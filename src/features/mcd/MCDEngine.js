@@ -1081,7 +1081,89 @@ export class MCDEngine {
       buoyancyFluxM2S3: parseFloat(b0.toExponential(4))
     };
   }
+
+  // --- Adiabatic Lapse Rate, Potential Temperature & Brunt-Väisälä Solvers ---
+
+  /**
+   * Calculate Mars dry adiabatic temperature lapse rate Gamma_d.
+   * Gamma_d = g / c_p
+   * @param {number} [gravityMps2=3.72076] - Surface gravity in m/s^2 (3.72076 for Mars)
+   * @param {number} [cpSpecificHeat=735.0] - Atmospheric specific heat capacity in J/(kg K) (735 for CO2)
+   * @returns {{lapseRateKPerM: number, lapseRateKPerKm: number}}
+   */
+  static computeDryAdiabaticLapseRate(gravityMps2 = 3.72076, cpSpecificHeat = 735.0) {
+    const g = Math.max(0.1, gravityMps2);
+    const cp = Math.max(10.0, cpSpecificHeat);
+
+    const gammaKPerM = g / cp;
+    const gammaKPerKm = gammaKPerM * 1000.0;
+
+    return {
+      lapseRateKPerM: parseFloat(gammaKPerM.toFixed(6)),
+      lapseRateKPerKm: parseFloat(gammaKPerKm.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate atmospheric potential temperature theta using Poisson's relation for Martian CO2 atmosphere.
+   * theta = T * (P_0 / P)^kappa, where kappa = R_spec / c_p ≈ 188.92 / 735.0 ≈ 0.25703
+   * @param {number} temperatureK - In-situ atmospheric temperature in Kelvin
+   * @param {number} pressurePa - In-situ atmospheric pressure in Pascals
+   * @param {number} [referencePressurePa=610.0] - Reference surface pressure (610 Pa MOLA datum)
+   * @returns {{potentialTemperatureK: number, pressureRatio: number}}
+   */
+  static computeAtmosphericPotentialTemperature(temperatureK, pressurePa, referencePressurePa = 610.0) {
+    const T = Math.max(1, temperatureK);
+    const P = Math.max(0.01, pressurePa);
+    const P0 = Math.max(1.0, referencePressurePa);
+
+    const kappa = 188.92 / 735.0; // Mars gas constant / specific heat
+    const pRatio = P0 / P;
+    const theta = T * Math.pow(pRatio, kappa);
+
+    return {
+      potentialTemperatureK: parseFloat(theta.toFixed(2)),
+      pressureRatio: parseFloat(pRatio.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate Brunt-Väisälä buoyancy oscillation frequency N and wave period tau.
+   * N = sqrt( (g / theta) * (d_theta / dz) ),  tau = 2 * pi / N
+   * @param {number} potentialTempK - Mean layer potential temperature in Kelvin
+   * @param {number} verticalGradientDThetaDz - Vertical potential temperature gradient (K/m)
+   * @param {number} [gravityMps2=3.72076] - Mars surface gravity (m/s^2)
+   * @returns {{buoyancyFrequencyRadS: number, buoyancyFrequencyHz: number, periodSeconds: number, isStablyStratified: boolean}}
+   */
+  static computeBruntVaisalaFrequency(potentialTempK, verticalGradientDThetaDz, gravityMps2 = 3.72076) {
+    const theta = Math.max(10, potentialTempK);
+    const dThetaDz = verticalGradientDThetaDz;
+    const g = Math.max(0.1, gravityMps2);
+
+    const nSquared = (g / theta) * dThetaDz;
+    const isStable = nSquared > 0;
+
+    let N_radS = 0;
+    let periodS = Infinity;
+
+    if (isStable) {
+      N_radS = Math.sqrt(nSquared);
+      periodS = (2.0 * Math.PI) / N_radS;
+    }
+
+    const n_Hz = N_radS / (2.0 * Math.PI);
+
+    return {
+      buoyancyFrequencyRadS: parseFloat(N_radS.toFixed(5)),
+      frequencyRadS: parseFloat(N_radS.toFixed(5)),
+      buoyancyFrequencyHz: parseFloat(n_Hz.toFixed(5)),
+      periodSeconds: isStable ? parseFloat(periodS.toFixed(1)) : Infinity,
+      isStablyStratified: isStable,
+      isStable: isStable
+    };
+  }
 }
+
 
 
 

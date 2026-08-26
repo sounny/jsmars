@@ -4956,6 +4956,31 @@ describe('Neukum MPF Polynomial, Isochron Age Ratio & Transition Diameter (CSFDE
     });
 });
 
+describe('Adiabatic Lapse Rate, Potential Temperature & Brunt-Väisälä (MCDEngine)', () => {
+    it('should calculate Mars dry adiabatic temperature lapse rate Gamma_d', () => {
+        // g = 3.72076 m/s^2, c_p = 735 J/(kg K) -> Gamma_d = 3.72076 / 735 = 0.005062 K/m = 5.062 K/km
+        const lapse = MCDEngine.computeDryAdiabaticLapseRate(3.72076, 735.0);
+        expect(lapse.lapseRateKPerM).to.be.closeTo(0.005062, 0.00001);
+        expect(lapse.lapseRateKPerKm).to.be.closeTo(5.062, 0.005);
+    });
+
+    it('should compute atmospheric potential temperature and Brunt-Väisälä buoyancy frequency', () => {
+        // T = 200 K, P = 305 Pa, P0 = 610 Pa -> P0/P = 2.0 -> kappa = 188.92 / 735 = 0.25703
+        // theta = 200 * (2.0)^0.25703 = 200 * 1.195 = 239.0 K
+        const theta = MCDEngine.computeAtmosphericPotentialTemperature(200.0, 305.0, 610.0);
+        expect(theta.potentialTemperatureK).to.be.closeTo(239.0, 0.5);
+        expect(theta.pressureRatio).to.equal(2.0);
+
+        // theta = 220 K, d_theta/dz = 0.002 K/m, g = 3.72076 m/s^2
+        // N^2 = (3.72076 / 220) * 0.002 = 0.01691 * 0.002 = 3.3825e-5 rad^2/s^2
+        // N = sqrt(3.3825e-5) = 0.005816 rad/s, tau = 2*pi / N ~ 1080.3 s
+        const bv = MCDEngine.computeBruntVaisalaFrequency(220.0, 0.002, 3.72076);
+        expect(bv.buoyancyFrequencyRadS).to.be.closeTo(0.00582, 0.0001);
+        expect(bv.periodSeconds).to.be.closeTo(1080.3, 5.0);
+        expect(bv.isStablyStratified).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
