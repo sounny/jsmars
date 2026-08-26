@@ -5125,6 +5125,40 @@ describe('Fe3+ Phyllosilicates, THEMIS Felsic Quartz & Continuum Slope (BandMath
     });
 });
 
+describe('Transient Inversion, Ejecta Blanket & Central Peak (CSFDEngine)', () => {
+    it('should invert transient cavity diameter from modified complex crater rim diameter', () => {
+        // Simple crater D_f = 5.0 km (<= 7 km) -> D_t = 5.0 / 1.25 = 4.0 km
+        const simple = CSFDEngine.invertTransientFromComplexFinalDiameter(5.0, 7.0);
+        expect(simple.transientDiameterKm).to.equal(4.0);
+        expect(simple.morphologyClass).to.include('Simple');
+
+        // Complex crater D_f = 20.0 km (> 7 km) -> D_t = (7^0.15 * 20^0.85) / 1.17 ~ (1.338 * 12.75) / 1.17 ~ 14.58 km
+        const complex = CSFDEngine.invertTransientFromComplexFinalDiameter(20.0, 7.0);
+        expect(complex.transientDiameterKm).to.be.closeTo(14.58, 0.2);
+        expect(complex.morphologyClass).to.include('Complex');
+    });
+
+    it('should compute continuous ejecta blanket thickness profile and central peak uplift diameter', () => {
+        // D_f = 10.0 km -> R_c = 5.0 km -> at r = 5.0 km (rim), t_rim = 0.04 * 10,000 m = 400 m
+        const atRim = CSFDEngine.computeContinuousEjectaBlanketThickness(5.0, 10.0);
+        expect(atRim.ejectaThicknessMeters).to.equal(400.0);
+        expect(atRim.normalizedDistance).to.equal(1.0);
+
+        // At r = 10.0 km (2 crater radii) -> normR = 2.0 -> t = 400 * 2^-3 = 50.0 m
+        const at2R = CSFDEngine.computeContinuousEjectaBlanketThickness(10.0, 10.0);
+        expect(at2R.ejectaThicknessMeters).to.equal(50.0);
+
+        // Central peak for D_f = 30.0 km -> D_cp = 0.22 * 30^1.12 ~ 0.22 * 45.14 ~ 9.93 km
+        const peak = CSFDEngine.computeCentralPeakUpliftDiameter(30.0, 7.0);
+        expect(peak.centralPeakDiameterKm).to.be.closeTo(9.93, 0.2);
+        expect(peak.hasCentralPeak).to.be.true;
+
+        // Simple crater (D_f = 4.0 km) -> no central peak
+        const noPeak = CSFDEngine.computeCentralPeakUpliftDiameter(4.0, 7.0);
+        expect(noPeak.hasCentralPeak).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1425,7 +1425,90 @@ export class CSFDEngine {
       transitionDiameterKm: parseFloat(dKm.toFixed(3))
     };
   }
+
+  // --- Complex Transient Inversion, Ejecta Blanket & Central Peak Solvers ---
+
+  /**
+   * Invert transient crater diameter D_t from modified final complex crater rim diameter D_f (Croft 1985 scaling).
+   * D_t = D_f / 1.25 (simple), D_t = (D_tr^0.15 * D_f^0.85) / 1.17 (complex)
+   * @param {number} finalDiameterKm - Observed rim-to-rim crater diameter in km
+   * @param {number} [simpleComplexTransitionKm=7.0] - Simple-to-complex transition diameter D_tr (~7 km on Mars)
+   * @returns {{transientDiameterKm: number, morphologyClass: string, enlargementFactor: number}}
+   */
+  static invertTransientFromComplexFinalDiameter(finalDiameterKm, simpleComplexTransitionKm = 7.0) {
+    const Df = Math.max(0.01, finalDiameterKm);
+    const Dtr = Math.max(0.1, simpleComplexTransitionKm);
+
+    let Dt = 0;
+    let morph = 'Simple Bowl-Shaped Crater';
+
+    if (Df <= Dtr) {
+      Dt = Df / 1.25;
+    } else {
+      Dt = (Math.pow(Dtr, 0.15) * Math.pow(Df, 0.85)) / 1.17;
+      morph = Df > 40.0 ? 'Peak-Ring / Multi-Ring Impact Basin' : 'Complex Central Peak Crater';
+    }
+
+    const enlargement = Df / Dt;
+
+    return {
+      transientDiameterKm: parseFloat(Dt.toFixed(3)),
+      morphologyClass: morph,
+      enlargementFactor: parseFloat(enlargement.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate continuous ejecta blanket thickness t_e at radial distance r from crater center (McGetchin et al. 1973).
+   * t_e(r) = 0.04 * D_f * (r / R_c)^(-3.0), where R_c = D_f / 2
+   * @param {number} radialDistanceKm - Radial distance r from crater center in km (r >= R_c)
+   * @param {number} finalDiameterKm - Final crater rim diameter D_f in km
+   * @returns {{ejectaThicknessMeters: number, normalizedDistance: number, isWithinRim: boolean}}
+   */
+  static computeContinuousEjectaBlanketThickness(radialDistanceKm, finalDiameterKm) {
+    const Df = Math.max(0.01, finalDiameterKm);
+    const Rc = Df / 2.0;
+    const r = Math.max(Rc, radialDistanceKm);
+
+    const normR = r / Rc;
+    // t_e in meters: 0.04 * (Df * 1000 m) * (r / Rc)^-3.0
+    const tRimMeters = 0.04 * Df * 1000.0;
+    const tMeters = tRimMeters * Math.pow(normR, -3.0);
+
+    return {
+      ejectaThicknessMeters: parseFloat(tMeters.toFixed(2)),
+      normalizedDistance: parseFloat(normR.toFixed(3)),
+      isWithinRim: radialDistanceKm < Rc
+    };
+  }
+
+  /**
+   * Calculate central peak / central uplift diameter D_cp from final complex crater diameter.
+   * D_cp = 0.22 * D_f^1.12 (for D_f > D_tr)
+   * @param {number} finalDiameterKm - Final crater diameter in km
+   * @param {number} [simpleComplexTransitionKm=7.0] - Transition diameter D_tr
+   * @returns {{centralPeakDiameterKm: number, hasCentralPeak: boolean}}
+   */
+  static computeCentralPeakUpliftDiameter(finalDiameterKm, simpleComplexTransitionKm = 7.0) {
+    const Df = Math.max(0.01, finalDiameterKm);
+    const Dtr = Math.max(0.1, simpleComplexTransitionKm);
+
+    if (Df <= Dtr) {
+      return {
+        centralPeakDiameterKm: 0.0,
+        hasCentralPeak: false
+      };
+    }
+
+    const Dcp = 0.22 * Math.pow(Df, 1.12);
+
+    return {
+      centralPeakDiameterKm: parseFloat(Dcp.toFixed(3)),
+      hasCentralPeak: true
+    };
+  }
 }
+
 
 
 
