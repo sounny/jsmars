@@ -1318,7 +1318,115 @@ export class CSFDEngine {
       excavationVolumeKm3: parseFloat(vExcKm3.toFixed(3))
     };
   }
+
+  // --- Neukum Mars Production Function (MPF), Isochron Age Ratio & Transition Solvers ---
+
+  /**
+   * Calculate cumulative crater density N(>D) at 1 Ga reference age using Neukum & Ivanov (2001) Mars polynomial coefficients.
+   * log10(N) = sum_{j=0}^{11} a_j * [log10(D)]^j
+   * @param {number} diameterKm - Crater diameter in km (0.01 km <= D <= 300 km)
+   * @returns {{cumulativeDensityPerKm2: number, log10CumulativeDensity: number, diameterKm: number}}
+   */
+  static computeNeukumProductionFunctionCumulative(diameterKm) {
+    const D = Math.max(0.005, diameterKm);
+    const logD = Math.log10(D);
+
+    // Standard Ivanov (2001) / Neukum 1 Ga Mars MPF polynomial coefficients a_0 to a_11:
+    const a = [
+      -2.8398,    // a_0
+      -2.4839,    // a_1
+      -0.0827,    // a_2
+      0.6558,     // a_3
+      0.0988,     // a_4
+      -0.1704,    // a_5
+      -0.0381,    // a_6
+      0.0216,     // a_7
+      0.0048,     // a_8
+      -0.0013,    // a_9
+      -0.00021,   // a_10
+      0.00003     // a_11
+    ];
+
+    let logN = 0;
+    for (let j = 0; j < a.length; j++) {
+      logN += a[j] * Math.pow(logD, j);
+    }
+
+    const nCum = Math.pow(10, logN);
+
+    return {
+      cumulativeDensityPerKm2: parseFloat(nCum.toExponential(4)),
+      log10CumulativeDensity: parseFloat(logN.toFixed(4)),
+      diameterKm: parseFloat(D.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate relative crater retention age ratio and model age relative to 1 Ga reference isochron.
+   * Ratio = N_observed / N_1Ga,  Age_est = Ratio * 1.0 Ga (for linear regime < 3 Ga)
+   * @param {number} observedCumulativeDensity - Observed N(>D) per km^2
+   * @param {number} reference1GaDensity - Reference 1 Ga MPF N(>D) per km^2
+   * @returns {{isochronRatio: number, estimatedAgeGa: number, geologicalEpoch: string}}
+   */
+  static computeIsochronAgeRatio(observedCumulativeDensity, reference1GaDensity) {
+    const nObs = Math.max(0, observedCumulativeDensity);
+    const nRef = Math.max(1e-15, reference1GaDensity);
+    const ratio = nObs / nRef;
+
+    // Approximate model age with early heavy bombardment non-linearity:
+    let ageGa = ratio;
+    if (ratio > 3.0) {
+      // Exponential rise in Amazonian/Hesperian/Noachian transition
+      ageGa = 3.0 + Math.log10(ratio / 3.0) * 0.8;
+      ageGa = Math.min(4.5, ageGa);
+    }
+
+    let epoch = 'Amazonian (< 3.0 Ga)';
+    if (ageGa > 3.7) {
+      epoch = 'Noachian (> 3.7 Ga)';
+    } else if (ageGa > 3.0) {
+      epoch = 'Hesperian (3.0 - 3.7 Ga)';
+    }
+
+    return {
+      isochronRatio: parseFloat(ratio.toFixed(3)),
+      estimatedAgeGa: parseFloat(ageGa.toFixed(2)),
+      geologicalEpoch: epoch
+    };
+  }
+
+  /**
+   * Calculate critical impact crater diameter for the transition from strength-dominated to gravity-dominated cratering.
+   * D_sg = Y_eff / (rho_target * g)
+   * @param {number} [effectiveStrengthPa=1.0e7] - Target yield strength Y in Pa (~10 MPa for fractured rock)
+   * @param {number} [targetDensityKgM3=2900.0] - Target crust density in kg/m^3
+   * @param {number} [gravityMps2=3.72076] - Mars surface gravitational acceleration in m/s^2
+   * @returns {{transitionDiameterMeters: number, transitionDiameterKm: number}}
+   */
+  static computeStrengthToGravityTransitionDiameter(effectiveStrengthPa = 1.0e7, targetDensityKgM3 = 2900.0, gravityOrBody = 3.72076) {
+    const Y = Math.max(1e4, effectiveStrengthPa);
+    const rho = Math.max(100.0, targetDensityKgM3);
+
+    let g = 3.72076;
+    if (typeof gravityOrBody === 'string') {
+      const b = gravityOrBody.toLowerCase();
+      if (b === 'moon') g = 1.62;
+      else if (b === 'earth') g = 9.80665;
+      else g = 3.72076;
+    } else if (typeof gravityOrBody === 'number' && Number.isFinite(gravityOrBody)) {
+      g = Math.max(0.1, gravityOrBody);
+    }
+
+    const dMeters = Y / (rho * g);
+    const dKm = dMeters / 1000.0;
+
+    return {
+      transitionDiameterMeters: parseFloat(dMeters.toFixed(1)),
+      transitionDiameterKm: parseFloat(dKm.toFixed(3))
+    };
+  }
 }
+
 
 
 

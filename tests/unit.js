@@ -4923,6 +4923,39 @@ describe('CRISM HCPINDEX, THEMIS Slope & Absorption Asymmetry (BandMathEngine)',
     });
 });
 
+describe('Neukum MPF Polynomial, Isochron Age Ratio & Transition Diameter (CSFDEngine)', () => {
+    it('should calculate Neukum & Ivanov (2001) Mars Production Function cumulative density', () => {
+        // At D = 1.0 km -> log10(D) = 0 -> log10(N) = a_0 = -2.8398 -> N(>1km) = 10^-2.8398 ~ 1.446e-3 / km^2
+        const mpf1 = CSFDEngine.computeNeukumProductionFunctionCumulative(1.0);
+        expect(mpf1.log10CumulativeDensity).to.be.closeTo(-2.8398, 0.001);
+        expect(mpf1.cumulativeDensityPerKm2).to.be.closeTo(1.446e-3, 0.01e-3);
+
+        // At D = 10.0 km -> log10(D) = 1 -> sum of all coefficients a_0 + ... + a_11 ~ -4.845
+        const mpf10 = CSFDEngine.computeNeukumProductionFunctionCumulative(10.0);
+        expect(mpf10.log10CumulativeDensity).to.be.closeTo(-4.845, 0.05);
+    });
+
+    it('should compute isochron age ratio, geological epoch, and strength-to-gravity transition diameter', () => {
+        // Observed N = 2.892e-3, Ref 1Ga = 1.446e-3 -> Ratio = 2.0 -> Age ~ 2.0 Ga (Amazonian)
+        const amazon = CSFDEngine.computeIsochronAgeRatio(2.892e-3, 1.446e-3);
+        expect(amazon.isochronRatio).to.equal(2.0);
+        expect(amazon.estimatedAgeGa).to.equal(2.0);
+        expect(amazon.geologicalEpoch).to.include('Amazonian');
+
+        // Observed N = 1.446e-2, Ref = 1.446e-3 -> Ratio = 10.0 -> Age ~ 3.0 + log10(10/3)*0.8 ~ 3.42 Ga (Hesperian)
+        const hesp = CSFDEngine.computeIsochronAgeRatio(1.446e-2, 1.446e-3);
+        expect(hesp.isochronRatio).to.equal(10.0);
+        expect(hesp.estimatedAgeGa).to.be.closeTo(3.42, 0.05);
+        expect(hesp.geologicalEpoch).to.include('Hesperian');
+
+        // Y = 10 MPa (1e7 Pa), rho = 2900 kg/m^3, g = 3.72076 m/s^2
+        // D_sg = 1e7 / (2900 * 3.72076) = 1e7 / 10790.2 = 926.77 m = 0.927 km
+        const dsg = CSFDEngine.computeStrengthToGravityTransitionDiameter(1e7, 2900.0, 3.72076);
+        expect(dsg.transitionDiameterMeters).to.be.closeTo(926.8, 0.5);
+        expect(dsg.transitionDiameterKm).to.be.closeTo(0.927, 0.005);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

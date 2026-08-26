@@ -328,3 +328,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 PUSH RESOLUTION: Pulled remote CNAME commit from custom domain configuration, successfully rebased and pushed 382 unit tests cleanly to origin main.
 
 
+
+
+### Automated 4-Hour Check Alert [2026-08-26 17:15:53 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute crater scaling strength-to-gravity transition diameter and isochron cumulative offset
+?: AssertionError: expected NaN to be close to 0.927 +/- 0.01
+    at n.<anonymous> (unit.js:4512:50)
