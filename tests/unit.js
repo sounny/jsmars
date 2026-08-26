@@ -4004,6 +4004,30 @@ describe('Geometric Horizon, Perspective Swath & Diffuse Radiance (ThreeDEngine)
     });
 });
 
+describe('Conrath Dust, Water Ice Saturation & Adiabatic Lapse Rate (MCDEngine)', () => {
+    it('should compute vertical Conrath dust optical depth profile and adiabatic lapse rate', () => {
+        // Conrath profile at P = 300 Pa (half surface pressure 610 Pa) with tau0 = 0.3
+        const dust = MCDEngine.computeConrathDustOpticalDepthProfile(0.3, 300.0, 610.0, 0.007);
+        expect(dust.tauAboveLevel).to.be.closeTo(0.146, 0.01);
+        expect(dust.relativeDustMixingRatio).to.be.closeTo(0.99, 0.02);
+
+        // Dry adiabatic lapse rate for Mars: Gamma_d = g/Cp = 3.72076 / 800.0 ~ 4.651 K/km
+        const lapse = MCDEngine.computeAdiabaticLapseRate(800.0, 3.72076);
+        expect(lapse.lapseRateKPerKm).to.be.closeTo(4.651, 0.01);
+    });
+
+    it('should calculate H2O water ice saturation vapor pressure and saturation mixing ratio', () => {
+        // At T = 200 K (typical lower troposphere): saturation vapor pressure over ice es ~ 0.163 Pa
+        const sat200 = MCDEngine.computeWaterIceSaturationVaporPressure(200.0, 610.0);
+        expect(sat200.saturationVaporPressurePa).to.be.closeTo(0.163, 0.02);
+        expect(sat200.saturationMixingRatioPpm).to.be.greaterThan(50.0);
+
+        // Triple point T = 273.16 K -> es = 611.65 Pa
+        const satTriple = MCDEngine.computeWaterIceSaturationVaporPressure(273.16, 610.0);
+        expect(satTriple.saturationVaporPressurePa).to.be.closeTo(611.65, 1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

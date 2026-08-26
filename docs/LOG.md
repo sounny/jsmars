@@ -273,3 +273,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute two-way signal attenuation rate and point-target radar equation received power
 ?: AssertionError: expected 2.9026e-20 to be above 1e-19
     at n.<anonymous> (unit.js:3894:46)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 03:15:35 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate H2O water ice saturation vapor pressure and saturation mixing ratio
+?: AssertionError: expected 0.16295 to be below 0.01
+    at n.<anonymous> (unit.js:4023:56)

@@ -762,7 +762,79 @@ export class MCDEngine {
       columnMassGramsCm2: parseFloat(sigmaGCm2.toFixed(4))
     };
   }
+
+  // --- Conrath Dust Profile, Water Ice Saturation & Adiabatic Lapse Rate Solvers ---
+
+  /**
+   * Calculate vertical Conrath (1975) airborne dust optical depth profile and local mixing ratio.
+   * tau(P) = tau_0 * (P / P_0) * exp[ nu * (1 - P_0 / P) ]
+   * @param {number} [columnTau0=0.3] - Total column dust optical depth
+   * @param {number} [pressurePa=300.0] - Atmospheric pressure at target level in Pa
+   * @param {number} [surfacePressurePa=610.0] - Surface pressure in Pa
+   * @param {number} [conrathNu=0.007] - Conrath decay parameter nu
+   * @returns {{tauAboveLevel: number, relativeDustMixingRatio: number}}
+   */
+  static computeConrathDustOpticalDepthProfile(columnTau0 = 0.3, pressurePa = 300.0, surfacePressurePa = 610.0, conrathNu = 0.007) {
+    const tau0 = Math.max(0.001, columnTau0);
+    const P = Math.max(0.01, pressurePa);
+    const P0 = Math.max(0.1, surfacePressurePa);
+
+    const pRatio = P / P0;
+    const conrathFactor = Math.exp(conrathNu * (1.0 - 1.0 / pRatio));
+    const tauAbove = tau0 * pRatio * conrathFactor;
+
+    return {
+      tauAboveLevel: parseFloat(Math.max(0, Math.min(tau0, tauAbove)).toFixed(4)),
+      relativeDustMixingRatio: parseFloat(conrathFactor.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate H2O water ice saturation vapor pressure and saturation mixing ratio.
+   * e_s(T) = e_0 * exp[ 22.5 * (1 - T_0 / T) ] (Martian sub-freezing Clausius-Clapeyron)
+   * @param {number} temperatureK - Ambient temperature in Kelvin (120K to 273.15K)
+   * @param {number} [ambientPressurePa=610.0] - Ambient atmospheric pressure in Pa
+   * @returns {{saturationVaporPressurePa: number, saturationMixingRatioPpm: number}}
+   */
+  static computeWaterIceSaturationVaporPressure(temperatureK, ambientPressurePa = 610.0) {
+    const T = Math.max(50.0, temperatureK);
+    const T0 = 273.16; // Triple point of water in K
+    const e0 = 611.65; // Saturation vapor pressure at triple point in Pa
+
+    // Goff-Gratch / Clausius-Clapeyron approximation over ice
+    const es = e0 * Math.exp(22.5 * (1.0 - T0 / T));
+    const p = Math.max(0.01, ambientPressurePa);
+
+    // Mixing ratio w_s = (M_H2O / M_CO2) * (es / P) = (18.015 / 44.01) * (es / P) ~ 0.4093 * (es / P)
+    const wsLinear = 0.4093 * (es / p);
+    const wsPpm = wsLinear * 1e6;
+
+    return {
+      saturationVaporPressurePa: parseFloat(es.toExponential(4)),
+      saturationMixingRatioPpm: parseFloat(wsPpm.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate Martian dry adiabatic lapse rate Gamma_d = g / Cp.
+   * @param {number} [specificHeatCp=800.0] - Specific heat capacity of CO2 in J / (kg K)
+   * @param {number} [gravityMs2=3.72076] - Surface gravity in m/s^2
+   * @returns {{lapseRateKPerMeter: number, lapseRateKPerKm: number}}
+   */
+  static computeAdiabaticLapseRate(specificHeatCp = 800.0, gravityMs2 = 3.72076) {
+    const cp = Math.max(100.0, specificHeatCp);
+    const g = Math.max(0.1, gravityMs2);
+
+    const gammaM = g / cp; // K / m
+    const gammaKm = gammaM * 1000.0; // K / km
+
+    return {
+      lapseRateKPerMeter: parseFloat(gammaM.toFixed(6)),
+      lapseRateKPerKm: parseFloat(gammaKm.toFixed(3))
+    };
+  }
 }
+
 
 
 
