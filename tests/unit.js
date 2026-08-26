@@ -4616,6 +4616,31 @@ describe('Great-Circle Midpoint, Spherical Cap & Cross-Track Deviation (MeasureT
     });
 });
 
+describe('Clutter Look Angle, Fresnel Matrix & Pulse Width (RadarSounderEngine)', () => {
+    it('should calculate off-nadir radar surface clutter look angle and ground offset', () => {
+        // H = 250 km = 250,000 m. Delay tau = 10 µs -> c * tau / 2 = 299792458 * 1e-5 / 2 = 1498.96 m
+        // slantRange = 251498.96 m -> cos(theta) = 250000 / 251498.96 ~ 0.99404 -> theta ~ 6.26°
+        const clutter = RadarSounderEngine.computeClutterAngleFromExcessDelay(10.0, 250.0);
+        expect(clutter.lookAngleDeg).to.be.closeTo(6.26, 0.05);
+        expect(clutter.groundOffsetKm).to.be.closeTo(27.43, 0.5);
+    });
+
+    it('should compute subsurface Fresnel transmission matrix and compressed pulse resolution', () => {
+        // eps1 = 1.0 (air), eps2 = 3.15 (ice) -> n1 = 1, n2 = 1.7748
+        // r = (1 - 1.7748) / 2.7748 = -0.7748 / 2.7748 = -0.2792 -> R = 0.0780, T = 0.9220
+        const fresnel = RadarSounderEngine.computeSubsurfaceFresnelTransmissionMatrix(1.0, 3.15);
+        expect(fresnel.amplitudeReflection).to.be.closeTo(-0.2792, 0.005);
+        expect(fresnel.powerReflectivity).to.be.closeTo(0.0780, 0.005);
+        expect(fresnel.powerTransmissivity).to.be.closeTo(0.9220, 0.005);
+
+        // B = 10 MHz -> tau = 100 ns. In water ice eps = 3.15 -> delta_z = 299792458 / (2 * 1e7 * 1.7748) = 14.9896 / 1.7748 ~ 8.45 m
+        const pulse = RadarSounderEngine.computeRadarCompressedPulseWidth(10.0, 3.15);
+        expect(pulse.pulseDurationNs).to.equal(100.0);
+        expect(pulse.verticalResolutionMeters).to.be.closeTo(8.45, 0.02);
+        expect(pulse.freeSpaceResolutionMeters).to.be.closeTo(14.99, 0.02);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

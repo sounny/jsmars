@@ -1077,7 +1077,80 @@ export class RadarSounderEngine {
       attenuationDbPerMeter: parseFloat(alphaM.toFixed(6))
     };
   }
+
+  // --- Clutter Look Angle, Fresnel Transmission Matrix & Pulse Width Solvers ---
+
+  /**
+   * Calculate off-nadir radar clutter look angle and ground offset from excess delay.
+   * theta = arccos( H / (H + c * Delta_tau / 2) )
+   * @param {number} excessDelayMicrosec - Excess delay past nadir surface return (μs)
+   * @param {number} [orbitAltitudeKm=250.0] - Spacecraft orbit altitude in km
+   * @returns {{lookAngleDeg: number, lookAngleRad: number, groundOffsetKm: number}}
+   */
+  static computeClutterAngleFromExcessDelay(excessDelayMicrosec, orbitAltitudeKm = 250.0) {
+    const HMeters = Math.max(1000, orbitAltitudeKm * 1000.0);
+    const delaySec = Math.max(0, excessDelayMicrosec * 1e-6);
+    const slantRangeM = HMeters + (RadarSounderEngine.C * delaySec) / 2.0;
+
+    const cosTheta = Math.min(1.0, HMeters / slantRangeM);
+    const thetaRad = Math.acos(cosTheta);
+    const thetaDeg = thetaRad * 180.0 / Math.PI;
+    const groundOffsetM = HMeters * Math.tan(thetaRad);
+
+    return {
+      lookAngleDeg: parseFloat(thetaDeg.toFixed(2)),
+      lookAngleRad: parseFloat(thetaRad.toFixed(4)),
+      groundOffsetKm: parseFloat((groundOffsetM / 1000.0).toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate complete normal-incidence Fresnel amplitude & power transmission matrix.
+   * r = (n1 - n2) / (n1 + n2), t = 2 * n1 / (n1 + n2), R = r^2, T = 1 - R
+   * @param {number} eps1 - Dielectric permittivity of top layer
+   * @param {number} eps2 - Dielectric permittivity of bottom layer
+   * @returns {{amplitudeReflection: number, amplitudeTransmission: number, powerReflectivity: number, powerTransmissivity: number}}
+   */
+  static computeSubsurfaceFresnelTransmissionMatrix(eps1, eps2) {
+    const n1 = Math.sqrt(Math.max(1.0, eps1));
+    const n2 = Math.sqrt(Math.max(1.0, eps2));
+
+    const rAmp = (n1 - n2) / (n1 + n2);
+    const tAmp = (2.0 * n1) / (n1 + n2);
+    const rPow = rAmp * rAmp;
+    const tPow = 1.0 - rPow;
+
+    return {
+      amplitudeReflection: parseFloat(rAmp.toFixed(4)),
+      amplitudeTransmission: parseFloat(tAmp.toFixed(4)),
+      powerReflectivity: parseFloat(rPow.toFixed(4)),
+      powerTransmissivity: parseFloat(tPow.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate matched-filter compressed pulse duration and vertical resolution in dielectric medium.
+   * tau_p = 1 / B,  Delta_z = c / (2 * B * sqrt(eps_r))
+   * @param {number} [chirpBandwidthMhz=10.0] - Chirp bandwidth in MHz (10 MHz for SHARAD)
+   * @param {number} [epsR=3.15] - Dielectric permittivity of medium
+   * @returns {{pulseDurationNs: number, verticalResolutionMeters: number, freeSpaceResolutionMeters: number}}
+   */
+  static computeRadarCompressedPulseWidth(chirpBandwidthMhz = 10.0, epsR = 3.15) {
+    const BHz = Math.max(1e3, chirpBandwidthMhz * 1e6);
+    const eps = Math.max(1.0, epsR);
+
+    const tauSec = 1.0 / BHz;
+    const deltaAir = RadarSounderEngine.C / (2.0 * BHz);
+    const deltaMed = deltaAir / Math.sqrt(eps);
+
+    return {
+      pulseDurationNs: parseFloat((tauSec * 1e9).toFixed(1)),
+      verticalResolutionMeters: parseFloat(deltaMed.toFixed(2)),
+      freeSpaceResolutionMeters: parseFloat(deltaAir.toFixed(2))
+    };
+  }
 }
+
 
 
 
