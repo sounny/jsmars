@@ -855,7 +855,77 @@ export class ThreeDEngine {
       nz: parseFloat(nz.toFixed(5))
     };
   }
+
+  // --- Geometric Horizon Distance, Perspective Swath Width & Diffuse Radiance Solvers ---
+
+  /**
+   * Calculate geometric line-of-sight horizon distance and surface arc distance from observer altitude.
+   * d = sqrt(2 * R * h + h^2),  s = R * arccos(R / (R + h))
+   * @param {number} altitudeMeters - Observer height above planetary datum in meters
+   * @param {string} [body='mars'] - Planetary body (default 'mars')
+   * @returns {{horizonDistanceKm: number, horizonDistanceMeters: number, surfaceArcKm: number}}
+   */
+  static computeGeometricHorizonDistance(altitudeMeters, body = 'mars') {
+    const R = (body.toLowerCase() === 'moon' ? 1737.4 : 3389.5) * 1000.0; // in meters
+    const h = Math.max(0, altitudeMeters);
+
+    const dMeters = Math.sqrt(2.0 * R * h + h * h);
+    const dKm = dMeters / 1000.0;
+
+    const cosTheta = R / (R + h);
+    const thetaRad = Math.acos(Math.max(0, Math.min(1.0, cosTheta)));
+    const arcKm = (R * thetaRad) / 1000.0;
+
+    return {
+      horizonDistanceKm: parseFloat(dKm.toFixed(3)),
+      horizonDistanceMeters: parseFloat(dMeters.toFixed(1)),
+      surfaceArcKm: parseFloat(arcKm.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate perspective camera ground footprint swath width.
+   * W = 2 * H * tan(FOV / 2)
+   * @param {number} altitudeKm - Orbital altitude in km
+   * @param {number} [fovDegrees=20.0] - Camera full Field of View in degrees
+   * @returns {{swathWidthKm: number, swathWidthMeters: number, halfSwathKm: number}}
+   */
+  static computePerspectiveSwathWidth(altitudeKm, fovDegrees = 20.0) {
+    const H = Math.max(0, altitudeKm);
+    const halfFovRad = (fovDegrees * Math.PI / 180.0) / 2.0;
+    const halfSwathKm = H * Math.tan(halfFovRad);
+    const swathKm = halfSwathKm * 2.0;
+
+    return {
+      swathWidthKm: parseFloat(swathKm.toFixed(3)),
+      swathWidthMeters: parseFloat((swathKm * 1000.0).toFixed(1)),
+      halfSwathKm: parseFloat(halfSwathKm.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate diffuse Lambertian reflected surface radiance.
+   * L = (A * F_sun * cos(i)) / pi
+   * @param {number} [incidentSolarFluxW_M2=590.0] - Top-of-atmosphere/surface solar irradiance in W/m^2
+   * @param {number} [solarIncidenceAngleDeg=45.0] - Solar incidence angle in degrees
+   * @param {number} [surfaceAlbedo=0.25] - Surface Lambertian albedo
+   * @returns {{reflectedRadianceW_M2_Sr: number, isDirectlyIlluminated: boolean}}
+   */
+  static computeDiffusePhotometricRadiance(incidentSolarFluxW_M2 = 590.0, solarIncidenceAngleDeg = 45.0, surfaceAlbedo = 0.25) {
+    const F0 = Math.max(0, incidentSolarFluxW_M2);
+    const incRad = Math.abs(solarIncidenceAngleDeg) * Math.PI / 180.0;
+    const cosI = Math.max(0, Math.cos(incRad));
+    const A = Math.max(0, Math.min(1.0, surfaceAlbedo));
+
+    const L = (A * F0 * cosI) / Math.PI;
+
+    return {
+      reflectedRadianceW_M2_Sr: parseFloat(L.toFixed(4)),
+      isDirectlyIlluminated: cosI > 0
+    };
+  }
 }
+
 
 
 

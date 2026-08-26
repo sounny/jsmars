@@ -3979,6 +3979,31 @@ describe('Spherical Midpoint, Tissot Area & Gnomonic Scale (ProjectionManager)',
     });
 });
 
+describe('Geometric Horizon, Perspective Swath & Diffuse Radiance (ThreeDEngine)', () => {
+    it('should compute geometric line-of-sight horizon distance and surface arc', () => {
+        // Observer at h = 2 meters on Mars (R = 3389.5 km) -> horizon d ~ sqrt(2 * 3.3895e6 * 2) ~ 3.682 km
+        const horiz = ThreeDEngine.computeGeometricHorizonDistance(2.0, 'mars');
+        expect(horiz.horizonDistanceKm).to.be.closeTo(3.68, 0.05);
+        expect(horiz.surfaceArcKm).to.be.closeTo(3.68, 0.05);
+
+        // Orbiter at h = 250 km (250,000 m) -> horizon d ~ 1326 km
+        const orb = ThreeDEngine.computeGeometricHorizonDistance(250000.0, 'mars');
+        expect(orb.horizonDistanceKm).to.be.closeTo(1326.0, 10.0);
+    });
+
+    it('should calculate perspective camera ground footprint swath and diffuse reflected radiance', () => {
+        // Camera at H = 400 km with FOV = 20° -> halfSwath = 400 * tan(10°) ~ 70.53 km, fullSwath ~ 141.07 km
+        const swath = ThreeDEngine.computePerspectiveSwathWidth(400.0, 20.0);
+        expect(swath.swathWidthKm).to.be.closeTo(141.07, 0.5);
+        expect(swath.halfSwathKm).to.be.closeTo(70.53, 0.5);
+
+        // Incident solar flux F0 = 590 W/m^2, incidence i = 45°, albedo A = 0.25 -> L = (0.25 * 590 * cos(45°)) / pi ~ 33.19 W/(m^2 sr)
+        const rad = ThreeDEngine.computeDiffusePhotometricRadiance(590.0, 45.0, 0.25);
+        expect(rad.reflectedRadianceW_M2_Sr).to.be.closeTo(33.19, 0.2);
+        expect(rad.isDirectlyIlluminated).to.equal(true);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
