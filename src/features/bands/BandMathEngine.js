@@ -1526,7 +1526,72 @@ export class BandMathEngine {
       isRedSloped: slope > 0.0
     };
   }
+
+  // --- CRISM BD1400, Carbonate BD2500 & Second Derivative Peak Solvers ---
+
+  /**
+   * Calculate CRISM BD1400 structural OH/H2O absorption band depth index (Viviano-Beck 2014).
+   * BD1400 = 1.0 - ( R1395 / ( 0.571 * R1330 + 0.429 * R1480 ) )
+   * @param {number} r1395 - Reflectance at 1.395 µm band center
+   * @param {number} r1330 - Left shoulder reflectance at 1.33 µm
+   * @param {number} r1480 - Right shoulder reflectance at 1.48 µm
+   * @returns {{bd1400: number, hasHydration: boolean}}
+   */
+  static computeCRISMBD1400Index(r1395, r1330, r1480) {
+    const rL = Math.max(1e-4, r1330);
+    const rC = Math.max(0, r1395);
+    const rR = Math.max(1e-4, r1480);
+
+    const continuum = 0.571 * rL + 0.429 * rR;
+    const bd = 1.0 - (rC / continuum);
+
+    return {
+      bd1400: parseFloat(bd.toFixed(4)),
+      hasHydration: bd > 0.03
+    };
+  }
+
+  /**
+   * Calculate CRISM BD2500 magnesium/iron carbonate vibration absorption band depth index.
+   * BD2500 = 1.0 - ( R2530 / ( 0.5 * R2300 + 0.5 * R2600 ) )
+   * @param {number} r2530 - Reflectance at 2.53 µm carbonate band center
+   * @param {number} r2300 - Left continuum reflectance at 2.30 µm
+   * @param {number} r2600 - Right continuum reflectance at 2.60 µm
+   * @returns {{bd2500: number, hasCarbonateSignature: boolean}}
+   */
+  static computeCRISMMagnesiumCarbonateIndex(r2530, r2300, r2600) {
+    const rL = Math.max(1e-4, r2300);
+    const rC = Math.max(0, r2530);
+    const rR = Math.max(1e-4, r2600);
+
+    const continuum = 0.5 * rL + 0.5 * rR;
+    const bd = 1.0 - (rC / continuum);
+
+    return {
+      bd2500: parseFloat(bd.toFixed(4)),
+      hasCarbonateSignature: bd > 0.035
+    };
+  }
+
+  /**
+   * Calculate discrete second-derivative spectral curvature and emission/absorption peak sharpening metric.
+   * D2 = 2 * R_center - R_left - R_right
+   * @param {number} rLeft - Left wavelength reflectance
+   * @param {number} rCenter - Center wavelength reflectance
+   * @param {number} rRight - Right wavelength reflectance
+   * @returns {{curvatureD2: number, isConvexPeak: boolean, isConcaveAbsorption: boolean}}
+   */
+  static computeSecondDerivativeSpectralPeak(rLeft, rCenter, rRight) {
+    const d2 = 2.0 * rCenter - rLeft - rRight;
+
+    return {
+      curvatureD2: parseFloat(d2.toFixed(5)),
+      isConvexPeak: d2 > 0.005,
+      isConcaveAbsorption: d2 < -0.005
+    };
+  }
 }
+
 
 
 

@@ -5267,6 +5267,36 @@ describe('CRIM Multi-Phase Mixtures, Fresnel Zone & Transmission Loss (RadarSoun
     });
 });
 
+describe('BD1400 Hydration, Carbonate BD2500 & Second Derivative (BandMathEngine)', () => {
+    it('should calculate CRISM BD1400 structural hydration band depth index', () => {
+        // r1395 = 0.22, r1330 = 0.26, r1480 = 0.25
+        // continuum = 0.571 * 0.26 + 0.429 * 0.25 = 0.14846 + 0.10725 = 0.25571
+        // bd = 1 - (0.22 / 0.25571) = 1 - 0.86035 = 0.13965 (> 0.03 -> hasHydration: true)
+        const bd1400 = BandMathEngine.computeCRISMBD1400Index(0.22, 0.26, 0.25);
+        expect(bd1400.bd1400).to.be.closeTo(0.1396, 0.005);
+        expect(bd1400.hasHydration).to.be.true;
+
+        // Flat continuum (no absorption) r1395 = 0.25571 -> bd = 0.0
+        const noHyd = BandMathEngine.computeCRISMBD1400Index(0.25571, 0.26, 0.25);
+        expect(noHyd.bd1400).to.be.closeTo(0.0, 0.005);
+        expect(noHyd.hasHydration).to.be.false;
+    });
+
+    it('should compute CRISM BD2500 carbonate band depth and second-derivative spectral curvature', () => {
+        // r2530 = 0.21, r2300 = 0.26, r2600 = 0.24 -> cont = 0.5 * 0.26 + 0.5 * 0.24 = 0.25
+        // bd = 1 - (0.21 / 0.25) = 1 - 0.84 = 0.16 (> 0.035 -> hasCarbonateSignature: true)
+        const carb = BandMathEngine.computeCRISMMagnesiumCarbonateIndex(0.21, 0.26, 0.24);
+        expect(carb.bd2500).to.equal(0.16);
+        expect(carb.hasCarbonateSignature).to.be.true;
+
+        // Convex peak: rLeft = 0.20, rCenter = 0.30, rRight = 0.22 -> D2 = 2 * 0.30 - 0.20 - 0.22 = 0.60 - 0.42 = 0.18 (>0.005)
+        const peak = BandMathEngine.computeSecondDerivativeSpectralPeak(0.20, 0.30, 0.22);
+        expect(peak.curvatureD2).to.equal(0.18);
+        expect(peak.isConvexPeak).to.be.true;
+        expect(peak.isConcaveAbsorption).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
