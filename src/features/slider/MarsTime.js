@@ -1510,7 +1510,115 @@ export class MarsTime {
       isSunlit: cosZenith > 0.0
     };
   }
+
+  // --- Kepler Equation, Seasonal Day Length & Opposition Geometry Solvers ---
+
+  /**
+   * Solve Kepler's transcendental equation M = E - e * sin(E) using Newton-Raphson iteration.
+   * Returns eccentric anomaly E and true anomaly nu in radians and degrees.
+   * @param {number} meanAnomalyRad - Mean anomaly M in radians
+   * @param {number} [eccentricity=0.09341233] - Orbital eccentricity e
+   * @param {number} [tolerance=1e-9] - Convergence tolerance
+   * @returns {{eccentricAnomalyRad: number, eccentricAnomalyDeg: number, trueAnomalyRad: number, trueAnomalyDeg: number, iterations: number}}
+   */
+  static solveKeplerEquationEccentricAnomaly(meanAnomalyRad, eccentricity = 0.09341233, tolerance = 1e-9) {
+    const e = Math.max(0.0, Math.min(0.99, eccentricity));
+    let M = meanAnomalyRad % (2.0 * Math.PI);
+    if (M < 0) M += 2.0 * Math.PI;
+
+    // Initial guess
+    let E = M + e * Math.sin(M);
+    let iter = 0;
+    const maxIter = 100;
+
+    while (iter < maxIter) {
+      const f = E - e * Math.sin(E) - M;
+      if (Math.abs(f) < tolerance) break;
+      const fPrime = 1.0 - e * Math.cos(E);
+      E = E - f / fPrime;
+      iter++;
+    }
+
+    // True anomaly nu = 2 * atan2( sqrt(1+e)*sin(E/2), sqrt(1-e)*cos(E/2) )
+    const sinHalfE = Math.sin(E / 2.0);
+    const cosHalfE = Math.cos(E / 2.0);
+    const nu = 2.0 * Math.atan2(Math.sqrt(1.0 + e) * sinHalfE, Math.sqrt(1.0 - e) * cosHalfE);
+    let nuNormalized = nu % (2.0 * Math.PI);
+    if (nuNormalized < 0) nuNormalized += 2.0 * Math.PI;
+
+    return {
+      eccentricAnomalyRad: parseFloat(E.toFixed(6)),
+      eccentricAnomalyDeg: parseFloat(((E * 180.0) / Math.PI).toFixed(4)),
+      trueAnomalyRad: parseFloat(nuNormalized.toFixed(6)),
+      trueAnomalyDeg: parseFloat(((nuNormalized * 180.0) / Math.PI).toFixed(4)),
+      iterations: iter
+    };
+  }
+
+  /**
+   * Calculate seasonal daily daylight photoperiod duration in Mars hours for a given latitude and Ls.
+   * H_day = (24.6597 / pi) * arccos( - tan(phi) * tan(delta_s) )
+   * @param {number} targetLatDeg - Observer latitude in degrees (-90 to +90)
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @returns {{daylightHours: number, nightHours: number, isPolarDay: boolean, isPolarNight: boolean}}
+   */
+  static computeMarsSeasonalDayLengthHours(targetLatDeg, LsDeg) {
+    const sub = MarsTime.computeSubsolarPoint(LsDeg, 12.0);
+    const phiRad = (targetLatDeg * Math.PI) / 180.0;
+    const deltaRad = sub.declinationRad;
+
+    const solLengthHours = 24.659722; // 24h 39m 35.244s in decimal hours
+    const term = -Math.tan(phiRad) * Math.tan(deltaRad);
+
+    let dayHours = 0.0;
+    let isPolarDay = false;
+    let isPolarNight = false;
+
+    if (term <= -1.0) {
+      // Midnight Sun / Continuous daylight (Polar Day)
+      dayHours = solLengthHours;
+      isPolarDay = true;
+    } else if (term >= 1.0) {
+      // Continuous darkness (Polar Night)
+      dayHours = 0.0;
+      isPolarNight = true;
+    } else {
+      const h0Rad = Math.acos(term);
+      dayHours = (solLengthHours / Math.PI) * h0Rad;
+    }
+
+    const nightHours = solLengthHours - dayHours;
+
+    return {
+      daylightHours: parseFloat(dayHours.toFixed(2)),
+      nightHours: parseFloat(nightHours.toFixed(2)),
+      isPolarDay,
+      isPolarNight
+    };
+  }
+
+  /**
+   * Calculate approximate Mars-Earth orbital distance and synodic opposition geometry in AU.
+   * @param {number} LsDeg - Mars solar longitude in degrees
+   * @returns {{marsDistanceAU: number, estimatedOppositionDistanceAU: number, lightTravelTimeMinutes: number}}
+   */
+  static computeMarsOppositionGeometry(LsDeg) {
+    const rMars = MarsTime.computeHeliocentricDistanceAU(LsDeg).distanceAU;
+    const rEarth = 1.0; // Mean Earth orbital distance in AU
+
+    // Minimum geometric separation at opposition ~ rMars - 1.0 AU
+    const minDistanceAU = Math.max(0.37, rMars - rEarth);
+    // Light travel time in minutes: 1 AU = 499.00478 seconds = 8.3167 minutes
+    const lightMinutes = minDistanceAU * 8.316746;
+
+    return {
+      marsDistanceAU: parseFloat(rMars.toFixed(4)),
+      estimatedOppositionDistanceAU: parseFloat(minDistanceAU.toFixed(4)),
+      lightTravelTimeMinutes: parseFloat(lightMinutes.toFixed(2))
+    };
+  }
 }
+
 
 
 

@@ -5559,6 +5559,37 @@ describe('Deep Geotherm, Specific Heat & Skin Depth (KRCEngine)', () => {
     });
 });
 
+describe('Kepler Equation Inversion, Seasonal Photoperiod & Opposition (MarsTime)', () => {
+    it('should iteratively solve Kepler equation for eccentric and true anomaly', () => {
+        // Mean anomaly M = 45 deg (0.785398 rad), e = 0.09341233
+        // E ~ 0.8543 rad (~48.95 deg), nu ~ 0.9272 rad (~53.12 deg)
+        const kepler = MarsTime.solveKeplerEquationEccentricAnomaly(45.0 * Math.PI / 180.0, 0.09341233);
+        expect(kepler.eccentricAnomalyDeg).to.be.closeTo(48.95, 0.1);
+        expect(kepler.trueAnomalyDeg).to.be.closeTo(53.12, 0.1);
+        expect(kepler.iterations).to.be.lessThan(10);
+    });
+
+    it('should compute Mars seasonal daylight photoperiod hours and opposition light time', () => {
+        // Equator at Ls = 0 (Equinox) -> Day length = 24.66 / 2 = 12.33 hours
+        const eq = MarsTime.computeMarsSeasonalDayLengthHours(0.0, 0.0);
+        expect(eq.daylightHours).to.be.closeTo(12.33, 0.1);
+        expect(eq.nightHours).to.be.closeTo(12.33, 0.1);
+        expect(eq.isPolarDay).to.be.false;
+
+        // North Pole (85° N) at Ls = 90 (Northern Summer Solstice) -> Continuous daylight (Polar Day)
+        const npSummer = MarsTime.computeMarsSeasonalDayLengthHours(85.0, 90.0);
+        expect(npSummer.isPolarDay).to.be.true;
+        expect(npSummer.daylightHours).to.be.closeTo(24.66, 0.05);
+
+        // Opposition geometry at perihelion (Ls = 250 deg)
+        const opp = MarsTime.computeMarsOppositionGeometry(250.0);
+        expect(opp.marsDistanceAU).to.be.greaterThan(1.35);
+        expect(opp.marsDistanceAU).to.be.lessThan(1.70);
+        expect(opp.lightTravelTimeMinutes).to.be.greaterThan(3.0);
+        expect(opp.lightTravelTimeMinutes).to.be.lessThan(6.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
