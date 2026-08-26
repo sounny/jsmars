@@ -5632,6 +5632,42 @@ describe('Complex Crater Morphometry, Spall Ejection & Epochs (CSFDEngine)', () 
     });
 });
 
+describe('Monohydrated Sulfate BD2100, Pyroxene HCPINDEX & SAM (BandMathEngine)', () => {
+    it('should calculate CRISM BD2100 monohydrated sulfate and HCPINDEX pyroxene indices', () => {
+        // Monohydrated sulfate (kieserite): R2132 = 0.20, R1930 = 0.28, R2250 = 0.26
+        // continuum = 0.6 * 0.28 + 0.4 * 0.26 = 0.168 + 0.104 = 0.272
+        // bd2100 = 1.0 - (0.20 / 0.272) = 1.0 - 0.7353 = 0.2647
+        const bd = BandMathEngine.computeCRISMBD2100(0.20, 0.28, 0.26);
+        expect(bd.bd2100).to.be.closeTo(0.2647, 0.001);
+        expect(bd.hasMonohydratedSulfateSignature).to.be.true;
+
+        // Flat continuum: R2132 = 0.25, R1930 = 0.25, R2250 = 0.25 -> bd = 0.0
+        const flat = BandMathEngine.computeCRISMBD2100(0.25, 0.25, 0.25);
+        expect(flat.bd2100).to.equal(0.0);
+        expect(flat.hasMonohydratedSulfateSignature).to.be.false;
+
+        // High-calcium pyroxene: R2060 = 0.18, R2120 = 0.22, R2140 = 0.22, R2210 = 0.17
+        // term1 = (0.22 - 0.18) / 0.40 = 0.04 / 0.40 = 0.10
+        // term2 = (0.22 - 0.17) / 0.39 = 0.05 / 0.39 = 0.1282
+        // hcp = 0.10 + 0.1282 = 0.2282
+        const hcp = BandMathEngine.computeCRISMHCPINDEX(0.18, 0.22, 0.22, 0.17);
+        expect(hcp.hcpindex).to.be.closeTo(0.2282, 0.001);
+        expect(hcp.hasHighCalciumPyroxene).to.be.true;
+    });
+
+    it('should compute Spectral Angle Mapper (SAM) dot-product angle and match similarity', () => {
+        // Colinear spectra with scalar multiplier: T = [0.2, 0.4, 0.6], R = [0.1, 0.2, 0.3] -> angle = 0 deg (identical spectral shape)
+        const identical = BandMathEngine.computeSpectralAngleMapper([0.2, 0.4, 0.6], [0.1, 0.2, 0.3]);
+        expect(identical.spectralAngleDeg).to.be.closeTo(0.0, 0.01);
+        expect(identical.matchSimilarityFraction).to.be.closeTo(1.0, 0.0001);
+
+        // Orthogonal vectors: T = [1, 0], R = [0, 1] -> angle = 90 deg
+        const ortho = BandMathEngine.computeSpectralAngleMapper([1.0, 0.0], [0.0, 1.0]);
+        expect(ortho.spectralAngleDeg).to.be.closeTo(90.0, 0.01);
+        expect(ortho.matchSimilarityFraction).to.be.closeTo(0.0, 0.0001);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

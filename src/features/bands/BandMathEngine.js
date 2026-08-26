@@ -1666,7 +1666,92 @@ export class BandMathEngine {
       numBands: n
     };
   }
+
+  // --- Monohydrated Sulfate BD2100, Pyroxene HCPINDEX & Spectral Angle Mapper Solvers ---
+
+  /**
+   * Calculate CRISM BD2100 monohydrated sulfate (kieserite) 2.1 µm crystal absorption band depth.
+   * BD2100 = 1.0 - ( R2132 / ( 0.6 * R1930 + 0.4 * R2250 ) )
+   * @param {number} r2132 - Center reflectance at 2.132 µm monohydrated sulfate absorption band
+   * @param {number} r1930 - Left continuum shoulder reflectance at 1.93 µm
+   * @param {number} r2250 - Right continuum shoulder reflectance at 2.25 µm
+   * @returns {{bd2100: number, hasMonohydratedSulfateSignature: boolean}}
+   */
+  static computeCRISMBD2100(r2132, r1930, r2250) {
+    const rL = Math.max(1e-4, r1930);
+    const rC = Math.max(0, r2132);
+    const rR = Math.max(1e-4, r2250);
+
+    const continuum = 0.6 * rL + 0.4 * rR;
+    const bd = 1.0 - (rC / continuum);
+
+    return {
+      bd2100: parseFloat(bd.toFixed(4)),
+      hasMonohydratedSulfateSignature: bd > 0.03
+    };
+  }
+
+  /**
+   * Calculate CRISM HCPINDEX high-calcium pyroxene (clinopyroxene / augite) 2.0 µm band curvature index.
+   * HCPINDEX = ( (R2120 - R2060)/(R2120 + R2060) ) + ( (R2140 - R2210)/(R2140 + R2210) )
+   * @param {number} r2060 - Left band wing reflectance at 2.06 µm
+   * @param {number} r2120 - Left shoulder reflectance at 2.12 µm
+   * @param {number} r2140 - Right shoulder reflectance at 2.14 µm
+   * @param {number} r2210 - Right band wing reflectance at 2.21 µm
+   * @returns {{hcpindex: number, hasHighCalciumPyroxene: boolean}}
+   */
+  static computeCRISMHCPINDEX(r2060, r2120, r2140, r2210) {
+    const term1 = (r2120 - r2060) / Math.max(1e-4, r2120 + r2060);
+    const term2 = (r2140 - r2210) / Math.max(1e-4, r2140 + r2210);
+    const hcp = term1 + term2;
+
+    return {
+      hcpindex: parseFloat(hcp.toFixed(4)),
+      hasHighCalciumPyroxene: hcp > 0.02
+    };
+  }
+
+  /**
+   * Calculate Spectral Angle Mapper (SAM) dot-product angle theta in radians and degrees.
+   * cos(theta) = dot(T, R) / ( ||T|| * ||R|| )
+   * @param {Array<number>} spectrumTarget - Target unknown pixel spectrum vector
+   * @param {Array<number>} spectrumReference - Reference laboratory / endmember spectrum vector
+   * @returns {{spectralAngleRad: number, spectralAngleDeg: number, matchSimilarityFraction: number, numBands: number}}
+   */
+  static computeSpectralAngleMapper(spectrumTarget = [], spectrumReference = []) {
+    const n = Math.min(spectrumTarget.length, spectrumReference.length);
+    if (n === 0) {
+      return { spectralAngleRad: 0.0, spectralAngleDeg: 0.0, matchSimilarityFraction: 1.0, numBands: 0 };
+    }
+
+    let dot = 0;
+    let normT = 0;
+    let normR = 0;
+
+    for (let i = 0; i < n; i++) {
+      const t = spectrumTarget[i];
+      const r = spectrumReference[i];
+      dot += t * r;
+      normT += t * t;
+      normR += r * r;
+    }
+
+    const denom = Math.sqrt(normT) * Math.sqrt(normR);
+    let cosTheta = denom > 1e-9 ? dot / denom : 1.0;
+    cosTheta = Math.max(-1.0, Math.min(1.0, cosTheta));
+
+    const angleRad = Math.acos(cosTheta);
+    const angleDeg = (angleRad * 180.0) / Math.PI;
+
+    return {
+      spectralAngleRad: parseFloat(angleRad.toFixed(5)),
+      spectralAngleDeg: parseFloat(angleDeg.toFixed(3)),
+      matchSimilarityFraction: parseFloat(cosTheta.toFixed(5)),
+      numBands: n
+    };
+  }
 }
+
 
 
 
