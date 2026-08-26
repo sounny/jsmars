@@ -1323,7 +1323,91 @@ export class MCDEngine {
       isDustStormSeason: ls >= 180.0 && ls <= 360.0
     };
   }
+
+  // --- Boundary Layer Friction Velocity, Sensible Heat Flux & Scale Height Solvers ---
+
+  /**
+   * Calculate atmospheric boundary layer friction velocity u_*, drag coefficient C_D, and surface shear stress.
+   * u_* = ( kappa * u ) / ln( z / z_0 )
+   * @param {number} windSpeedMps - Wind speed u in m/s measured at height z
+   * @param {number} [heightMeters=2.0] - Measurement anemometer height z above ground
+   * @param {number} [roughnessLengthMeters=0.01] - Aerodynamic roughness length z_0 in meters (0.001 m smooth sand, 0.03 m rock field)
+   * @param {number} [airDensityKgM3=0.015] - Atmospheric gas density in kg/m^3
+   * @returns {{frictionVelocityMps: number, dragCoefficient: number, surfaceShearStressPa: number}}
+   */
+  static computeAtmosphericFrictionVelocityAndRoughness(windSpeedMps, heightMeters = 2.0, roughnessLengthMeters = 0.01, airDensityKgM3 = 0.015) {
+    const u = Math.max(0.01, windSpeedMps);
+    const z = Math.max(0.1, heightMeters);
+    const z0 = Math.max(1e-5, Math.min(z * 0.5, roughnessLengthMeters));
+    const rho = Math.max(1e-4, airDensityKgM3);
+
+    const kappa = 0.40; // von Kármán constant
+    const logRatio = Math.log(z / z0);
+    const uStar = (kappa * u) / logRatio;
+    const cd = Math.pow(kappa / logRatio, 2);
+    const tauShear = rho * uStar * uStar;
+
+    return {
+      frictionVelocityMps: parseFloat(uStar.toFixed(4)),
+      dragCoefficient: parseFloat(cd.toFixed(5)),
+      surfaceShearStressPa: parseFloat(tauShear.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate turbulent sensible heat flux H between Martian ground and atmospheric boundary layer.
+   * H = rho * c_p * C_H * u * ( T_surf - T_air )
+   * @param {number} airTempK - Near-surface atmospheric air temperature in Kelvin
+   * @param {number} surfaceTempK - Ground skin temperature in Kelvin
+   * @param {number} windSpeedMps - Wind speed in m/s
+   * @param {number} [airDensityKgM3=0.015] - Atmospheric density in kg/m^3
+   * @param {number} [bulkTransferCoeff=0.003] - Bulk aerodynamic heat transfer coefficient C_H
+   * @returns {{sensibleHeatFluxW_M2: number, isConvectiveDaytime: boolean, temperatureDifferenceK: number}}
+   */
+  static computeSurfaceSensibleHeatFlux(airTempK, surfaceTempK, windSpeedMps, airDensityKgM3 = 0.015, bulkTransferCoeff = 0.003) {
+    const Tair = Math.max(10.0, airTempK);
+    const Tsurf = Math.max(10.0, surfaceTempK);
+    const u = Math.max(0.0, windSpeedMps);
+    const rho = Math.max(1e-4, airDensityKgM3);
+    const CH = Math.max(1e-4, bulkTransferCoeff);
+
+    const cp = 850.0; // Specific heat capacity of CO2 gas in J/(kg K)
+    const dT = Tsurf - Tair;
+    const H = rho * cp * CH * u * dT;
+
+    return {
+      sensibleHeatFluxW_M2: parseFloat(H.toFixed(2)),
+      isConvectiveDaytime: H > 0,
+      temperatureDifferenceK: parseFloat(dT.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate atmospheric scale height H_scale = (R_spec * T) / g as a function of temperature.
+   * @param {number} temperatureK - Mean atmospheric layer temperature in Kelvin
+   * @param {number} [meanMolecularWeightG_Mol=43.34] - Gas molar mass in g/mol (~43.34 for 95% CO2, 2.6% N2, 1.9% Ar)
+   * @param {number} [gravityMps2=3.72076] - Gravitational acceleration in m/s^2
+   * @returns {{scaleHeightKm: number, scaleHeightMeters: number, specificGasConstantJ_KgK: number}}
+   */
+  static computeAtmosphericScaleHeightProfile(temperatureK, meanMolecularWeightG_Mol = 43.34, gravityMps2 = 3.72076) {
+    const T = Math.max(10.0, temperatureK);
+    const M_kg = Math.max(1.0, meanMolecularWeightG_Mol) / 1000.0;
+    const g = Math.max(0.1, gravityMps2);
+
+    const R_univ = 8.314462618;
+    const R_spec = R_univ / M_kg; // ~ 191.84 J/(kg K) for Mars CO2
+    const H_m = (R_spec * T) / g;
+    const H_km = H_m / 1000.0;
+
+    return {
+      scaleHeightKm: parseFloat(H_km.toFixed(2)),
+      scaleHeightMeters: parseFloat(H_m.toFixed(1)),
+      specificGasConstant: parseFloat(R_spec.toFixed(2)),
+      specificGasConstantJ_KgK: parseFloat(R_spec.toFixed(2))
+    };
+  }
 }
+
 
 
 

@@ -5668,6 +5668,40 @@ describe('Monohydrated Sulfate BD2100, Pyroxene HCPINDEX & SAM (BandMathEngine)'
     });
 });
 
+describe('Boundary Layer Friction, Sensible Heat Flux & Scale Height (MCDEngine)', () => {
+    it('should calculate atmospheric friction velocity and boundary layer drag coefficient', () => {
+        // Wind speed u = 10 m/s at z = 2.0 m, z_0 = 0.01 m (rough sand/pebbles)
+        // log(z/z0) = log(200) = 5.2983
+        // u_* = (0.40 * 10) / 5.2983 = 4.0 / 5.2983 = 0.7550 m/s
+        // C_D = (0.40 / 5.2983)^2 = 0.075497^2 = 0.00570
+        const frict = MCDEngine.computeAtmosphericFrictionVelocityAndRoughness(10.0, 2.0, 0.01, 0.015);
+        expect(frict.frictionVelocityMps).to.be.closeTo(0.7550, 0.002);
+        expect(frict.dragCoefficient).to.be.closeTo(0.0057, 0.0002);
+        expect(frict.surfaceShearStressPa).to.be.greaterThan(0);
+    });
+
+    it('should compute surface sensible heat flux and temperature-dependent scale height', () => {
+        // Daytime convection: T_air = 210 K, T_surf = 250 K (dT = +40 K), u = 5 m/s, rho = 0.015 kg/m^3, C_H = 0.003
+        // H = 0.015 * 850 * 0.003 * 5 * 40 = 0.03825 * 200 = 7.65 W/m^2
+        const flux = MCDEngine.computeSurfaceSensibleHeatFlux(210.0, 250.0, 5.0, 0.015, 0.003);
+        expect(flux.sensibleHeatFluxW_M2).to.equal(7.65);
+        expect(flux.isConvectiveDaytime).to.be.true;
+        expect(flux.temperatureDifferenceK).to.equal(40.0);
+
+        // Nighttime inversion: T_air = 200 K, T_surf = 180 K (dT = -20 K) -> H = -3.825 W/m^2
+        const night = MCDEngine.computeSurfaceSensibleHeatFlux(200.0, 180.0, 5.0, 0.015, 0.003);
+        expect(night.sensibleHeatFluxW_M2).to.equal(-3.83);
+        expect(night.isConvectiveDaytime).to.be.false;
+
+        // Scale height at T = 220 K, M = 43.34 g/mol, g = 3.72076 m/s^2
+        // R_spec = 8.314462618 / 0.04334 = 191.84277 J/(kg K)
+        // H = (191.84277 * 220) / 3.72076 = 42205.41 / 3.72076 = 11343.22 m = 11.34 km
+        const scale = MCDEngine.computeAtmosphericScaleHeightProfile(220.0, 43.34, 3.72076);
+        expect(scale.scaleHeightKm).to.be.closeTo(11.34, 0.05);
+        expect(scale.scaleHeightMeters).to.be.closeTo(11343.2, 5.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
