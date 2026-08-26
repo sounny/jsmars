@@ -4275,6 +4275,27 @@ describe('Free-Air Gradient, Moho Depth & Apparent Permittivity (InvestigateTool
     });
 });
 
+describe('Spherical Excess, Rhumb Mid-Lat & Ground Velocity (MeasureTool)', () => {
+    it('should compute spherical polygon area via Girard spherical excess theorem', () => {
+        // Octant of a sphere (3 right angles = 90°, 90°, 90°) -> E = 3 * pi/2 - pi = pi/2 rad. Area = (pi/2) * R^2 = 1/8 total sphere area
+        // Mars R = 3389.5 km -> Total Area = 4 * pi * 3389.5^2 ~ 144.37e6 km^2 -> Octant Area = 18.046e6 km^2
+        const excess = MeasureTool.computeSphericalExcessArea([90.0, 90.0, 90.0], 'mars');
+        expect(excess.sphericalExcessRad).to.be.closeTo(Math.PI / 2.0, 0.0001);
+        expect(excess.areaKm2).to.be.closeTo(18046400, 5000);
+    });
+
+    it('should calculate mean-latitude flat-sphere rhumb distance and sub-satellite ground velocity', () => {
+        // Equator 0° to 10°E -> d = 3389.5 * (10 * pi/180) ~ 591.58 km
+        const rhumb = MeasureTool.computeRhumbLineMeanLatDistance(0.0, 0.0, 0.0, 10.0, 'mars');
+        expect(rhumb.distanceKm).to.be.closeTo(591.58, 1.0);
+
+        // Orbital speed v = 3.4 km/s at altitude H = 250 km on Mars R = 3389.5 km -> v_ground = 3.4 * (3389.5 / 3639.5) ~ 3.1664 km/s
+        const vg = MeasureTool.computeSubSatelliteGroundVelocity(3.4, 250.0, 'mars');
+        expect(vg.groundVelocityKmS).to.be.closeTo(3.1664, 0.01);
+        expect(vg.groundVelocityMs).to.be.closeTo(3166.4, 10.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

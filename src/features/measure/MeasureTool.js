@@ -1439,7 +1439,90 @@ export class MeasureTool {
             edgeCount: coords.length
         };
     }
+
+    // --- Spherical Excess Area, Rhumb Mid-Latitude Distance & Ground Velocity Solvers ---
+
+    /**
+     * Calculate exact spherical polygon area from vertex interior angles using Girard's theorem.
+     * E = sum(alpha_i) - (n - 2) * pi,  A = R^2 * E
+     * @param {Array<number>} interiorAnglesDeg - Array of vertex interior angles in degrees
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{sphericalExcessRad: number, areaKm2: number, areaM2: number}}
+     */
+    static computeSphericalExcessArea(interiorAnglesDeg = [], body = 'mars') {
+        const n = interiorAnglesDeg.length;
+        if (n < 3) return { sphericalExcessRad: 0, areaKm2: 0, areaM2: 0 };
+
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const sumRad = interiorAnglesDeg.reduce((acc, deg) => acc + (deg * Math.PI / 180.0), 0);
+        const excessRad = sumRad - (n - 2) * Math.PI;
+
+        const clampedExcess = Math.max(0, excessRad);
+        const areaKm2 = clampedExcess * R * R;
+
+        return {
+            sphericalExcessRad: parseFloat(clampedExcess.toFixed(6)),
+            areaKm2: parseFloat(areaKm2.toFixed(3)),
+            areaM2: parseFloat((areaKm2 * 1e6).toFixed(1))
+        };
+    }
+
+    /**
+     * Calculate mean-latitude flat-sphere approximate rhumb line distance.
+     * d = R * sqrt( delta_phi^2 + (cos(phi_mean) * delta_lambda)^2 )
+     * @param {number} lat1 - Start latitude in degrees
+     * @param {number} lon1 - Start longitude in degrees
+     * @param {number} lat2 - End latitude in degrees
+     * @param {number} lon2 - End longitude in degrees
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{distanceKm: number, distanceMeters: number}}
+     */
+    static computeRhumbLineMeanLatDistance(lat1, lon1, lat2, lon2, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+
+        const phi1 = lat1 * Math.PI / 180.0;
+        const phi2 = lat2 * Math.PI / 180.0;
+        const dPhi = (lat2 - lat1) * Math.PI / 180.0;
+
+        let dLon = (lon2 - lon1) * Math.PI / 180.0;
+        while (dLon > Math.PI) dLon -= 2.0 * Math.PI;
+        while (dLon < -Math.PI) dLon += 2.0 * Math.PI;
+
+        const meanPhi = (phi1 + phi2) / 2.0;
+        const dRad = Math.hypot(dPhi, Math.cos(meanPhi) * dLon);
+        const distKm = dRad * R;
+
+        return {
+            distanceKm: parseFloat(distKm.toFixed(3)),
+            distanceMeters: parseFloat((distKm * 1000.0).toFixed(1))
+        };
+    }
+
+    /**
+     * Calculate sub-satellite nadir ground track velocity across planetary surface.
+     * v_ground = v_orbit * (R / (R + H))
+     * @param {number} orbitalSpeedKmS - Spacecraft orbital speed in km/s (e.g. 3.4 km/s for MRO)
+     * @param {number} altitudeKm - Spacecraft orbital altitude in km (e.g. 250 km)
+     * @param {string} [body='mars'] - Planetary body
+     * @returns {{groundVelocityKmS: number, groundVelocityKmH: number, groundVelocityMs: number}}
+     */
+    static computeSubSatelliteGroundVelocity(orbitalSpeedKmS, altitudeKm, body = 'mars') {
+        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const H = Math.max(0, altitudeKm);
+        const vOrbit = Math.max(0, orbitalSpeedKmS);
+
+        const vGroundKmS = vOrbit * (R / (R + H));
+        const vGroundMs = vGroundKmS * 1000.0;
+        const vGroundKmH = vGroundKmS * 3600.0;
+
+        return {
+            groundVelocityKmS: parseFloat(vGroundKmS.toFixed(4)),
+            groundVelocityKmH: parseFloat(vGroundKmH.toFixed(2)),
+            groundVelocityMs: parseFloat(vGroundMs.toFixed(2))
+        };
+    }
 }
+
 
 
 
