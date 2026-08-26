@@ -4028,6 +4028,26 @@ describe('Conrath Dust, Water Ice Saturation & Adiabatic Lapse Rate (MCDEngine)'
     });
 });
 
+describe('Infinite Slab Gravity, Density Inversion & Thermal Conductivity (InvestigateTool)', () => {
+    it('should calculate infinite Bouguer slab gravity attraction and invert crustal density contrast', () => {
+        // Slab h = 1000 m (1 km) with rho = 2900 kg/m^3 -> delta_g = 2 * pi * 6.6743e-11 * 2900 * 1000 * 1e5 ~ 121.6 mGal
+        const slab = InvestigateTool.computeInfiniteSlabBouguerGravity(1000.0, 2900.0);
+        expect(slab.bouguerAttractionMGal).to.be.closeTo(121.6, 0.5);
+
+        // Invert density: delta_g = 121.6 mGal at h = 1000 m -> rho ~ 2900 kg/m^3
+        const inv = InvestigateTool.invertCrustalDensityContrast(121.6, 1000.0);
+        expect(inv.inferredDensityKgM3).to.be.closeTo(2900.0, 15.0);
+        expect(inv.densityGramsCm3).to.be.closeTo(2.90, 0.02);
+    });
+
+    it('should compute apparent bulk thermal conductivity from thermal inertia', () => {
+        // Rocky regolith I = 300 tiu, rho = 1500 kg/m^3, cp = 800 J/(kg K) -> k = 300^2 / (1500 * 800) = 90000 / 1200000 = 0.075 W/(m K)
+        const cond = InvestigateTool.computeApparentThermalConductivity(300.0, 1500.0, 800.0);
+        expect(cond.thermalConductivityW_MK).to.equal(0.075);
+        expect(cond.volumetricHeatCapacityJ_M3K).to.equal(1200000.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

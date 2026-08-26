@@ -999,7 +999,73 @@ export class InvestigateTool {
             peakAnomalyMGal: parseFloat(peak_mGal.toFixed(3))
         };
     }
+
+    // --- Infinite Slab Bouguer, Crustal Density Contrast & Apparent Thermal Conductivity Solvers ---
+
+    /**
+     * Calculate gravitational attraction of an infinite Bouguer slab in mGal.
+     * delta_g = 2 * pi * G * rho * h * 1e5 mGal
+     * @param {number} thicknessMeters - Slab thickness/topography height in meters
+     * @param {number} [densityKgM3=2900.0] - Crustal density in kg/m^3
+     * @returns {{bouguerAttractionMGal: number, attractionMs2: number}}
+     */
+    static computeInfiniteSlabBouguerGravity(thicknessMeters, densityKgM3 = 2900.0) {
+        const G = 6.67430e-11;
+        const h = thicknessMeters;
+        const rho = Math.max(100.0, densityKgM3);
+
+        const deltaG_ms2 = 2.0 * Math.PI * G * rho * h;
+        const deltaG_mGal = deltaG_ms2 * 1e5;
+
+        return {
+            bouguerAttractionMGal: parseFloat(deltaG_mGal.toFixed(3)),
+            attractionMs2: parseFloat(deltaG_ms2.toExponential(4))
+        };
+    }
+
+    /**
+     * Invert bulk crustal density from observed Bouguer gravity attraction and topographic relief.
+     * rho = (delta_g * 1e-5) / (2 * pi * G * h)
+     * @param {number} gravityAnomalyMGal - Gravity anomaly in mGal
+     * @param {number} topographyHeightMeters - Topography height in meters
+     * @returns {{inferredDensityKgM3: number, densityGramsCm3: number}}
+     */
+    static invertCrustalDensityContrast(gravityAnomalyMGal, topographyHeightMeters) {
+        const G = 6.67430e-11;
+        const deltaG_ms2 = gravityAnomalyMGal * 1e-5;
+        const h = Math.max(1.0, topographyHeightMeters);
+
+        const rho = deltaG_ms2 / (2.0 * Math.PI * G * h);
+
+        return {
+            inferredDensityKgM3: parseFloat(rho.toFixed(1)),
+            densityGramsCm3: parseFloat((rho / 1000.0).toFixed(3))
+        };
+    }
+
+    /**
+     * Calculate apparent bulk thermal conductivity from thermal inertia.
+     * k = I^2 / (rho * c_p)
+     * @param {number} thermalInertia - Thermal inertia in tiu (J m^-2 K^-1 s^-1/2)
+     * @param {number} [bulkDensityKgM3=1500.0] - Bulk density in kg/m^3
+     * @param {number} [specificHeatJ_KgK=800.0] - Specific heat capacity in J/(kg K)
+     * @returns {{thermalConductivityW_MK: number, volumetricHeatCapacityJ_M3K: number}}
+     */
+    static computeApparentThermalConductivity(thermalInertia, bulkDensityKgM3 = 1500.0, specificHeatJ_KgK = 800.0) {
+        const I = Math.max(1.0, thermalInertia);
+        const rho = Math.max(100.0, bulkDensityKgM3);
+        const cp = Math.max(100.0, specificHeatJ_KgK);
+
+        const cVol = rho * cp;
+        const k = (I * I) / cVol;
+
+        return {
+            thermalConductivityW_MK: parseFloat(k.toFixed(5)),
+            volumetricHeatCapacityJ_M3K: parseFloat(cVol.toFixed(1))
+        };
+    }
 }
+
 
 
 
