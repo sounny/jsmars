@@ -88,34 +88,36 @@ export class CollapsibleGroup {
                 this.toggleSection(content, icon);
             });
 
-            // Set initial state: if content has display:none inline, migrate to class
-            if (content && content.style.display === 'none') {
+            // Set initial state: all layer sections start collapsed by default
+            if (content) {
                 content.classList.add('collapsed');
-                content.style.display = '';
+                content.style.display = 'none';
             }
         });
     }
 
     /**
      * Toggle a content section between collapsed and expanded.
-     * Uses a CSS class ('collapsed') instead of getComputedStyle
-     * to avoid forced layout/reflow.
      * @param {HTMLElement|null} content - The content panel to toggle
      * @param {HTMLElement|null} icon - The +/- icon element
      */
     toggleSection(content, icon) {
         if (!content) return;
 
-        const isCollapsed = content.classList.contains('collapsed');
-        content.classList.toggle('collapsed');
+        const isCollapsed = content.classList.contains('collapsed') || content.style.display === 'none';
 
-        // Update display to match class state
-        content.style.display = isCollapsed ? 'block' : 'none';
-
-        if (icon) {
-            icon.textContent = isCollapsed ? '-' : '+';
-        }
-        if (!isCollapsed) {
+        if (isCollapsed) {
+            content.classList.remove('collapsed');
+            content.style.display = 'block';
+            if (icon) {
+                icon.textContent = '-';
+            }
+        } else {
+            content.classList.add('collapsed');
+            content.style.display = 'none';
+            if (icon) {
+                icon.textContent = '+';
+            }
             this.hideInfo();
         }
     }

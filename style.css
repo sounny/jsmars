@@ -911,6 +911,14 @@ html {
   flex: 1;
 }
 
+.layer-section-content {
+  display: none;
+}
+
+.layer-section-content.collapsed {
+  display: none;
+}
+
 /* Icon used in collapsible section headers */
 .icon {
   font-size: 14px;
