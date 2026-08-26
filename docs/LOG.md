@@ -394,3 +394,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate ionospheric dispersion delay and cumulative multi-layer TWT
 ?: AssertionError: expected undefined to be a number
     at n.<anonymous> (unit.js:2359:42)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 22:00:39 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate temperature-dependent specific heat capacity of silicate regolith
+?: AssertionError: expected 579 to be close to 771.38 +/- 0.5
+    at n.<anonymous> (unit.js:4574:44)

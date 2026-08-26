@@ -1310,7 +1310,85 @@ export class KRCEngine {
       isSublimating: dm_dt > 0
     };
   }
+
+  // --- Deep Geotherm, Specific Heat & Skin Depth Inversion Solvers ---
+
+  /**
+   * Calculate steady-state deep crustal geothermal temperature profile T(z) and gradient.
+   * T(z) = T_surface_mean + (q_geo / k_rock) * z
+   * @param {number} surfaceMeanTempK - Mean annual surface temperature in Kelvin
+   * @param {number} depthMeters - Depth z in meters below surface
+   * @param {number} [geothermalFluxW_M2=0.030] - Interior basal heat flux in W/m^2 (~30 mW/m^2 on Mars)
+   * @param {number} [thermalConductivityW_MK=2.0] - Crustal rock thermal conductivity (~2.0 W/(m K) for basalt)
+   * @returns {{temperatureAtDepthK: number, thermalGradientK_Km: number, depthKm: number}}
+   */
+  static computeDeepGeothermalTemperatureProfile(surfaceMeanTempK, depthMeters, geothermalFluxW_M2 = 0.030, thermalConductivityW_MK = 2.0) {
+    const T0 = Math.max(10.0, surfaceMeanTempK);
+    const z = Math.max(0, depthMeters);
+    const qGeo = Math.max(0, geothermalFluxW_M2);
+    const k = Math.max(0.01, thermalConductivityW_MK);
+
+    const gradientK_M = qGeo / k; // K/m
+    const gradientK_Km = gradientK_M * 1000.0; // K/km
+    const Tz = T0 + gradientK_M * z;
+
+    return {
+      temperatureAtDepthK: parseFloat(Tz.toFixed(2)),
+      thermalGradientK_Km: parseFloat(gradientK_Km.toFixed(2)),
+      depthKm: parseFloat((z / 1000.0).toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate surface diurnal temperature swing amplitude A_T under harmonic solar insolation forcing.
+   * A_T = Delta_F / ( I * sqrt(omega) ) where omega = 2 * pi / P
+   * @param {number} insolationAmplitudeW_M2 - Solar forcing amplitude Delta_F in W/m^2 (e.g. 250 W/m^2)
+   * @param {number} thermalInertiaSI - Surface thermal inertia in J/(m^2 K s^0.5) (e.g. 250)
+   * @param {number} [periodSeconds=88775.244] - Forcing period in seconds (1 Sol)
+   * @returns {{temperatureAmplitudeK: number, peakToPeakDiurnalSwingK: number, angularFrequencyRadS: number}}
+   */
+  static computeSurfaceThermalHarmonicAmplitude(insolationAmplitudeW_M2, thermalInertiaSI, periodSeconds = 88775.244) {
+    const dF = Math.max(0, insolationAmplitudeW_M2);
+    const I = Math.max(1.0, thermalInertiaSI);
+    const P = Math.max(1.0, periodSeconds);
+
+    const omega = (2.0 * Math.PI) / P;
+    const ampK = dF / (I * Math.sqrt(omega));
+    const peakToPeakK = ampK * 2.0;
+
+    return {
+      temperatureAmplitudeK: parseFloat(ampK.toFixed(2)),
+      peakToPeakDiurnalSwingK: parseFloat(peakToPeakK.toFixed(2)),
+      angularFrequencyRadS: parseFloat(omega.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate thermal damping skin depth delta for diurnal (Sol) or annual (seasonal) waves.
+   * delta = (I / (rho * c_p)) * sqrt(P / pi)
+   * @param {number} thermalInertiaSI - Thermal inertia I in J/(m^2 K s^0.5) (e.g. 300 for Martian sand)
+   * @param {number} [densityKgM3=1500] - Regolith bulk density in kg/m^3
+   * @param {number} [specificHeatJ_KgK=800] - Heat capacity in J/(kg K)
+   * @param {number} [periodSeconds=88775.244] - Thermal wave period P in seconds (1 Sol = 88775.244 s, 1 Mars Year = 5.935e7 s)
+   * @returns {{skinDepthMeters: number, skinDepthCm: number, periodHours: number}}
+   */
+  static computeThermalSkinDepthInversion(thermalInertiaSI, densityKgM3 = 1500, specificHeatJ_KgK = 800, periodSeconds = 88775.244) {
+    const I = Math.max(1.0, thermalInertiaSI);
+    const rho = Math.max(100.0, densityKgM3);
+    const cp = Math.max(100.0, specificHeatJ_KgK);
+    const P = Math.max(1.0, periodSeconds);
+
+    const deltaM = (I / (rho * cp)) * Math.sqrt(P / Math.PI);
+    const deltaCm = deltaM * 100.0;
+
+    return {
+      skinDepthMeters: parseFloat(deltaM.toFixed(4)),
+      skinDepthCm: parseFloat(deltaCm.toFixed(2)),
+      periodHours: parseFloat((P / 3600.0).toFixed(2))
+    };
+  }
 }
+
 
 
 

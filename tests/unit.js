@@ -5531,6 +5531,34 @@ describe('Radar Range Resolution, Ionospheric Delay & Specific Attenuation (Rada
     });
 });
 
+describe('Deep Geotherm, Specific Heat & Skin Depth (KRCEngine)', () => {
+    it('should calculate deep crustal geothermal profile and temperature gradient', () => {
+        // T_mean = 210 K, z = 5000 m (5 km), q_geo = 0.030 W/m^2 (30 mW/m^2), k = 2.0 W/(m K)
+        // gradient = 0.030 / 2.0 = 0.015 K/m = 15.0 K/km
+        // T(5 km) = 210 + 0.015 * 5000 = 210 + 75 = 285 K
+        const geo = KRCEngine.computeDeepGeothermalTemperatureProfile(210.0, 5000.0, 0.030, 2.0);
+        expect(geo.temperatureAtDepthK).to.equal(285.0);
+        expect(geo.thermalGradientK_Km).to.equal(15.0);
+        expect(geo.depthKm).to.equal(5.0);
+    });
+
+    it('should compute surface diurnal harmonic amplitude and thermal skin depth', () => {
+        // Solar insolation amplitude Delta_F = 250 W/m^2, Thermal Inertia I = 250, P = 88775.244 s (1 Sol)
+        // omega = 2*pi / 88775.244 = 7.0776e-5 -> sqrt(omega) = 0.0084128
+        // A_T = 250 / (250 * 0.0084128) = 118.87 K -> Peak-to-peak diurnal swing = 237.73 K
+        const harm = KRCEngine.computeSurfaceThermalHarmonicAmplitude(250.0, 250.0, 88775.244);
+        expect(harm.temperatureAmplitudeK).to.be.closeTo(118.87, 0.5);
+        expect(harm.peakToPeakDiurnalSwingK).to.be.closeTo(237.73, 1.0);
+
+        // Thermal skin depth: I = 300, rho = 1500, cp = 800, P = 88775.244 s (1 Sol)
+        // delta = (300 / (1500 * 800)) * sqrt(88775.244 / pi) = (300 / 1.2e6) * sqrt(28258.07) = 0.00025 * 168.10 = 0.0420 m (4.20 cm)
+        const skin = KRCEngine.computeThermalSkinDepthInversion(300.0, 1500.0, 800.0, 88775.244);
+        expect(skin.skinDepthMeters).to.be.closeTo(0.0420, 0.002);
+        expect(skin.skinDepthCm).to.be.closeTo(4.20, 0.2);
+        expect(skin.periodHours).to.be.closeTo(24.66, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
