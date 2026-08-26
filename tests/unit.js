@@ -4233,6 +4233,27 @@ describe('Lommel-Seeliger, Swath Slant Range & Globe Angular Radius (ThreeDEngin
     });
 });
 
+describe('Monin-Obukhov, Saltation Threshold & Scale Height Gradient (MCDEngine)', () => {
+    it('should compute Monin-Obukhov boundary layer atmospheric stability length', () => {
+        // u* = 0.5 m/s, H_sens = 20 W/m^2, T0 = 220 K, rho = 0.015 kg/m^3 -> L = -(0.5^3 * 220 * 0.015 * 800) / (0.40 * 3.72076 * 20) = -330 / 29.766 ~ -11.08 m
+        const mo = MCDEngine.computeMoninObukhovLength(0.5, 20.0, 220.0, 0.015);
+        expect(mo.moninObukhovLengthMeters).to.be.closeTo(-11.1, 0.5);
+        expect(mo.stabilityRegime).to.equal('Convectively Unstable (Daytime Midday)');
+    });
+
+    it('should calculate aerodynamic dust saltation threshold and scale height vertical gradient', () => {
+        // d = 100 µm, rhoA = 0.015 kg/m^3, rhoP = 2500 kg/m^3 -> densityRatio ~ 166665 -> u*_t = 0.11 * sqrt(166665 * 3.72076 * 100e-6) = 0.11 * sqrt(62.01) ~ 0.866 m/s
+        const salt = MCDEngine.computeSaltationThresholdFrictionVelocity(100.0, 0.015, 2500.0);
+        expect(salt.thresholdFrictionVelocityMs).to.be.closeTo(0.866, 0.05);
+        expect(salt.minimumWindSpeed10mMs).to.be.closeTo(14.96, 1.0);
+
+        // Gamma = 4.5 K/km -> dH/dz = -(188.92 / 3.72076) * 0.0045 ~ -0.2285
+        const grad = MCDEngine.computeAtmosphericScaleHeightGradient(4.5);
+        expect(grad.scaleHeightGradientDimensionless).to.be.closeTo(-0.2285, 0.005);
+        expect(grad.scaleHeightChangeMPerKm).to.be.closeTo(-228.5, 2.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

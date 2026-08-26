@@ -833,7 +833,89 @@ export class MCDEngine {
       lapseRateKPerKm: parseFloat(gammaKm.toFixed(3))
     };
   }
+
+  // --- Monin-Obukhov Length, Saltation Threshold & Scale Height Gradient Solvers ---
+
+  /**
+   * Calculate atmospheric Monin-Obukhov boundary layer stability length L.
+   * L = -(u*^3 * T0 * rho * Cp) / (kappa * g * H_sens)
+   * @param {number} frictionVelocityMs - Friction velocity u* in m/s
+   * @param {number} sensibleHeatFluxW_M2 - Surface sensible heat flux H_sens in W/m^2
+   * @param {number} [surfaceTempK=220.0] - Surface temperature in Kelvin
+   * @param {number} [surfaceDensityKgM3=0.015] - Surface atmospheric density in kg/m^3
+   * @returns {{moninObukhovLengthMeters: number, stabilityRegime: string}}
+   */
+  static computeMoninObukhovLength(frictionVelocityMs, sensibleHeatFluxW_M2, surfaceTempK = 220.0, surfaceDensityKgM3 = 0.015) {
+    const kappa = 0.40;
+    const cp = 800.0;
+    const g = this.G_MARS;
+    const uStar = Math.max(0.01, frictionVelocityMs);
+    const T0 = Math.max(50.0, surfaceTempK);
+    const rho = Math.max(1e-4, surfaceDensityKgM3);
+
+    if (Math.abs(sensibleHeatFluxW_M2) < 1e-4) {
+      return { moninObukhovLengthMeters: Infinity, stabilityRegime: 'Neutral' };
+    }
+
+    const L = -(Math.pow(uStar, 3) * T0 * rho * cp) / (kappa * g * sensibleHeatFluxW_M2);
+
+    let regime = 'Neutral';
+    if (L < 0 && L > -500) {
+      regime = 'Convectively Unstable (Daytime Midday)';
+    } else if (L > 0 && L < 500) {
+      regime = 'Stably Stratified (Nighttime Inversion)';
+    }
+
+    return {
+      moninObukhovLengthMeters: parseFloat(L.toFixed(1)),
+      stabilityRegime: regime
+    };
+  }
+
+  /**
+   * Calculate Iversen & Greeley (1982) aerodynamic threshold friction velocity for dust saltation on Mars.
+   * u*_t = A * sqrt( ((rho_p - rho_a) / rho_a) * g * d )
+   * @param {number} [grainDiameterMicrons=100.0] - Mineral grain diameter in µm (~100 µm most easily lifted)
+   * @param {number} [surfaceDensityKgM3=0.015] - Surface atmospheric density in kg/m^3
+   * @param {number} [grainDensityKgM3=2500.0] - Basaltic mineral grain density in kg/m^3
+   * @returns {{thresholdFrictionVelocityMs: number, minimumWindSpeed10mMs: number}}
+   */
+  static computeSaltationThresholdFrictionVelocity(grainDiameterMicrons = 100.0, surfaceDensityKgM3 = 0.015, grainDensityKgM3 = 2500.0) {
+    const dM = grainDiameterMicrons * 1e-6;
+    const rhoA = Math.max(1e-4, surfaceDensityKgM3);
+    const rhoP = Math.max(100.0, grainDensityKgM3);
+    const A = 0.11; // Greeley & Iversen dimensionless coefficient for Mars
+
+    const densityRatio = (rhoP - rhoA) / rhoA;
+    const uStarT = A * Math.sqrt(densityRatio * this.G_MARS * dM);
+
+    // Wind speed at 10m assuming z0 = 0.01m: u(10m) = (u* / kappa) * ln(10 / 0.01) ~ 17.27 * u*
+    const u10m = (uStarT / 0.40) * Math.log(10.0 / 0.01);
+
+    return {
+      thresholdFrictionVelocityMs: parseFloat(uStarT.toFixed(3)),
+      minimumWindSpeed10mMs: parseFloat(u10m.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate atmospheric scale height vertical gradient (dH/dz) under a temperature lapse rate.
+   * dH/dz = (R_spec / g) * (dT/dz) = -(R_spec / g) * Gamma
+   * @param {number} [temperatureLapseRateKPerKm=4.5] - Environmental lapse rate Gamma = -dT/dz in K/km
+   * @returns {{scaleHeightGradientDimensionless: number, scaleHeightChangeMPerKm: number}}
+   */
+  static computeAtmosphericScaleHeightGradient(temperatureLapseRateKPerKm = 4.5) {
+    const gammaM = temperatureLapseRateKPerKm / 1000.0; // K / m
+    const dH_dz = -(this.R_SPECIFIC_CO2 / this.G_MARS) * gammaM;
+    const changeMPerKm = dH_dz * 1000.0;
+
+    return {
+      scaleHeightGradientDimensionless: parseFloat(dH_dz.toFixed(5)),
+      scaleHeightChangeMPerKm: parseFloat(changeMPerKm.toFixed(2))
+    };
+  }
 }
+
 
 
 
