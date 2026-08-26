@@ -30,7 +30,7 @@ import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -4978,6 +4978,29 @@ describe('Adiabatic Lapse Rate, Potential Temperature & Brunt-Väisälä (MCDEng
         expect(bv.buoyancyFrequencyRadS).to.be.closeTo(0.00582, 0.0001);
         expect(bv.periodSeconds).to.be.closeTo(1080.3, 5.0);
         expect(bv.isStablyStratified).to.be.true;
+    });
+});
+
+describe('Great-Circle Midpoint, Tunnel Chord & Rhumb Line Distance (GeoUtil)', () => {
+    it('should calculate exact spherical midpoint and 3D interior tunnel chord distance', () => {
+        // Equator endpoints (0, 0) and (0, 90) on Mars (R = 3389.5 km)
+        // Midpoint should be (0, 45)
+        const mid = computeGreatCircleMidpoint(0, 0, 0, 90);
+        expect(mid.lat).to.be.closeTo(0.0, 0.01);
+        expect(mid.lon).to.be.closeTo(45.0, 0.01);
+
+        // Arc length = (pi/2) * 3389.5 = 5324.23 km
+        // Chord = 2 * 3389.5 * sin(45 deg) = 2 * 3389.5 * 0.707106 = 4793.47 km
+        const chord = computeTunnelChordDistance(0, 0, 0, 90, 'mars');
+        expect(chord.chordDistanceKm).to.be.closeTo(4793.47, 1.0);
+        expect(chord.arcDifferenceKm).to.be.closeTo(530.76, 2.0);
+    });
+
+    it('should compute constant-bearing rhumb line (loxodrome) distance', () => {
+        // Direct East-West on equator from (0, 0) to (0, 60) -> distance = (60/180) * pi * 3389.5 = 3549.49 km
+        const rhumb = computeSphericalRhumbLineDistance(0, 0, 0, 60, 'mars');
+        expect(rhumb.rhumbDistanceKm).to.be.closeTo(3549.49, 1.0);
+        expect(rhumb.isDirectEastWest).to.be.true;
     });
 });
 

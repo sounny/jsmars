@@ -342,3 +342,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute wavelength-dependent dust optical depth and Brunt-V?is?l? stability
 ?: AssertionError: expected undefined to be true
     at n.<anonymous> (unit.js:2221:34)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 17:46:04 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should generate and parse 6-line GIS World File affine matrices symmetrically
+?: ReferenceError: ExportTool is not defined
+    at n.<anonymous> (unit.js:992:25)

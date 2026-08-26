@@ -621,4 +621,88 @@ export function computeAlongTrackDistance(lat, lon, pathLat1, pathLon1, pathLat2
   return dAt * R;
 }
 
+/**
+ * Calculate exact spherical midpoint coordinates between two planetary locations.
+ * @param {number} lat1 - Latitude of point 1 (degrees)
+ * @param {number} lon1 - Longitude of point 1 (degrees)
+ * @param {number} lat2 - Latitude of point 2 (degrees)
+ * @param {number} lon2 - Longitude of point 2 (degrees)
+ * @returns {{lat: number, lon: number}} Midpoint coordinate in degrees
+ */
+export function computeGreatCircleMidpoint(lat1, lon1, lat2, lon2) {
+  const phi1 = lat1 * Math.PI / 180.0;
+  const lambda1 = lon1 * Math.PI / 180.0;
+  const phi2 = lat2 * Math.PI / 180.0;
+  const lambda2 = lon2 * Math.PI / 180.0;
+  const dLam = lambda2 - lambda1;
+
+  const Bx = Math.cos(phi2) * Math.cos(dLam);
+  const By = Math.cos(phi2) * Math.sin(dLam);
+
+  const phiM = Math.atan2(Math.sin(phi1) + Math.sin(phi2), Math.hypot(Math.cos(phi1) + Bx, By));
+  const lambdaM = lambda1 + Math.atan2(By, Math.cos(phi1) + Bx);
+
+  return {
+    lat: parseFloat((phiM * 180.0 / Math.PI).toFixed(4)),
+    lon: parseFloat((to180(lambdaM * 180.0 / Math.PI)).toFixed(4))
+  };
+}
+
+/**
+ * Calculate 3D interior Euclidean straight-line chord tunnel distance through the planetary interior.
+ * d_chord = 2 * R * sin(delta_sigma / 2)
+ * @param {number} lat1 - Latitude 1 (degrees)
+ * @param {number} lon1 - Longitude 1 (degrees)
+ * @param {number} lat2 - Latitude 2 (degrees)
+ * @param {number} lon2 - Longitude 2 (degrees)
+ * @param {string} [body='mars'] - Planetary body key
+ * @returns {{chordDistanceKm: number, chordDistanceMeters: number, arcDifferenceKm: number}}
+ */
+export function computeTunnelChordDistance(lat1, lon1, lat2, lon2, body = 'mars') {
+  const R = BODIES[body]?.meanRadius || 3389.5;
+  const sArcKm = haversineDistance(lat1, lon1, lat2, lon2, body);
+  const deltaSigma = sArcKm / R; // Angular distance in radians
+
+  const chordKm = 2.0 * R * Math.sin(deltaSigma / 2.0);
+  const diffKm = sArcKm - chordKm;
+
+  return {
+    chordDistanceKm: parseFloat(chordKm.toFixed(3)),
+    chordDistanceMeters: parseFloat((chordKm * 1000.0).toFixed(1)),
+    arcDifferenceKm: parseFloat(diffKm.toFixed(3))
+  };
+}
+
+/**
+ * Calculate constant-bearing Rhumb Line (Loxodrome) distance between two planetary coordinates.
+ * @param {number} lat1 - Latitude 1 (degrees)
+ * @param {number} lon1 - Longitude 1 (degrees)
+ * @param {number} lat2 - Latitude 2 (degrees)
+ * @param {number} lon2 - Longitude 2 (degrees)
+ * @param {string} [body='mars'] - Planetary body key
+ * @returns {{rhumbDistanceKm: number, isDirectEastWest: boolean}}
+ */
+export function computeSphericalRhumbLineDistance(lat1, lon1, lat2, lon2, body = 'mars') {
+  const R = BODIES[body]?.meanRadius || 3389.5;
+  const phi1 = lat1 * Math.PI / 180.0;
+  const phi2 = lat2 * Math.PI / 180.0;
+  const dPhi = (lat2 - lat1) * Math.PI / 180.0;
+
+  let dLam = (lon2 - lon1) * Math.PI / 180.0;
+  if (Math.abs(dLam) > Math.PI) {
+    dLam = dLam > 0 ? -(2.0 * Math.PI - dLam) : (2.0 * Math.PI + dLam);
+  }
+
+  const dPsi = Math.log(Math.tan(Math.PI / 4.0 + phi2 / 2.0) / Math.tan(Math.PI / 4.0 + phi1 / 2.0));
+  const q = Math.abs(dPsi) > 1e-10 ? dPhi / dPsi : Math.cos(phi1);
+
+  const distKm = Math.sqrt(dPhi * dPhi + q * q * dLam * dLam) * R;
+
+  return {
+    rhumbDistanceKm: parseFloat(distKm.toFixed(3)),
+    isDirectEastWest: Math.abs(lat1 - lat2) < 1e-4
+  };
+}
+
+
 
