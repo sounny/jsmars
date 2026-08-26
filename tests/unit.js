@@ -3765,6 +3765,27 @@ describe('Horn Hillshade, Perspective GSD & Normal Vectors (ThreeDEngine)', () =
     });
 });
 
+describe('Acoustic Sound Speed, Ekman Spiral & Column Mass (MCDEngine)', () => {
+    it('should compute Mars atmospheric sound speed in CO2 gas', () => {
+        // Sound speed in CO2 at T = 220 K (gamma = 1.29, R = 188.92) -> ~231.6 m/s
+        const snd = MCDEngine.computeAtmosphericSoundSpeed(220.0, 1.29);
+        expect(snd.soundSpeedMs).to.be.closeTo(231.6, 0.5);
+        expect(snd.soundSpeedKmH).to.be.greaterThan(800.0);
+    });
+
+    it('should calculate boundary layer Ekman spiral wind turning and total column mass', () => {
+        // Geostrophic wind 20 m/s inside 2000m PBL at 500m height
+        const ekman = MCDEngine.computeEkmanSpiralWindDeflection(20.0, 2000.0, 500.0, 45.0);
+        expect(ekman.totalSpeedMs).to.be.greaterThan(10.0);
+        expect(ekman.deflectionAngleDeg).to.be.greaterThan(10.0);
+
+        // 610 Pa surface datum -> column mass ~163.9 kg/m^2 (~16.39 g/cm^2)
+        const col = MCDEngine.computeAtmosphericTotalColumnDensity(610.0);
+        expect(col.columnMassKgM2).to.be.closeTo(163.9, 0.5);
+        expect(col.columnMassGramsCm2).to.be.closeTo(16.39, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

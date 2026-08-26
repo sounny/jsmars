@@ -695,7 +695,75 @@ export class MCDEngine {
       pblFraction: parseFloat(zRatio.toFixed(3))
     };
   }
+
+  // --- Acoustic Sound Speed, Ekman Spiral & Column Mass Density Solvers ---
+
+  /**
+   * Calculate exact atmospheric acoustic propagation sound speed and Mach 1 velocity.
+   * c_s = sqrt(gamma * R_spec * T)
+   * @param {number} temperatureK - Atmospheric temperature in Kelvin
+   * @param {number} [gamma=1.29] - Heat capacity ratio (Cp / Cv) for pure Martian CO2
+   * @returns {{soundSpeedMs: number, soundSpeedKmH: number}}
+   */
+  static computeAtmosphericSoundSpeed(temperatureK, gamma = 1.29) {
+    const T = Math.max(10.0, temperatureK);
+    const cs = Math.sqrt(gamma * this.R_SPECIFIC_CO2 * T);
+
+    return {
+      soundSpeedMs: parseFloat(cs.toFixed(2)),
+      soundSpeedKmH: parseFloat((cs * 3.6).toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate Ekman boundary layer horizontal wind profile and cross-isobar turning deflection angle.
+   * u(z) = U_g * (1 - exp(-gamma*z) * cos(gamma*z)),  v(z) = U_g * exp(-gamma*z) * sin(gamma*z)
+   * @param {number} geostrophicWindSpeedMs - Free-tropospheric geostrophic wind speed U_g in m/s
+   * @param {number} [pblHeightMeters=2000.0] - Planetary boundary layer thickness
+   * @param {number} [altitudeMeters=500.0] - Altitude z inside the boundary layer
+   * @param {number} [latitudeDeg=45.0] - Latitude for Coriolis parameter
+   * @returns {{uWindMs: number, vWindMs: number, totalSpeedMs: number, deflectionAngleDeg: number}}
+   */
+  static computeEkmanSpiralWindDeflection(geostrophicWindSpeedMs, pblHeightMeters = 2000.0, altitudeMeters = 500.0, latitudeDeg = 45.0) {
+    const Ug = Math.max(0.1, geostrophicWindSpeedMs);
+    const h = Math.max(100.0, pblHeightMeters);
+    const z = Math.max(0.1, altitudeMeters);
+
+    const gamma = Math.PI / h; // Ekman layer scaling constant
+    const decay = Math.exp(-gamma * z);
+    const angle = gamma * z;
+
+    const u = Ug * (1.0 - decay * Math.cos(angle));
+    const v = Ug * decay * Math.sin(angle);
+    const speed = Math.hypot(u, v);
+    const deflDeg = Math.atan2(v, u) * 180.0 / Math.PI;
+
+    return {
+      uWindMs: parseFloat(u.toFixed(2)),
+      vWindMs: parseFloat(v.toFixed(2)),
+      totalSpeedMs: parseFloat(speed.toFixed(2)),
+      deflectionAngleDeg: parseFloat(deflDeg.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate total vertical column atmospheric integrated mass density.
+   * sigma = P_surf / g_mars
+   * @param {number} [surfacePressurePa=610.0] - Surface atmospheric pressure in Pa
+   * @returns {{columnMassKgM2: number, columnMassGramsCm2: number}}
+   */
+  static computeAtmosphericTotalColumnDensity(surfacePressurePa = 610.0) {
+    const p = Math.max(0.01, surfacePressurePa);
+    const sigmaKgM2 = p / this.G_MARS;
+    const sigmaGCm2 = sigmaKgM2 * 0.1; // 1 kg/m^2 = 0.1 g/cm^2
+
+    return {
+      columnMassKgM2: parseFloat(sigmaKgM2.toFixed(3)),
+      columnMassGramsCm2: parseFloat(sigmaGCm2.toFixed(4))
+    };
+  }
 }
+
 
 
 
