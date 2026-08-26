@@ -1020,7 +1020,69 @@ export class KRCEngine {
       absorbedSolarFluxW_M2: parseFloat(absorbed.toFixed(2))
     };
   }
+
+  // --- Temperature-Dependent Specific Heat, Damping Ratio & Net Longwave Loss Solvers ---
+
+  /**
+   * Calculate temperature-dependent specific heat capacity c_p(T) for Martian basaltic regolith.
+   * c_p(T) = c_0 - c_1 * exp(-T / T_scale) (Ledlow et al. formulation for silicates)
+   * @param {number} tempK - Temperature in Kelvin (50K to 400K)
+   * @returns {{specificHeatJ_KgK: number, volumetricHeatCapacityJ_M3K: number}}
+   */
+  static computeTemperatureDependentSpecificHeat(tempK) {
+    const T = Math.max(10.0, tempK);
+    const cp = 890.0 - 450.0 * Math.exp(-T / 150.0);
+    const cVol = this.DENSITY * cp;
+
+    return {
+      specificHeatJ_KgK: parseFloat(cp.toFixed(2)),
+      volumetricHeatCapacityJ_M3K: parseFloat(cVol.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate subsurface thermal wave exponential amplitude damping ratio A(z) / A_0.
+   * Ratio = exp(-z / delta)
+   * @param {number} depthMeters - Subsurface depth in meters
+   * @param {number} skinDepthMeters - Thermal skin depth in meters
+   * @returns {{amplitudeRatio: number, percentOfSurfaceAmplitude: number}}
+   */
+  static computeSubsurfaceThermalDampingRatio(depthMeters, skinDepthMeters) {
+    const z = Math.max(0, depthMeters);
+    const delta = Math.max(1e-4, skinDepthMeters);
+
+    const ratio = Math.exp(-z / delta);
+    const pct = ratio * 100.0;
+
+    return {
+      amplitudeRatio: parseFloat(ratio.toFixed(4)),
+      percentOfSurfaceAmplitude: parseFloat(pct.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate net outgoing longwave radiative energy loss from Martian surface.
+   * F_net = eps * sigma * T_s^4 - F_down_atm
+   * @param {number} surfaceTempK - Surface skin temperature in Kelvin
+   * @param {number} atmosphericDownwellingW_M2 - Downwelling atmospheric thermal flux
+   * @param {number} [emissivity=0.95] - Surface broadband thermal infrared emissivity
+   * @returns {{netRadiativeLossW_M2: number, upwardEmittedFluxW_M2: number, isCooling: boolean}}
+   */
+  static computeSurfaceNetRadiativeLoss(surfaceTempK, atmosphericDownwellingW_M2, emissivity = 0.95) {
+    const eps = Math.max(0.01, Math.min(1.0, emissivity));
+    const t = Math.max(0, surfaceTempK);
+    const fUp = eps * this.STEFAN_BOLTZMANN * Math.pow(t, 4);
+    const fDown = Math.max(0, atmosphericDownwellingW_M2);
+    const fNet = fUp - fDown;
+
+    return {
+      netRadiativeLossW_M2: parseFloat(fNet.toFixed(2)),
+      upwardEmittedFluxW_M2: parseFloat(fUp.toFixed(2)),
+      isCooling: fNet > 0
+    };
+  }
 }
+
 
 
 

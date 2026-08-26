@@ -4566,6 +4566,29 @@ describe('Radial Velocity, Declination Rate & Sol-to-Day (MarsTime)', () => {
     });
 });
 
+describe('Specific Heat Model, Damping Ratio & Net Radiative Loss (KRCEngine)', () => {
+    it('should calculate temperature-dependent specific heat capacity of silicate regolith', () => {
+        // At T = 200 K -> cp = 890 - 450 * exp(-200/150) = 890 - 450 * exp(-1.3333) = 890 - 450 * 0.2636 = 890 - 118.62 ~ 771.38 J/(kg K)
+        const cp = KRCEngine.computeTemperatureDependentSpecificHeat(200.0);
+        expect(cp.specificHeatJ_KgK).to.be.closeTo(771.38, 0.5);
+        expect(cp.volumetricHeatCapacityJ_M3K).to.be.closeTo(1500.0 * 771.38, 100.0);
+    });
+
+    it('should compute subsurface thermal damping ratio and surface net longwave radiative loss', () => {
+        // depth z = 0.1 m, skinDepth = 0.05 m -> ratio = exp(-2) ~ 0.1353 (13.53% of surface amplitude)
+        const damp = KRCEngine.computeSubsurfaceThermalDampingRatio(0.1, 0.05);
+        expect(damp.amplitudeRatio).to.be.closeTo(0.1353, 0.001);
+        expect(damp.percentOfSurfaceAmplitude).to.be.closeTo(13.53, 0.1);
+
+        // T_s = 220 K, eps = 0.95, F_down = 20 W/m^2
+        // F_up = 0.95 * 5.670374419e-8 * (220)^4 = 5.38685e-8 * 2342560000 ~ 126.19 W/m^2 -> F_net = 126.19 - 20 = 106.19 W/m^2
+        const loss = KRCEngine.computeSurfaceNetRadiativeLoss(220.0, 20.0, 0.95);
+        expect(loss.upwardEmittedFluxW_M2).to.be.closeTo(126.19, 0.2);
+        expect(loss.netRadiativeLossW_M2).to.be.closeTo(106.19, 0.2);
+        expect(loss.isCooling).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
