@@ -4666,6 +4666,35 @@ describe('Transverse Mercator Forward/Inverse & Meridian Convergence (Projection
     });
 });
 
+describe('Lommel-Seeliger Reflectance, Camera GSD & FOV Angles (ThreeDEngine)', () => {
+    it('should calculate Lommel-Seeliger diffuse surface reflectance accurately', () => {
+        // mu0 = cos(30°) = 0.8660, mu = cos(45°) = 0.7071 -> r_LS = 0.8660 / (0.8660 + 0.7071) = 0.8660 / 1.5731 ~ 0.5505
+        const ls = ThreeDEngine.computeLommelSeeligerDiskReflectance(Math.cos(30 * Math.PI / 180), Math.cos(45 * Math.PI / 180));
+        expect(ls.lommelSeeligerReflectance).to.be.closeTo(0.5505, 0.005);
+        expect(ls.isIlluminated).to.be.true;
+
+        // Shadowed surface mu0 = 0 -> r_LS = 0
+        const dark = ThreeDEngine.computeLommelSeeligerDiskReflectance(0.0, 0.8);
+        expect(dark.lommelSeeligerReflectance).to.equal(0.0);
+        expect(dark.isIlluminated).to.be.false;
+    });
+
+    it('should compute camera Ground Sampling Distance (GSD) and sensor FOV angles', () => {
+        // HiRISE camera: H = 250 km, p = 12 µm, f = 12,000 mm (12 m)
+        // GSD = (250,000 m * 12e-6 m) / 12 m = 3.0 / 12 = 0.25 m/pixel = 25 cm/pixel
+        const hirise = ThreeDEngine.computeCameraGroundSamplingDistance(250.0, 12.0, 12000.0);
+        expect(hirise.gsdMeters).to.equal(0.25);
+        expect(hirise.gsdCm).to.equal(25.0);
+
+        // Sensor: 36 mm x 24 mm, focal length = 50 mm
+        // FOV_H = 2 * atan(36 / 100) = 2 * atan(0.36) = 2 * 19.799° ~ 39.598°
+        // FOV_V = 2 * atan(24 / 100) = 2 * atan(0.24) = 2 * 13.496° ~ 26.991°
+        const fov = ThreeDEngine.computeSensorFieldOfViewAngles(36.0, 24.0, 50.0);
+        expect(fov.horizontalFovDeg).to.be.closeTo(39.598, 0.05);
+        expect(fov.verticalFovDeg).to.be.closeTo(26.991, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1074,7 +1074,81 @@ export class ThreeDEngine {
       depressionAngleRad: parseFloat(dipRad.toFixed(5))
     };
   }
+
+  // --- Lommel-Seeliger Reflectance, Camera GSD & FOV Angles Solvers ---
+
+  /**
+   * Calculate Lommel-Seeliger diffuse surface reflectance for planetary regolith.
+   * r_LS = mu0 / (mu0 + mu)
+   * @param {number} cosIncidence - Cosine of incidence angle (mu0 = cos(i))
+   * @param {number} cosEmission - Cosine of emission angle (mu = cos(e))
+   * @returns {{lommelSeeligerReflectance: number, isIlluminated: boolean}}
+   */
+  static computeLommelSeeligerDiskReflectance(cosIncidence, cosEmission) {
+    const mu0 = Math.max(0, cosIncidence);
+    const mu = Math.max(0, cosEmission);
+
+    if (mu0 + mu <= 1e-7) {
+      return { lommelSeeligerReflectance: 0.0, isIlluminated: false };
+    }
+
+    const rLS = mu0 / (mu0 + mu);
+
+    return {
+      lommelSeeligerReflectance: parseFloat(rLS.toFixed(4)),
+      isIlluminated: mu0 > 0
+    };
+  }
+
+  /**
+   * Calculate camera native Ground Sampling Distance (GSD) at sub-spacecraft nadir.
+   * GSD = (H * p) / f
+   * @param {number} altitudeKm - Spacecraft altitude above surface in km
+   * @param {number} [pixelPitchUm=12.0] - Detector physical pixel pitch in microns (e.g. 12 µm for HiRISE)
+   * @param {number} [focalLengthMm=12000.0] - Telescope focal length in mm (e.g. 12,000 mm for HiRISE)
+   * @returns {{gsdMeters: number, gsdCm: number}}
+   */
+  static computeCameraGroundSamplingDistance(altitudeKm, pixelPitchUm = 12.0, focalLengthMm = 12000.0) {
+    const H = Math.max(0, altitudeKm * 1000.0);
+    const p = Math.max(1e-9, pixelPitchUm * 1e-6);
+    const f = Math.max(1e-6, focalLengthMm * 1e-3);
+
+    const gsdM = (H * p) / f;
+    const gsdCm = gsdM * 100.0;
+
+    return {
+      gsdMeters: parseFloat(gsdM.toFixed(4)),
+      gsdCm: parseFloat(gsdCm.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate camera horizontal, vertical, and diagonal Field of View (FOV) angles from sensor dimensions.
+   * FOV = 2 * arctan(dimension / (2 * f))
+   * @param {number} sensorWidthMm - Detector width in mm
+   * @param {number} sensorHeightMm - Detector height in mm
+   * @param {number} focalLengthMm - Telescope focal length in mm
+   * @returns {{horizontalFovDeg: number, verticalFovDeg: number, diagonalFovDeg: number}}
+   */
+  static computeSensorFieldOfViewAngles(sensorWidthMm, sensorHeightMm, focalLengthMm) {
+    const w = Math.max(0.1, sensorWidthMm);
+    const h = Math.max(0.1, sensorHeightMm);
+    const f = Math.max(0.1, focalLengthMm);
+
+    const diag = Math.hypot(w, h);
+
+    const fovHRad = 2.0 * Math.atan2(w, 2.0 * f);
+    const fovVRad = 2.0 * Math.atan2(h, 2.0 * f);
+    const fovDRad = 2.0 * Math.atan2(diag, 2.0 * f);
+
+    return {
+      horizontalFovDeg: parseFloat((fovHRad * 180.0 / Math.PI).toFixed(3)),
+      verticalFovDeg: parseFloat((fovVRad * 180.0 / Math.PI).toFixed(3)),
+      diagonalFovDeg: parseFloat((fovDRad * 180.0 / Math.PI).toFixed(3))
+    };
+  }
 }
+
 
 
 

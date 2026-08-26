@@ -301,3 +301,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should forward and inverse project coordinates under transverse Cassini-Soldner projection
 ?: AssertionError: expected 600.517 to be close to 591.95 +/- 2
     at n.<anonymous> (unit.js:4428:33)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 10:15:38 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute camera Ground Sampling Distance (GSD) and sensor FOV angles
+?: AssertionError: expected 20.8333 to equal 0.25
+    at n.<anonymous> (unit.js:4686:37)
