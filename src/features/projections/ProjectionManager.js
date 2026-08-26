@@ -1122,7 +1122,83 @@ export class ProjectionManager {
       angularDistanceDeg: parseFloat(cDeg.toFixed(2))
     };
   }
+
+  // --- Equidistant Cylindrical & Oblique Convergence Angle Solvers ---
+
+  /**
+   * Forward Equidistant Cylindrical (Plate Carrée / Standard Parallel) projection.
+   * x = R * (lambda - lambda0) * cos(phi0), y = R * phi
+   * @param {number} latDeg - Latitude in degrees
+   * @param {number} lonDeg - Longitude in degrees
+   * @param {number} [lat0Deg=0.0] - Standard parallel in degrees
+   * @param {number} [lon0Deg=0.0] - Central meridian in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{xKm: number, yKm: number}}
+   */
+  static forwardEquidistantCylindrical(latDeg, lonDeg, lat0Deg = 0.0, lon0Deg = 0.0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi = latDeg * Math.PI / 180.0;
+    const phi0 = lat0Deg * Math.PI / 180.0;
+    const dLam = to180(lonDeg - lon0Deg) * Math.PI / 180.0;
+
+    const x = R * dLam * Math.cos(phi0);
+    const y = R * phi;
+
+    return {
+      xKm: parseFloat(x.toFixed(3)),
+      yKm: parseFloat(y.toFixed(3))
+    };
+  }
+
+  /**
+   * Inverse Equidistant Cylindrical projection.
+   * @param {number} xKm - Projected X in km
+   * @param {number} yKm - Projected Y in km
+   * @param {number} [lat0Deg=0.0] - Standard parallel in degrees
+   * @param {number} [lon0Deg=0.0] - Central meridian in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{latDeg: number, lonDeg: number}}
+   */
+  static inverseEquidistantCylindrical(xKm, yKm, lat0Deg = 0.0, lon0Deg = 0.0, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const phi0 = lat0Deg * Math.PI / 180.0;
+
+    const phi = yKm / R;
+    const cosPhi0 = Math.max(0.001, Math.cos(phi0));
+    const dLam = xKm / (R * cosPhi0);
+
+    const latDeg = phi * 180.0 / Math.PI;
+    const lonDeg = to180(lon0Deg + dLam * 180.0 / Math.PI);
+
+    return {
+      latDeg: parseFloat(latDeg.toFixed(4)),
+      lonDeg: parseFloat(lonDeg.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate grid convergence angle in oblique projection.
+   * gamma = atan( tan(lambda - lambda0) * sin(phi) )
+   * @param {number} latDeg - Observer latitude in degrees
+   * @param {number} lonDeg - Observer longitude in degrees
+   * @param {number} [centerLonDeg=0.0] - Central meridian in degrees
+   * @returns {{convergenceAngleDeg: number, convergenceAngleRad: number}}
+   */
+  static computeObliqueConvergenceAngle(latDeg, lonDeg, centerLonDeg = 0.0) {
+    const phi = latDeg * Math.PI / 180.0;
+    const dLam = to180(lonDeg - centerLonDeg) * Math.PI / 180.0;
+
+    const tanGamma = Math.tan(dLam) * Math.sin(phi);
+    const gammaRad = Math.atan(tanGamma);
+    const gammaDeg = gammaRad * 180.0 / Math.PI;
+
+    return {
+      convergenceAngleDeg: parseFloat(gammaDeg.toFixed(3)),
+      convergenceAngleRad: parseFloat(gammaRad.toFixed(5))
+    };
+  }
 }
+
 
 
 

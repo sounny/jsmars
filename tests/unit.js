@@ -4189,6 +4189,29 @@ describe('Rim Height, Excavation Depth & Clark-Evans Index (CSFDEngine)', () => 
     });
 });
 
+describe('Equidistant Cylindrical & Oblique Convergence (ProjectionManager)', () => {
+    it('should perform forward and inverse Equidistant Cylindrical coordinate transformation', () => {
+        // (30°N, 45°E) on Mars with R = 3389.5 km, standard parallel = 0° -> x = 3389.5 * (45 * pi/180) ~ 2662.15 km, y = 3389.5 * (30 * pi/180) ~ 1774.77 km
+        const fwd = ProjectionManager.forwardEquidistantCylindrical(30.0, 45.0, 0.0, 0.0, 'mars');
+        expect(fwd.xKm).to.be.closeTo(2662.15, 2.0);
+        expect(fwd.yKm).to.be.closeTo(1774.77, 2.0);
+
+        const inv = ProjectionManager.inverseEquidistantCylindrical(fwd.xKm, fwd.yKm, 0.0, 0.0, 'mars');
+        expect(inv.latDeg).to.be.closeTo(30.0, 0.01);
+        expect(inv.lonDeg).to.be.closeTo(45.0, 0.01);
+    });
+
+    it('should calculate oblique grid convergence angle', () => {
+        // At Equator (0°N) -> convergence angle is 0°
+        const convEq = ProjectionManager.computeObliqueConvergenceAngle(0.0, 45.0, 0.0);
+        expect(convEq.convergenceAngleDeg).to.equal(0.0);
+
+        // At (45°N, 45°E) with central meridian 0° -> tan(gamma) = tan(45°) * sin(45°) = 1 * 0.7071 -> gamma = 35.26°
+        const conv45 = ProjectionManager.computeObliqueConvergenceAngle(45.0, 45.0, 0.0);
+        expect(conv45.convergenceAngleDeg).to.be.closeTo(35.26, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
