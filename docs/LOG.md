@@ -322,3 +322,9 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate pyroxene band contrast metric and continuum curvature
 ?: AssertionError: expected undefined to be a number or a date
     at n.<anonymous> (unit.js:3717:38)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 16:00:58 UTC]
+PUSH RESOLUTION: Pulled remote CNAME commit from custom domain configuration, successfully rebased and pushed 382 unit tests cleanly to origin main.
+
+
