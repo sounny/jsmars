@@ -1286,7 +1286,65 @@ export class BandMathEngine {
       fwhmMicrons: parseFloat(fwhm.toFixed(4))
     };
   }
+
+  // --- CRISM Fe/Mg Smectite, THEMIS B10/B9 Ratio & Normalized Absorption Depth Solvers ---
+
+  /**
+   * Calculate CRISM Fe/Mg Smectite Clay diagnostic 2.3 µm absorption index (extended triplet).
+   * D2300_EXT = 1.0 - [ R_2300 / (0.65 * R_2120 + 0.35 * R_2400) ]
+   * @param {number} r2300 - Reflectance at 2.30 µm (Fe,Mg-OH vibration absorption trough)
+   * @param {number} r2120 - Reflectance at 2.12 µm (left continuum shoulder)
+   * @param {number} r2400 - Reflectance at 2.40 µm (right continuum shoulder)
+   * @returns {{smectiteIndex: number, hasSmectiteClaySignature: boolean}}
+   */
+  static computeCRISMSmectiteIndexExtended(r2300, r2120, r2400) {
+    const cont = 0.65 * r2120 + 0.35 * r2400;
+    if (cont <= 0) return { smectiteIndex: 0, hasSmectiteClaySignature: false };
+
+    const drop = 1.0 - (r2300 / cont);
+    return {
+      smectiteIndex: parseFloat(drop.toFixed(4)),
+      hasSmectiteClaySignature: drop > 0.04
+    };
+  }
+
+  /**
+   * Calculate THEMIS Thermal Infrared Band 10 / Band 9 radiance/emissivity ratio.
+   * R_10/9 = I_10 / I_9 (~12.57 µm / 11.79 µm) for distinguishing airborne dust from surface silicates.
+   * @param {number} radianceB10 - THEMIS Band 10 spectral radiance/emissivity (~12.57 µm)
+   * @param {number} radianceB9 - THEMIS Band 9 spectral radiance/emissivity (~11.79 µm)
+   * @returns {{bandRatio: number, isDustDominated: boolean}}
+   */
+  static computeTHEMISBand10To9Ratio(radianceB10, radianceB9) {
+    const b9 = Math.max(1e-4, radianceB9);
+    const ratio = radianceB10 / b9;
+
+    return {
+      bandRatio: parseFloat(ratio.toFixed(4)),
+      isDustDominated: ratio > 1.02
+    };
+  }
+
+  /**
+   * Calculate exact continuum-normalized absorption band depth.
+   * D_norm = 1.0 - (R_center / R_continuum)
+   * @param {number} rCenter - Spectral reflectance/radiance at band minimum center
+   * @param {number} rContinuum - Spectral reflectance/radiance of interpolated baseline continuum
+   * @returns {{normalizedDepth: number, percentDepth: number, isAbsorptionPresent: boolean}}
+   */
+  static computeNormalizedAbsorptionDepth(rCenter, rContinuum) {
+    const cont = Math.max(1e-4, rContinuum);
+    const depth = 1.0 - (rCenter / cont);
+    const clampedDepth = Math.max(0, Math.min(1.0, depth));
+
+    return {
+      normalizedDepth: parseFloat(clampedDepth.toFixed(4)),
+      percentDepth: parseFloat((clampedDepth * 100.0).toFixed(2)),
+      isAbsorptionPresent: clampedDepth > 0.02
+    };
+  }
 }
+
 
 
 

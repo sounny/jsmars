@@ -4520,6 +4520,29 @@ describe('NPF Slope, Strength-Gravity Transition & Isochron Offset (CSFDEngine)'
     });
 });
 
+describe('Smectite Index, THEMIS B10/B9 & Normalized Depth (BandMathEngine)', () => {
+    it('should calculate CRISM Fe/Mg smectite clay 2.3 µm absorption index', () => {
+        // r2300 = 0.22, r2120 = 0.26, r2400 = 0.24 -> cont = 0.65 * 0.26 + 0.35 * 0.24 = 0.169 + 0.084 = 0.253
+        // drop = 1 - 0.22 / 0.253 = 1 - 0.8696 = 0.1304 (> 0.04 -> smectite clay signature present)
+        const smectite = BandMathEngine.computeCRISMSmectiteIndexExtended(0.22, 0.26, 0.24);
+        expect(smectite.smectiteIndex).to.be.closeTo(0.1304, 0.005);
+        expect(smectite.hasSmectiteClaySignature).to.be.true;
+    });
+
+    it('should compute THEMIS B10/B9 ratio and continuum-normalized absorption band depth', () => {
+        // THEMIS B10 = 1.05 W/m^2/sr/µm, B9 = 0.98 -> ratio = 1.05 / 0.98 ~ 1.0714 (> 1.02 -> dust dominated)
+        const themis = BandMathEngine.computeTHEMISBand10To9Ratio(1.05, 0.98);
+        expect(themis.bandRatio).to.be.closeTo(1.0714, 0.005);
+        expect(themis.isDustDominated).to.be.true;
+
+        // rCenter = 0.18, rContinuum = 0.25 -> depth = 1 - 0.18/0.25 = 1 - 0.72 = 0.28 (28% depth)
+        const norm = BandMathEngine.computeNormalizedAbsorptionDepth(0.18, 0.25);
+        expect(norm.normalizedDepth).to.equal(0.28);
+        expect(norm.percentDepth).to.equal(28.0);
+        expect(norm.isAbsorptionPresent).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
