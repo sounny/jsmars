@@ -4254,6 +4254,27 @@ describe('Monin-Obukhov, Saltation Threshold & Scale Height Gradient (MCDEngine)
     });
 });
 
+describe('Free-Air Gradient, Moho Depth & Apparent Permittivity (InvestigateTool)', () => {
+    it('should calculate free-air elevation gravity gradient and correction', () => {
+        // Mars R = 3389.5 km, g0 = 3.72076 m/s^2 -> grad = 2 * 3.72076 / 3389500 = 2.19546e-6 s^-2 -> 219.55 mGal/km
+        const fa = InvestigateTool.computeFreeAirGravityGradient(1000.0, 3.72076, 3389.5);
+        expect(fa.freeAirGradientMGalPerKm).to.be.closeTo(219.55, 0.2);
+        expect(fa.freeAirCorrectionMGal).to.be.closeTo(219.55, 0.2);
+    });
+
+    it('should compute Airy isostatic Moho depth and SHARAD apparent relative dielectric permittivity', () => {
+        // Topo h = 2 km, rhoC = 2900, rhoM = 3500 -> root = 2 * (2900 / 600) = 9.67 km -> total Moho = 50 + 9.67 = 59.67 km
+        const moho = InvestigateTool.computeAiryIsostaticMohoDepth(2.0, 2900.0, 3500.0, 50.0);
+        expect(moho.crustalRootKm).to.be.closeTo(9.67, 0.05);
+        expect(moho.totalMohoDepthKm).to.be.closeTo(59.67, 0.05);
+
+        // SHARAD: depth d = 500 m, two-way dt = 5.92 µs -> v = 2 * 500 / 5.92 ~ 168.92 m/µs -> eps_r = (299.79 / 168.92)^2 ~ 3.15 (Water Ice)
+        const eps = InvestigateTool.computeApparentDielectricPermittivity(500.0, 5.92);
+        expect(eps.relativePermittivityEpsR).to.be.closeTo(3.15, 0.05);
+        expect(eps.materialEstimate).to.equal('Clean Pure Water Ice (eps ~ 3.15)');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

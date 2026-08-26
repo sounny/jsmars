@@ -1064,7 +1064,80 @@ export class InvestigateTool {
             volumetricHeatCapacityJ_M3K: parseFloat(cVol.toFixed(1))
         };
     }
+
+    // --- Free-Air Gradient, Airy Isostatic Moho Depth & Apparent Permittivity Solvers ---
+
+    /**
+     * Calculate exact free-air gravity elevation correction in mGal.
+     * delta_g_FA = (2 * g0 / R) * h * 1e5
+     * @param {number} elevationMeters - Surface elevation in meters
+     * @param {number} [surfaceGravityMs2=3.72076] - Planetary datum surface gravity
+     * @param {number} [planetaryRadiusKm=3389.5] - Mean planetary radius in km
+     * @returns {{freeAirCorrectionMGal: number, freeAirGradientMGalPerKm: number}}
+     */
+    static computeFreeAirGravityGradient(elevationMeters, surfaceGravityMs2 = 3.72076, planetaryRadiusKm = 3389.5) {
+        const R_m = planetaryRadiusKm * 1000.0;
+        const grad_ms2 = (2.0 * surfaceGravityMs2) / R_m;
+        const grad_mGal_km = grad_ms2 * 1000.0 * 1e5;
+        const deltaFA_mGal = grad_ms2 * elevationMeters * 1e5;
+
+        return {
+            freeAirCorrectionMGal: parseFloat(deltaFA_mGal.toFixed(3)),
+            freeAirGradientMGalPerKm: parseFloat(grad_mGal_km.toFixed(3))
+        };
+    }
+
+    /**
+     * Calculate Airy-Heiskanen isostatic crust-mantle Moho boundary depth.
+     * z_moho = z_ref + h * (rho_c / (rho_m - rho_c))
+     * @param {number} surfaceElevationKm - Surface topography height in km
+     * @param {number} [crustDensityKgM3=2900.0] - Crustal density
+     * @param {number} [mantleDensityKgM3=3500.0] - Mantle density
+     * @param {number} [referenceMohoKm=50.0] - Reference zero-elevation Moho depth
+     * @returns {{crustalRootKm: number, totalMohoDepthKm: number}}
+     */
+    static computeAiryIsostaticMohoDepth(surfaceElevationKm, crustDensityKgM3 = 2900.0, mantleDensityKgM3 = 3500.0, referenceMohoKm = 50.0) {
+        const h = Math.max(0, surfaceElevationKm);
+        const deltaRho = Math.max(10.0, mantleDensityKgM3 - crustDensityKgM3);
+        const rootKm = h * (crustDensityKgM3 / deltaRho);
+        const totalMoho = referenceMohoKm + rootKm;
+
+        return {
+            crustalRootKm: parseFloat(rootKm.toFixed(2)),
+            totalMohoDepthKm: parseFloat(totalMoho.toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate SHARAD radar apparent subsurface relative dielectric permittivity (epsilon_r).
+     * epsilon_r = ( (c * delta_t) / (2 * d) )^2
+     * @param {number} subsurfaceDepthMeters - Inverted geological interface depth in meters
+     * @param {number} twoWayTravelTimeMicrosec - Observed two-way travel time delay in microseconds
+     * @returns {{relativePermittivityEpsR: number, propagationVelocityMPerMicrosec: number, materialEstimate: string}}
+     */
+    static computeApparentDielectricPermittivity(subsurfaceDepthMeters, twoWayTravelTimeMicrosec) {
+        const d = Math.max(1.0, subsurfaceDepthMeters);
+        const dt = Math.max(1e-4, twoWayTravelTimeMicrosec);
+        const c = 299.792458; // m / µs
+
+        const v = (2.0 * d) / dt; // m / µs
+        const epsR = Math.pow(c / v, 2);
+
+        let mat = 'Basaltic Regolith / Rock (eps ~ 4 - 8)';
+        if (epsR <= 3.3) {
+            mat = 'Clean Pure Water Ice (eps ~ 3.15)';
+        } else if (epsR <= 3.8) {
+            mat = 'Dusty / Ash-Rich Ice / Dry Porous Sand (eps ~ 3.5)';
+        }
+
+        return {
+            relativePermittivityEpsR: parseFloat(epsR.toFixed(3)),
+            propagationVelocityMPerMicrosec: parseFloat(v.toFixed(2)),
+            materialEstimate: mat
+        };
+    }
 }
+
 
 
 
