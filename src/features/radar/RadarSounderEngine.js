@@ -943,7 +943,74 @@ export class RadarSounderEngine {
       medium: classification.medium
     };
   }
+
+  // --- Cross-Track Clutter Delay, Minimum Detectable Contrast & Resolution Volume Solvers ---
+
+  /**
+   * Calculate off-nadir topographic surface clutter excess time delay and apparent false depth.
+   * Delta_t = 2 / c * ( sqrt(H^2 + y^2) - H )
+   * @param {number} [orbitAltitudeKm=250.0] - Spacecraft altitude H in km
+   * @param {number} [crossTrackOffsetKm=10.0] - Off-nadir horizontal distance y in km
+   * @param {number} [epsIce=3.15] - Dielectric permittivity for false depth conversion
+   * @returns {{excessDelayMicrosec: number, apparentDepthMeters: number, slantRangeKm: number}}
+   */
+  static computeCrossTrackClutterHorizonDelay(orbitAltitudeKm = 250.0, crossTrackOffsetKm = 10.0, epsIce = 3.15) {
+    const H = orbitAltitudeKm * 1000.0;
+    const y = crossTrackOffsetKm * 1000.0;
+
+    const slantRangeM = Math.hypot(H, y);
+    const deltaTM = 2.0 * (slantRangeM - H) / RadarSounderEngine.C;
+    const delayMicrosec = deltaTM * 1e6;
+
+    const vIce = RadarSounderEngine.getVelocity(epsIce);
+    const apparentDepthM = (vIce * deltaTM) / 2.0;
+
+    return {
+      excessDelayMicrosec: parseFloat(delayMicrosec.toFixed(4)),
+      apparentDepthMeters: parseFloat(apparentDepthM.toFixed(1)),
+      slantRangeKm: parseFloat((slantRangeM / 1000.0).toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate minimum detectable dielectric step contrast Delta_epsilon given radar SNR.
+   * Delta_eps_min = sqrt(eps1) * 4 * 10^(-SNR_dB / 20)
+   * @param {number} [topPermittivity=3.15] - Dielectric permittivity of overlying layer
+   * @param {number} [minDetectableSnrDb=10.0] - Receiver minimum signal-to-noise ratio in dB
+   * @returns {{minDetectableDeltaEps: number, minReflectivityDb: number}}
+   */
+  static computeMinimumDetectableDielectricContrast(topPermittivity = 3.15, minDetectableSnrDb = 10.0) {
+    const eps1 = Math.max(1.0, topPermittivity);
+    const snrLinear = Math.pow(10, minDetectableSnrDb / 20.0);
+    const deltaEps = (4.0 * Math.sqrt(eps1)) / snrLinear;
+
+    return {
+      minDetectableDeltaEps: parseFloat(deltaEps.toFixed(4)),
+      minReflectivityDb: parseFloat((-minDetectableSnrDb).toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate 3D cylindrical pulse resolution volume (sounding voxel).
+   * V_res = pi * r_fresnel^2 * Delta_z_vert
+   * @param {number} [fresnelRadiusM=1500.0] - 1st Fresnel zone footprint radius in meters
+   * @param {number} [verticalResolutionM=15.0] - Vertical range resolution in meters
+   * @returns {{resolutionVolumeM3: number, resolutionVolumeKm3: number}}
+   */
+  static computeRadarResolutionVolume(fresnelRadiusM = 1500.0, verticalResolutionM = 15.0) {
+    const r = Math.max(1.0, fresnelRadiusM);
+    const dz = Math.max(0.1, verticalResolutionM);
+
+    const volumeM3 = Math.PI * r * r * dz;
+    const volumeKm3 = volumeM3 * 1e-9;
+
+    return {
+      resolutionVolumeM3: parseFloat(volumeM3.toExponential(4)),
+      resolutionVolumeKm3: parseFloat(volumeKm3.toFixed(6))
+    };
+  }
 }
+
 
 
 

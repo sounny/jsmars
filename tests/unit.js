@@ -4118,6 +4118,26 @@ describe('Perihelion/Aphelion Distance, Solar Azimuth & Mean Motion (MarsTime)',
     });
 });
 
+describe('Clutter Delay, Dielectric Contrast & Resolution Volume (RadarSounderEngine)', () => {
+    it('should calculate off-nadir surface clutter excess delay and apparent false depth in ice', () => {
+        // H = 250 km, y = 10 km -> slant = sqrt(250^2 + 10^2) = 250.1999 km -> excess round-trip = 2 * 0.1999 km / c ~ 1.3338 µs
+        const clutter = RadarSounderEngine.computeCrossTrackClutterHorizonDelay(250.0, 10.0, 3.15);
+        expect(clutter.excessDelayMicrosec).to.be.closeTo(1.334, 0.02);
+        // In ice (v ~ 168.9 m/µs) -> apparent false depth = 168.9 * 1.334 / 2 ~ 112.7 m
+        expect(clutter.apparentDepthMeters).to.be.closeTo(112.7, 3.0);
+    });
+
+    it('should compute minimum detectable dielectric contrast and 3D radar resolution volume', () => {
+        // eps1 = 3.15, SNR = 10 dB (linear ratio ~ 3.162) -> Delta_eps = 4 * sqrt(3.15) / 3.162 ~ 2.245
+        const contrast = RadarSounderEngine.computeMinimumDetectableDielectricContrast(3.15, 10.0);
+        expect(contrast.minDetectableDeltaEps).to.be.closeTo(2.245, 0.05);
+
+        // r_Fresnel = 1500 m, Delta_z = 15 m -> V_res = pi * 1500^2 * 15 = 106.03e6 m^3 = 0.106029 km^3
+        const voxel = RadarSounderEngine.computeRadarResolutionVolume(1500.0, 15.0);
+        expect(voxel.resolutionVolumeKm3).to.be.closeTo(0.106, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
