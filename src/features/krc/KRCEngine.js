@@ -807,7 +807,79 @@ export class KRCEngine {
       geothermalGradientKPerKm: parseFloat(gradKPerKm.toFixed(2))
     };
   }
+
+  // --- Subsurface Wave Attenuation, TI Inversion & Heat Diffusion Solvers ---
+
+  /**
+   * Calculate exact subsurface temperature wave exponential attenuation factor and phase delay.
+   * A(z) = exp(-z / d_s),  phase(z) = z / d_s (radians)
+   * @param {number} depthMeters - Depth below surface in meters (z)
+   * @param {number} thermalInertia - Regolith thermal inertia (SI tiu)
+   * @param {number} [periodSeconds=88775.244] - Thermal wave period (defaults to 1 Sol)
+   * @returns {{attenuationFraction: number, phaseDelayRadians: number, phaseDelayHours: number, skinDepthMeters: number}}
+   */
+  static computeSubsurfaceAttenuationAndPhase(depthMeters, thermalInertia, periodSeconds = 88775.244) {
+    const skin = this.computeSkinDepth(thermalInertia, periodSeconds);
+    const ds = Math.max(1e-4, skin.skinDepthMeters);
+    const z = Math.max(0, depthMeters);
+
+    const atten = Math.exp(-z / ds);
+    const phaseRad = z / ds;
+    const phaseHours = (phaseRad / (2.0 * Math.PI)) * (periodSeconds / 3600.0);
+
+    return {
+      attenuationFraction: parseFloat(atten.toFixed(4)),
+      phaseDelayRadians: parseFloat(phaseRad.toFixed(3)),
+      phaseDelayHours: parseFloat(phaseHours.toFixed(2)),
+      skinDepthMeters: parseFloat(ds.toFixed(4))
+    };
+  }
+
+  /**
+   * Invert regolith thermal inertia from diurnal surface temperature excursion amplitude.
+   * I = (2 * (1 - A) * S0) / (sqrt(pi * omega) * Delta_T)
+   * @param {number} deltaT - Diurnal temperature amplitude (T_max - T_min in Kelvin)
+   * @param {number} [solarInsolationW_M2=500.0] - Noon solar insolation flux (W/m^2)
+   * @param {number} [albedo=0.25] - Bolometric surface albedo
+   * @returns {{thermalInertiaTIU: number, classification: string}}
+   */
+  static invertThermalInertiaFromAmplitude(deltaT, solarInsolationW_M2 = 500.0, albedo = 0.25) {
+    const safeDelta = Math.max(1.0, deltaT);
+    const s0 = Math.max(0, solarInsolationW_M2);
+    const A = Math.max(0, Math.min(0.95, albedo));
+    const omega = (2.0 * Math.PI) / this.MARS_SOL_SECONDS;
+
+    const I = (2.0 * (1.0 - A) * s0) / (Math.sqrt(Math.PI * omega) * safeDelta);
+    const roundedI = parseFloat(I.toFixed(1));
+    const grainClass = this.classifyRegolithGrainSize(roundedI);
+
+    return {
+      thermalInertiaTIU: roundedI,
+      classification: grainClass.classification
+    };
+  }
+
+  /**
+   * Calculate 1D Fourier conductive heat flux between surface and subsurface layer.
+   * F_cond = k * (T_sub - T_surf) / dz
+   * @param {number} tempSurfaceK - Surface temperature in Kelvin
+   * @param {number} tempSubsurfaceK - Subsurface node temperature in Kelvin
+   * @param {number} layerThicknessMeters - Distance between nodes in meters
+   * @param {number} thermalConductivityW_MK - Bulk thermal conductivity in W/(m K)
+   * @returns {{conductiveFluxW_M2: number, isHeatingSurface: boolean}}
+   */
+  static computeSubsurfaceHeatDiffusionFlux(tempSurfaceK, tempSubsurfaceK, layerThicknessMeters, thermalConductivityW_MK) {
+    const dz = Math.max(1e-4, layerThicknessMeters);
+    const k = Math.max(1e-4, thermalConductivityW_MK);
+    const flux = k * (tempSubsurfaceK - tempSurfaceK) / dz;
+
+    return {
+      conductiveFluxW_M2: parseFloat(flux.toFixed(2)),
+      isHeatingSurface: flux > 0
+    };
+  }
 }
+
 
 
 

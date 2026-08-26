@@ -3835,6 +3835,29 @@ describe('Direct Geodesic, Girard Excess & Cross-Track Error (MeasureTool)', () 
     });
 });
 
+describe('Subsurface Attenuation, TI Inversion & Heat Diffusion (KRCEngine)', () => {
+    it('should compute harmonic subsurface wave exponential attenuation and phase delay', () => {
+        // Regolith TI = 250 tiu -> skin depth ~ 3.5 cm (0.035 m)
+        // At depth z = skin depth (0.035 m), attenuation = 1/e ~ 0.3679, phase delay = 1 rad (~3.92 hours)
+        const atten = KRCEngine.computeSubsurfaceAttenuationAndPhase(0.035, 250.0);
+        expect(atten.attenuationFraction).to.be.closeTo(0.368, 0.05);
+        expect(atten.phaseDelayRadians).to.be.closeTo(1.0, 0.1);
+        expect(atten.phaseDelayHours).to.be.closeTo(3.92, 0.5);
+    });
+
+    it('should invert thermal inertia from diurnal temperature amplitude and solve conductive heat flux', () => {
+        // DeltaT = 80 K amplitude under 500 W/m^2 noon insolation (A = 0.25)
+        const inv = KRCEngine.invertThermalInertiaFromAmplitude(80.0, 500.0, 0.25);
+        expect(inv.thermalInertiaTIU).to.be.closeTo(628.7, 5.0);
+        expect(inv.classification).to.include('Regolith');
+
+        // Conductive flux across 2 cm layer with k = 0.05 W/(m K) and deltaT = 10 K (subsurface hotter)
+        const flux = KRCEngine.computeSubsurfaceHeatDiffusionFlux(210.0, 220.0, 0.02, 0.05);
+        expect(flux.conductiveFluxW_M2).to.equal(25.0);
+        expect(flux.isHeatingSurface).to.equal(true);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

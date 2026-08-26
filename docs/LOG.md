@@ -259,3 +259,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate Girard spherical excess polygon area and cross-track error distance
 ?: AssertionError: expected -591.579 to be close to 591.6 +/- 10
     at n.<anonymous> (unit.js:3833:44)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 01:30:37 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should invert thermal inertia from diurnal temperature amplitude and solve conductive heat flux
+?: AssertionError: expected 628.7 to be below 350
+    at n.<anonymous> (unit.js:3852:45)
