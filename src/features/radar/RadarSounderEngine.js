@@ -1149,7 +1149,83 @@ export class RadarSounderEngine {
       freeSpaceResolutionMeters: parseFloat(deltaAir.toFixed(2))
     };
   }
+
+  // --- Clutter Discrimination, Snell's Refraction & Slant Path Solvers ---
+
+  /**
+   * Calculate subsurface radar clutter-to-signal ratio (CSR) in decibels.
+   * CSR = 10 * log10(P_clutter / P_signal)
+   * @param {number} clutterPowerWatts - Off-nadir surface clutter echo power in Watts
+   * @param {number} signalPowerWatts - True nadir subsurface echo power in Watts
+   * @returns {{clutterToSignalRatioDb: number, isClutterDominant: boolean}}
+   */
+  static computeSubsurfaceClutterToSignalRatio(clutterPowerWatts, signalPowerWatts) {
+    const pClutter = Math.max(1e-25, clutterPowerWatts);
+    const pSignal = Math.max(1e-25, signalPowerWatts);
+
+    const ratio = pClutter / pSignal;
+    const csrDb = 10.0 * Math.log10(ratio);
+
+    return {
+      clutterToSignalRatioDb: parseFloat(csrDb.toFixed(2)),
+      isClutterDominant: csrDb > 0
+    };
+  }
+
+  /**
+   * Calculate exact dielectric refraction angle and critical angle at subsurface boundaries using Snell's Law.
+   * theta_2 = arcsin( sqrt(eps_1 / eps_2) * sin(theta_1) )
+   * @param {number} incidenceAngleDeg - Incidence angle theta_1 in degrees
+   * @param {number} epsUpper - Relative dielectric permittivity of upper medium
+   * @param {number} epsLower - Relative dielectric permittivity of lower medium
+   * @returns {{refractionAngleDeg: number, criticalAngleDeg: number, totalInternalReflection: boolean}}
+   */
+  static computeDielectricSnellsRefraction(incidenceAngleDeg, epsUpper, epsLower) {
+    const eps1 = Math.max(1.0, epsUpper);
+    const eps2 = Math.max(1.0, epsLower);
+    const n1 = Math.sqrt(eps1);
+    const n2 = Math.sqrt(eps2);
+
+    const theta1Rad = (Math.max(0, Math.min(90, incidenceAngleDeg)) * Math.PI) / 180.0;
+    const sinTheta2 = (n1 / n2) * Math.sin(theta1Rad);
+
+    const isTIR = sinTheta2 > 1.0;
+    const theta2Rad = isTIR ? Math.PI / 2.0 : Math.asin(sinTheta2);
+    const theta2Deg = (theta2Rad * 180.0) / Math.PI;
+
+    const criticalAngleDeg = n1 > n2 ? (Math.asin(n2 / n1) * 180.0) / Math.PI : 90.0;
+
+    return {
+      refractionAngleDeg: parseFloat(theta2Deg.toFixed(2)),
+      criticalAngleDeg: parseFloat(criticalAngleDeg.toFixed(2)),
+      totalInternalReflection: isTIR
+    };
+  }
+
+  /**
+   * Calculate true physical vertical depth taking into account dielectric wave speed and refracted slant ray angle.
+   * Delta_z = (c * Delta_t) / (2 * sqrt(eps_r)) * cos(theta_r)
+   * @param {number} twoWayDelayMicrosec - Two-way travel time delay in microseconds (μs)
+   * @param {number} [epsR=3.15] - Dielectric permittivity of medium
+   * @param {number} [refractionAngleDeg=0.0] - Refracted ray angle theta_r in degrees
+   * @returns {{trueVerticalDepthMeters: number, slantPathDistanceMeters: number}}
+   */
+  static computeRefractedDepthDelayCorrection(twoWayDelayMicrosec, epsR = 3.15, refractionAngleDeg = 0.0) {
+    const twtSec = Math.max(0, twoWayDelayMicrosec * 1e-6);
+    const eps = Math.max(1.0, epsR);
+    const v = RadarSounderEngine.C / Math.sqrt(eps);
+
+    const slantDistM = (v * twtSec) / 2.0;
+    const thetaRad = (Math.max(0, Math.min(89.9, refractionAngleDeg)) * Math.PI) / 180.0;
+    const vertDepthM = slantDistM * Math.cos(thetaRad);
+
+    return {
+      trueVerticalDepthMeters: parseFloat(vertDepthM.toFixed(2)),
+      slantPathDistanceMeters: parseFloat(slantDistM.toFixed(2))
+    };
+  }
 }
+
 
 
 

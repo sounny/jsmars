@@ -4830,6 +4830,39 @@ describe('Interlayer Heat Flux, Seasonal TI & Atmospheric Downwelling (KRCEngine
     });
 });
 
+describe('Clutter Discrimination, Snell Refraction & Slant Path Delay (RadarSounderEngine)', () => {
+    it('should calculate subsurface clutter-to-signal ratio and dominance', () => {
+        // P_clutter = 1e-12 W, P_signal = 1e-13 W -> ratio = 10 -> CSR = +10 dB (clutter dominant)
+        const csrHigh = RadarSounderEngine.computeSubsurfaceClutterToSignalRatio(1e-12, 1e-13);
+        expect(csrHigh.clutterToSignalRatioDb).to.equal(10.0);
+        expect(csrHigh.isClutterDominant).to.be.true;
+
+        // P_clutter = 1e-14 W, P_signal = 1e-12 W -> ratio = 0.01 -> CSR = -20 dB (signal dominant)
+        const csrLow = RadarSounderEngine.computeSubsurfaceClutterToSignalRatio(1e-14, 1e-12);
+        expect(csrLow.clutterToSignalRatioDb).to.equal(-20.0);
+        expect(csrLow.isClutterDominant).to.be.false;
+    });
+
+    it('should compute exact Snell dielectric refraction and slant path depth correction', () => {
+        // Air (eps1 = 1.0) into Ice (eps2 = 3.15, n2 = 1.7748) at theta1 = 30°
+        // sin(theta2) = (1 / 1.7748) * sin(30°) = 0.5 / 1.7748 = 0.2817 -> theta2 = 16.36°
+        const refr = RadarSounderEngine.computeDielectricSnellsRefraction(30.0, 1.0, 3.15);
+        expect(refr.refractionAngleDeg).to.be.closeTo(16.36, 0.05);
+        expect(refr.totalInternalReflection).to.be.false;
+
+        // TWT = 10 μs, epsR = 3.15, refractionAngle = 0° (nadir):
+        // v = c / sqrt(3.15) = 168916327 m/s -> slantDist = (168916327 * 10e-6) / 2 = 844.58 m -> vert = 844.58 m
+        const nadir = RadarSounderEngine.computeRefractedDepthDelayCorrection(10.0, 3.15, 0.0);
+        expect(nadir.trueVerticalDepthMeters).to.be.closeTo(844.58, 0.1);
+        expect(nadir.slantPathDistanceMeters).to.be.closeTo(844.58, 0.1);
+
+        // With slant angle theta = 30° -> vert = 844.58 * cos(30°) = 731.43 m
+        const slant = RadarSounderEngine.computeRefractedDepthDelayCorrection(10.0, 3.15, 30.0);
+        expect(slant.trueVerticalDepthMeters).to.be.closeTo(731.43, 0.1);
+        expect(slant.slantPathDistanceMeters).to.be.closeTo(844.58, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
