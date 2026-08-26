@@ -4319,6 +4319,36 @@ describe('Downwelling Flux, Phase Lag & Effective Bolometric Temp (KRCEngine)', 
     });
 });
 
+describe('True Anomaly from Eccentric, Distance from Ls & Hour Angle (MarsTime)', () => {
+    it('should calculate true anomaly from eccentric anomaly and orbital radius from Ls', () => {
+        // E = 90° with e = 0.0934 -> nu = 2 * atan(sqrt(1.0934 / 0.9066) * tan(45°)) = 2 * atan(1.0982) = 2 * 0.8321 rad ~ 95.36°
+        const nu = MarsTime.computeTrueAnomalyFromEccentric(90.0, 0.0934);
+        expect(nu.trueAnomalyDeg).to.be.closeTo(95.36, 0.05);
+
+        // At perihelion Ls = 250.99° -> cos(0) = 1 -> r = 1.52368 * (1 - e) ~ 1.38137 AU, flux = 1361 / 1.38137^2 ~ 713.25 W/m^2
+        const peri = MarsTime.computeMarsSunDistanceFromLs(250.99);
+        expect(peri.distanceAU).to.be.closeTo(1.38137, 0.005);
+        expect(peri.solarFluxW_M2).to.be.closeTo(713.25, 2.0);
+    });
+
+    it('should compute signed solar hour angle from LTST', () => {
+        // Solar noon: LTST = 12.0 -> H = 0°
+        const noon = MarsTime.computeHourAngleFromLTST(12.0);
+        expect(noon.hourAngleDeg).to.equal(0.0);
+        expect(noon.isAfternoon).to.be.false;
+
+        // Afternoon: LTST = 15.0 (3 PM) -> H = +45°
+        const pm = MarsTime.computeHourAngleFromLTST(15.0);
+        expect(pm.hourAngleDeg).to.equal(45.0);
+        expect(pm.isAfternoon).to.be.true;
+
+        // Morning: LTST = 9.0 (9 AM) -> H = -45°
+        const am = MarsTime.computeHourAngleFromLTST(9.0);
+        expect(am.hourAngleDeg).to.equal(-45.0);
+        expect(am.isAfternoon).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

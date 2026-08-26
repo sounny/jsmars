@@ -1029,7 +1029,76 @@ export class MarsTime {
       orbitalPeriodSols: parseFloat(periodSols.toFixed(1))
     };
   }
+
+  // --- True Anomaly from Eccentric, Distance from Ls & Hour Angle Solvers ---
+
+  /**
+   * Calculate exact orbital true anomaly nu from eccentric anomaly E.
+   * nu = 2 * atan( sqrt((1 + e) / (1 - e)) * tan(E / 2) )
+   * @param {number} eccentricAnomalyDeg - Eccentric anomaly in degrees
+   * @param {number} [eccentricity=0.0934] - Orbital eccentricity
+   * @returns {{trueAnomalyDeg: number, trueAnomalyRad: number}}
+   */
+  static computeTrueAnomalyFromEccentric(eccentricAnomalyDeg, eccentricity = 0.0934) {
+    const e = Math.max(0, Math.min(0.99, eccentricity));
+    const ERad = eccentricAnomalyDeg * Math.PI / 180.0;
+
+    const sqrtFactor = Math.sqrt((1.0 + e) / (1.0 - e));
+    const nuRad = 2.0 * Math.atan2(sqrtFactor * Math.sin(ERad / 2.0), Math.cos(ERad / 2.0));
+    let nuDeg = nuRad * 180.0 / Math.PI;
+    if (nuDeg < 0) nuDeg += 360.0;
+
+    return {
+      trueAnomalyDeg: parseFloat(nuDeg.toFixed(4)),
+      trueAnomalyRad: parseFloat(((nuDeg * Math.PI / 180.0)).toFixed(5))
+    };
+  }
+
+  /**
+   * Calculate Mars-Sun radial distance directly from Solar Longitude (Ls).
+   * r = (a * (1 - e^2)) / (1 + e * cos(Ls - Ls_peri))
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @param {number} [semiMajorAxisAU=1.52368] - Semi-major axis in AU
+   * @param {number} [eccentricity=0.0934] - Orbit eccentricity
+   * @param {number} [perihelionLsDeg=250.99] - Perihelion solar longitude
+   * @returns {{distanceAU: number, distanceKm: number, solarFluxW_M2: number}}
+   */
+  static computeMarsSunDistanceFromLs(LsDeg, semiMajorAxisAU = 1.52368, eccentricity = 0.0934, perihelionLsDeg = 250.99) {
+    const a = semiMajorAxisAU;
+    const e = eccentricity;
+    const dLamRad = (LsDeg - perihelionLsDeg) * Math.PI / 180.0;
+
+    const rAU = (a * (1.0 - e * e)) / (1.0 + e * Math.cos(dLamRad));
+    const rKm = rAU * 149597870.7;
+    const flux = this.SOLAR_CONSTANT_1AU / (rAU * rAU);
+
+    return {
+      distanceAU: parseFloat(rAU.toFixed(5)),
+      distanceKm: parseFloat(rKm.toFixed(0)),
+      solarFluxW_M2: parseFloat(flux.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate signed solar hour angle H in degrees and radians from Local True Solar Time (LTST).
+   * H = (LTST - 12) * 15 degrees
+   * @param {number} ltstHours - Local True Solar Time in hours (0 to 24)
+   * @returns {{hourAngleDeg: number, hourAngleRad: number, isAfternoon: boolean}}
+   */
+  static computeHourAngleFromLTST(ltstHours) {
+    let hDeg = (ltstHours - 12.0) * 15.0;
+    while (hDeg > 180) hDeg -= 360;
+    while (hDeg < -180) hDeg += 360;
+    const hRad = hDeg * Math.PI / 180.0;
+
+    return {
+      hourAngleDeg: parseFloat(hDeg.toFixed(2)),
+      hourAngleRad: parseFloat(hRad.toFixed(4)),
+      isAfternoon: hDeg > 0
+    };
+  }
 }
+
 
 
 
