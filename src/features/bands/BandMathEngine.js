@@ -1142,7 +1142,87 @@ export class BandMathEngine {
       dustClassification: cls
     };
   }
+
+  // --- CRISM BD1900r2, TES Carbonate & Spectral Information Divergence (SID) Solvers ---
+
+  /**
+   * Calculate revised CRISM BD1900r2 structural hydration band depth index.
+   * BD1900r2 = 1.0 - ( R1930 / ( a * R1850 + b * R2060 ) ) with a = 0.61905, b = 0.38095
+   * @param {number} r1850 - Left shoulder reflectance at 1.85 µm
+   * @param {number} r1930 - Hydration band center reflectance at 1.93 µm
+   * @param {number} r2060 - Right shoulder reflectance at 2.06 µm
+   * @returns {{bd1900r2: number, hasStructuralH2O: boolean}}
+   */
+  static computeCRISMBd1900r2Index(r1850, r1930, r2060) {
+    const a = 0.61905;
+    const b = 0.38095;
+    const continuum = a * r1850 + b * r2060;
+
+    if (continuum <= 0) return { bd1900r2: 0, hasStructuralH2O: false };
+
+    const depth = 1.0 - (r1930 / continuum);
+    const clampedDepth = Math.max(0, depth);
+
+    return {
+      bd1900r2: parseFloat(clampedDepth.toFixed(4)),
+      hasStructuralH2O: clampedDepth > 0.03
+    };
+  }
+
+  /**
+   * Calculate TES (Thermal Emission Spectrometer) Carbonate absorption index from TIR emissivity.
+   * CARB_TES = 1.0 - ( eps1480 / ( 0.5 * (eps1350 + eps1600) ) )
+   * @param {number} eps1350 - Emissivity at 1350 cm^-1 (~7.41 µm)
+   * @param {number} eps1480 - Emissivity at 1480 cm^-1 (~6.76 µm CO3 absorption center)
+   * @param {number} eps1600 - Emissivity at 1600 cm^-1 (~6.25 µm)
+   * @returns {{tesCarbonateIndex: number, carbonateAbundanceEstimatePercent: number}}
+   */
+  static computeTESThermalCarbonateIndex(eps1350, eps1480, eps1600) {
+    const cont = 0.5 * (eps1350 + eps1600);
+    if (cont <= 0) return { tesCarbonateIndex: 0, carbonateAbundanceEstimatePercent: 0 };
+
+    const index = 1.0 - (eps1480 / cont);
+    const clamped = Math.max(0, index);
+    const abundance = Math.min(100.0, clamped * 400.0); // Calibrated linear scaling for TES
+
+    return {
+      tesCarbonateIndex: parseFloat(clamped.toFixed(4)),
+      carbonateAbundanceEstimatePercent: parseFloat(abundance.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate Spectral Information Divergence (SID) between two hyperspectral probability distributions.
+   * SID(x, y) = D(x || y) + D(y || x) = sum( p_i * log(p_i / q_i) ) + sum( q_i * log(q_i / p_i) )
+   * @param {Array<number>} spectrumA - First spectrum
+   * @param {Array<number>} spectrumB - Second spectrum
+   * @returns {{sidDivergence: number, similarityScore: number}}
+   */
+  static computeSpectralInformationDivergence(spectrumA = [], spectrumB = []) {
+    const n = Math.min(spectrumA.length, spectrumB.length);
+    if (n === 0) return { sidDivergence: 0, similarityScore: 1.0 };
+
+    const sumA = spectrumA.slice(0, n).reduce((a, b) => a + Math.max(1e-6, b), 0);
+    const sumB = spectrumB.slice(0, n).reduce((a, b) => a + Math.max(1e-6, b), 0);
+
+    const p = spectrumA.slice(0, n).map(v => Math.max(1e-6, v) / sumA);
+    const q = spectrumB.slice(0, n).map(v => Math.max(1e-6, v) / sumB);
+
+    let sid = 0;
+    for (let i = 0; i < n; i++) {
+      sid += p[i] * Math.log(p[i] / q[i]) + q[i] * Math.log(q[i] / p[i]);
+    }
+
+    const clampedSid = Math.max(0, sid);
+    const similarity = Math.exp(-clampedSid * 10.0);
+
+    return {
+      sidDivergence: parseFloat(clampedSid.toFixed(5)),
+      similarityScore: parseFloat(similarity.toFixed(4))
+    };
+  }
 }
+
 
 
 

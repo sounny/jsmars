@@ -4138,6 +4138,31 @@ describe('Clutter Delay, Dielectric Contrast & Resolution Volume (RadarSounderEn
     });
 });
 
+describe('CRISM BD1900r2, TES Carbonate & Spectral Information Divergence (BandMathEngine)', () => {
+    it('should compute revised CRISM BD1900r2 hydration band depth and TES carbonate index', () => {
+        // BD1900r2: R1850 = 0.25, R1930 = 0.20, R2060 = 0.24 -> continuum = 0.61905 * 0.25 + 0.38095 * 0.24 = 0.24619 -> depth = 1 - 0.20/0.24619 ~ 0.1876
+        const bd19 = BandMathEngine.computeCRISMBd1900r2Index(0.25, 0.20, 0.24);
+        expect(bd19.bd1900r2).to.be.closeTo(0.1876, 0.005);
+        expect(bd19.hasStructuralH2O).to.be.true;
+
+        // TES Carbonate: eps1350 = 0.98, eps1480 = 0.92, eps1600 = 0.96 -> cont = 0.97 -> index = 1 - 0.92/0.97 ~ 0.0515
+        const carb = BandMathEngine.computeTESThermalCarbonateIndex(0.98, 0.92, 0.96);
+        expect(carb.tesCarbonateIndex).to.be.closeTo(0.0515, 0.005);
+        expect(carb.carbonateAbundanceEstimatePercent).to.be.closeTo(20.6, 2.0);
+    });
+
+    it('should calculate information-theoretic Spectral Information Divergence (SID)', () => {
+        // Identical spectra -> SID = 0, similarity = 1.0
+        const sidSame = BandMathEngine.computeSpectralInformationDivergence([0.2, 0.4, 0.6], [0.2, 0.4, 0.6]);
+        expect(sidSame.sidDivergence).to.equal(0.0);
+        expect(sidSame.similarityScore).to.equal(1.0);
+
+        // Different spectra -> positive divergence
+        const sidDiff = BandMathEngine.computeSpectralInformationDivergence([0.1, 0.5, 0.9], [0.8, 0.4, 0.1]);
+        expect(sidDiff.sidDivergence).to.be.greaterThan(0.2);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
