@@ -43,7 +43,6 @@
       <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;" />
       <div id="body-selector-container" style="margin-top: 10px;"></div>
       <div id="quick-actions-container" style="margin-top: 12px;"></div>
-      <div id="time-slider-container" style="margin-top: 12px; text-align: left;"></div>
       <div style="margin-top: 8px; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;">
         <a href="about.html" target="_blank" style="color: #aaa; text-decoration: none; font-size: 12px;">About</a>
         <a href="docs/index.html" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 12px; font-weight: 600;">📖 Docs</a>
@@ -96,6 +95,18 @@
       <div class="accordion-header">Tools</div>
       <div class="accordion-content">
         <div id="tools-list">
+          <!-- Mars Solar Time & Ephemeris -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Adjust Martian season (Solar Longitude Ls), Sol dates, orbital parameters, and local mean/true solar time.">
+              <span class="layer-title">Mars Solar Time & Ephemeris</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none; padding: 8px;">
+              <div id="time-slider-container" style="text-align: left;"></div>
+            </div>
+          </div>
+
           <!-- Crater Counting -->
           <div class="layer-section">
             <div class="layer-section-header"
