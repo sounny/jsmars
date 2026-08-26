@@ -3948,6 +3948,37 @@ describe('Strength-Gravity Transition, Linear Age & Impact Melt (CSFDEngine)', (
     });
 });
 
+describe('Spherical Midpoint, Tissot Area & Gnomonic Scale (ProjectionManager)', () => {
+    it('should compute exact great-circle spherical midpoint coordinates', () => {
+        // Equator endpoints (0°N, 0°E) to (0°N, 90°E) -> midpoint is (0°N, 45°E)
+        const midEq = ProjectionManager.computeSphericalMidpoint(0.0, 0.0, 0.0, 90.0);
+        expect(midEq.lat).to.be.closeTo(0.0, 0.01);
+        expect(midEq.lon).to.be.closeTo(45.0, 0.01);
+
+        // Meridian endpoints (0°N, 0°E) to (60°N, 0°E) -> midpoint is (30°N, 0°E)
+        const midMer = ProjectionManager.computeSphericalMidpoint(0.0, 0.0, 60.0, 0.0);
+        expect(midMer.lat).to.be.closeTo(30.0, 0.01);
+        expect(midMer.lon).to.be.closeTo(0.0, 0.01);
+    });
+
+    it('should calculate Tissot indicatrix area distortion and Gnomonic radial point scale', () => {
+        // Equal-area projection: h = 0.5, k = 2.0, theta = 0 -> s = 1.0 (isAreaPreserving = true)
+        const tissotEA = ProjectionManager.computeTissotIndicatrixAreaRatio(0.5, 2.0, 0.0);
+        expect(tissotEA.areaDistortionRatio).to.equal(1.0);
+        expect(tissotEA.isAreaPreserving).to.equal(true);
+
+        // Equirectangular at 60°: h = 1.0, k = 2.0 -> s = 2.0
+        const tissotCyl = ProjectionManager.computeTissotIndicatrixAreaRatio(1.0, 2.0, 0.0);
+        expect(tissotCyl.areaDistortionRatio).to.equal(2.0);
+        expect(tissotCyl.isAreaPreserving).to.equal(false);
+
+        // Gnomonic scale at center (rho = 0) -> k = 1.0
+        const gn0 = ProjectionManager.computeGnomonicProjectionScale(0.0, 'mars');
+        expect(gn0.radialScaleFactor).to.equal(1.0);
+        expect(gn0.angularDistanceDeg).to.equal(0.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

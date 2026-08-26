@@ -1053,7 +1053,77 @@ export class ProjectionManager {
     const res = this.forwardLambertConformalConic(latDeg, 0, lat1Deg, lat2Deg, 0, 'mars');
     return res.scaleFactor;
   }
+
+  // --- Spherical Midpoint, Tissot Area Ratio & Gnomonic Scale Solvers ---
+
+  /**
+   * Calculate exact spherical great-circle midpoint coordinates between two planetary points.
+   * @param {number} lat1Deg - Latitude of point 1 in degrees
+   * @param {number} lon1Deg - Longitude of point 1 in degrees
+   * @param {number} lat2Deg - Latitude of point 2 in degrees
+   * @param {number} lon2Deg - Longitude of point 2 in degrees
+   * @returns {{lat: number, lon: number}} Midpoint coordinates in degrees
+   */
+  static computeSphericalMidpoint(lat1Deg, lon1Deg, lat2Deg, lon2Deg) {
+    const phi1 = lat1Deg * Math.PI / 180.0;
+    const phi2 = lat2Deg * Math.PI / 180.0;
+    const lam1 = lon1Deg * Math.PI / 180.0;
+    const dLam = to180(lon2Deg - lon1Deg) * Math.PI / 180.0;
+
+    const Bx = Math.cos(phi2) * Math.cos(dLam);
+    const By = Math.cos(phi2) * Math.sin(dLam);
+
+    const phiM = Math.atan2(Math.sin(phi1) + Math.sin(phi2), Math.hypot(Math.cos(phi1) + Bx, By));
+    const lamM = lam1 + Math.atan2(By, Math.cos(phi1) + Bx);
+
+    return {
+      lat: parseFloat((phiM * 180.0 / Math.PI).toFixed(4)),
+      lon: parseFloat(to180(lamM * 180.0 / Math.PI).toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate Tissot indicatrix area distortion ratio s = h * k * cos(theta').
+   * @param {number} scaleH - Meridian scale factor h
+   * @param {number} scaleK - Parallel scale factor k
+   * @param {number} [angularShearDeg=0] - Angular shear theta' in degrees (0 for orthogonal graticules)
+   * @returns {{areaDistortionRatio: number, isAreaPreserving: boolean}}
+   */
+  static computeTissotIndicatrixAreaRatio(scaleH, scaleK, angularShearDeg = 0) {
+    const h = Math.max(0.001, scaleH);
+    const k = Math.max(0.001, scaleK);
+    const thetaRad = Math.abs(angularShearDeg) * Math.PI / 180.0;
+
+    const s = h * k * Math.cos(thetaRad);
+    const isAreaPreserving = Math.abs(s - 1.0) < 0.001;
+
+    return {
+      areaDistortionRatio: parseFloat(s.toFixed(4)),
+      isAreaPreserving
+    };
+  }
+
+  /**
+   * Calculate Gnomonic radial point scale factor k = sec^2(c) = 1 + (rho / R)^2.
+   * @param {number} distanceFromCenterKm - Projected radial distance from projection center in km
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{radialScaleFactor: number, angularDistanceDeg: number}}
+   */
+  static computeGnomonicProjectionScale(distanceFromCenterKm, body = 'mars') {
+    const R = BODIES[body]?.meanRadius || 3389.5;
+    const rho = Math.max(0, distanceFromCenterKm);
+
+    const cRad = Math.atan(rho / R);
+    const cDeg = cRad * 180.0 / Math.PI;
+    const k = 1.0 + Math.pow(rho / R, 2);
+
+    return {
+      radialScaleFactor: parseFloat(k.toFixed(4)),
+      angularDistanceDeg: parseFloat(cDeg.toFixed(2))
+    };
+  }
 }
+
 
 
 
