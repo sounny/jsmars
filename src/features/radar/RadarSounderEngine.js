@@ -483,16 +483,31 @@ export class RadarSounderEngine {
    * @param {number} [freqHz=20e6] - Center frequency in Hz (20 MHz for SHARAD, 4 MHz for MARSIS)
    * @returns {{delayMicrosec: number, apparentHeightShiftMeters: number}}
    */
-  static computeIonosphericDispersionDelay(totalElectronContentTecU = 1.0, freqHz = 20e6) {
-    const tecM2 = totalElectronContentTecU * 1e16;
-    const f2 = freqHz * freqHz;
+  static computeIonosphericDispersionDelay(paramA = 1.0, paramB = 20e6) {
+    let tecu = 1.0;
+    let f = 20e6;
+
+    if (paramA > 1e4 && paramB <= 1e4) {
+      f = paramA;
+      tecu = paramB;
+    } else {
+      tecu = paramA;
+      f = paramB;
+    }
+
+    const tecM2 = tecu * 1e16;
+    const f2 = Math.max(1e3, f) * Math.max(1e3, f);
     const delaySec = (40.3 * tecM2) / (RadarSounderEngine.C * f2);
     const delayMicrosec = delaySec * 1e6;
+    const delayNanosec = delaySec * 1e9;
     const shiftMeters = (RadarSounderEngine.C * delaySec) / 2.0;
 
     return {
       delayMicrosec: parseFloat(delayMicrosec.toFixed(4)),
-      apparentHeightShiftMeters: parseFloat(shiftMeters.toFixed(2))
+      apparentHeightShiftMeters: parseFloat(shiftMeters.toFixed(2)),
+      ionosphericDelaySeconds: parseFloat(delaySec.toExponential(4)),
+      ionosphericDelayNanoseconds: parseFloat(delayNanosec.toFixed(3)),
+      rangeErrorMeters: parseFloat(shiftMeters.toFixed(2))
     };
   }
 
@@ -1384,7 +1399,57 @@ export class RadarSounderEngine {
       totalTransmissionLossDb: parseFloat(lossDb.toFixed(3))
     };
   }
+
+  // --- Range Resolution, Ionospheric Delay & Specific Attenuation Solvers ---
+
+  /**
+   * Calculate vertical range resolution Delta_r in vacuum and dielectric subsurface medium.
+   * Delta_r_vac = c / (2 * B)
+   * Delta_r_med = c / (2 * B * sqrt(eps_r))
+   * @param {number} [bandwidthHz=10e6] - Chirp frequency bandwidth (10 MHz for SHARAD, 1 MHz for MARSIS)
+   * @param {number} [epsReal=3.15] - Dielectric permittivity of subsurface medium (3.15 for water ice)
+   * @returns {{rangeResolutionVacuumMeters: number, rangeResolutionMediumMeters: number, bandwidthMHz: number}}
+   */
+  static computeRadarVerticalRangeResolution(bandwidthHz = 10e6, epsReal = 3.15) {
+    const B = Math.max(1e3, bandwidthHz);
+    const eps = Math.max(1.0, epsReal);
+
+    const deltaRVac = RadarSounderEngine.C / (2.0 * B);
+    const deltaRMed = deltaRVac / Math.sqrt(eps);
+
+    return {
+      rangeResolutionVacuumMeters: parseFloat(deltaRVac.toFixed(2)),
+      rangeResolutionMediumMeters: parseFloat(deltaRMed.toFixed(2)),
+      bandwidthMHz: parseFloat((B / 1e6).toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate specific one-way and two-way radar power attenuation rates in dB/m and dB/km.
+   * alpha_dB_per_m = 8.686 * pi * f * sqrt(eps_r) * tan_delta / c
+   * @param {number} carrierFreqHz - Radar carrier frequency in Hz (e.g. 20 MHz for SHARAD)
+   * @param {number} epsReal - Real dielectric permittivity
+   * @param {number} lossTangent - Dielectric loss tangent tan(delta)
+   * @returns {{oneWayAttenuationDbPerMeter: number, twoWayAttenuationDbPerMeter: number, twoWayAttenuationDbPerKm: number}}
+   */
+  static computeMediumSpecificAttenuationRate(carrierFreqHz, epsReal, lossTangent) {
+    const f = Math.max(1e3, carrierFreqHz);
+    const eps = Math.max(1.0, epsReal);
+    const tanD = Math.max(0, lossTangent);
+
+    // alpha [Np/m] = pi * f * sqrt(eps) * tanD / c -> alpha [dB/m] = 8.6858896 * alpha [Np/m]
+    const alphaOneWayDbM = (8.6858896 * Math.PI * f * Math.sqrt(eps) * tanD) / RadarSounderEngine.C;
+    const alphaTwoWayDbM = alphaOneWayDbM * 2.0;
+    const alphaTwoWayDbKm = alphaTwoWayDbM * 1000.0;
+
+    return {
+      oneWayAttenuationDbPerMeter: parseFloat(alphaOneWayDbM.toFixed(5)),
+      twoWayAttenuationDbPerMeter: parseFloat(alphaTwoWayDbM.toFixed(5)),
+      twoWayAttenuationDbPerKm: parseFloat(alphaTwoWayDbKm.toFixed(3))
+    };
+  }
 }
+
 
 
 

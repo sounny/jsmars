@@ -5504,6 +5504,33 @@ describe('Deep-Link URL State Serialization & Sharing (URLStateEngine)', () => {
     });
 });
 
+describe('Radar Range Resolution, Ionospheric Delay & Specific Attenuation (RadarSounderEngine)', () => {
+    it('should calculate SHARAD vertical range resolution in vacuum and pure water ice', () => {
+        // B = 10 MHz (10e6 Hz), c = 299,792,458 m/s -> Delta_r_vac = 299792458 / 2e7 = 14.99 m
+        // In water ice (eps = 3.15) -> sqrt(3.15) = 1.7748 -> Delta_r_med = 14.99 / 1.7748 = 8.44 m
+        const res = RadarSounderEngine.computeRadarVerticalRangeResolution(10e6, 3.15);
+        expect(res.rangeResolutionVacuumMeters).to.be.closeTo(14.99, 0.05);
+        expect(res.rangeResolutionMediumMeters).to.be.closeTo(8.44, 0.05);
+        expect(res.bandwidthMHz).to.equal(10.0);
+    });
+
+    it('should compute ionospheric group delay and subsurface specific attenuation rates', () => {
+        // MARSIS at f = 4 MHz (4e6 Hz), TEC = 0.1 TECU (1e15 e/m^2)
+        // dt = (40.3 * 1e15) / (2.9979e8 * 16e12) = 4.03e16 / 4.7967e21 = 8.4017e-6 s (8401.7 ns)
+        // range error = (dt * c) / 2 = 1259.38 m
+        const iono = RadarSounderEngine.computeIonosphericDispersionDelay(0.1, 4e6);
+        expect(iono.ionosphericDelayNanoseconds).to.be.closeTo(8401.7, 1.0);
+        expect(iono.rangeErrorMeters).to.be.closeTo(1259.38, 0.5);
+
+        // SHARAD at f = 20 MHz in basaltic regolith eps = 8.0, tan_delta = 0.015
+        // alpha_Np_m = (pi * 20e6 * sqrt(8) * 0.015) / 2.9979e8 = (6.283e7 * 2.8284 * 0.015) / 2.9979e8 = 0.00889 Np/m
+        // alpha_1way_dB_m = 8.6859 * 0.00889 = 0.07724 dB/m -> 2way = 0.15448 dB/m = 154.48 dB/km
+        const att = RadarSounderEngine.computeMediumSpecificAttenuationRate(20e6, 8.0, 0.015);
+        expect(att.oneWayAttenuationDbPerMeter).to.be.closeTo(0.0772, 0.001);
+        expect(att.twoWayAttenuationDbPerKm).to.be.closeTo(154.48, 1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -387,3 +387,10 @@ TEST FAILURE: Unit test suite failed (2 failures):
 - should calculate CO2 dry ice frost point temperature from ambient atmospheric pressure
 ?: AssertionError: expected 95.96 to be close to 149.56 +/- 0.5
     at n.<anonymous> (unit.js:5395:45)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 21:45:39 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate ionospheric dispersion delay and cumulative multi-layer TWT
+?: AssertionError: expected undefined to be a number
+    at n.<anonymous> (unit.js:2359:42)
