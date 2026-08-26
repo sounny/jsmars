@@ -862,7 +862,89 @@ export class RadarSounderEngine {
       qualityMarginDb: parseFloat(margin.toFixed(2))
     };
   }
+
+  // --- Two-Way Attenuation, Point Target Radar Equation & Reflectivity Permittivity Inversion Solvers ---
+
+  /**
+   * Calculate two-way radar power attenuation rate in dB per meter and dB per km.
+   * alpha_2way = (2 * pi * f * sqrt(eps_r) * tan_delta) / c * 8.686
+   * @param {number} freqHz - Radar center frequency in Hz (e.g. 20 MHz for SHARAD)
+   * @param {number} lossTangent - Dielectric loss tangent tan(delta)
+   * @param {number} [dielectricPermittivity=3.15] - Relative permittivity
+   * @returns {{twoWayAttenuationDbPerM: number, twoWayAttenuationDbPerKm: number, skinDepthMeters: number}}
+   */
+  static computeTwoWaySignalAttenuationRate(freqHz, lossTangent, dielectricPermittivity = 3.15) {
+    const f = Math.max(1e3, freqHz);
+    const tanDelta = Math.max(1e-6, lossTangent);
+    const eps = Math.max(1.0, dielectricPermittivity);
+
+    const v = RadarSounderEngine.C / Math.sqrt(eps);
+    const omega = 2.0 * Math.PI * f;
+    const alphaOneWayDbM = ((omega * tanDelta) / (2.0 * v)) * 8.686;
+    const alphaTwoWayDbM = alphaOneWayDbM * 2.0;
+    const alphaTwoWayDbKm = alphaTwoWayDbM * 1000.0;
+
+    const alphaNp = alphaOneWayDbM / 8.686;
+    const skinDepth = 1.0 / Math.max(1e-8, alphaNp);
+
+    return {
+      twoWayAttenuationDbPerM: parseFloat(alphaTwoWayDbM.toFixed(5)),
+      twoWayAttenuationDbPerKm: parseFloat(alphaTwoWayDbKm.toFixed(3)),
+      skinDepthMeters: parseFloat(skinDepth.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate point target received echo power using the radar range equation.
+   * P_rx = (P_tx * G^2 * lambda^2 * sigma) / ((4 * pi)^3 * R^4)
+   * @param {number} [transmitterPowerW=10.0] - Transmit peak power in Watts
+   * @param {number} [antennaGainLinear=1.0] - Power gain of antenna
+   * @param {number} [wavelengthMeters=15.0] - Free-space radar wavelength in meters
+   * @param {number} [rangeMeters=250000.0] - Spacecraft range to target in meters
+   * @param {number} [radarCrossSectionM2=100.0] - Target radar cross section in m^2
+   * @returns {{receivedPowerWatts: number, receivedPowerDbm: number}}
+   */
+  static computeRadarEquationPointTargetPower(transmitterPowerW = 10.0, antennaGainLinear = 1.0, wavelengthMeters = 15.0, rangeMeters = 250000.0, radarCrossSectionM2 = 100.0) {
+    const Pt = Math.max(0.001, transmitterPowerW);
+    const G = Math.max(0.1, antennaGainLinear);
+    const lam = Math.max(0.1, wavelengthMeters);
+    const R = Math.max(100.0, rangeMeters);
+    const sigma = Math.max(0.01, radarCrossSectionM2);
+
+    const numerator = Pt * G * G * lam * lam * sigma;
+    const denominator = Math.pow(4.0 * Math.PI, 3) * Math.pow(R, 4);
+
+    const PrxWatts = numerator / denominator;
+    const PrxDbm = 10.0 * Math.log10(Math.max(1e-30, PrxWatts)) + 30.0;
+
+    return {
+      receivedPowerWatts: parseFloat(PrxWatts.toExponential(4)),
+      receivedPowerDbm: parseFloat(PrxDbm.toFixed(2))
+    };
+  }
+
+  /**
+   * Invert relative dielectric permittivity from normal power reflectivity R.
+   * eps_r = [ (1 + sqrt(R)) / (1 - sqrt(R)) ]^2
+   * @param {number} reflectivityLinear - Linear power reflection coefficient (0.0 to <1.0)
+   * @returns {{dielectricPermittivity: number, refractiveIndex: number, medium: string}}
+   */
+  static invertDielectricFromPowerReflectivity(reflectivityLinear) {
+    const R = Math.max(1e-6, Math.min(0.999, reflectivityLinear));
+    const sqrtR = Math.sqrt(R);
+    const n = (1.0 + sqrtR) / (1.0 - sqrtR);
+    const eps = n * n;
+
+    const classification = this.classifySubsurfaceMedium(eps);
+
+    return {
+      dielectricPermittivity: parseFloat(eps.toFixed(3)),
+      refractiveIndex: parseFloat(n.toFixed(3)),
+      medium: classification.medium
+    };
+  }
 }
+
 
 
 

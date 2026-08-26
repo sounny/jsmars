@@ -266,3 +266,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should invert thermal inertia from diurnal temperature amplitude and solve conductive heat flux
 ?: AssertionError: expected 628.7 to be below 350
     at n.<anonymous> (unit.js:3852:45)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 02:01:25 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should compute two-way signal attenuation rate and point-target radar equation received power
+?: AssertionError: expected 2.9026e-20 to be above 1e-19
+    at n.<anonymous> (unit.js:3894:46)

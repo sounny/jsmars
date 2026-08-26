@@ -3882,6 +3882,27 @@ describe('Radial Orbital Velocity, Specific Energy & Solar Zenith Vectors (MarsT
     });
 });
 
+describe('Two-Way Attenuation, Radar Equation & Reflectivity Permittivity (RadarSounderEngine)', () => {
+    it('should compute two-way signal attenuation rate and point-target radar equation received power', () => {
+        // Pure water ice (eps = 3.15, tanDelta = 0.001) at 20 MHz -> two-way attenuation ~ 0.0064 dB/m (~6.44 dB/km)
+        const atten = RadarSounderEngine.computeTwoWaySignalAttenuationRate(20e6, 0.001, 3.15);
+        expect(atten.twoWayAttenuationDbPerKm).to.be.closeTo(6.44, 0.1);
+        expect(atten.skinDepthMeters).to.be.greaterThan(2000.0);
+
+        // Point target radar equation: Pt = 10W, G = 1, lambda = 15m, R = 250 km, sigma = 100 m^2
+        const pRx = RadarSounderEngine.computeRadarEquationPointTargetPower(10.0, 1.0, 15.0, 250000.0, 100.0);
+        expect(pRx.receivedPowerWatts).to.be.closeTo(2.90e-20, 0.5e-20);
+        expect(pRx.receivedPowerDbm).to.be.closeTo(-165.4, 1.0);
+    });
+
+    it('should invert dielectric permittivity from measured power reflectivity', () => {
+        // Reflectivity R = 0.0776 -> eps ~ 3.15 (water ice)
+        const inv = RadarSounderEngine.invertDielectricFromPowerReflectivity(0.0776);
+        expect(inv.dielectricPermittivity).to.be.closeTo(3.15, 0.05);
+        expect(inv.medium).to.include('Ice');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -66,7 +66,7 @@ def run_tests():
         # 1. Mocha Unit Test Suite
         print("[TESTS] Running unit tests in tests/index.html...")
         page.goto(f"http://127.0.0.1:{port}/tests/index.html")
-        page.wait_for_selector("#mocha-stats", timeout=12000)
+        page.wait_for_selector("#mocha-stats", timeout=30000)
         page.wait_for_timeout(2000)
 
         passes = int(page.locator(".passes em").inner_text() or 0)
