@@ -4096,6 +4096,28 @@ describe('Skin Depth Ratio, Equilibrium Temp & Subsurface Geotherm (KRCEngine)',
     });
 });
 
+describe('Perihelion/Aphelion Distance, Solar Azimuth & Mean Motion (MarsTime)', () => {
+    it('should compute exact Mars perihelion and aphelion orbital distances', () => {
+        // a = 1.52368 AU, e = 0.09340 -> q = 1.38137 AU ~ 206.65M km, Q = 1.66599 AU ~ 249.23M km
+        const dist = MarsTime.computePerihelionAphelionDistances(1.52368, 0.09340);
+        expect(dist.perihelionAU).to.be.closeTo(1.38137, 0.001);
+        expect(dist.aphelionAU).to.be.closeTo(1.66599, 0.001);
+        expect(dist.orbitalRangeKm).to.be.closeTo(42578598, 100000);
+    });
+
+    it('should calculate topocentric solar azimuth angle and orbital mean motion', () => {
+        // Solar noon: H = 0° -> Azimuth is 180° (due South) in Northern Hemisphere
+        const azNoon = MarsTime.computeTopocentricSolarAzimuthAngle(20.0, 0.0, 0.0);
+        expect(azNoon.solarAzimuthDeg).to.be.closeTo(180.0, 0.5);
+        expect(azNoon.isWestOfMeridian).to.be.false;
+
+        // Mean motion: Mars orbital period ~ 668.6 sols -> n ~ 0.524 deg/sol
+        const mm = MarsTime.computeMartianMeanMotion(1.52368);
+        expect(mm.meanMotionDegPerSol).to.be.closeTo(0.538, 0.02);
+        expect(mm.orbitalPeriodSols).to.be.closeTo(668.6, 5.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

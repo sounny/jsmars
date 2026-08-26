@@ -955,7 +955,82 @@ export class MarsTime {
       cosZenith: parseFloat(Math.max(0, sZenith).toFixed(5))
     };
   }
+
+  // --- Perihelion/Aphelion Distances, Topocentric Solar Azimuth & Mean Motion Solvers ---
+
+  /**
+   * Calculate exact Mars perihelion and aphelion orbital distances in AU and km.
+   * q = a * (1 - e),  Q = a * (1 + e)
+   * @param {number} [semiMajorAxisAU=1.52368] - Mars semi-major axis in AU
+   * @param {number} [eccentricity=0.09340] - Mars orbital eccentricity
+   * @returns {{perihelionAU: number, perihelionKm: number, aphelionAU: number, aphelionKm: number, orbitalRangeKm: number}}
+   */
+  static computePerihelionAphelionDistances(semiMajorAxisAU = 1.52368, eccentricity = 0.09340) {
+    const a = semiMajorAxisAU;
+    const e = eccentricity;
+    const AU_TO_KM = 149597870.7;
+
+    const qAU = a * (1.0 - e);
+    const QAU = a * (1.0 + e);
+    const qKm = qAU * AU_TO_KM;
+    const QKm = QAU * AU_TO_KM;
+
+    return {
+      perihelionAU: parseFloat(qAU.toFixed(5)),
+      perihelionKm: parseFloat(qKm.toFixed(0)),
+      aphelionAU: parseFloat(QAU.toFixed(5)),
+      aphelionKm: parseFloat(QKm.toFixed(0)),
+      orbitalRangeKm: parseFloat((QKm - qKm).toFixed(0))
+    };
+  }
+
+  /**
+   * Calculate topocentric solar azimuth angle from local latitude, solar declination, and hour angle.
+   * psi = atan2( sin(H), cos(H) * sin(phi) - tan(delta) * cos(phi) )
+   * @param {number} latitudeDeg - Observer latitude in degrees
+   * @param {number} solarDeclinationDeg - Solar declination in degrees
+   * @param {number} hourAngleDeg - Solar hour angle in degrees
+   * @returns {{solarAzimuthDeg: number, isWestOfMeridian: boolean}}
+   */
+  static computeTopocentricSolarAzimuthAngle(latitudeDeg, solarDeclinationDeg, hourAngleDeg) {
+    const phi = latitudeDeg * Math.PI / 180.0;
+    const delta = solarDeclinationDeg * Math.PI / 180.0;
+    const H = hourAngleDeg * Math.PI / 180.0;
+
+    const y = Math.sin(H);
+    const x = Math.cos(H) * Math.sin(phi) - Math.tan(delta) * Math.cos(phi);
+    let azDeg = Math.atan2(y, x) * 180.0 / Math.PI;
+    azDeg = (azDeg + 180.0) % 360.0; // Azimuth measured from North
+
+    return {
+      solarAzimuthDeg: parseFloat(azDeg.toFixed(2)),
+      isWestOfMeridian: hourAngleDeg > 0
+    };
+  }
+
+  /**
+   * Calculate Martian orbital mean motion (average angular velocity n).
+   * n = sqrt( GM_sun / a^3 ) in rad/s and deg/sol
+   * @param {number} [semiMajorAxisAU=1.52368] - Semi-major axis in AU
+   * @returns {{meanMotionRadPerSec: number, meanMotionDegPerSol: number, orbitalPeriodSols: number}}
+   */
+  static computeMartianMeanMotion(semiMajorAxisAU = 1.52368) {
+    const aMeters = semiMajorAxisAU * 149597870700.0; // AU in meters
+    const GM_Sun = 1.32712440018e20; // m^3 / s^2
+
+    const nRadS = Math.sqrt(GM_Sun / Math.pow(aMeters, 3));
+    const solSec = 88775.244;
+    const nDegSol = (nRadS * solSec) * 180.0 / Math.PI;
+    const periodSols = 360.0 / nDegSol;
+
+    return {
+      meanMotionRadPerSec: parseFloat(nRadS.toExponential(4)),
+      meanMotionDegPerSol: parseFloat(nDegSol.toFixed(4)),
+      orbitalPeriodSols: parseFloat(periodSols.toFixed(1))
+    };
+  }
 }
+
 
 
 
