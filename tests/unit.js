@@ -5004,6 +5004,34 @@ describe('Great-Circle Midpoint, Tunnel Chord & Rhumb Line Distance (GeoUtil)', 
     });
 });
 
+describe('Thermal Diffusion Time, Frost Feedback & Geothermal Offset (KRCEngine)', () => {
+    it('should calculate characteristic layer thermal diffusion timescale', () => {
+        // dz = 0.05 m (5 cm), TI = 250 tiu, rho = 1500, cp = 800 -> C_vol = 1.2e6 J/(m^3 K)
+        // k = (250)^2 / 1.2e6 = 62500 / 1.2e6 = 0.052083 W/(m K)
+        // kappa = 0.052083 / 1.2e6 = 4.3403e-8 m^2/s
+        // tau_d = (0.05)^2 / (2 * 4.3403e-8) = 0.0025 / 8.6806e-8 ~ 28800 s = 8.0 hours
+        const diff = KRCEngine.computeSubsurfaceLayerThermalDiffusionTime(0.05, 250.0, 1500, 800);
+        expect(diff.diffusionTimeSeconds).to.be.closeTo(28800.0, 50.0);
+        expect(diff.diffusionTimeHours).to.be.closeTo(8.0, 0.05);
+    });
+
+    it('should compute non-linear frost albedo feedback and geothermal temperature offset', () => {
+        // A_bare = 0.25, A_frost = 0.65, m = 1.25 kg/m^2, m_crit = 5.0 kg/m^2
+        // coverage = sqrt(1.25 / 5.0) = sqrt(0.25) = 0.5
+        // A_eff = 0.25 + (0.65 - 0.25) * 0.5 = 0.25 + 0.20 = 0.45
+        const frost = KRCEngine.computeFrostAlbedoFeedbackTransition(0.25, 0.65, 1.25, 5.0);
+        expect(frost.effectiveAlbedo).to.equal(0.45);
+        expect(frost.frostCoverageFraction).to.equal(0.5);
+        expect(frost.isFrostSaturated).to.be.false;
+
+        // q_geo = 30 mW/m^2 (0.03 W/m^2), k = 2.0 W/(m K), dz = 100 m
+        // R_th = 100 / 2 = 50 m^2 K/W -> Delta_T = 0.03 * 50 = 1.5 K
+        const geo = KRCEngine.computeSubsurfaceConductiveTemperatureOffset(30.0, 2.0, 100.0);
+        expect(geo.temperatureOffsetK).to.equal(1.5);
+        expect(geo.thermalResistanceM2K_W).to.equal(50.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

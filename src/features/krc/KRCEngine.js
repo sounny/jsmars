@@ -1150,7 +1150,83 @@ export class KRCEngine {
       atmosphericEmissivity: parseFloat(epsAtm.toFixed(4))
     };
   }
+
+  // --- Thermal Diffusion Time, Frost Albedo Feedback & Geothermal Offset Solvers ---
+
+  /**
+   * Calculate characteristic thermal diffusion timescale tau_d for a regolith layer of thickness dz.
+   * tau_d = dz^2 / (2 * kappa) = (dz^2 * C_vol) / (2 * k)
+   * @param {number} layerThicknessMeters - Layer thickness in meters
+   * @param {number} thermalInertia - Thermal inertia in tiu
+   * @param {number} [density=1500] - Regolith density in kg/m^3
+   * @param {number} [specificHeat=800] - Specific heat in J/(kg K)
+   * @returns {{diffusionTimeSeconds: number, diffusionTimeHours: number, thermalDiffusivityM2S: number}}
+   */
+  static computeSubsurfaceLayerThermalDiffusionTime(layerThicknessMeters, thermalInertia, density = 1500, specificHeat = 800) {
+    const dz = Math.max(1e-5, layerThicknessMeters);
+    const I = Math.max(10, thermalInertia);
+    const cVol = density * specificHeat;
+    const k = (I * I) / cVol;
+    const kappa = k / cVol; // m^2 / s
+
+    const tauSec = (dz * dz) / (2.0 * Math.max(1e-12, kappa));
+    const tauHours = tauSec / 3600.0;
+
+    return {
+      diffusionTimeSeconds: parseFloat(tauSec.toFixed(1)),
+      diffusionTimeHours: parseFloat(tauHours.toFixed(3)),
+      thermalDiffusivityM2S: parseFloat(kappa.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate effective surface albedo with non-linear frost deposition / sublimation feedback.
+   * A_eff = A_bare + (A_frost - A_bare) * min(1.0, sqrt(m_frost / m_crit))
+   * @param {number} bareAlbedo - Regolith bare surface albedo (e.g. 0.25)
+   * @param {number} frostAlbedo - Pure frost albedo (e.g. 0.65 for CO2 dry ice)
+   * @param {number} accumulatedFrostMassKgM2 - Deposited frost mass in kg/m^2
+   * @param {number} [criticalFrostMassKgM2=5.0] - Mass required for optical saturation (~5 kg/m^2)
+   * @returns {{effectiveAlbedo: number, frostCoverageFraction: number, isFrostSaturated: boolean}}
+   */
+  static computeFrostAlbedoFeedbackTransition(bareAlbedo, frostAlbedo, accumulatedFrostMassKgM2, criticalFrostMassKgM2 = 5.0) {
+    const aBare = Math.max(0.01, Math.min(0.99, bareAlbedo));
+    const aFrost = Math.max(aBare, Math.min(0.99, frostAlbedo));
+    const m = Math.max(0, accumulatedFrostMassKgM2);
+    const mCrit = Math.max(0.1, criticalFrostMassKgM2);
+
+    const coverage = Math.min(1.0, Math.sqrt(m / mCrit));
+    const aEff = aBare + (aFrost - aBare) * coverage;
+
+    return {
+      effectiveAlbedo: parseFloat(aEff.toFixed(4)),
+      frostCoverageFraction: parseFloat(coverage.toFixed(3)),
+      isFrostSaturated: m >= mCrit
+    };
+  }
+
+  /**
+   * Calculate steady-state conductive temperature offset across a subsurface stratigraphic layer from geothermal heat flow.
+   * Delta_T = (q_geo * dz) / k
+   * @param {number} geothermalFluxMwM2 - Geothermal heat flux in mW/m^2 (e.g. 30 mW/m^2)
+   * @param {number} thermalConductivityW_MK - Layer thermal conductivity in W/(m K)
+   * @param {number} layerThicknessMeters - Layer physical thickness in meters
+   * @returns {{temperatureOffsetK: number, thermalResistanceM2K_W: number}}
+   */
+  static computeSubsurfaceConductiveTemperatureOffset(geothermalFluxMwM2, thermalConductivityW_MK, layerThicknessMeters) {
+    const qW = Math.max(0, geothermalFluxMwM2) * 1e-3;
+    const k = Math.max(1e-4, thermalConductivityW_MK);
+    const dz = Math.max(0, layerThicknessMeters);
+
+    const rTherm = dz / k; // Thermal resistance in (m^2 K) / W
+    const deltaT = qW * rTherm;
+
+    return {
+      temperatureOffsetK: parseFloat(deltaT.toFixed(4)),
+      thermalResistanceM2K_W: parseFloat(rTherm.toFixed(3))
+    };
+  }
 }
+
 
 
 
