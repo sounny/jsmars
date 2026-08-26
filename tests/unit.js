@@ -4349,6 +4349,28 @@ describe('True Anomaly from Eccentric, Distance from Ls & Hour Angle (MarsTime)'
     });
 });
 
+describe('Chirp Compression, Basal Reflectivity & Specific Attenuation (RadarSounderEngine)', () => {
+    it('should compute equivalent chirp bandwidth from pulse duration', () => {
+        // tau = 85 µs -> B = 1 / 85e-6 ~ 11764.7 Hz ~ 0.0118 MHz
+        const chirp = RadarSounderEngine.computeChirpCompressionBandwidth(85.0);
+        expect(chirp.equivalentBandwidthHz).to.be.closeTo(11764.7, 1.0);
+        expect(chirp.equivalentBandwidthMhz).to.be.closeTo(0.0118, 0.0005);
+    });
+
+    it('should calculate basal dielectric Fresnel reflectivity and specific radar attenuation rate', () => {
+        // eps1 = 3.15 (ice), eps2 = 7.5 (basalt) -> n1 = 1.7748, n2 = 2.7386 -> rAmp = -0.9638 / 4.5134 = -0.2135 -> R = 0.0456 -> R_dB ~ -13.41 dB
+        const basal = RadarSounderEngine.computeBasalDielectricReflectivityContrast(3.15, 7.5);
+        expect(basal.reflectivityLinear).to.be.closeTo(0.0456, 0.002);
+        expect(basal.reflectivityDb).to.be.closeTo(-13.41, 0.1);
+
+        // f = 20 MHz, eps_r = 3.15, tan(delta) = 0.001 -> v = 299792458 / 1.7748 ~ 168916755 m/s
+        // omega = 2 * pi * 20e6 = 1.2566e8 rad/s -> alpha_M = (1.2566e8 * 0.001 / (2 * 168916755)) * 8.686 ~ 0.00323 dB/m -> 3.23 dB/km
+        const atten = RadarSounderEngine.computeSpecificRadarAttenuationRate(20.0, 3.15, 0.001);
+        expect(atten.attenuationDbPerKm).to.be.closeTo(3.23, 0.05);
+        expect(atten.attenuationDbPerMeter).to.be.closeTo(0.00323, 0.0001);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

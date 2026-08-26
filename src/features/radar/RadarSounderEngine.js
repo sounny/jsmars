@@ -1009,7 +1009,76 @@ export class RadarSounderEngine {
       resolutionVolumeKm3: parseFloat(volumeKm3.toFixed(6))
     };
   }
+
+  // --- Chirp Bandwidth, Basal Reflectivity & Specific Attenuation Solvers ---
+
+  /**
+   * Calculate uncompressed chirp pulse duration from bandwidth.
+   * B = 1 / tau_pulse
+   * @param {number} pulseDurationMicrosec - Chirp pulse length in microseconds (e.g. 85 µs for SHARAD)
+   * @returns {{equivalentBandwidthMhz: number, equivalentBandwidthHz: number}}
+   */
+  static computeChirpCompressionBandwidth(pulseDurationMicrosec) {
+    const tauSec = Math.max(1e-3, pulseDurationMicrosec) * 1e-6;
+    const bHz = 1.0 / tauSec;
+    const bMhz = bHz * 1e-6;
+
+    return {
+      equivalentBandwidthMhz: parseFloat(bMhz.toFixed(4)),
+      equivalentBandwidthHz: parseFloat(bHz.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate normal-incidence basal interface Fresnel power reflectivity contrast.
+   * R_int = [ (sqrt(eps1) - sqrt(eps2)) / (sqrt(eps1) + sqrt(eps2)) ]^2
+   * @param {number} [epsTop=3.15] - Dielectric permittivity of overlying layer (e.g. ice = 3.15)
+   * @param {number} [epsBottom=7.5] - Dielectric permittivity of underlying layer (e.g. basalt = 7.5)
+   * @returns {{reflectivityLinear: number, reflectivityDb: number, reflectionLossDb: number}}
+   */
+  static computeBasalDielectricReflectivityContrast(epsTop = 3.15, epsBottom = 7.5) {
+    const n1 = Math.sqrt(Math.max(1.0, epsTop));
+    const n2 = Math.sqrt(Math.max(1.0, epsBottom));
+
+    const rAmp = (n1 - n2) / (n1 + n2);
+    const rPower = rAmp * rAmp;
+    const rDb = 10.0 * Math.log10(Math.max(1e-12, rPower));
+    const lossDb = -rDb;
+
+    return {
+      reflectivityLinear: parseFloat(rPower.toFixed(5)),
+      reflectivityDb: parseFloat(rDb.toFixed(2)),
+      reflectionLossDb: parseFloat(lossDb.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate specific radar power attenuation rate in dB per kilometer.
+   * alpha_dB_km = 8.686 * (pi * f / c) * sqrt(eps_r) * tan(delta) * 1000
+   * @param {number} [freqMhz=20.0] - Radar center frequency in MHz (e.g. 20 MHz for SHARAD)
+   * @param {number} [relativePermittivity=3.15] - Relative dielectric permittivity
+   * @param {number} [lossTangent=0.001] - Dielectric loss tangent
+   * @returns {{attenuationDbPerKm: number, attenuationDbPerMeter: number}}
+   */
+  static computeSpecificRadarAttenuationRate(freqMhz = 20.0, relativePermittivity = 3.15, lossTangent = 0.001) {
+    const fHz = Math.max(1e3, freqMhz * 1e6);
+    const eps = Math.max(1.0, relativePermittivity);
+    const tanDelta = Math.max(1e-6, lossTangent);
+
+    // omega = 2 * pi * f, v = c / sqrt(eps)
+    const v = RadarSounderEngine.C / Math.sqrt(eps);
+    const omega = 2.0 * Math.PI * fHz;
+
+    const alphaM = ((omega * tanDelta) / (2.0 * v)) * 8.686;
+    const alphaKm = alphaM * 1000.0;
+
+    return {
+      attenuationDbPerKm: parseFloat(alphaKm.toFixed(3)),
+      attenuationDbPerMeter: parseFloat(alphaM.toFixed(6))
+    };
+  }
 }
+
 
 
 
