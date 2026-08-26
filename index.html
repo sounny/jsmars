@@ -73,6 +73,8 @@
           <input type="file" id="session-load-input" accept=".json" style="display: none;" />
           <button id="session-load-btn" class="tool-btn" style="flex: 1;">Load Session</button>
         </div>
+        <button id="share-link-btn" class="tool-btn" style="background: #1d4ed8; color: #fff; font-weight: 500; margin-top: 4px;">🔗 Copy Share Link</button>
+        <div id="share-toast" style="display: none; font-size: 11px; color: #4ade80; text-align: center; margin-top: 2px;">Link copied to clipboard!</div>
       </div>
     </div>
 
@@ -824,6 +826,22 @@
         e.target.value = '';
       }
     });
+
+    const shareBtn = document.getElementById('share-link-btn');
+    const shareToast = document.getElementById('share-toast');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', async () => {
+        try {
+          await jmars.copyShareLink();
+          if (shareToast) {
+            shareToast.style.display = 'block';
+            setTimeout(() => { shareToast.style.display = 'none'; }, 2500);
+          }
+        } catch (err) {
+          console.warn('Share link copy failed:', err);
+        }
+      });
+    }
 
     // View Update Listener
     document.addEventListener('jmars:update-view', (e) => {

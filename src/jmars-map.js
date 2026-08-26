@@ -18,6 +18,7 @@ import { layers as initialLayers, createLeafletLayer } from './layers/index.js';
 import { JMARSVectors } from './jmars-vectors.js';
 import { jmarsState } from './jmars-state.js';
 import { EVENTS } from './constants.js';
+import { URLStateEngine } from './util/URLStateEngine.js';
 
 /**
  * @class JMARSMap
@@ -76,21 +77,86 @@ export class JMARSMap {
 
   /**
    * Initialize the map: switch to the default body, discover WMS layers,
-   * and listen for body-change events.
+   * restore deep-link URL state if present, and listen for body-change events.
    */
   init() {
     if (!this.map) return;
 
+    // Check for Deep-Link URL State
+    if (typeof window !== 'undefined' && window.location) {
+      const urlState = URLStateEngine.parseURLToState(window.location.search || window.location.hash);
+      if (urlState.hasState) {
+        if (urlState.body) {
+          this.currentBody = urlState.body;
+        }
+        if (urlState.lat !== null && urlState.lon !== null) {
+          const z = urlState.zoom !== null ? urlState.zoom : JMARS_CONFIG.initialView.zoom;
+          this.map.setView([urlState.lat, urlState.lon], z);
+        }
+        if (urlState.activeLayers && urlState.activeLayers.length > 0) {
+          this.bodyStates[this.currentBody] = {
+            center: this.map.getCenter(),
+            zoom: this.map.getZoom(),
+            activeLayers: urlState.activeLayers
+          };
+        }
+        if (urlState.colorStretch) {
+          document.dispatchEvent(new CustomEvent('jmars:color-stretch-changed', { detail: urlState.colorStretch }));
+        }
+      }
+    }
+
     this.switchBody(this.currentBody);
     this.discoverLayers();
     this.addControls();
+
+    // Auto-sync view changes to browser URL query string
+    let syncTimer = null;
+    const syncViewToURL = () => {
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => {
+        const center = this.map.getCenter();
+        URLStateEngine.syncToBrowserURL({
+          body: this.currentBody,
+          lat: center.lat,
+          lon: center.lng,
+          zoom: this.map.getZoom(),
+          activeLayers: jmarsState.get('activeLayers')
+        });
+      }, 400);
+    };
+
+    this.map.on('moveend', syncViewToURL);
+    this.map.on('zoomend', syncViewToURL);
 
     // Listen for body changes from the BodySelector UI
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
       const body = e?.detail?.body;
       if (!body) return;
       this.switchBody(body);
+      syncViewToURL();
     });
+
+    // Listen for copy share link requests
+    document.addEventListener('jmars:copy-share-link', async () => {
+      await this.copyShareLink();
+    });
+  }
+
+  /**
+   * Copy the full deep-link shareable URL to clipboard.
+   * @returns {Promise<string>}
+   */
+  async copyShareLink() {
+    const center = this.map.getCenter();
+    const state = {
+      body: this.currentBody,
+      lat: center.lat,
+      lon: center.lng,
+      zoom: this.map.getZoom(),
+      activeLayers: jmarsState.get('activeLayers')
+    };
+    return await URLStateEngine.copyShareLink(state);
   }
 
   /**

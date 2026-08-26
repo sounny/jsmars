@@ -1590,7 +1590,84 @@ export class BandMathEngine {
       isConcaveAbsorption: d2 < -0.005
     };
   }
+
+  // --- CRISM Gypsum Doublet, OLINDEX3 & Spectral Euclidean Distance Solvers ---
+
+  /**
+   * Calculate CRISM BD1900D gypsum / polyhydrated sulfate doublet absorption index.
+   * BD1900D = 1.0 - ( 0.5 * (R1930 + R1980) / ( 0.6 * R1815 + 0.4 * R2130 ) )
+   * @param {number} r1930 - Reflectance at 1.93 µm first doublet minimum
+   * @param {number} r1980 - Reflectance at 1.98 µm second doublet minimum
+   * @param {number} r1815 - Left shoulder reflectance at 1.815 µm
+   * @param {number} r2130 - Right shoulder reflectance at 2.130 µm
+   * @returns {{bd1900d: number, hasGypsumSignature: boolean}}
+   */
+  static computeCRISMGypsumDoubletIndex(r1930, r1980, r1815, r2130) {
+    const rL = Math.max(1e-4, r1815);
+    const rR = Math.max(1e-4, r2130);
+    const rCenter = 0.5 * (Math.max(0, r1930) + Math.max(0, r1980));
+
+    const continuum = 0.6 * rL + 0.4 * rR;
+    const bd = 1.0 - (rCenter / continuum);
+
+    return {
+      bd1900d: parseFloat(bd.toFixed(4)),
+      hasGypsumSignature: bd > 0.035
+    };
+  }
+
+  /**
+   * Calculate CRISM OLINDEX3 broad 1.0 µm ferrous iron crystal field absorption index for olivine.
+   * OLINDEX3 = 1.0 - ( R1050 / ( 0.65 * R850 + 0.35 * R1350 ) )
+   * @param {number} r1050 - Reflectance at 1.05 µm olivine absorption trough
+   * @param {number} r850 - Left shoulder reflectance at 0.85 µm
+   * @param {number} r1350 - Right shoulder reflectance at 1.35 µm
+   * @returns {{olindex3: number, hasOlivineSignature: boolean}}
+   */
+  static computeCRISMOLINDEX3(r1050, r850, r1350) {
+    const rL = Math.max(1e-4, r850);
+    const rC = Math.max(0, r1050);
+    const rR = Math.max(1e-4, r1350);
+
+    const continuum = 0.65 * rL + 0.35 * rR;
+    const ol = 1.0 - (rC / continuum);
+
+    return {
+      olindex3: parseFloat(ol.toFixed(4)),
+      hasOlivineSignature: ol > 0.05
+    };
+  }
+
+  /**
+   * Calculate multidimensional Euclidean distance and RMS divergence between two hyperspectral signatures.
+   * d_euc = sqrt( sum( (A_i - B_i)^2 ) )
+   * @param {Array<number>} spectrumA - Array of reflectance values for spectrum A
+   * @param {Array<number>} spectrumB - Array of reflectance values for spectrum B
+   * @returns {{euclideanDistance: number, rmsDivergence: number, numBands: number}}
+   */
+  static computeSpectralEuclideanDistance(spectrumA = [], spectrumB = []) {
+    const n = Math.min(spectrumA.length, spectrumB.length);
+    if (n === 0) {
+      return { euclideanDistance: 0.0, rmsDivergence: 0.0, numBands: 0 };
+    }
+
+    let sumSq = 0;
+    for (let i = 0; i < n; i++) {
+      const diff = spectrumA[i] - spectrumB[i];
+      sumSq += diff * diff;
+    }
+
+    const dEuc = Math.sqrt(sumSq);
+    const rmsd = Math.sqrt(sumSq / n);
+
+    return {
+      euclideanDistance: parseFloat(dEuc.toFixed(5)),
+      rmsDivergence: parseFloat(rmsd.toFixed(5)),
+      numBands: n
+    };
+  }
 }
+
 
 
 

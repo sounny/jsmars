@@ -30,6 +30,7 @@ import { ColorRampEngine } from '../src/util/ColorRampEngine.js';
 import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
+import { URLStateEngine } from '../src/util/URLStateEngine.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -5414,6 +5415,92 @@ describe('CO2 Frost Point, Sound Speed & Dust Optical Depth (MCDEngine)', () => 
         const clear = MCDEngine.computeColumnDustOpticalDepth(90.0, 0.25, 1.5, 0.0);
         expect(clear.columnOpticalDepthTau).to.equal(0.25);
         expect(clear.isDustStormSeason).to.be.false;
+    });
+});
+
+describe('Gypsum Doublet, OLINDEX3 Olivine & Euclidean Distance (BandMathEngine)', () => {
+    it('should calculate CRISM BD1900D gypsum doublet and OLINDEX3 olivine absorption indices', () => {
+        // Gypsum doublet: r1930 = 0.20, r1980 = 0.22 (rCenter = 0.21), r1815 = 0.26, r2130 = 0.24 (cont = 0.6*0.26 + 0.4*0.24 = 0.252)
+        // bd = 1 - (0.21 / 0.252) = 1 - 0.8333 = 0.1667 (> 0.035 -> hasGypsumSignature: true)
+        const gyp = BandMathEngine.computeCRISMGypsumDoubletIndex(0.20, 0.22, 0.26, 0.24);
+        expect(gyp.bd1900d).to.be.closeTo(0.1667, 0.005);
+        expect(gyp.hasGypsumSignature).to.be.true;
+
+        // OLINDEX3: r1050 = 0.18, r850 = 0.28, r1350 = 0.24 (cont = 0.65*0.28 + 0.35*0.24 = 0.182 + 0.084 = 0.266)
+        // ol = 1 - (0.18 / 0.266) = 1 - 0.6767 = 0.3233 (> 0.05 -> hasOlivineSignature: true)
+        const ol = BandMathEngine.computeCRISMOLINDEX3(0.18, 0.28, 0.24);
+        expect(ol.olindex3).to.be.closeTo(0.3233, 0.005);
+        expect(ol.hasOlivineSignature).to.be.true;
+    });
+
+    it('should compute multidimensional hyperspectral Euclidean distance and RMS divergence', () => {
+        const specA = [0.20, 0.25, 0.30, 0.35];
+        const specB = [0.22, 0.23, 0.31, 0.33];
+        // diffs: +0.02, -0.02, +0.01, -0.02 -> sq: 0.0004 + 0.0004 + 0.0001 + 0.0004 = 0.0013
+        // d_euc = sqrt(0.0013) = 0.03606, rmsd = sqrt(0.0013 / 4) = 0.01803
+        const dist = BandMathEngine.computeSpectralEuclideanDistance(specA, specB);
+        expect(dist.euclideanDistance).to.be.closeTo(0.03606, 0.0005);
+        expect(dist.rmsDivergence).to.be.closeTo(0.01803, 0.0005);
+        expect(dist.numBands).to.equal(4);
+    });
+});
+
+describe('Deep-Link URL State Serialization & Sharing (URLStateEngine)', () => {
+    it('should serialize map view, active layers, color stretch, and Ls into shareable URL parameters', () => {
+        const state = {
+            body: 'mars',
+            lat: -14.5234,
+            lon: 175.4321,
+            zoom: 6,
+            activeLayers: [
+                { id: 'viking', opacity: 1.0, visible: true },
+                { id: 'mdim', opacity: 0.8, visible: false }
+            ],
+            colorStretch: {
+                brightness: 120,
+                contrast: 90,
+                saturation: 150,
+                hueRotate: 45,
+                invert: false
+            },
+            ls: 180.5,
+            poi: 'Jezero Crater'
+        };
+
+        const url = URLStateEngine.serializeStateToURL(state, 'https://jsmars.sounny.com');
+        expect(url).to.include('lat=-14.5234');
+        expect(url).to.include('lon=175.4321');
+        expect(url).to.include('z=6');
+        expect(url).to.include('layers=viking%3A1%3A1%2Cmdim%3A0.8%3A0');
+        expect(url).to.include('stretch=120%2C90%2C150%2C45%2C0');
+        expect(url).to.include('ls=180.5');
+        expect(url).to.include('poi=Jezero+Crater');
+    });
+
+    it('should correctly parse and restore deep-link URL query strings into structured state', () => {
+        const query = '?body=moon&lat=20.1234&lon=-45.6789&z=5&layers=lroc:0.9:1,clementina:0.5:0&stretch=110,95,120,15,1&ls=90.0&poi=Copernicus';
+        const parsed = URLStateEngine.parseURLToState(query);
+
+        expect(parsed.hasState).to.be.true;
+        expect(parsed.body).to.equal('moon');
+        expect(parsed.lat).to.equal(20.1234);
+        expect(parsed.lon).to.equal(-45.6789);
+        expect(parsed.zoom).to.equal(5);
+
+        expect(parsed.activeLayers).to.have.lengthOf(2);
+        expect(parsed.activeLayers[0]).to.deep.equal({ id: 'lroc', opacity: 0.9, visible: true });
+        expect(parsed.activeLayers[1]).to.deep.equal({ id: 'clementina', opacity: 0.5, visible: false });
+
+        expect(parsed.colorStretch).to.deep.equal({
+            brightness: 110,
+            contrast: 95,
+            saturation: 120,
+            hueRotate: 15,
+            invert: true
+        });
+
+        expect(parsed.ls).to.equal(90.0);
+        expect(parsed.poi).to.equal('Copernicus');
     });
 });
 
