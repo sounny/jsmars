@@ -1244,7 +1244,87 @@ export class MCDEngine {
       normalizedHeight: parseFloat(normZ.toFixed(3))
     };
   }
+
+  // --- CO2 Frost Point, Sound Speed & Dust Column Optical Depth Solvers ---
+
+  /**
+   * Calculate CO2 dry ice frost point condensation temperature T_frost from ambient partial pressure.
+   * Kieffer (1977) Clausius-Clapeyron vapor-ice equilibrium: T_frost = 3148.0 / ( 27.55 - ln(P_Pa) )
+   * @param {number} pressurePa - Atmospheric pressure in Pascals (e.g. 610 Pa at datum)
+   * @returns {{frostPointTempK: number, pressurePa: number}}
+   */
+  static computeCO2FrostPointTemperature(pressurePa) {
+    const P = Math.max(0.1, pressurePa);
+    const denominator = 27.55 - Math.log(P);
+    const tFrost = denominator > 0 ? 3148.0 / denominator : 148.0;
+
+    return {
+      frostPointTempK: parseFloat(tFrost.toFixed(2)),
+      pressurePa: parseFloat(P.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate speed of sound c_s in the cold Martian CO2 atmosphere.
+   * c_s = sqrt( gamma * R_spec * T )
+   * @param {number} temperatureK - Atmospheric temperature in Kelvin
+   * @param {number} [adiabaticIndexGamma=1.29] - Heat capacity ratio (1.29 for CO2)
+   * @param {number} [specificGasConstant=188.92] - Specific gas constant in J/(kg K)
+   * @returns {{soundSpeedMs: number, soundSpeedMps: number, soundSpeedKmH: number, soundSpeedKmh: number, machOneMps: number}}
+   */
+  static computeAtmosphericSoundSpeed(temperatureK, adiabaticIndexGamma = 1.29, specificGasConstant = 188.92) {
+    const T = Math.max(10.0, temperatureK);
+    const gamma = Math.max(1.0, adiabaticIndexGamma);
+    const Rspec = Math.max(10.0, specificGasConstant);
+
+    const cMps = Math.sqrt(gamma * Rspec * T);
+    const cKmh = cMps * 3.6;
+
+    return {
+      soundSpeedMs: parseFloat(cMps.toFixed(2)),
+      soundSpeedMps: parseFloat(cMps.toFixed(2)),
+      soundSpeedKmH: parseFloat(cKmh.toFixed(2)),
+      soundSpeedKmh: parseFloat(cKmh.toFixed(2)),
+      machOneMps: parseFloat(cMps.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate seasonal atmospheric column dust optical depth and slant-path solar transmission.
+   * tau = tau_base + tau_storm * max(0, sin(Ls - 180 deg))^2
+   * T_slant = exp( - tau / cos(theta_z) )
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @param {number} [baselineTau=0.25] - Clear-sky background dust opacity
+   * @param {number} [stormPeakTau=1.5] - Peak dust storm optical depth enhancement
+   * @param {number} [solarZenithAngleDeg=0.0] - Solar zenith angle in degrees (0 to 85)
+   * @returns {{columnOpticalDepthTau: number, slantTransmissionFraction: number, isDustStormSeason: boolean}}
+   */
+  static computeColumnDustOpticalDepth(LsDeg, baselineTau = 0.25, stormPeakTau = 1.5, solarZenithAngleDeg = 0.0) {
+    const ls = ((LsDeg % 360) + 360) % 360;
+    const tau0 = Math.max(0.01, baselineTau);
+    const dTau = Math.max(0, stormPeakTau);
+
+    // Dust storm season active around southern spring/summer Ls ~ 180 to 360 deg
+    let stormFactor = 0.0;
+    if (ls >= 180.0 && ls <= 360.0) {
+      const angleRad = ((ls - 180.0) * Math.PI) / 180.0;
+      stormFactor = Math.pow(Math.sin(angleRad), 2);
+    }
+
+    const totalTau = tau0 + dTau * stormFactor;
+
+    const zRad = (Math.max(0, Math.min(85.0, solarZenithAngleDeg)) * Math.PI) / 180.0;
+    const cosZ = Math.max(0.05, Math.cos(zRad));
+    const trans = Math.exp(-totalTau / cosZ);
+
+    return {
+      columnOpticalDepthTau: parseFloat(totalTau.toFixed(3)),
+      slantTransmissionFraction: parseFloat(trans.toFixed(4)),
+      isDustStormSeason: ls >= 180.0 && ls <= 360.0
+    };
+  }
 }
+
 
 
 

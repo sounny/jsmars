@@ -377,3 +377,13 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should compute exact intersection coordinates of two great circles
 ?: AssertionError: expected +0 to equal 180
     at n.<anonymous> (unit.js:5385:39)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 21:15:33 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should compute Mars atmospheric sound speed in CO2 gas
+?: AssertionError: expected undefined to be a number
+    at n.<anonymous> (unit.js:3772:40)
+- should calculate CO2 dry ice frost point temperature from ambient atmospheric pressure
+?: AssertionError: expected 95.96 to be close to 149.56 +/- 0.5
+    at n.<anonymous> (unit.js:5395:45)

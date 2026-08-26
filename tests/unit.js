@@ -5387,6 +5387,36 @@ describe('Bounding Circle, Great Circle Intersection & Ellipse Area (GeoUtil)', 
     });
 });
 
+describe('CO2 Frost Point, Sound Speed & Dust Optical Depth (MCDEngine)', () => {
+    it('should calculate CO2 dry ice frost point temperature from ambient atmospheric pressure', () => {
+        // P = 610 Pa (datum pressure) -> ln(610) = 6.4135 -> denom = 27.55 - 6.4135 = 21.1365 -> T_frost = 3148 / 21.1365 = 148.94 K
+        const frost = MCDEngine.computeCO2FrostPointTemperature(610.0);
+        expect(frost.frostPointTempK).to.be.closeTo(148.94, 0.5);
+        expect(frost.pressurePa).to.equal(610.0);
+    });
+
+    it('should compute Mars atmospheric sound speed and seasonal column dust optical depth', () => {
+        // T = 210 K, gamma = 1.29, R_spec = 188.92 J/(kg K)
+        // c_s = sqrt( 1.29 * 188.92 * 210 ) = sqrt( 51178.43 ) = 226.23 m/s
+        const sound = MCDEngine.computeAtmosphericSoundSpeed(210.0, 1.29, 188.92);
+        expect(sound.soundSpeedMps).to.be.closeTo(226.23, 0.2);
+        expect(sound.machOneMps).to.be.closeTo(226.23, 0.2);
+
+        // Ls = 270 deg (Southern Summer Solstice, peak dust storm season)
+        // angle = 90 deg -> sin^2(90 deg) = 1.0 -> total tau = 0.25 + 1.5 * 1.0 = 1.75
+        // At zenith = 0 deg -> cosZ = 1.0 -> transmission = exp(-1.75) = 0.1738 (17.38%)
+        const dust = MCDEngine.computeColumnDustOpticalDepth(270.0, 0.25, 1.5, 0.0);
+        expect(dust.columnOpticalDepthTau).to.equal(1.75);
+        expect(dust.slantTransmissionFraction).to.be.closeTo(0.1738, 0.005);
+        expect(dust.isDustStormSeason).to.be.true;
+
+        // Ls = 90 deg (Northern Summer, clear skies) -> storm factor = 0 -> tau = 0.25
+        const clear = MCDEngine.computeColumnDustOpticalDepth(90.0, 0.25, 1.5, 0.0);
+        expect(clear.columnOpticalDepthTau).to.equal(0.25);
+        expect(clear.isDustStormSeason).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
