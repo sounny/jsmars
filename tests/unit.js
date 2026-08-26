@@ -4766,6 +4766,37 @@ describe('Silicate Hydration, Felsic Silicate & Spectral Curvature (BandMathEngi
     });
 });
 
+describe('True Anomaly Angular Rate, Sub-Solar Zenith & Day-to-Sol (MarsTime)', () => {
+    it('should calculate instantaneous orbital true anomaly angular velocity', () => {
+        // At perihelion nu = 0, a = 1.52368 AU = 227939100 km, e = 0.09340 -> r = 206649588 km
+        // rate ~ 0.638 deg/sol at perihelion
+        const peri = MarsTime.computeTrueAnomalyAngularRate(0.0);
+        expect(peri.trueAnomalyRateDegPerSol).to.be.closeTo(0.638, 0.05);
+        expect(peri.distanceKm).to.be.closeTo(206649588, 100000);
+
+        // At aphelion nu = 180 -> r = 249228612 km -> rate ~ 0.439 deg/sol
+        const aph = MarsTime.computeTrueAnomalyAngularRate(180.0);
+        expect(aph.trueAnomalyRateDegPerSol).to.be.closeTo(0.439, 0.05);
+    });
+
+    it('should compute sub-solar zenith angle and convert Earth days to Mars sols', () => {
+        // Target at lat = 0, lon = 0; Subsolar at lat = 0, lon = 0 -> zenith = 0 deg, cosZ = 1.0
+        const subNadir = MarsTime.computeSubSolarZenithAngle(0.0, 0.0, 0.0, 0.0);
+        expect(subNadir.zenithAngleDeg).to.equal(0.0);
+        expect(subNadir.cosZenith).to.equal(1.0);
+        expect(subNadir.isDaylight).to.be.true;
+
+        // Target at lat = 45, lon = 0; Subsolar at lat = 0, lon = 0 -> zenith = 45 deg, cosZ = 0.7071
+        const sub45 = MarsTime.computeSubSolarZenithAngle(45.0, 0.0, 0.0, 0.0);
+        expect(sub45.zenithAngleDeg).to.be.closeTo(45.0, 0.01);
+        expect(sub45.cosZenith).to.be.closeTo(0.7071, 0.005);
+
+        // 100 Earth days -> sols = 100 * (86400 / 88775.244) = 100 * 0.973244 ~ 97.3244 sols
+        const sols = MarsTime.convertEarthDaysToMarsSols(100.0);
+        expect(sols.marsSols).to.be.closeTo(97.3244, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

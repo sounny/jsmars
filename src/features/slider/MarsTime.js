@@ -1173,7 +1173,84 @@ export class MarsTime {
       totalSeconds: parseFloat(totalSec.toFixed(1))
     };
   }
+
+  // --- True Anomaly Angular Rate, Sub-Solar Zenith & Day-to-Sol Solvers ---
+
+  /**
+   * Calculate instantaneous orbital true anomaly angular velocity d(nu)/dt in degrees per sol.
+   * d(nu)/dt = (h / r^2) = sqrt(GM_sun * a * (1 - e^2)) / r^2
+   * @param {number} trueAnomalyDeg - Mars orbital true anomaly in degrees
+   * @param {number} [semiMajorAxisAU=1.52368] - Semi-major axis in AU
+   * @param {number} [eccentricity=0.09340] - Orbital eccentricity
+   * @returns {{trueAnomalyRateDegPerSol: number, trueAnomalyRateRadPerSec: number, distanceKm: number}}
+   */
+  static computeTrueAnomalyAngularRate(trueAnomalyDeg, semiMajorAxisAU = 1.52368, eccentricity = 0.09340) {
+    const GM_Sun = 1.32712440018e11; // km^3 / s^2
+    const aKm = semiMajorAxisAU * 149597870.7;
+    const e = Math.max(0, Math.min(0.9, eccentricity));
+    const nuRad = (trueAnomalyDeg % 360.0) * Math.PI / 180.0;
+
+    // Specific angular momentum h = sqrt(GM * a * (1 - e^2)) in km^2 / s
+    const h = Math.sqrt(GM_Sun * aKm * (1.0 - e * e));
+
+    // Distance r = a * (1 - e^2) / (1 + e * cos(nu))
+    const rKm = (aKm * (1.0 - e * e)) / (1.0 + e * Math.cos(nuRad));
+
+    // Angular rate d(nu)/dt = h / r^2 (rad/s)
+    const dNu_dt_radS = h / (rKm * rKm);
+    const dNu_dt_degS = dNu_dt_radS * 180.0 / Math.PI;
+    const dNu_dt_degSol = dNu_dt_degS * 88775.244; // deg per sol
+
+    return {
+      trueAnomalyRateDegPerSol: parseFloat(dNu_dt_degSol.toFixed(4)),
+      trueAnomalyRateRadPerSec: parseFloat(dNu_dt_radS.toExponential(4)),
+      distanceKm: parseFloat(rKm.toFixed(0))
+    };
+  }
+
+  /**
+   * Calculate local solar zenith angle directly from target coordinates and sub-solar coordinates.
+   * cos(Z) = sin(phi) * sin(phi_sun) + cos(phi) * cos(phi_sun) * cos(lambda - lambda_sun)
+   * @param {number} surfaceLatDeg - Surface point planetocentric latitude
+   * @param {number} surfaceLonDeg - Surface point East longitude
+   * @param {number} subSolarLatDeg - Sub-solar latitude
+   * @param {number} subSolarLonDeg - Sub-solar East longitude
+   * @returns {{zenithAngleDeg: number, cosZenith: number, isDaylight: boolean}}
+   */
+  static computeSubSolarZenithAngle(surfaceLatDeg, surfaceLonDeg, subSolarLatDeg, subSolarLonDeg) {
+    const phi = surfaceLatDeg * Math.PI / 180.0;
+    const phiSun = subSolarLatDeg * Math.PI / 180.0;
+    const dLam = (surfaceLonDeg - subSolarLonDeg) * Math.PI / 180.0;
+
+    const cosZ = Math.sin(phi) * Math.sin(phiSun) + Math.cos(phi) * Math.cos(phiSun) * Math.cos(dLam);
+    const clampedCosZ = Math.max(-1.0, Math.min(1.0, cosZ));
+    const zRad = Math.acos(clampedCosZ);
+    const zDeg = zRad * 180.0 / Math.PI;
+
+    return {
+      zenithAngleDeg: parseFloat(zDeg.toFixed(3)),
+      cosZenith: parseFloat(clampedCosZ.toFixed(4)),
+      isDaylight: clampedCosZ > 0
+    };
+  }
+
+  /**
+   * Convert Earth solar days (86400s) into Martian sols (88775.244s).
+   * N_sol = N_earth * (86400 / 88775.244)
+   * @param {number} numEarthDays - Earth standard days
+   * @returns {{marsSols: number, solsFormatted: string}}
+   */
+  static convertEarthDaysToMarsSols(numEarthDays) {
+    const d = Math.max(0, numEarthDays);
+    const sols = d * (86400.0 / 88775.244);
+
+    return {
+      marsSols: parseFloat(sols.toFixed(4)),
+      solsFormatted: `${sols.toFixed(2)} Sols`
+    };
+  }
 }
+
 
 
 
