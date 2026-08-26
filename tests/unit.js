@@ -5737,6 +5737,37 @@ describe('Somigliana Theoretical Gravity, Planetographic Latitude & Rhumb Lines 
     });
 });
 
+describe('J2 Nodal Precession, Ground Track Shift & Eclipse (TrajectoryEngine)', () => {
+    it('should calculate Mars Reconnaissance Orbiter (MRO) J2 nodal precession rate', () => {
+        // MRO orbit: a ~ 3680 km (alt ~ 290 km), e ~ 0.008, i = 93.0° (Sun-synchronous retrograde)
+        // cos(93°) = -0.0523 -> dOmega/dt is positive (prograde nodal drift matching Mars heliocentric orbital motion ~0.524 deg/day)
+        const mro = TrajectoryEngine.computeNodalPrecessionRate(3680.0, 0.008, 93.0, 'mars');
+        expect(mro.nodalPrecessionDegPerDay).to.be.greaterThan(0.4);
+        expect(mro.nodalPrecessionDegPerDay).to.be.lessThan(0.7);
+        expect(mro.isRetrogradePrecession).to.be.false;
+
+        // Prograde orbit i = 45° -> retrograde nodal precession (dOmega/dt < 0)
+        const prog = TrajectoryEngine.computeNodalPrecessionRate(4000.0, 0.0, 45.0, 'mars');
+        expect(prog.nodalPrecessionDegPerDay).to.be.lessThan(0);
+        expect(prog.isRetrogradePrecession).to.be.true;
+    });
+
+    it('should compute ground track longitudinal nodal shift and orbital shadow eclipse fraction', () => {
+        // Torbit = 112 minutes (MRO), Mars rot = 24.6597 h -> omegaP = 360 / (24.6597*60) = 0.2433 deg/min
+        // Delta_lambda = 0.2433 * 112 = 27.25 deg westward per orbit
+        const shift = TrajectoryEngine.computeGroundTrackNodalShift(112.0, 0.524, 24.6597);
+        expect(shift.longitudinalShiftDeg).to.be.closeTo(27.21, 0.2);
+        expect(shift.orbitalPeriodMinutes).to.equal(112.0);
+
+        // Circular low Mars orbit a = 3680 km: half shadow angle = arcsin(3389.5 / 3680) = arcsin(0.92106) = 1.171 rad (~67.09 deg)
+        // f_eclipse = 67.09 / 180 = 0.3727 (37.27% of orbit in shadow)
+        const eclipse = TrajectoryEngine.computeOrbitalEclipseFraction(3680.0, 'mars');
+        expect(eclipse.eclipseFraction).to.be.closeTo(0.3727, 0.01);
+        expect(eclipse.orbitalPeriodMinutes).to.be.closeTo(114.0, 2.0);
+        expect(eclipse.eclipseDurationMinutes).to.be.greaterThan(35.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

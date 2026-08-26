@@ -402,7 +402,96 @@ export class TrajectoryEngine {
       synodicYears: parseFloat((synodicDays / 365.256).toFixed(3))
     };
   }
+
+  // --- J2 Nodal Precession, Ground Track Shift & Eclipse Solvers ---
+
+  /**
+   * Calculate J2 gravitational secular nodal precession rate dOmega/dt of the orbital ascending node.
+   * dOmega/dt = - (3/2) * n * J_2 * (R_p / p)^2 * cos(i)
+   * @param {number} semiMajorAxisKm - Orbit semi-major axis in km
+   * @param {number} eccentricity - Orbital eccentricity e
+   * @param {number} inclinationDeg - Orbital inclination i in degrees
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{nodalPrecessionDegPerDay: number, nodalPrecessionRadPerSec: number, isRetrogradePrecession: boolean}}
+   */
+  static computeNodalPrecessionRate(semiMajorAxisKm, eccentricity, inclinationDeg, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const Rp = TrajectoryEngine.ORBITS[bKey]?.radiusKm || 3389.5;
+    const J2 = bKey === 'earth' ? 1.08263e-3 : 1.96045e-3; // Mars J2 ~ 1.96045e-3
+
+    const a = Math.max(Rp + 10.0, semiMajorAxisKm);
+    const e = Math.max(0.0, Math.min(0.95, eccentricity));
+    const incRad = (inclinationDeg * Math.PI) / 180.0;
+
+    const n = Math.sqrt(mu / Math.pow(a, 3)); // Mean motion in rad/s
+    const p = a * (1.0 - e * e); // Semi-latus rectum in km
+
+    // Secular nodal precession rate in rad/s
+    const dOmegaRadS = -1.5 * n * J2 * Math.pow(Rp / p, 2) * Math.cos(incRad);
+    // Convert to degrees per day
+    const dOmegaDegDay = dOmegaRadS * (180.0 / Math.PI) * 86400.0;
+
+    return {
+      nodalPrecessionDegPerDay: parseFloat(dOmegaDegDay.toFixed(4)),
+      nodalPrecessionRadPerSec: parseFloat(dOmegaRadS.toExponential(4)),
+      isRetrogradePrecession: dOmegaDegDay < 0
+    };
+  }
+
+  /**
+   * Calculate westward longitudinal ground track nodal shift Delta_lambda per orbital revolution.
+   * Delta_lambda = ( omega_p - dOmega/dt ) * T_orbit
+   * @param {number} orbitalPeriodMinutes - Satellite orbital period in minutes
+   * @param {number} [nodalPrecessionDegPerDay=0.0] - Orbit nodal precession rate in deg/day
+   * @param {number} [planetaryRotationHours=24.6597] - Planetary rotation period in hours (24.6597 h for Mars)
+   * @returns {{longitudinalShiftDeg: number, orbitalPeriodMinutes: number}}
+   */
+  static computeGroundTrackNodalShift(orbitalPeriodMinutes, nodalPrecessionDegPerDay = 0.0, planetaryRotationHours = 24.6597) {
+    const TorbitMin = Math.max(1.0, orbitalPeriodMinutes);
+    const ProtHours = Math.max(0.1, planetaryRotationHours);
+
+    // Planet rotation rate in deg/minute
+    const omegaP = 360.0 / (ProtHours * 60.0);
+    // Precession rate in deg/minute
+    const dOmegaMin = nodalPrecessionDegPerDay / 1440.0;
+
+    const shiftDeg = (omegaP - dOmegaMin) * TorbitMin;
+
+    return {
+      longitudinalShiftDeg: parseFloat(shiftDeg.toFixed(3)),
+      orbitalPeriodMinutes: parseFloat(TorbitMin.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate planetary cylindrical shadow eclipse fraction and shadow duration.
+   * f_eclipse = (1 / pi) * arcsin( R_p / r )
+   * @param {number} semiMajorAxisKm - Orbit radius / semi-major axis in km
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{eclipseFraction: number, eclipseDurationMinutes: number, orbitalPeriodMinutes: number}}
+   */
+  static computeOrbitalEclipseFraction(semiMajorAxisKm, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const Rp = TrajectoryEngine.ORBITS[bKey]?.radiusKm || 3389.5;
+
+    const r = Math.max(Rp + 1.0, semiMajorAxisKm);
+    const TorbitSec = 2.0 * Math.PI * Math.sqrt(Math.pow(r, 3) / mu);
+    const TorbitMin = TorbitSec / 60.0;
+
+    const halfShadowAngleRad = Math.asin(Math.min(1.0, Rp / r));
+    const fEclipse = halfShadowAngleRad / Math.PI;
+    const durationMin = fEclipse * TorbitMin;
+
+    return {
+      eclipseFraction: parseFloat(fEclipse.toFixed(4)),
+      eclipseDurationMinutes: parseFloat(durationMin.toFixed(2)),
+      orbitalPeriodMinutes: parseFloat(TorbitMin.toFixed(2))
+    };
+  }
 }
+
 
 
 
