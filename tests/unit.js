@@ -5096,6 +5096,35 @@ describe('True Solar Right Ascension, LMST to LTST & Seasons (MarsTime)', () => 
     });
 });
 
+describe('Fe3+ Phyllosilicates, THEMIS Felsic Quartz & Continuum Slope (BandMathEngine)', () => {
+    it('should calculate CRISM BD2290 Fe3+-OH nontronite band depth index', () => {
+        // r2290 = 0.22, r2140 = 0.26, r2350 = 0.25
+        // continuum = 0.714 * 0.26 + 0.286 * 0.25 = 0.18564 + 0.0715 = 0.25714
+        // bd = 1 - (0.22 / 0.25714) = 1 - 0.85556 = 0.1444 (> 0.035 -> hasFe3Phyllosilicate: true)
+        const fe3 = BandMathEngine.computeCRISMFe3PhyllosilicateIndex(0.22, 0.26, 0.25);
+        expect(fe3.bd2290).to.be.closeTo(0.1444, 0.005);
+        expect(fe3.hasFe3Phyllosilicate).to.be.true;
+
+        // Flat continuum (no absorption) r2290 = 0.25714 -> bd = 0.0
+        const noFe3 = BandMathEngine.computeCRISMFe3PhyllosilicateIndex(0.25714, 0.26, 0.25);
+        expect(noFe3.bd2290).to.be.closeTo(0.0, 0.005);
+        expect(noFe3.hasFe3Phyllosilicate).to.be.false;
+    });
+
+    it('should compute THEMIS felsic quartz reststrahlen index and spectral continuum slope', () => {
+        // e3 = 0.95, e4 = 0.90 (silica trough), e5 = 0.94
+        // felsicIndex = (0.95 + 0.94) / (2 * 0.90) = 1.89 / 1.80 = 1.05 (> 1.025 -> hasFelsicSignature: true)
+        const felsic = BandMathEngine.computeTHEMISFelsicQuartzIndex(0.95, 0.90, 0.94);
+        expect(felsic.felsicIndex).to.equal(1.05);
+        expect(felsic.hasFelsicSignature).to.be.true;
+
+        // r1 = 0.15 at 1.0 µm, r2 = 0.30 at 2.5 µm -> dR = 0.15, dLam = 1.5 µm -> slope = 0.10 µm^-1 (isRedSloped: true)
+        const slope = BandMathEngine.computeSpectralContinuumSlope(0.15, 0.30, 1.0, 2.5);
+        expect(slope.continuumSlopePerUm).to.equal(0.1);
+        expect(slope.isRedSloped).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1461,7 +1461,73 @@ export class BandMathEngine {
       isLeftSkewed: asym < 0.5
     };
   }
+
+  // --- CRISM Fe3+ Phyllosilicate, THEMIS Felsic Quartz & Continuum Slope Solvers ---
+
+  /**
+   * Calculate CRISM BD2290 Fe3+-OH phyllosilicate (nontronite) absorption band depth index.
+   * BD2290 = 1.0 - ( R2290 / ( 0.714 * R2140 + 0.286 * R2350 ) )
+   * @param {number} r2290 - Reflectance at 2.29 µm band center (nontronite Fe-OH absorption)
+   * @param {number} r2140 - Left shoulder reflectance at 2.14 µm
+   * @param {number} r2350 - Right shoulder reflectance at 2.35 µm
+   * @returns {{bd2290: number, hasFe3Phyllosilicate: boolean}}
+   */
+  static computeCRISMFe3PhyllosilicateIndex(r2290, r2140, r2350) {
+    const rL = Math.max(1e-4, r2140);
+    const rC = Math.max(0, r2290);
+    const rR = Math.max(1e-4, r2350);
+
+    const continuum = 0.714 * rL + 0.286 * rR;
+    const bd = 1.0 - (rC / continuum);
+
+    return {
+      bd2290: parseFloat(bd.toFixed(4)),
+      hasFe3Phyllosilicate: bd > 0.035
+    };
+  }
+
+  /**
+   * Calculate THEMIS thermal infrared quartz / felsic silica reststrahlen band depth index.
+   * D_felsic = (E_3 + E_5) / (2 * E_4)
+   * @param {number} emissB3 - Emissivity in THEMIS Band 3 (~7.93 µm)
+   * @param {number} emissB4 - Emissivity in THEMIS Band 4 (~8.56 µm, silica trough)
+   * @param {number} emissB5 - Emissivity in THEMIS Band 5 (~9.35 µm)
+   * @returns {{felsicIndex: number, hasFelsicSignature: boolean}}
+   */
+  static computeTHEMISFelsicQuartzIndex(emissB3, emissB4, emissB5) {
+    const e3 = Math.max(0.01, emissB3);
+    const e4 = Math.max(0.01, emissB4);
+    const e5 = Math.max(0.01, emissB5);
+
+    const index = (e3 + e5) / (2.0 * e4);
+
+    return {
+      felsicIndex: parseFloat(index.toFixed(4)),
+      hasFelsicSignature: index > 1.025
+    };
+  }
+
+  /**
+   * Calculate spectral reflectance continuum slope across two infrared wavelengths.
+   * Slope = (R_2 - R_1) / (lambda_2 - lambda_1)
+   * @param {number} r1 - Reflectance at wavelength 1
+   * @param {number} r2 - Reflectance at wavelength 2
+   * @param {number} [wave1=1.0] - Wavelength 1 in µm
+   * @param {number} [wave2=2.5] - Wavelength 2 in µm
+   * @returns {{continuumSlopePerUm: number, isRedSloped: boolean}}
+   */
+  static computeSpectralContinuumSlope(r1, r2, wave1 = 1.0, wave2 = 2.5) {
+    const dLam = Math.max(0.01, wave2 - wave1);
+    const dR = r2 - r1;
+    const slope = dR / dLam;
+
+    return {
+      continuumSlopePerUm: parseFloat(slope.toFixed(5)),
+      isRedSloped: slope > 0.0
+    };
+  }
 }
+
 
 
 
