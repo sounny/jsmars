@@ -1587,7 +1587,104 @@ export class CSFDEngine {
       totalRimFloorDepthMeters: parseFloat(dTotal.toFixed(1))
     };
   }
+
+  // --- Complex Crater Morphometry, Spall Ejection & Epoch Classification Solvers ---
+
+  /**
+   * Calculate complex crater morphometry dimensions for collapsed craters with central peaks (Pike 1980, Melosh 1989).
+   * @param {number} finalDiameterKm - Final rim-to-rim diameter in km (typically > 6-8 km on Mars)
+   * @returns {{rimHeightMeters: number, centralPeakHeightMeters: number, centralPeakDiameterKm: number, floorDiameterKm: number, totalRimFloorDepthMeters: number}}
+   */
+  static computeComplexCraterMorphometryProfile(finalDiameterKm) {
+    const D = Math.max(1.0, finalDiameterKm);
+
+    // Pike (1980) empirical scaling laws on Mars (all outputs converted to meters or km)
+    const hRimKm = 0.036 * Math.pow(D, 0.52);
+    const hCpKm = 0.040 * Math.pow(D, 0.88);
+    const dCpKm = 0.22 * Math.pow(D, 1.12);
+    const dFloorKm = 0.51 * Math.pow(D, 1.02);
+    const dTotalKm = 0.36 * Math.pow(D, 0.30);
+
+    return {
+      rimHeightMeters: parseFloat((hRimKm * 1000.0).toFixed(1)),
+      centralPeakHeightMeters: parseFloat((hCpKm * 1000.0).toFixed(1)),
+      centralPeakDiameterKm: parseFloat(dCpKm.toFixed(2)),
+      floorDiameterKm: parseFloat(dFloorKm.toFixed(2)),
+      totalRimFloorDepthMeters: parseFloat((dTotalKm * 1000.0).toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate Melosh (1989) shock-wave interference spallation ejection velocity of rock fragments.
+   * v_ej = v_imp * ( (2 * a) / (2 * r) )^1.8
+   * @param {number} impactVelocityKmS - Projectile impact velocity in km/s (e.g. 12 km/s)
+   * @param {number} projectileRadiusMeters - Impactor radius in meters
+   * @param {number} ejectionRadiusMeters - Radial distance from impact center where fragment is ejected
+   * @returns {{ejectionVelocityKmS: number, ejectionVelocityMps: number, exceedsMarsEscapeVelocity: boolean}}
+   */
+  static computeSpallFragmentEjectionVelocity(impactVelocityKmS, projectileRadiusMeters, ejectionRadiusMeters) {
+    const vImp = Math.max(0.1, impactVelocityKmS);
+    const a = Math.max(0.1, projectileRadiusMeters);
+    const r = Math.max(a, ejectionRadiusMeters);
+
+    // v_ej = v_imp * (a / r)^1.8
+    const ratio = a / r;
+    const vEj = vImp * Math.pow(ratio, 1.8);
+    const vEjMps = vEj * 1000.0;
+
+    const marsEscapeVelocityKmS = 5.03; // Mars escape speed ~5.03 km/s
+
+    return {
+      ejectionVelocityKmS: parseFloat(vEj.toFixed(3)),
+      ejectionVelocityMps: parseFloat(vEjMps.toFixed(1)),
+      exceedsMarsEscapeVelocity: vEj >= marsEscapeVelocityKmS
+    };
+  }
+
+  /**
+   * Classify an absolute crater retention age in Ga into standard Martian geological epochs (Werner & Tanaka 2011).
+   * @param {number} ageGa - Chronological age in Giga-annum (Ga, billions of years)
+   * @returns {{epochName: string, systemPeriod: string, isNoachian: boolean, isHesperian: boolean, isAmazonian: boolean}}
+   */
+  static classifyMarsGeologicChronologicalEpoch(ageGa) {
+    const age = Math.max(0, ageGa);
+
+    let epochName = 'Late Amazonian';
+    let systemPeriod = 'Amazonian';
+
+    if (age >= 3.95) {
+      epochName = 'Early Noachian';
+      systemPeriod = 'Noachian';
+    } else if (age >= 3.70) {
+      epochName = 'Late Noachian';
+      systemPeriod = 'Noachian';
+    } else if (age >= 3.40) {
+      epochName = 'Early Hesperian';
+      systemPeriod = 'Hesperian';
+    } else if (age >= 3.00) {
+      epochName = 'Late Hesperian';
+      systemPeriod = 'Hesperian';
+    } else if (age >= 1.40) {
+      epochName = 'Early Amazonian';
+      systemPeriod = 'Amazonian';
+    } else if (age >= 0.50) {
+      epochName = 'Middle Amazonian';
+      systemPeriod = 'Amazonian';
+    } else {
+      epochName = 'Late Amazonian';
+      systemPeriod = 'Amazonian';
+    }
+
+    return {
+      epochName,
+      systemPeriod,
+      isNoachian: systemPeriod === 'Noachian',
+      isHesperian: systemPeriod === 'Hesperian',
+      isAmazonian: systemPeriod === 'Amazonian'
+    };
+  }
 }
+
 
 
 

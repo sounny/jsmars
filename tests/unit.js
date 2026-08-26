@@ -5590,6 +5590,48 @@ describe('Kepler Equation Inversion, Seasonal Photoperiod & Opposition (MarsTime
     });
 });
 
+describe('Complex Crater Morphometry, Spall Ejection & Epochs (CSFDEngine)', () => {
+    it('should calculate complex crater central peak and floor morphometry dimensions', () => {
+        // D = 50 km complex crater (e.g., Gale Crater)
+        // hRim = 0.036 * 50^0.52 = 0.036 * 7.647 = 0.2753 km -> 275.3 m
+        // hCp = 0.040 * 50^0.88 = 0.040 * 31.2675 = 1.2507 km -> 1250.7 m
+        // dCp = 0.22 * 50^1.12 = 0.22 * 79.62 = 17.52 km
+        // dFloor = 0.51 * 50^1.02 = 0.51 * 54.26 = 27.67 km
+        // dTotal = 0.36 * 50^0.30 = 0.36 * 3.2375 = 1.1655 km -> 1165.5 m
+        const morph = CSFDEngine.computeComplexCraterMorphometryProfile(50.0);
+        expect(morph.rimHeightMeters).to.be.closeTo(275.3, 2.0);
+        expect(morph.centralPeakHeightMeters).to.be.closeTo(1250.7, 5.0);
+        expect(morph.centralPeakDiameterKm).to.be.closeTo(17.52, 0.5);
+        expect(morph.floorDiameterKm).to.be.closeTo(27.67, 0.5);
+        expect(morph.totalRimFloorDepthMeters).to.be.closeTo(1165.5, 5.0);
+    });
+
+    it('should compute Melosh rock spall ejection velocity and classify Martian geologic epochs', () => {
+        // v_imp = 12 km/s, a = 100 m, r = 150 m (ratio = 100/150 = 0.6667)
+        // v_ej = 12 * (0.6667)^1.8 = 12 * 0.4818 = 5.782 km/s (exceeds Mars escape velocity 5.03 km/s!)
+        const spall = CSFDEngine.computeSpallFragmentEjectionVelocity(12.0, 100.0, 150.0);
+        expect(spall.ejectionVelocityKmS).to.be.closeTo(5.782, 0.05);
+        expect(spall.exceedsMarsEscapeVelocity).to.be.true;
+
+        // Distant ejecta r = 500 m (ratio = 0.2) -> v_ej = 12 * 0.2^1.8 = 12 * 0.0552 = 0.662 km/s
+        const distant = CSFDEngine.computeSpallFragmentEjectionVelocity(12.0, 100.0, 500.0);
+        expect(distant.exceedsMarsEscapeVelocity).to.be.false;
+
+        // Epoch classification: 3.85 Ga -> Late Noachian, 3.2 Ga -> Late Hesperian, 0.2 Ga -> Late Amazonian
+        const ep1 = CSFDEngine.classifyMarsGeologicChronologicalEpoch(3.85);
+        expect(ep1.epochName).to.equal('Late Noachian');
+        expect(ep1.isNoachian).to.be.true;
+
+        const ep2 = CSFDEngine.classifyMarsGeologicChronologicalEpoch(3.2);
+        expect(ep2.epochName).to.equal('Late Hesperian');
+        expect(ep2.isHesperian).to.be.true;
+
+        const ep3 = CSFDEngine.classifyMarsGeologicChronologicalEpoch(0.2);
+        expect(ep3.epochName).to.equal('Late Amazonian');
+        expect(ep3.isAmazonian).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
