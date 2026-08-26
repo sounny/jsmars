@@ -5211,6 +5211,34 @@ describe('Spherical Excess, Andoyer Geodesic & Vertex Deflections (GeoUtil)', ()
     });
 });
 
+describe('Macroscopic Roughness, Gas Conductivity & Volatiles (KRCEngine)', () => {
+    it('should calculate effective bolometric brightness temperature for sub-pixel shadowed mixtures', () => {
+        // Sunlit = 280 K, Shadowed = 160 K, shadow fraction = 0.3
+        // Rad = 0.7 * (280)^4 + 0.3 * (160)^4 = 0.7 * 6.14656e9 + 0.3 * 6.5536e8 = 4.30259e9 + 1.966e8 = 4.4992e9
+        // T_eff = (4.4992e9)^0.25 = 258.99 K (vs linear 0.7*280 + 0.3*160 = 244 K)
+        const rough = KRCEngine.computeSurfaceMacroscopicRoughnessEffectiveTemp(280.0, 160.0, 0.3);
+        expect(rough.effectiveTempK).to.be.closeTo(258.99, 0.1);
+        expect(rough.thermalContrastK).to.equal(120.0);
+        expect(rough.meanLinearTempK).to.equal(244.0);
+    });
+
+    it('should compute pressure-dependent porous regolith conductivity and CO2 volatile sublimation rate', () => {
+        // P = 610 Pa, P0 = 610 Pa -> pRatio = 1.0 -> k_gas = 0.015 * (1/2) = 0.0075 W/(m K)
+        // k_eff = 0.03 + 0.0075 = 0.0375 W/(m K) -> gas fraction = 0.0075 / 0.0375 = 0.20 (20%)
+        const gas = KRCEngine.computePorousRegolithGasConductivity(610.0, 0.03, 0.015, 610.0);
+        expect(gas.effectiveConductivityW_MK).to.equal(0.0375);
+        expect(gas.gasContributionFraction).to.equal(0.2);
+
+        // Net flux = 50 W/m^2, T_frost = 148 K, eps = 0.95 -> emission = 0.95 * 5.670374e-8 * (148)^4 = 0.95 * 5.670374e-8 * 4.7977e8 ~ 25.84 W/m^2
+        // Net for phase change = 50 - 25.84 = 24.16 W/m^2
+        // dm/dt = 24.16 / 5.9e5 = 4.095e-5 kg/(m^2 s) -> rate in um/hr = (4.095e-5 / 1600) * 1e6 * 3600 ~ 92.14 um/hr
+        const sub = KRCEngine.computeVolatileSublimationRate(50.0, 148.0, 5.9e5, 0.95);
+        expect(sub.isSublimating).to.be.true;
+        expect(sub.sublimationRateKgM2S).to.be.closeTo(4.095e-5, 0.05e-5);
+        expect(sub.sublimationRateUmPerHour).to.be.closeTo(92.14, 1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

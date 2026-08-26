@@ -1225,7 +1225,93 @@ export class KRCEngine {
       thermalResistanceM2K_W: parseFloat(rTherm.toFixed(3))
     };
   }
+
+  // --- Macroscopic Roughness, Gas Conductivity & Volatile Sublimation Solvers ---
+
+  /**
+   * Calculate effective bolometric brightness temperature for a sub-pixel mixture of sunlit and shadowed facets.
+   * T_eff = [ (1 - f_shad) * T_sun^4 + f_shad * T_shad^4 ]^(1/4)
+   * @param {number} sunlitTempK - Sunlit facet surface temperature in Kelvin
+   * @param {number} shadowedTempK - Shadowed facet surface temperature in Kelvin
+   * @param {number} [shadowFraction=0.2] - Area fraction in shadow (0.0 to 1.0)
+   * @returns {{effectiveTempK: number, thermalContrastK: number, meanLinearTempK: number}}
+   */
+  static computeSurfaceMacroscopicRoughnessEffectiveTemp(sunlitTempK, shadowedTempK, shadowFraction = 0.2) {
+    const tSun = Math.max(10, sunlitTempK);
+    const tShad = Math.max(10, shadowedTempK);
+    const fShad = Math.max(0.0, Math.min(1.0, shadowFraction));
+    const fSun = 1.0 - fShad;
+
+    const radEmission = fSun * Math.pow(tSun, 4) + fShad * Math.pow(tShad, 4);
+    const tEff = Math.pow(radEmission, 0.25);
+    const tLinear = fSun * tSun + fShad * tShad;
+    const contrast = tSun - tShad;
+
+    return {
+      effectiveTempK: parseFloat(tEff.toFixed(2)),
+      thermalContrastK: parseFloat(contrast.toFixed(2)),
+      meanLinearTempK: parseFloat(tLinear.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate atmospheric pressure-dependent porous regolith thermal conductivity in the Knudsen transition regime.
+   * k(P) = k_solid + (k_gas0 * (P / P0)) / (1 + (P / P0))
+   * @param {number} ambientPressurePa - Ambient atmospheric surface pressure in Pa
+   * @param {number} [solidConductivityW_MK=0.03] - Solid contact conductivity in vacuum
+   * @param {number} [gasConductivityDatum=0.015] - Maximum CO2 pore gas conductivity contribution at datum
+   * @param {number} [p0Pa=610.0] - Reference Knudsen pressure parameter (~610 Pa)
+   * @returns {{effectiveConductivityW_MK: number, gasContributionFraction: number}}
+   */
+  static computePorousRegolithGasConductivity(ambientPressurePa, solidConductivityW_MK = 0.03, gasConductivityDatum = 0.015, p0Pa = 610.0) {
+    const P = Math.max(0, ambientPressurePa);
+    const kSolid = Math.max(1e-4, solidConductivityW_MK);
+    const kGas0 = Math.max(0, gasConductivityDatum);
+    const P0 = Math.max(1.0, p0Pa);
+
+    const pRatio = P / P0;
+    const kGas = (kGas0 * pRatio) / (1.0 + pRatio);
+    const kEff = kSolid + kGas;
+    const gasFraction = kGas / kEff;
+
+    return {
+      effectiveConductivityW_MK: parseFloat(kEff.toFixed(5)),
+      gasContributionFraction: parseFloat(gasFraction.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate instant volatile sublimation / condensation rate for CO2 dry ice or H2O frost.
+   * dm/dt = (F_net - eps * sigma * T_frost^4) / L_sub
+   * @param {number} netSurfaceFluxW_M2 - Net absorbed shortwave + downward longwave + conductive heat flux in W/m^2
+   * @param {number} [frostTempK=148.0] - Volatile equilibrium temperature (148 K for CO2 at 610 Pa)
+   * @param {number} [latentHeatSublimationJ_Kg=5.9e5] - Latent heat of sublimation (5.9e5 J/kg for CO2)
+   * @param {number} [emissivity=0.95] - Frost thermal infrared emissivity
+   * @returns {{sublimationRateKgM2S: number, sublimationRateUmPerHour: number, isSublimating: boolean}}
+   */
+  static computeVolatileSublimationRate(netSurfaceFluxW_M2, frostTempK = 148.0, latentHeatSublimationJ_Kg = 5.9e5, emissivity = 0.95) {
+    const T = Math.max(10, frostTempK);
+    const L = Math.max(1e3, latentHeatSublimationJ_Kg);
+    const eps = Math.max(0.1, Math.min(1.0, emissivity));
+
+    const emittedRadiation = eps * this.STEFAN_BOLTZMANN * Math.pow(T, 4);
+    const netEnergyForPhaseChange = netSurfaceFluxW_M2 - emittedRadiation;
+
+    // dm/dt in kg/(m^2 s): positive = sublimation (mass loss), negative = condensation
+    const dm_dt = netEnergyForPhaseChange / L;
+
+    // Solid CO2 density ~ 1600 kg/m^3 -> rate in m/s = (dm/dt) / 1600 -> um/hr = (rate * 1e6) * 3600
+    const rhoSolid = 1600.0;
+    const rateUmPerHour = (dm_dt / rhoSolid) * 1e6 * 3600.0;
+
+    return {
+      sublimationRateKgM2S: parseFloat(dm_dt.toExponential(4)),
+      sublimationRateUmPerHour: parseFloat(rateUmPerHour.toFixed(2)),
+      isSublimating: dm_dt > 0
+    };
+  }
 }
+
 
 
 

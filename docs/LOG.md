@@ -349,3 +349,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should generate and parse 6-line GIS World File affine matrices symmetrically
 ?: ReferenceError: ExportTool is not defined
     at n.<anonymous> (unit.js:992:25)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 19:45:35 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate effective bolometric brightness temperature for sub-pixel shadowed mixtures
+?: AssertionError: expected 258.99 to be close to 256.45 +/- 0.1
+    at n.<anonymous> (unit.js:5220:44)
