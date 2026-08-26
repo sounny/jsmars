@@ -1343,7 +1343,64 @@ export class BandMathEngine {
       isAbsorptionPresent: clampedDepth > 0.02
     };
   }
+
+  // --- Silicate Hydration, Felsic Silicate & Spectral Curvature Solvers ---
+
+  /**
+   * Calculate CRISM SINDEX2 secondary hydrated sulfate / hydroxylated silicate index.
+   * SINDEX2 = 1.0 - (R_2290 + R_2400) / (2 * R_2340)
+   * @param {number} r2290 - Reflectance at 2.29 µm shoulder
+   * @param {number} r2340 - Reflectance at 2.34 µm absorption center
+   * @param {number} r2400 - Reflectance at 2.40 µm shoulder
+   * @returns {{sindex2: number, hasHydrationSignature: boolean}}
+   */
+  static computeCRISMSilicateHydrationIndex(r2290, r2340, r2400) {
+    const center = Math.max(1e-4, 2.0 * r2340);
+    const shoulders = r2290 + r2400;
+    const index = 1.0 - (shoulders / center);
+
+    return {
+      sindex2: parseFloat(index.toFixed(4)),
+      hasHydrationSignature: index > 0.03
+    };
+  }
+
+  /**
+   * Calculate THEMIS quartz / felsic silicate thermal infrared index QINDEX.
+   * QINDEX = I_10 / I_8 (~12.57 µm / 11.04 µm)
+   * @param {number} radianceB10 - THEMIS Band 10 radiance/emissivity
+   * @param {number} radianceB8 - THEMIS Band 8 radiance/emissivity
+   * @returns {{qindex: number, isFelsicEnriched: boolean}}
+   */
+  static computeTHEMISFelsicSilicateIndex(radianceB10, radianceB8) {
+    const b8 = Math.max(1e-4, radianceB8);
+    const qindex = radianceB10 / b8;
+
+    return {
+      qindex: parseFloat(qindex.toFixed(4)),
+      isFelsicEnriched: qindex > 1.05
+    };
+  }
+
+  /**
+   * Calculate three-point spectral continuum ratio curvature factor kappa = R2^2 / (R1 * R3).
+   * @param {number} r1 - Left band reflectance/radiance
+   * @param {number} r2 - Middle band reflectance/radiance
+   * @param {number} r3 - Right band reflectance/radiance
+   * @returns {{curvatureFactor: number, isConvex: boolean}}
+   */
+  static computeSpectralContinuumRatioCurvature(r1, r2, r3) {
+    const denom = Math.max(1e-6, r1 * r3);
+    const kappa = (r2 * r2) / denom;
+
+    return {
+      curvatureFactor: parseFloat(kappa.toFixed(4)),
+      isConvex: kappa > 1.0
+    };
+  }
 }
+
+
 
 
 

@@ -315,3 +315,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate aerodynamic dust saltation threshold and scale height vertical gradient
 ?: AssertionError: expected 1.91 to be close to 0.866 +/- 0.05
     at n.<anonymous> (unit.js:4247:56)
+
+
+### Automated 4-Hour Check Alert [2026-08-26 11:00:34 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate pyroxene band contrast metric and continuum curvature
+?: AssertionError: expected undefined to be a number or a date
+    at n.<anonymous> (unit.js:3717:38)

@@ -4745,6 +4745,27 @@ describe('Differential Frequency, Impact Melt & Transient Excavation (CSFDEngine
     });
 });
 
+describe('Silicate Hydration, Felsic Silicate & Spectral Curvature (BandMathEngine)', () => {
+    it('should calculate CRISM SINDEX2 secondary silicate hydration index', () => {
+        // r2290 = 0.22, r2400 = 0.21, r2340 = 0.24 -> shoulders = 0.43, center = 2 * 0.24 = 0.48 -> index = 1 - 0.43/0.48 = 1 - 0.8958 = 0.1042 (> 0.03)
+        const hydr = BandMathEngine.computeCRISMSilicateHydrationIndex(0.22, 0.24, 0.21);
+        expect(hydr.sindex2).to.be.closeTo(0.1042, 0.005);
+        expect(hydr.hasHydrationSignature).to.be.true;
+    });
+
+    it('should compute THEMIS felsic silicate index and spectral continuum curvature', () => {
+        // THEMIS B10 = 1.08, B8 = 0.98 -> qindex = 1.08 / 0.98 ~ 1.1020 (> 1.05 -> felsic enriched)
+        const felsic = BandMathEngine.computeTHEMISFelsicSilicateIndex(1.08, 0.98);
+        expect(felsic.qindex).to.be.closeTo(1.1020, 0.005);
+        expect(felsic.isFelsicEnriched).to.be.true;
+
+        // r1 = 0.20, r2 = 0.25, r3 = 0.22 -> kappa = 0.25^2 / (0.20 * 0.22) = 0.0625 / 0.044 ~ 1.4205 (> 1.0 -> convex)
+        const curv = BandMathEngine.computeSpectralContinuumRatioCurvature(0.20, 0.25, 0.22);
+        expect(curv.curvatureFactor).to.be.closeTo(1.4205, 0.01);
+        expect(curv.isConvex).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
