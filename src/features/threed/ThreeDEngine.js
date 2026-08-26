@@ -924,7 +924,79 @@ export class ThreeDEngine {
       isDirectlyIlluminated: cosI > 0
     };
   }
+
+  // --- Lommel-Seeliger Scattering, Swath Slant Range & Globe Angular Radius Solvers ---
+
+  /**
+   * Calculate Lommel-Seeliger single-scattering radiance factor (I/F) for particulate surfaces.
+   * I/F = (w0 / (4 * pi)) * (mu0 / (mu + mu0))
+   * @param {number} cosIncidence - Cosine of solar incidence angle (mu0 = cos(i))
+   * @param {number} cosEmission - Cosine of camera emission angle (mu = cos(e))
+   * @param {number} [singleScatteringAlbedo=0.25] - Single-scattering albedo w0
+   * @returns {{radianceFactorIoF: number, isDirectlyIlluminated: boolean}}
+   */
+  static computeLommelSeeligerScattering(cosIncidence, cosEmission, singleScatteringAlbedo = 0.25) {
+    const mu0 = Math.max(0, cosIncidence);
+    const mu = Math.max(0, cosEmission);
+    const w0 = Math.max(0.001, Math.min(1.0, singleScatteringAlbedo));
+
+    if (mu0 + mu <= 0) {
+      return { radianceFactorIoF: 0, isDirectlyIlluminated: false };
+    }
+
+    const iof = (w0 / (4.0 * Math.PI)) * (mu0 / (mu + mu0));
+
+    return {
+      radianceFactorIoF: parseFloat(iof.toFixed(5)),
+      isDirectlyIlluminated: mu0 > 0
+    };
+  }
+
+  /**
+   * Calculate perspective camera ground swath edge slant range.
+   * R_slant = H / cos(FOV / 2)
+   * @param {number} altitudeKm - Orbital altitude in km
+   * @param {number} [fovDegrees=20.0] - Full camera Field of View in degrees
+   * @returns {{slantRangeKm: number, slantRangeMeters: number, rangeExpansionRatio: number}}
+   */
+  static computePerspectiveSwathSlantRange(altitudeKm, fovDegrees = 20.0) {
+    const H = Math.max(0.001, altitudeKm);
+    const halfFovRad = (fovDegrees * Math.PI / 180.0) / 2.0;
+    const cosHalfFov = Math.max(0.001, Math.cos(halfFovRad));
+
+    const rSlantKm = H / cosHalfFov;
+    const ratio = rSlantKm / H;
+
+    return {
+      slantRangeKm: parseFloat(rSlantKm.toFixed(3)),
+      slantRangeMeters: parseFloat((rSlantKm * 1000.0).toFixed(1)),
+      rangeExpansionRatio: parseFloat(ratio.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate apparent angular radius of planetary globe viewed from orbit.
+   * theta_globe = arcsin( R / (R + h) )
+   * @param {number} altitudeKm - Spacecraft altitude above datum in km
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{angularRadiusDeg: number, angularRadiusRad: number, apparentDiameterDeg: number}}
+   */
+  static computeApparentGlobeAngularRadius(altitudeKm, body = 'mars') {
+    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const h = Math.max(0, altitudeKm);
+
+    const sinTheta = R / (R + h);
+    const thetaRad = Math.asin(Math.max(0, Math.min(1.0, sinTheta)));
+    const thetaDeg = thetaRad * 180.0 / Math.PI;
+
+    return {
+      angularRadiusDeg: parseFloat(thetaDeg.toFixed(3)),
+      angularRadiusRad: parseFloat(thetaRad.toFixed(5)),
+      apparentDiameterDeg: parseFloat((thetaDeg * 2.0).toFixed(3))
+    };
+  }
 }
+
 
 
 

@@ -4212,6 +4212,27 @@ describe('Equidistant Cylindrical & Oblique Convergence (ProjectionManager)', ()
     });
 });
 
+describe('Lommel-Seeliger, Swath Slant Range & Globe Angular Radius (ThreeDEngine)', () => {
+    it('should compute Lommel-Seeliger photometric scattering radiance factor', () => {
+        // mu0 = 1.0 (overhead sun), mu = 1.0 (nadir camera), w0 = 0.25 -> I/F = (0.25 / (4 * pi)) * (1 / (1 + 1)) = 0.25 / (8 * pi) ~ 0.00995
+        const ls = ThreeDEngine.computeLommelSeeligerScattering(1.0, 1.0, 0.25);
+        expect(ls.radianceFactorIoF).to.be.closeTo(0.00995, 0.0005);
+        expect(ls.isDirectlyIlluminated).to.be.true;
+    });
+
+    it('should calculate perspective swath edge slant range and apparent globe angular radius', () => {
+        // Altitude H = 250 km, FOV = 60° (half-angle = 30°) -> R_slant = 250 / cos(30°) = 250 / 0.866025 ~ 288.675 km
+        const slant = ThreeDEngine.computePerspectiveSwathSlantRange(250.0, 60.0);
+        expect(slant.slantRangeKm).to.be.closeTo(288.675, 0.5);
+        expect(slant.rangeExpansionRatio).to.be.closeTo(1.1547, 0.01);
+
+        // Mars R = 3389.5 km at altitude h = 250 km -> sin(theta) = 3389.5 / 3639.5 = 0.9313 -> theta = 68.64°
+        const globe = ThreeDEngine.computeApparentGlobeAngularRadius(250.0, 'mars');
+        expect(globe.angularRadiusDeg).to.be.closeTo(68.64, 0.05);
+        expect(globe.apparentDiameterDeg).to.be.closeTo(137.28, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
