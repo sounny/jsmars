@@ -1868,6 +1868,67 @@ export class KRCEngine {
       cosSlopeIncidence: parseFloat(cosI.toFixed(4))
     };
   }
+
+  // --- Subsurface Thermal Wave & Surface Heat Balance Solvers ---
+
+  /**
+   * Calculate 1D subsurface damped temperature wave and phase lag at depth z.
+   * T(z, t) = T_mean + DeltaT * exp(-z / z_skin) * cos(2*pi*t - z / z_skin)
+   * @param {number} depthMeters - Subsurface depth z in meters
+   * @param {number} [meanTemperatureK=210.0] - Diurnal mean temperature in Kelvin
+   * @param {number} [surfaceAmplitudeK=45.0] - Diurnal surface temperature amplitude DeltaT in Kelvin
+   * @param {number} [skinDepthMeters=0.05] - Diurnal thermal skin depth z_skin in meters
+   * @param {number} [solFraction=0.0] - Time as fraction of sol (0.0 = solar noon peak, 0.5 = midnight)
+   * @returns {{temperatureK: number, amplitudeDamping: number, phaseLagHours: number, localAmplitudeK: number}}
+   */
+  static computeSubsurface1DTemperatureProfile(depthMeters, meanTemperatureK = 210.0, surfaceAmplitudeK = 45.0, skinDepthMeters = 0.05, solFraction = 0.0) {
+    const z = Math.max(0.0, depthMeters);
+    const zSkin = Math.max(1e-4, skinDepthMeters);
+    const tFrac = solFraction % 1.0;
+
+    const zNorm = z / zSkin;
+    const damping = Math.exp(-zNorm);
+    const phaseRad = 2.0 * Math.PI * tFrac - zNorm;
+
+    const temp = meanTemperatureK + surfaceAmplitudeK * damping * Math.cos(phaseRad);
+    const phaseLagHours = (zNorm / (2.0 * Math.PI)) * 24.6597;
+
+    return {
+      temperatureK: parseFloat(temp.toFixed(2)),
+      amplitudeDamping: parseFloat(damping.toFixed(4)),
+      phaseLagHours: parseFloat(phaseLagHours.toFixed(2)),
+      localAmplitudeK: parseFloat((surfaceAmplitudeK * damping).toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate KRC instantaneous surface equilibrium temperature from net absorbed insolation and conductive flux.
+   * T_surf = [ ( (1 - A) * F_solar - F_cond ) / ( epsilon * sigma ) ]^(1/4)
+   * @param {number} [albedo=0.25] - Surface albedo A
+   * @param {number} [emissivity=0.95] - Thermal IR emissivity epsilon
+   * @param {number} [insolationW_M2=450.0] - Incident solar flux F_solar in W/m^2
+   * @param {number} [subsurfaceConductiveFluxW_M2=0.0] - Conductive heat loss into subsurface F_cond in W/m^2
+   * @returns {{surfaceTemperatureK: number, absorbedSolarFluxW_M2: number, netEmittedRadiativeFluxW_M2: number}}
+   */
+  static computeKRCRadiativeSurfaceEquilibriumIterative(albedo = 0.25, emissivity = 0.95, insolationW_M2 = 450.0, subsurfaceConductiveFluxW_M2 = 0.0) {
+    const A = Math.max(0.0, Math.min(0.99, albedo));
+    const eps = Math.max(0.1, Math.min(1.0, emissivity));
+    const fSolar = Math.max(0.0, insolationW_M2);
+    const fCond = subsurfaceConductiveFluxW_M2;
+
+    const sigma = 5.670374419e-8;
+
+    const absorbed = (1.0 - A) * fSolar;
+    const netRad = Math.max(1e-4, absorbed - fCond);
+
+    const tSurf = Math.pow(netRad / (eps * sigma), 0.25);
+
+    return {
+      surfaceTemperatureK: parseFloat(tSurf.toFixed(2)),
+      absorbedSolarFluxW_M2: parseFloat(absorbed.toFixed(2)),
+      netEmittedRadiativeFluxW_M2: parseFloat(netRad.toFixed(2))
+    };
+  }
 }
 
 

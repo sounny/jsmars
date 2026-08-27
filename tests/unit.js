@@ -7811,6 +7811,35 @@ describe('MCD Dust Opacity & Solar Transmission Solvers (MCDEngine)', () => {
     });
 });
 
+describe('KRC Subsurface Thermal Wave & Surface Heat Balance (KRCEngine)', () => {
+    it('should calculate 1D subsurface temperature damping and phase lag with depth', () => {
+        // At surface (z = 0 m) at solar noon (solFraction = 0.0):
+        // T(0) = 210 + 45 * exp(0) * cos(0) = 255.0 K
+        const surfNoon = KRCEngine.computeSubsurface1DTemperatureProfile(0.0, 210.0, 45.0, 0.05, 0.0);
+        expect(surfNoon.temperatureK).to.equal(255.0);
+        expect(surfNoon.amplitudeDamping).to.equal(1.0);
+        expect(surfNoon.phaseLagHours).to.equal(0.0);
+
+        // At 1 diurnal skin depth (z = 0.05 m) at solar noon:
+        // damping = exp(-1) = 0.3679 -> local amplitude = 45 * 0.3679 = 16.55 K
+        // phase = 0 - 1 rad = -1 rad -> cos(-1) = 0.5403 -> T = 210 + 16.55 * 0.5403 = 218.94 K
+        // phase lag = (1 / 2pi) * 24.6597 = 3.92 hours
+        const deep1Skin = KRCEngine.computeSubsurface1DTemperatureProfile(0.05, 210.0, 45.0, 0.05, 0.0);
+        expect(deep1Skin.amplitudeDamping).to.be.closeTo(0.3679, 0.001);
+        expect(deep1Skin.temperatureK).to.be.closeTo(218.94, 0.5);
+        expect(deep1Skin.phaseLagHours).to.be.closeTo(3.92, 0.1);
+    });
+
+    it('should calculate instantaneous KRC radiative surface equilibrium temperature', () => {
+        // High solar insolation (F_solar = 500 W/m^2, A = 0.25, eps = 0.95, F_cond = 0):
+        // absorbed = (1 - 0.25) * 500 = 375 W/m^2
+        // T_surf = ( 375 / (0.95 * 5.67037e-8) )^(0.25) = ( 375 / 5.38685e-8 )^(0.25) = (6.96139e9)^0.25 = 288.94 K
+        const eq = KRCEngine.computeKRCRadiativeSurfaceEquilibriumIterative(0.25, 0.95, 500.0, 0.0);
+        expect(eq.surfaceTemperatureK).to.be.closeTo(288.94, 0.5);
+        expect(eq.absorbedSolarFluxW_M2).to.equal(375.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
