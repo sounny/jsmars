@@ -8347,6 +8347,45 @@ describe('Photometric Scattering, KRC Subsurface Thermal Waves & Terrain Solar I
     });
 });
 
+describe('CO2 Rayleigh Scattering, Lithospheric Flexure & Sulfate Mineralogy Indices', () => {
+    it('should calculate molecular Rayleigh scattering cross-section and column optical depth', () => {
+        // Mean Martian surface pressure P = 610 Pa at blue band (0.450 um):
+        // tau_Rayleigh ~ 0.0028 << tau_dust (typically 0.3 - 1.0)
+        const blueRayleigh = MCDEngine.computeCO2RayleighScatteringOpticalDepth(610.0, 0.450);
+        expect(blueRayleigh.rayleighOpticalDepth).to.be.closeTo(0.0028, 0.001);
+        expect(blueRayleigh.isRayleighNegligibleComparedToDust).to.be.true;
+
+        // UV band (0.300 um): Rayleigh scattering increases with 1/lambda^4
+        const uvRayleigh = MCDEngine.computeCO2RayleighScatteringOpticalDepth(610.0, 0.300);
+        expect(uvRayleigh.rayleighOpticalDepth).to.be.greaterThan(blueRayleigh.rayleighOpticalDepth * 4.0);
+    });
+
+    it('should calculate planetary lithospheric flexural rigidity and elastic thickness Te', () => {
+        // Olympus Mons / Tharsis loading (Te = 50 km, E = 100 GPa, nu = 0.25):
+        // D ~ 1.11e24 N*m, alpha ~ 211 km, lambda ~ 1326 km
+        const tharsisFlexure = KRCEngine.computeLithosphericFlexuralRigidityAndElasticThickness(50.0);
+        expect(tharsisFlexure.flexuralRigidityNewtonMeters).to.be.closeTo(1.11e24, 0.1e24);
+        expect(tharsisFlexure.flexuralParameterKm).to.be.closeTo(211.0, 15.0);
+        expect(tharsisFlexure.flexuralWavelengthKm).to.be.greaterThan(1000.0);
+        expect(tharsisFlexure.basalHeatFlowMilliWattsM2).to.be.closeTo(36.0, 5.0);
+    });
+
+    it('should calculate CRISM hydrated sulfate indices and classify gypsum vs kieserite', () => {
+        // Monohydrated Sulfate (Kieserite): strong BD2100 absorption minimum at 2130 nm
+        const kieserite = BandMathEngine.computeCRISMSulfateHydrationIndices(0.25, 0.22, 0.26, 0.21, 0.27, 0.26);
+        expect(kieserite.bd2100Kieserite).to.be.greaterThan(0.10);
+        expect(kieserite.isHydratedSulfate).to.be.true;
+        expect(kieserite.sulfateClass).to.include('Monohydrated Sulfate');
+
+        // Polyhydrated Sulfate (Gypsum): strong H2O BD1900 and high SINDEX2 convexity
+        const gypsum = BandMathEngine.computeCRISMSulfateHydrationIndices(0.30, 0.24, 0.32, 0.29, 0.35, 0.31);
+        expect(gypsum.bd1900H2O).to.be.greaterThan(0.15);
+        expect(gypsum.sindex2).to.be.greaterThan(0.05);
+        expect(gypsum.isHydratedSulfate).to.be.true;
+        expect(gypsum.sulfateClass).to.include('Polyhydrated Sulfate');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

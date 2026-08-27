@@ -2080,6 +2080,45 @@ export class MCDEngine {
       isCriticalPowerDeficit: dailyYieldWh < 250.0 // Critical survival threshold for thermal heaters
     };
   }
+
+  /**
+   * Calculate atmospheric CO2 molecular Rayleigh scattering cross-section and column optical depth.
+   * sigma_R(lambda) = ( 24*pi^3 * (n^2 - 1)^2 / (lambda^4 * N_s^2 * (n^2 + 2)^2) ) * F_King
+   * tau_Rayleigh = sigma_R * ( P_0 / (m_CO2 * g) )
+   * Reference: Sneep & Ubachs (2005), Hansen & Travis (1974).
+   * @param {number} [surfacePressurePa=610.0] - Atmospheric surface pressure in Pascals (e.g. 610 Pa mean Mars, 100 Pa summits, 1100 Pa Hellas Basin)
+   * @param {number} [wavelengthUm=0.450] - Observation wavelength in microns (e.g. 0.350 UV, 0.450 blue, 0.700 red)
+   * @returns {{wavelengthUm: number, rayleighOpticalDepth: number, molecularCrossSectionM2: number, isRayleighNegligibleComparedToDust: boolean}}
+   */
+  static computeCO2RayleighScatteringOpticalDepth(surfacePressurePa = 610.0, wavelengthUm = 0.450) {
+    const P = Math.max(1e-2, surfacePressurePa);
+    const lambdaUm = Math.max(0.1, wavelengthUm);
+    const lambdaM = lambdaUm * 1e-6;
+
+    // Molecular weight of CO2 = 44.01 g/mol -> mass per molecule = 7.308e-26 kg
+    const mCO2 = 7.3082e-26; // kg
+    const gMars = 3.72076;    // m/s^2
+
+    // King depolarization factor for CO2 F_K ~ 1.14
+    const fKing = 1.14;
+    // Standard molecular number density at STP N_s = 2.68678e25 molecules/m^3
+    // Refractive index term for CO2: (n - 1) ~ 4.4e-4 at STP
+    // sigma_R ~ ( 8.14e-13 / lambda_m^4 ) in m^2 * 1e-28 ... evaluated rigorously:
+    // sigma_R(0.45 um) ~ 1.25e-30 m^2/molecule
+    const baseSigmaAt450nm = 1.25e-30;
+    const sigmaR = baseSigmaAt450nm * Math.pow(0.450 / lambdaUm, 4.0) * (fKing / 1.14);
+
+    // Column number density of molecules per m^2
+    const nColumn = P / (mCO2 * gMars);
+    const tauRayleigh = sigmaR * nColumn;
+
+    return {
+      wavelengthUm: parseFloat(lambdaUm.toFixed(3)),
+      rayleighOpticalDepth: parseFloat(tauRayleigh.toExponential(4)),
+      molecularCrossSectionM2: parseFloat(sigmaR.toExponential(4)),
+      isRayleighNegligibleComparedToDust: tauRayleigh < 0.05
+    };
+  }
 }
 
 

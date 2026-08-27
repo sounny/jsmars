@@ -2342,6 +2342,56 @@ export class BandMathEngine {
       estimatedWoContentPct: parseFloat(estimatedWo.toFixed(1))
     };
   }
+
+  /**
+   * Calculate CRISM hydrated sulfate indices: SINDEX2 (polyhydrated sulfate convexity), BD1900 (H2O band depth), and BD2100 (monohydrated kieserite band depth).
+   * Reference: Pelkey et al. (2007), Viviano-Beck et al. (2014), Gendrin et al. (2005) for Meridiani Planum & Valles Marineris.
+   * @param {number} r1850 - Reflectance at 1850 nm (short H2O continuum)
+   * @param {number} r1930 - Reflectance at 1930 nm (H2O absorption minimum)
+   * @param {number} r2060 - Reflectance at 2060 nm (intermediate continuum)
+   * @param {number} r2130 - Reflectance at 2130 nm (kieserite absorption minimum)
+   * @param {number} r2290 - Reflectance at 2290 nm (sulfate shoulder apex)
+   * @param {number} r2400 - Reflectance at 2400 nm (long continuum anchor)
+   * @returns {{sindex2: number, bd1900H2O: number, bd2100Kieserite: number, sulfateClass: string, isHydratedSulfate: boolean}}
+   */
+  static computeCRISMSulfateHydrationIndices(r1850, r1930, r2060, r2130, r2290, r2400) {
+    const r185 = Math.max(1e-4, r1850);
+    const r193 = Math.max(1e-4, r1930);
+    const r206 = Math.max(1e-4, r2060);
+    const r213 = Math.max(1e-4, r2130);
+    const r229 = Math.max(1e-4, r2290);
+    const r240 = Math.max(1e-4, r2400);
+
+    // BD1900: H2O vibration
+    const cont1900 = 0.5 * (r185 + r206);
+    const bd1900 = 1.0 - (r193 / cont1900);
+
+    // BD2100: Monohydrated Kieserite (MgSO4 * H2O)
+    const cont2100 = 0.5 * (r206 + r229);
+    const bd2100 = 1.0 - (r213 / cont2100);
+
+    // SINDEX2: Polyhydrated sulfate convexity
+    const sindex2 = 1.0 - ((r213 + r240) / (2.0 * r229));
+
+    let sulfateClass = 'Unenriched / No Significant Sulfate';
+    const isHydratedSulfate = bd1900 > 0.03 || bd2100 > 0.025 || sindex2 > 0.02;
+
+    if (bd2100 > 0.03 && bd2100 >= sindex2) {
+      sulfateClass = 'Monohydrated Sulfate (Kieserite / Szomolnokite)';
+    } else if (sindex2 > 0.025 && bd1900 > 0.04) {
+      sulfateClass = 'Polyhydrated Sulfate (Gypsum / Starkeyite / Bassanite)';
+    } else if (isHydratedSulfate) {
+      sulfateClass = 'Weakly Hydrated Sulfate Mixture';
+    }
+
+    return {
+      sindex2: parseFloat(sindex2.toFixed(4)),
+      bd1900H2O: parseFloat(bd1900.toFixed(4)),
+      bd2100Kieserite: parseFloat(bd2100.toFixed(4)),
+      sulfateClass,
+      isHydratedSulfate
+    };
+  }
 }
 
 

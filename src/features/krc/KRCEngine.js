@@ -2023,6 +2023,53 @@ export class KRCEngine {
       amplitudeDampingRatio: parseFloat(decayRatio.toFixed(4))
     };
   }
+
+  /**
+   * Calculate planetary lithospheric flexural rigidity D, flexural parameter alpha, and estimated basal heat flow q.
+   * D = ( E * T_e^3 ) / ( 12 * (1 - nu^2) )
+   * alpha = ( (4 * D) / ( (rho_mantle - rho_infill) * g ) )^(1/4)
+   * lambda_flexure = 2 * pi * alpha
+   * q_basal = k_crust * ( (T_ductile - T_surface) / T_e )
+   * Reference: Turcotte & Schubert (2014), McGovern et al. (2002, 2004) for Martian volcanic provinces.
+   * @param {number} elasticThicknessKm - Effective elastic lithosphere thickness T_e in km (e.g. 15 km Noachian basins, 50-100 km Tharsis/Olympus Mons)
+   * @param {number} [youngsModulusGPa=100.0] - Young's modulus E in GPa (typically 100 GPa for basaltic lithosphere)
+   * @param {number} [poissonsRatio=0.25] - Poisson's ratio nu (typically 0.25)
+   * @param {number} [crustThermalCondWmK=3.0] - Crustal thermal conductivity k in W/(m*K)
+   * @returns {{flexuralRigidityNewtonMeters: number, flexuralParameterKm: number, flexuralWavelengthKm: number, basalHeatFlowMilliWattsM2: number, elasticThicknessKm: number}}
+   */
+  static computeLithosphericFlexuralRigidityAndElasticThickness(elasticThicknessKm, youngsModulusGPa = 100.0, poissonsRatio = 0.25, crustThermalCondWmK = 3.0) {
+    const TeKm = Math.max(1.0, elasticThicknessKm);
+    const TeM = TeKm * 1000.0; // meters
+    const E = Math.max(1.0, youngsModulusGPa) * 1e9; // Pa (N/m^2)
+    const nu = Math.min(0.49, Math.max(0.01, poissonsRatio));
+    const k = Math.max(0.1, crustThermalCondWmK);
+
+    const gMars = 3.72076; // m/s^2
+    const rhoMantle = 3500.0; // kg/m^3
+    const rhoInfill = 2900.0; // kg/m^3 (basaltic construct load)
+    const deltaRho = rhoMantle - rhoInfill;
+
+    // Flexural rigidity D (N*m)
+    const D = (E * Math.pow(TeM, 3.0)) / (12.0 * (1.0 - nu * nu));
+
+    // Flexural parameter alpha (meters)
+    const alphaM = Math.pow((4.0 * D) / (deltaRho * gMars), 0.25);
+    const alphaKm = alphaM / 1000.0;
+    const lambdaKm = 2.0 * Math.PI * alphaKm;
+
+    // Heat flow q = k * (Delta_T / T_e), with base of mechanical lithosphere isotherm ~ 600 C (873 K) vs mean surface ~ 215 K
+    const deltaTK = 600.0; // K difference
+    const qWattsM2 = k * (deltaTK / TeM);
+    const qMilliWattsM2 = qWattsM2 * 1000.0;
+
+    return {
+      flexuralRigidityNewtonMeters: parseFloat(D.toExponential(4)),
+      flexuralParameterKm: parseFloat(alphaKm.toFixed(2)),
+      flexuralWavelengthKm: parseFloat(lambdaKm.toFixed(2)),
+      basalHeatFlowMilliWattsM2: parseFloat(qMilliWattsM2.toFixed(2)),
+      elasticThicknessKm: parseFloat(TeKm.toFixed(1))
+    };
+  }
 }
 
 
