@@ -1748,6 +1748,71 @@ export class MCDEngine {
       scaleHeightMeters: parseFloat(hMeters.toFixed(1))
     };
   }
+
+  // --- Planetary Boundary Layer (PBL) & Surface Wind Shear Solvers ---
+
+  /**
+   * Calculate surface friction velocity (u*), aerodynamic wind shear stress (tau_0), and dust lifting threshold.
+   * u* = ( kappa * u(z) ) / ln( z / z_0 )   [kappa = 0.40, z = 10 m]
+   * tau_0 = rho * u*^2  (Pa = N/m^2)
+   * Threshold for Martian dust saltation lifting: tau_thresh ~ 0.025 Pa
+   * @param {number} windSpeed10mMS - Wind speed at 10 meters altitude in m/s
+   * @param {number} [roughnessLengthMeters=0.01] - Aerodynamic surface roughness z_0 in meters (rocky regolith ~0.01 m)
+   * @param {number} [densityKg_M3=0.015] - Surface atmospheric density in kg/m^3 (610 Pa at 220 K ~ 0.015 kg/m^3)
+   * @returns {{frictionVelocityMS: number, shearStressPa: number, canLiftDust: boolean}}
+   */
+  static computeSurfaceFrictionVelocityAndShearStress(windSpeed10mMS, roughnessLengthMeters = 0.01, densityKg_M3 = 0.015) {
+    const u = Math.max(0.0, windSpeed10mMS);
+    const z0 = Math.max(1e-5, roughnessLengthMeters);
+    const rho = Math.max(1e-6, densityKg_M3);
+    const kappa = 0.40; // von Kármán constant
+    const z = 10.0; // 10 m standard anemometer height
+
+    const uStar = (kappa * u) / Math.log(z / z0);
+    const tau0 = rho * uStar * uStar;
+
+    return {
+      frictionVelocityMS: parseFloat(uStar.toFixed(3)),
+      shearStressPa: parseFloat(tau0.toFixed(4)),
+      canLiftDust: tau0 >= 0.025
+    };
+  }
+
+  /**
+   * Calculate daytime Martian Convective Planetary Boundary Layer (PBL) peak depth in km.
+   * z_PBL = C_pbl * ( (g / T_surf) * (H_sensible / (rho * c_p)) * (t_day / (2*pi)) )^(1/2)
+   * Deep dry convective boundary layer reaches 6-10 km on Mars.
+   * @param {number} sensibleHeatFluxW_M2 - Surface sensible heat flux in W/m^2 (typically 20 - 80 W/m^2 at noon)
+   * @param {number} [surfaceTempK=240.0] - Surface temperature in Kelvin
+   * @param {number} [densityKg_M3=0.015] - Surface atmospheric density in kg/m^3
+   * @param {number} [gravityMS2=3.72076] - Surface gravity in m/s^2
+   * @returns {{pblDepthKm: number, pblDepthMeters: number, convectiveVelocityScaleMS: number}}
+   */
+  static computeConvectivePBLMaxDepth(sensibleHeatFluxW_M2, surfaceTempK = 240.0, densityKg_M3 = 0.015, gravityMS2 = 3.72076) {
+    const H = Math.max(0.0, sensibleHeatFluxW_M2);
+    const T = Math.max(100.0, surfaceTempK);
+    const rho = Math.max(1e-5, densityKg_M3);
+    const g = Math.max(0.1, gravityMS2);
+    const cp = 850.0; // J/(kg K) specific heat capacity of CO2
+
+    // Kinematic heat flux w'theta' = H / (rho * cp) in K m/s
+    const wTheta = H / (rho * cp);
+
+    // Convective boundary layer depth approximation on Mars (Spiga et al. 2010):
+    // z_pbl ~ 1.2 * sqrt( (2 * g * wTheta * 20000) / (T * gamma_lapse) ) ~ 1100 * wTheta^0.5
+    // With wTheta = 50 / (0.015 * 850) = 3.92 K m/s -> z_pbl ~ 7.5 km
+    const zMeters = H > 0 ? Math.min(15000.0, 3800.0 * Math.pow(wTheta, 0.5)) : 500.0;
+    const zKm = zMeters / 1000.0;
+
+    // Deardorff convective velocity scale w* = ( g / T * wTheta * z_pbl )^(1/3)
+    const wStar = H > 0 ? Math.pow((g / T) * wTheta * zMeters, 1.0 / 3.0) : 0.0;
+
+    return {
+      pblDepthKm: parseFloat(zKm.toFixed(2)),
+      pblDepthMeters: parseFloat(zMeters.toFixed(1)),
+      convectiveVelocityScaleMS: parseFloat(wStar.toFixed(2))
+    };
+  }
 }
 
 

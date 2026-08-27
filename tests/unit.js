@@ -7028,6 +7028,34 @@ describe('Terrain Ruggedness Index & Topographic Position (SamplingTool)', () =>
     });
 });
 
+describe('Surface Friction Velocity, Wind Shear Stress & PBL Depth (MCDEngine)', () => {
+    it('should calculate surface friction velocity u* and aerodynamic shear stress tau_0', () => {
+        // High surface wind u(10m) = 25 m/s over rocky regolith (z0 = 0.01 m):
+        // ln(10 / 0.01) = ln(1000) = 6.90775
+        // u* = 0.40 * 25 / 6.90775 = 10 / 6.90775 = 1.4476 m/s
+        // tau_0 = 0.015 * (1.4476)^2 = 0.015 * 2.0957 = 0.0314 Pa (> 0.025 Pa -> dust saltation active)
+        const storm = MCDEngine.computeSurfaceFrictionVelocityAndShearStress(25.0, 0.01, 0.015);
+        expect(storm.frictionVelocityMS).to.be.closeTo(1.448, 0.01);
+        expect(storm.shearStressPa).to.be.closeTo(0.0314, 0.001);
+        expect(storm.canLiftDust).to.be.true;
+
+        // Gentle breeze u(10m) = 5 m/s:
+        // u* = 0.40 * 5 / 6.90775 = 0.2895 m/s -> tau_0 = 0.015 * 0.0838 = 0.0013 Pa (< 0.025 Pa)
+        const calm = MCDEngine.computeSurfaceFrictionVelocityAndShearStress(5.0, 0.01, 0.015);
+        expect(calm.canLiftDust).to.be.false;
+    });
+
+    it('should compute peak daytime convective Planetary Boundary Layer (PBL) depth', () => {
+        // High noon sensible heat flux H = 50 W/m^2 on warm summer day (T = 240 K, rho = 0.015 kg/m^3)
+        // w'theta' = 50 / (0.015 * 850) = 50 / 12.75 = 3.9215 K m/s
+        // z_pbl = 3800 * sqrt(3.9215) = 3800 * 1.9803 = 7525 meters = 7.53 km (deep Martian convective plume!)
+        const pbl = MCDEngine.computeConvectivePBLMaxDepth(50.0, 240.0, 0.015, 3.72076);
+        expect(pbl.pblDepthKm).to.be.closeTo(7.53, 0.2);
+        expect(pbl.pblDepthMeters).to.be.closeTo(7525.0, 200.0);
+        expect(pbl.convectiveVelocityScaleMS).to.be.greaterThan(2.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
