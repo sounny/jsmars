@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -6743,6 +6743,41 @@ describe('CO2 Dynamic Viscosity, Reynolds Number & Scale Height (MCDEngine)', ()
         // Re = (0.005 * 5000 * 2.65) / 1.109e-5 = 66.25 / 1.109e-5 = 5.97e6 (>= 5e5 -> turbulent boundary layer)
         const entry = MCDEngine.computeAtmosphericReynoldsNumber(0.005, 5000.0, 2.65, 220.0);
         expect(entry.isTurbulent).to.be.true;
+    });
+});
+
+describe('Gnomonic Central Perspective Projection & Inverse Solvers (geo)', () => {
+    it('should calculate forward Gnomonic projection mapping Great Circles to straight lines', () => {
+        // Projection center at (0°, 0°), point at (0°, 0°) -> (x = 0, y = 0, isVisible = true)
+        const center = computeGnomonicProjection(0.0, 0.0, 0.0, 0.0, 3389.5);
+        expect(center.xKm).to.equal(0);
+        expect(center.yKm).to.equal(0);
+        expect(center.isVisible).to.be.true;
+
+        // Point at (lat = 30°, lon = 45°):
+        // cos(c) = cos(30°)*cos(45°) = 0.866025 * 0.707106 = 0.61237
+        // x = 3389.5 * 0.866025 * 0.707106 / 0.61237 = 3389.5 km
+        // y = 3389.5 * sin(30°) / 0.61237 = 3389.5 * 0.5 / 0.61237 = 2767.51 km
+        const fwd = computeGnomonicProjection(30.0, 45.0, 0.0, 0.0, 3389.5);
+        expect(fwd.xKm).to.be.closeTo(3389.5, 0.1);
+        expect(fwd.yKm).to.be.closeTo(2767.51, 0.1);
+        expect(fwd.isVisible).to.be.true;
+
+        // Point beyond horizon (> 90° from center -> cos(c) <= 0)
+        const beyond = computeGnomonicProjection(0.0, 100.0, 0.0, 0.0, 3389.5);
+        expect(beyond.isVisible).to.be.false;
+    });
+
+    it('should compute inverse Gnomonic projection back to geographic coordinates', () => {
+        // Invert (3389.5 km, 2767.51 km) with center at (0°, 0°) -> (30.0°, 45.0°)
+        const inv = computeGnomonicInverse(3389.5, 2767.51, 0.0, 0.0, 3389.5);
+        expect(inv.latDeg).to.be.closeTo(30.0, 0.01);
+        expect(inv.lonDeg).to.be.closeTo(45.0, 0.01);
+
+        // Center origin point inversion
+        const origin = computeGnomonicInverse(0.0, 0.0, 15.0, 45.0, 3389.5);
+        expect(origin.latDeg).to.equal(15.0);
+        expect(origin.lonDeg).to.equal(45.0);
     });
 });
 
