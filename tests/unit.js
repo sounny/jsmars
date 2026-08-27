@@ -6111,6 +6111,36 @@ describe('TES Thermal Infrared Mineralogy & Absorption Asymmetry (BandMathEngine
     });
 });
 
+describe('Crater Saturation Limit, Poisson Count Probability & Spatial Aggregation (CSFDEngine)', () => {
+    it('should calculate geometric saturation equilibrium limit and Poisson likelihood', () => {
+        // Saturation density at D = 1 km: N_sat(>1) = 0.05 * 1^-2 = 0.05 km^-2
+        const sat1 = CSFDEngine.computeCraterSaturationEquilibriumLimit(1.0);
+        expect(sat1.saturationDensityPerKm2).to.equal(0.05);
+        expect(sat1.saturationRValue).to.equal(0.05);
+
+        // Poisson count probability: observed k = 3, expected mu = 3.0
+        // P(3; 3) = (3^3 * exp(-3)) / 6 = 27 * 0.049787 / 6 = 0.224042
+        const pois = CSFDEngine.computePoissonCountProbability(3, 3.0);
+        expect(pois.poissonProbability).to.be.closeTo(0.224042, 0.001);
+        expect(pois.isMostLikely).to.be.true;
+    });
+
+    it('should compute Clark-Evans spatial aggregation nearest neighbor index', () => {
+        // Clustered craters (short nearest-neighbor distances in large area):
+        // Area = 1000 km^2, n = 4, distances = [1.0, 1.2, 0.8, 1.0] -> mean = 1.0 km
+        // Density = 4/1000 = 0.004 -> r_exp = 1 / (2 * sqrt(0.004)) = 1 / 0.12649 = 7.9057 km
+        // R_agg = 1.0 / 7.9057 = 0.1265 (< 0.8 -> clustered)
+        const cluster = CSFDEngine.computeSpatialPoissonRandomnessParameter([1.0, 1.2, 0.8, 1.0], 1000);
+        expect(cluster.aggregationIndex).to.be.closeTo(0.1265, 0.01);
+        expect(cluster.isClustered).to.be.true;
+        expect(cluster.isRandomPoisson).to.be.false;
+
+        // Dispersed craters (regularly spaced lattice): R_agg > 1.2
+        const dispersed = CSFDEngine.computeSpatialPoissonRandomnessParameter([12.0, 14.0, 13.0, 12.5], 1000);
+        expect(dispersed.isDispersed).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

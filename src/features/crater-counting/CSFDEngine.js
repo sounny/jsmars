@@ -1766,6 +1766,86 @@ export class CSFDEngine {
       diameterKm: parseFloat(D.toFixed(3))
     };
   }
+
+  // --- Crater Saturation Equilibrium, Poisson Timing & Spatial Aggregation Solvers ---
+
+  /**
+   * Calculate geometric crater saturation equilibrium density limit N_sat(>D) (Gault 1970 / Hartmann 1984).
+   * N_sat(>D) = 0.05 * D^-2 [km^-2]
+   * @param {number} diameterKm - Crater diameter threshold in km
+   * @returns {{saturationDensityPerKm2: number, diameterKm: number, saturationRValue: number}}
+   */
+  static computeCraterSaturationEquilibriumLimit(diameterKm) {
+    const D = Math.max(0.001, diameterKm);
+    const nSat = 0.05 / (D * D);
+
+    return {
+      saturationDensityPerKm2: parseFloat(nSat.toExponential(4)),
+      diameterKm: parseFloat(D.toFixed(3)),
+      saturationRValue: 0.05
+    };
+  }
+
+  /**
+   * Calculate Poisson probability density P(k; mu) = (mu^k * exp(-mu)) / k! and log-likelihood for crater dating.
+   * @param {number} observedCount - Observed crater count k (integer >= 0)
+   * @param {number} expectedMean - Expected mean count mu from isochron model
+   * @returns {{poissonProbability: number, logLikelihood: number, isMostLikely: boolean}}
+   */
+  static computePoissonCountProbability(observedCount, expectedMean) {
+    const k = Math.max(0, Math.round(observedCount));
+    const mu = Math.max(1e-6, expectedMean);
+
+    // Compute log(P) = k * log(mu) - mu - ln(k!)
+    let lnFact = 0;
+    for (let i = 2; i <= k; i++) {
+      lnFact += Math.log(i);
+    }
+
+    const logP = k * Math.log(mu) - mu - lnFact;
+    const prob = Math.exp(Math.max(-700, logP));
+
+    return {
+      poissonProbability: parseFloat(prob.toFixed(6)),
+      logLikelihood: parseFloat(logP.toFixed(4)),
+      isMostLikely: Math.abs(k - mu) < 1.0
+    };
+  }
+
+  /**
+   * Calculate Clark-Evans spatial aggregation nearest neighbor index R_agg = r_obs_mean / r_exp_mean.
+   * r_exp_mean = 1 / ( 2 * sqrt(density) )
+   * @param {Array<number>} nearestNeighborDistancesKm - Array of nearest neighbor distances in km
+   * @param {number} countAreaKm2 - Total counting area in km^2
+   * @returns {{aggregationIndex: number, isClustered: boolean, isDispersed: boolean, isRandomPoisson: boolean}}
+   */
+  static computeSpatialPoissonRandomnessParameter(nearestNeighborDistancesKm = [], countAreaKm2 = 1000) {
+    const distances = nearestNeighborDistancesKm.filter(d => d > 0);
+    const n = distances.length;
+    const A = Math.max(1.0, countAreaKm2);
+
+    if (n < 2) {
+      return {
+        aggregationIndex: 1.0,
+        isClustered: false,
+        isDispersed: false,
+        isRandomPoisson: true
+      };
+    }
+
+    const rObsMean = distances.reduce((acc, d) => acc + d, 0) / n;
+    const density = n / A;
+    const rExpMean = 1.0 / (2.0 * Math.sqrt(density));
+
+    const rAgg = rObsMean / Math.max(1e-6, rExpMean);
+
+    return {
+      aggregationIndex: parseFloat(rAgg.toFixed(4)),
+      isClustered: rAgg < 0.8,
+      isDispersed: rAgg > 1.2,
+      isRandomPoisson: rAgg >= 0.8 && rAgg <= 1.2
+    };
+  }
 }
 
 
