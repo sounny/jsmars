@@ -6433,6 +6433,39 @@ describe('Ivanov Crater Production Function & Excavation Volumes (CSFDEngine)', 
     });
 });
 
+describe('CO2 Molecular Mean Free Path, Knudsen Regimes & Column Mass (MCDEngine)', () => {
+    it('should calculate CO2 molecular mean free path and Knudsen flow regimes', () => {
+        // Mars surface conditions: T = 220 K, P = 610 Pa (6.1 mbar)
+        // lambda = (1.380649e-23 * 220) / (sqrt(2) * pi * (3.3e-10)^2 * 610)
+        // lambda = 3.0374e-21 / (1.4142 * 3.14159 * 1.089e-19 * 610) = 3.0374e-21 / 2.9515e-16 = 1.029e-5 m = 10.29 microns
+        const mfp = MCDEngine.computeCO2MolecularMeanFreePath(220.0, 610.0);
+        expect(mfp.meanFreePathMicrons).to.be.closeTo(10.29, 0.5);
+
+        // Ingenuity rotor chord (L = 0.12 m) at surface: Kn = 1.029e-5 / 0.12 = 8.57e-5 (< 0.01 -> continuum flow)
+        const rotor = MCDEngine.computeKnudsenNumberAndRegime(220.0, 610.0, 0.12);
+        expect(rotor.isContinuum).to.be.true;
+        expect(rotor.regime).to.equal('continuum');
+
+        // High-altitude mesosphere entry (T = 150 K, P = 0.01 Pa, L = 1.0 m aeroshell) -> Kn = 0.428 (transitional flow)
+        const entry = MCDEngine.computeKnudsenNumberAndRegime(150.0, 0.01, 1.0);
+        expect(entry.isTransitional).to.be.true;
+        expect(entry.regime).to.equal('transitional');
+
+        // Upper exosphere rarefied flight (T = 150 K, P = 0.0001 Pa, L = 0.1 m) -> Kn = 42.8 (free-molecular flow)
+        const exo = MCDEngine.computeKnudsenNumberAndRegime(150.0, 0.0001, 0.1);
+        expect(exo.isFreeMolecular).to.be.true;
+        expect(exo.regime).to.equal('free-molecular');
+    });
+
+    it('should compute total vertical atmospheric column mass per unit surface area', () => {
+        // Global mean surface pressure P = 610 Pa, g = 3.72076 m/s^2
+        // Column mass M_col = 610 / 3.72076 = 163.95 kg/m^2 (16.395 g/cm^2 vs Earth ~1033 g/cm^2)
+        const col = MCDEngine.computeAtmosphericColumnMassAndDensity(610.0, 3.72076);
+        expect(col.columnMassKg_M2).to.be.closeTo(163.95, 0.1);
+        expect(col.columnMassG_Cm2).to.be.closeTo(16.395, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

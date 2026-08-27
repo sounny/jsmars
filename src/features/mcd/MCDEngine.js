@@ -1599,6 +1599,84 @@ export class MCDEngine {
       isHypersonic: mach >= 5.0
     };
   }
+
+  // --- CO2 Mean Free Path, Knudsen Flow Regimes & Atmospheric Column Mass ---
+
+  /**
+   * Calculate kinetic theory molecular mean free path for pure CO2 in meters.
+   * lambda_mfp = ( k_B * T ) / ( sqrt(2) * pi * d_mol^2 * P )
+   * @param {number} temperatureK - Temperature in Kelvin (e.g. 140 to 300 K)
+   * @param {number} pressurePa - Ambient atmospheric pressure in Pascals (e.g. 0.01 to 1000 Pa)
+   * @returns {{meanFreePathMeters: number, meanFreePathMicrons: number, pressurePa: number}}
+   */
+  static computeCO2MolecularMeanFreePath(temperatureK, pressurePa) {
+    const T = Math.max(1.0, temperatureK);
+    const P = Math.max(1e-6, pressurePa);
+    const kB = 1.380649e-23; // Boltzmann constant (J/K)
+    const dMol = 3.3e-10;    // CO2 effective collision diameter in meters
+
+    const denom = Math.SQRT2 * Math.PI * dMol * dMol * P;
+    const lambdaM = (kB * T) / denom;
+    const lambdaUm = lambdaM * 1e6;
+
+    return {
+      meanFreePathMeters: parseFloat(lambdaM.toExponential(4)),
+      meanFreePathMicrons: parseFloat(lambdaUm.toFixed(2)),
+      pressurePa: parseFloat(P.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate Knudsen number Kn = lambda_mfp / L_char and determine rarefied gas flow regime.
+   * @param {number} temperatureK - Temperature in Kelvin
+   * @param {number} pressurePa - Pressure in Pascals
+   * @param {number} [characteristicLengthMeters=1.0] - Characteristic body length in meters (e.g. 0.12 m for Ingenuity blade, 4.5 m for aeroshell)
+   * @returns {{knudsenNumber: number, regime: string, isContinuum: boolean, isSlipFlow: boolean, isTransitional: boolean, isFreeMolecular: boolean}}
+   */
+  static computeKnudsenNumberAndRegime(temperatureK, pressurePa, characteristicLengthMeters = 1.0) {
+    const L = Math.max(1e-4, characteristicLengthMeters);
+    const lambdaM = MCDEngine.computeCO2MolecularMeanFreePath(temperatureK, pressurePa).meanFreePathMeters;
+
+    const kn = lambdaM / L;
+
+    let regime = 'continuum';
+    if (kn >= 10.0) {
+      regime = 'free-molecular';
+    } else if (kn >= 0.1) {
+      regime = 'transitional';
+    } else if (kn >= 0.01) {
+      regime = 'slip-flow';
+    }
+
+    return {
+      knudsenNumber: parseFloat(kn.toExponential(4)),
+      regime: regime,
+      isContinuum: kn < 0.01,
+      isSlipFlow: kn >= 0.01 && kn < 0.1,
+      isTransitional: kn >= 0.1 && kn < 10.0,
+      isFreeMolecular: kn >= 10.0
+    };
+  }
+
+  /**
+   * Calculate total vertical atmospheric column mass per unit surface area (kg/m^2).
+   * M_col = P_surf / g_mars
+   * @param {number} surfacePressurePa - Surface barometric pressure in Pascals (typical Mars mean ~ 610 Pa)
+   * @param {number} [gravityMS2=3.72076] - Surface gravitational acceleration in m/s^2
+   * @returns {{columnMassKg_M2: number, columnMassG_Cm2: number}}
+   */
+  static computeAtmosphericColumnMassAndDensity(surfacePressurePa, gravityMS2 = 3.72076) {
+    const p = Math.max(0, surfacePressurePa);
+    const g = Math.max(0.1, gravityMS2);
+
+    const mKgM2 = p / g;
+    const mGCm2 = mKgM2 / 10.0; // 1 kg/m^2 = 0.1 g/cm^2
+
+    return {
+      columnMassKg_M2: parseFloat(mKgM2.toFixed(2)),
+      columnMassG_Cm2: parseFloat(mGCm2.toFixed(3))
+    };
+  }
 }
 
 
