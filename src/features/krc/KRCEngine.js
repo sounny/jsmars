@@ -1482,6 +1482,71 @@ export class KRCEngine {
       sunlitHours: parseFloat(daylightHours.toFixed(2))
     };
   }
+
+  // --- Stefan-Boltzmann Surface Emission, Downwelling Longwave & Net Energy Balance Solvers ---
+
+  /**
+   * Calculate surface thermal emission radiation flux F_emit = eps * sigma * T^4 [W/m^2].
+   * @param {number} temperatureK - Surface kinetic temperature in Kelvin
+   * @param {number} [emissivity=0.95] - Surface broadband thermal infrared emissivity (0.90 to 0.98)
+   * @returns {{emittedFluxW_M2: number, temperatureK: number, emissivity: number}}
+   */
+  static computeSurfaceThermalEmission(temperatureK, emissivity = 0.95) {
+    const T = Math.max(1.0, temperatureK);
+    const eps = Math.max(0.1, Math.min(1.0, emissivity));
+    const sigma = 5.670374419e-8; // Stefan-Boltzmann constant W/(m^2 K^4)
+
+    const fEmit = eps * sigma * Math.pow(T, 4);
+
+    return {
+      emittedFluxW_M2: parseFloat(fEmit.toFixed(2)),
+      temperatureK: parseFloat(T.toFixed(2)),
+      emissivity: parseFloat(eps.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate downwelling atmospheric longwave radiative flux F_down = (1 - exp(-tau)) * sigma * T_atm^4 [W/m^2].
+   * @param {number} atmosphericTempK - Effective atmospheric temperature in Kelvin (e.g. 180 K)
+   * @param {number} [opticalDepth=0.3] - Column visible/IR dust optical depth tau (0.1 to 3.0)
+   * @returns {{downwellingFluxW_M2: number, atmosphericEmissivity: number}}
+   */
+  static computeAtmosphericDownwellingRadiativeFlux(atmosphericTempK, opticalDepth = 0.3) {
+    const T_atm = Math.max(1.0, atmosphericTempK);
+    const tau = Math.max(0.01, opticalDepth);
+    const sigma = 5.670374419e-8;
+
+    const epsAtm = 1.0 - Math.exp(-tau);
+    const fDown = epsAtm * sigma * Math.pow(T_atm, 4);
+
+    return {
+      downwellingFluxW_M2: parseFloat(fDown.toFixed(2)),
+      atmosphericEmissivity: parseFloat(epsAtm.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate instantaneous net surface radiative energy balance F_net = F_solar + F_down - F_emit.
+   * Positive means surface is warming, negative means surface is cooling.
+   * @param {number} absorbedSolarFluxW_M2 - Absorbed insolation (1 - A) * S_inc in W/m^2
+   * @param {number} surfaceTempK - Surface temperature in Kelvin
+   * @param {number} [atmosphericDownwellingW_M2=0.0] - Downwelling atmospheric longwave flux in W/m^2
+   * @param {number} [emissivity=0.95] - Surface emissivity
+   * @returns {{netRadiativeFluxW_M2: number, emittedFluxW_M2: number, isWarming: boolean}}
+   */
+  static computeSurfaceNetRadiativeHeatBalance(absorbedSolarFluxW_M2, surfaceTempK, atmosphericDownwellingW_M2 = 0.0, emissivity = 0.95) {
+    const fSolar = Math.max(0, absorbedSolarFluxW_M2);
+    const fDown = Math.max(0, atmosphericDownwellingW_M2);
+    const fEmit = KRCEngine.computeSurfaceThermalEmission(surfaceTempK, emissivity).emittedFluxW_M2;
+
+    const fNet = fSolar + fDown - fEmit;
+
+    return {
+      netRadiativeFluxW_M2: parseFloat(fNet.toFixed(2)),
+      emittedFluxW_M2: fEmit,
+      isWarming: fNet > 0
+    };
+  }
 }
 
 

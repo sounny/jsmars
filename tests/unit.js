@@ -6141,6 +6141,36 @@ describe('Crater Saturation Limit, Poisson Count Probability & Spatial Aggregati
     });
 });
 
+describe('Surface Thermal Emission, Downwelling Flux & Net Energy Balance (KRCEngine)', () => {
+    it('should calculate Stefan-Boltzmann surface thermal emission and atmospheric downwelling flux', () => {
+        // Mars equatorial noon surface: T = 270 K, eps = 0.95
+        // F_emit = 0.95 * 5.670374e-8 * 270^4 = 0.95 * 5.670374e-8 * 5314410000 = 286.29 W/m^2
+        const emit = KRCEngine.computeSurfaceThermalEmission(270.0, 0.95);
+        expect(emit.emittedFluxW_M2).to.be.closeTo(286.29, 0.1);
+        expect(emit.emissivity).to.equal(0.95);
+
+        // Downwelling flux from dusty atmosphere: T_atm = 180 K, tau = 0.5 -> eps_atm = 1 - exp(-0.5) = 0.3935
+        // F_down = 0.393469 * 5.670374e-8 * 180^4 = 0.393469 * 5.670374e-8 * 1049760000 = 23.42 W/m^2
+        const down = KRCEngine.computeAtmosphericDownwellingRadiativeFlux(180.0, 0.5);
+        expect(down.downwellingFluxW_M2).to.be.closeTo(23.42, 0.1);
+        expect(down.atmosphericEmissivity).to.be.closeTo(0.3935, 0.001);
+    });
+
+    it('should calculate instantaneous net surface radiative heat balance', () => {
+        // High noon: Absorbed solar = 400 W/m^2, downwelling = 20 W/m^2, T = 250 K (F_emit = 210.42 W/m^2)
+        // F_net = 400 + 20 - 210.42 = +209.58 W/m^2 (> 0 -> warming)
+        const dayBal = KRCEngine.computeSurfaceNetRadiativeHeatBalance(400.0, 250.0, 20.0, 0.95);
+        expect(dayBal.netRadiativeFluxW_M2).to.be.closeTo(209.58, 0.1);
+        expect(dayBal.isWarming).to.be.true;
+
+        // Midnight: Absorbed solar = 0, downwelling = 15 W/m^2, T = 190 K (F_emit = 70.19 W/m^2)
+        // F_net = 0 + 15 - 70.19 = -55.19 W/m^2 (< 0 -> cooling)
+        const nightBal = KRCEngine.computeSurfaceNetRadiativeHeatBalance(0.0, 190.0, 15.0, 0.95);
+        expect(nightBal.netRadiativeFluxW_M2).to.be.closeTo(-55.19, 0.1);
+        expect(nightBal.isWarming).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
