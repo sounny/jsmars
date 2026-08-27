@@ -7840,6 +7840,44 @@ describe('KRC Subsurface Thermal Wave & Surface Heat Balance (KRCEngine)', () =>
     });
 });
 
+describe('Subsolar Ephemeris & Daylight Duration (MarsTime)', () => {
+    it('should calculate Martian solar declination and subsolar ground point coordinates', () => {
+        // Northern Summer Solstice (Ls = 90°):
+        // delta_sun = +25.19° N
+        const solsticeN = MarsTime.computeMartianSolarDeclinationAndSubsolarPoint(90.0, 12.0);
+        expect(solsticeN.solarDeclinationDeg).to.be.closeTo(25.19, 0.01);
+        expect(solsticeN.subsolarLatitudeDeg).to.be.closeTo(25.19, 0.01);
+        expect(solsticeN.subsolarLongitudeDeg).to.equal(0.0);
+        expect(solsticeN.seasonDescription).to.include('Northern Summer');
+
+        // Autumnal Equinox (Ls = 180°):
+        // delta_sun = 0.0°
+        const equinox = MarsTime.computeMartianSolarDeclinationAndSubsolarPoint(180.0, 14.0);
+        expect(equinox.solarDeclinationDeg).to.be.closeTo(0.0, 0.01);
+        expect(equinox.subsolarLongitudeDeg).to.equal(-30.0);
+    });
+
+    it('should calculate latitude-dependent daylight duration and polar day/night states', () => {
+        // Equator (lat = 0°) at any declination:
+        // tan(0) * tan(delta) = 0 -> omega0 = pi/2 -> daylight = 12.33 hours (exactly 50% of sol)
+        const eqDay = MarsTime.computeMartianDaylightLengthHours(0.0, 20.0);
+        expect(eqDay.daylightHours).to.be.closeTo(12.33, 0.05);
+        expect(eqDay.polarSunState).to.equal('Normal Diurnal Day/Night Cycle');
+
+        // North Pole (lat = 80°N) during Northern Summer (delta = +25.19°):
+        // tan(80°) * tan(25.19°) = 5.671 * 0.4704 = 2.668 >= 1.0 -> Midnight Sun (24.66 hours)
+        const northSummer = MarsTime.computeMartianDaylightLengthHours(80.0, 25.19);
+        expect(northSummer.daylightHours).to.be.closeTo(24.66, 0.05);
+        expect(northSummer.polarSunState).to.include('Midnight Sun');
+
+        // South Pole (lat = -80°S) during Northern Summer (delta = +25.19°):
+        // tan(-80°) * tan(25.19°) = -2.668 <= -1.0 -> Polar Night (0 hours daylight)
+        const southWinter = MarsTime.computeMartianDaylightLengthHours(-80.0, 25.19);
+        expect(southWinter.daylightHours).to.equal(0.0);
+        expect(southWinter.polarSunState).to.include('Polar Night');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -2090,6 +2090,94 @@ export class MarsTime {
       yearProgressPercent: parseFloat(progress.toFixed(2))
     };
   }
+
+  // --- Subsolar Ephemeris & Daylight Duration Solvers ---
+
+  /**
+   * Calculate Martian solar declination (subsolar latitude) and subsolar ground point coordinates.
+   * sin(delta_sun) = sin(obliquity) * sin(Ls), obliquity = 25.19°
+   * @param {number} LsDeg - Solar Longitude in degrees (0 - 360)
+   * @param {number} [lmstHours=12.0] - Local Mean Solar Time at prime meridian in hours (0 - 24.66)
+   * @returns {{solarDeclinationDeg: number, subsolarLatitudeDeg: number, subsolarLongitudeDeg: number, seasonDescription: string}}
+   */
+  static computeMartianSolarDeclinationAndSubsolarPoint(LsDeg, lmstHours = 12.0) {
+    let ls = LsDeg % 360.0;
+    if (ls < 0) ls += 360.0;
+
+    const obliquityDeg = 25.19;
+    const obliqRad = (obliquityDeg * Math.PI) / 180.0;
+    const lsRad = (ls * Math.PI) / 180.0;
+
+    const sinDelta = Math.sin(obliqRad) * Math.sin(lsRad);
+    const deltaRad = Math.asin(sinDelta);
+    const deltaDeg = (deltaRad * 180.0) / Math.PI;
+
+    // Subsolar longitude: 15° per hour away from solar noon (12.0 LMST)
+    let subsolarLon = (12.0 - lmstHours) * 15.0;
+    while (subsolarLon > 180.0) subsolarLon -= 360.0;
+    while (subsolarLon < -180.0) subsolarLon += 360.0;
+
+    let season = 'Equinox (Equatorial Subsolar)';
+    if (ls >= 45.0 && ls <= 135.0) {
+      season = 'Northern Summer / Southern Winter Solstice';
+    } else if (ls >= 225.0 && ls <= 315.0) {
+      season = 'Southern Summer / Northern Winter Solstice (Perihelion)';
+    }
+
+    return {
+      solarDeclinationDeg: parseFloat(deltaDeg.toFixed(3)),
+      subsolarLatitudeDeg: parseFloat(deltaDeg.toFixed(3)),
+      subsolarLongitudeDeg: parseFloat(subsolarLon.toFixed(3)),
+      seasonDescription: season
+    };
+  }
+
+  /**
+   * Calculate duration of daylight in Martian solar hours at a given planetary latitude.
+   * cos(omega_0) = -tan(phi) * tan(delta_sun)
+   * @param {number} latitudeDeg - Observer latitude in degrees (-90 to +90)
+   * @param {number} solarDeclinationDeg - Solar declination in degrees (-25.19 to +25.19)
+   * @returns {{daylightHours: number, nightHours: number, dayFraction: number, polarSunState: string}}
+   */
+  static computeMartianDaylightLengthHours(latitudeDeg, solarDeclinationDeg) {
+    const solHours = 24.6597;
+    const phiRad = (Math.min(89.99, Math.max(-89.99, latitudeDeg)) * Math.PI) / 180.0;
+    const deltaRad = (Math.min(25.19, Math.max(-25.19, solarDeclinationDeg)) * Math.PI) / 180.0;
+
+    const tanProduct = Math.tan(phiRad) * Math.tan(deltaRad);
+
+    if (tanProduct >= 1.0) {
+      // Midnight Sun / 24-hour Continuous Daylight
+      return {
+        daylightHours: solHours,
+        nightHours: 0.0,
+        dayFraction: 1.0,
+        polarSunState: 'Midnight Sun (Continuous Daylight)'
+      };
+    } else if (tanProduct <= -1.0) {
+      // Polar Night / 24-hour Continuous Darkness
+      return {
+        daylightHours: 0.0,
+        nightHours: solHours,
+        dayFraction: 0.0,
+        polarSunState: 'Polar Night (Continuous Darkness)'
+      };
+    }
+
+    const cosOmega0 = -tanProduct;
+    const omega0Rad = Math.acos(cosOmega0);
+
+    const dayFraction = omega0Rad / Math.PI;
+    const daylightH = dayFraction * solHours;
+    const nightH = solHours - daylightH;
+
+    return {
+      daylightHours: parseFloat(daylightH.toFixed(2)),
+      nightHours: parseFloat(nightH.toFixed(2)),
+      dayFraction: parseFloat(dayFraction.toFixed(4)),
+      polarSunState: 'Normal Diurnal Day/Night Cycle'
+    };
+  }
 }
 
 
