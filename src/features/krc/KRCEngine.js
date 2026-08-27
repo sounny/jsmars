@@ -1621,6 +1621,58 @@ export class KRCEngine {
       volumetricHeatCapacityJ_M3K: parseFloat(cVol.toFixed(1))
     };
   }
+
+  // --- CO2 Frost Phase Change & Microscopic Thermal Transport Solvers ---
+
+  /**
+   * Calculate CO2 seasonal frost sublimation or condensation rate from surface net energy balance.
+   * dm/dt = F_net / L_sub  (kg / (m^2 s))
+   * dz/dt = (dm/dt) / rho_frost * 88775.244 * 1000  (mm / sol)
+   * @param {number} netSurfaceFluxW_M2 - Net surface energy flux (positive = sublimation/melting, negative = condensation/freezing)
+   * @param {number} [latentHeatJ_Kg=5.9e5] - Latent heat of CO2 sublimation in J/kg
+   * @param {number} [frostDensityKg_M3=1500.0] - Density of CO2 frost deposit (slab ice ~1500 kg/m^3, fresh snow ~1000 kg/m^3)
+   * @returns {{sublimationRateKg_M2S: number, thicknessRateMmPerSol: number, isSublimating: boolean, isCondensing: boolean}}
+   */
+  static computeCO2SublimationFrostMassRate(netSurfaceFluxW_M2, latentHeatJ_Kg = 5.9e5, frostDensityKg_M3 = 1500.0) {
+    const lSub = Math.max(1e4, latentHeatJ_Kg);
+    const rho = Math.max(100.0, frostDensityKg_M3);
+    const marsSolSec = 88775.244;
+
+    const dmDt = netSurfaceFluxW_M2 / lSub; // kg / (m^2 s)
+    const dzDtMmSol = (dmDt / rho) * marsSolSec * 1000.0; // mm / sol
+
+    return {
+      sublimationRateKg_M2S: parseFloat(dmDt.toExponential(4)),
+      thicknessRateMmPerSol: parseFloat(dzDtMmSol.toFixed(3)),
+      isSublimating: netSurfaceFluxW_M2 > 0,
+      isCondensing: netSurfaceFluxW_M2 < 0
+    };
+  }
+
+  /**
+   * Derive microscopic thermal conductivity (k) and thermal diffusivity (kappa) from bulk Thermal Inertia (I).
+   * k = I^2 / ( rho * c_p )  (W / (m K))
+   * kappa = k / ( rho * c_p ) = ( I / (rho * c_p) )^2  (m^2 / s)
+   * @param {number} thermalInertia - Thermal inertia in SI units (J m^-2 K^-1 s^-1/2, typically 50 - 800 on Mars)
+   * @param {number} [densityKg_M3=1500.0] - Bulk density in kg/m^3
+   * @param {number} [heatCapacityJ_KgK=800.0] - Specific heat capacity in J/(kg K)
+   * @returns {{thermalConductivityW_MK: number, thermalDiffusivityM2_S: number, volumetricHeatCapacityJ_M3K: number}}
+   */
+  static computeThermalConductivityAndDiffusivity(thermalInertia, densityKg_M3 = 1500.0, heatCapacityJ_KgK = 800.0) {
+    const I = Math.max(1.0, thermalInertia);
+    const rho = Math.max(1.0, densityKg_M3);
+    const cp = Math.max(1.0, heatCapacityJ_KgK);
+
+    const cVol = rho * cp;
+    const k = (I * I) / cVol;
+    const kappa = k / cVol;
+
+    return {
+      thermalConductivityW_MK: parseFloat(k.toFixed(5)),
+      thermalDiffusivityM2_S: parseFloat(kappa.toExponential(4)),
+      volumetricHeatCapacityJ_M3K: parseFloat(cVol.toFixed(1))
+    };
+  }
 }
 
 

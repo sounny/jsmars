@@ -6648,6 +6648,39 @@ describe('Fresnel Dielectric Reflection & Two-Way Radar Attenuation (RadarSounde
     });
 });
 
+describe('CO2 Frost Sublimation & Regolith Thermal Transport (KRCEngine)', () => {
+    it('should calculate CO2 frost sublimation / condensation rates and seasonal thickness change', () => {
+        // Polar spring insolation excess: F_net = +59 W/m^2, L_sub = 5.9e5 J/kg, rho = 1500 kg/m^3
+        // dm/dt = 59 / 5.9e5 = 1.0e-4 kg / (m^2 s)
+        // dz/dt = (1.0e-4 / 1500) * 88775.244 * 1000 = 5.918 mm / sol
+        const sub = KRCEngine.computeCO2SublimationFrostMassRate(59.0, 5.9e5, 1500.0);
+        expect(sub.sublimationRateKg_M2S).to.equal(0.0001);
+        expect(sub.thicknessRateMmPerSol).to.be.closeTo(5.918, 0.01);
+        expect(sub.isSublimating).to.be.true;
+        expect(sub.isCondensing).to.be.false;
+
+        // Polar winter radiative cooling deficit: F_net = -29.5 W/m^2 (condensation / deposition)
+        const cond = KRCEngine.computeCO2SublimationFrostMassRate(-29.5, 5.9e5, 1500.0);
+        expect(cond.thicknessRateMmPerSol).to.be.closeTo(-2.959, 0.01);
+        expect(cond.isCondensing).to.be.true;
+    });
+
+    it('should derive microscopic thermal conductivity and diffusivity from Thermal Inertia', () => {
+        // Typical Martian dust mantle: I = 50 J m^-2 K^-1 s^-1/2, rho = 1000 kg/m^3, cp = 800 J/(kg K)
+        // C_vol = 1000 * 800 = 8.0e5 J/(m^3 K)
+        // k = 50^2 / 8.0e5 = 2500 / 800000 = 0.003125 W/(m K)
+        // kappa = 0.003125 / 800000 = 3.906e-9 m^2/s
+        const dust = KRCEngine.computeThermalConductivityAndDiffusivity(50.0, 1000.0, 800.0);
+        expect(dust.thermalConductivityW_MK).to.be.closeTo(0.00313, 0.00005);
+        expect(dust.volumetricHeatCapacityJ_M3K).to.equal(800000.0);
+
+        // Solid basalt bedrock: I = 2000, rho = 2800 kg/m^3, cp = 800 J/(kg K)
+        // C_vol = 2240000 J/(m^3 K) -> k = 4000000 / 2240000 = 1.7857 W/(m K)
+        const rock = KRCEngine.computeThermalConductivityAndDiffusivity(2000.0, 2800.0, 800.0);
+        expect(rock.thermalConductivityW_MK).to.be.closeTo(1.7857, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
