@@ -1932,6 +1932,64 @@ export class BandMathEngine {
       isHydratedBulkSurface: depth > 0.15
     };
   }
+
+  // --- OMEGA Ferric Oxide & Olivine & TES Surface Type Solvers ---
+
+  /**
+   * Calculate OMEGA / CRISM Ferric Iron (Fe3+) Nanophase Oxide 530 nm absorption band depth (BD530).
+   * BD530 = 1.0 - R_530 / ( 0.5 * (R_440 + R_700) )
+   * @param {number} r440 - Reflectance at 440 nm
+   * @param {number} r530 - Reflectance at 530 nm
+   * @param {number} r700 - Reflectance at 700 nm
+   * @returns {{bd530: number, hasFerricOxide: boolean}}
+   */
+  static computeOMEGAFerricOxideBD530(r440, r530, r700) {
+    const continuum = 0.5 * (Math.max(1e-4, r440) + Math.max(1e-4, r700));
+    const depth = 1.0 - (r530 / continuum);
+
+    return {
+      bd530: parseFloat(depth.toFixed(4)),
+      hasFerricOxide: depth > 0.03
+    };
+  }
+
+  /**
+   * Calculate OMEGA Olivine 1.05 µm broad crystal field absorption band depth (OLINDEX3).
+   * OLINDEX3 = 1.0 - R_1050 / ( 0.5 * (R_860 + R_1210) )
+   * @param {number} r860 - Reflectance at 860 nm
+   * @param {number} r1050 - Reflectance at 1050 nm
+   * @param {number} r1210 - Reflectance at 1210 nm
+   * @returns {{olindex3: number, hasOlivine: boolean}}
+   */
+  static computeOMEGAOlivineIndexOLINDEX3(r860, r1050, r1210) {
+    const continuum = 0.5 * (Math.max(1e-4, r860) + Math.max(1e-4, r1210));
+    const depth = 1.0 - (r1050 / continuum);
+
+    return {
+      olindex3: parseFloat(depth.toFixed(4)),
+      hasOlivine: depth > 0.05
+    };
+  }
+
+  /**
+   * Calculate TES Surface Type Index (STI) distinguishing Basaltic (ST1) vs Andesitic (ST2) terrain.
+   * STI = ( eps_820 - eps_1075 ) / ( eps_820 + eps_1075 )
+   * @param {number} eps820 - Thermal emissivity at 820 cm^-1
+   * @param {number} eps1075 - Thermal emissivity at 1075 cm^-1
+   * @returns {{surfaceTypeIndex: number, isBasalticType1: boolean, isAndesiticType2: boolean}}
+   */
+  static computeTESSurfaceTypeIndex(eps820, eps1075) {
+    const e1 = Math.max(1e-4, eps820);
+    const e2 = Math.max(1e-4, eps1075);
+
+    const sti = (e1 - e2) / (e1 + e2);
+
+    return {
+      surfaceTypeIndex: parseFloat(sti.toFixed(4)),
+      isBasalticType1: sti >= 0.0,
+      isAndesiticType2: sti < 0.0
+    };
+  }
 }
 
 

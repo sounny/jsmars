@@ -6565,6 +6565,38 @@ describe('Martian Sunrise, Sunset & Solar Noon Zenith Solvers (MarsTime)', () =>
     });
 });
 
+describe('OMEGA Ferric Iron, Olivine & TES Surface Type Indices (BandMathEngine)', () => {
+    it('should calculate OMEGA BD530 nanophase ferric oxide and OLINDEX3 olivine band depth', () => {
+        // Bright dusty Martian surface (e.g. Arabia Terra hematite/dust): R_440 = 0.15, R_530 = 0.22, R_700 = 0.35
+        // Continuum = 0.5 * (0.15 + 0.35) = 0.25 -> BD530 = 1 - (0.22 / 0.25) = 1 - 0.88 = 0.12 (> 0.03)
+        const bd530 = BandMathEngine.computeOMEGAFerricOxideBD530(0.15, 0.22, 0.35);
+        expect(bd530.bd530).to.equal(0.12);
+        expect(bd530.hasFerricOxide).to.be.true;
+
+        // Olivine-rich bedrock (e.g. Nili Fossae): R_860 = 0.28, R_1050 = 0.22 (strong broad Fe2+ drop), R_1210 = 0.28
+        // Continuum = 0.28 -> OLINDEX3 = 1 - (0.22 / 0.28) = 1 - 0.7857 = 0.2143 (> 0.05)
+        const ol = BandMathEngine.computeOMEGAOlivineIndexOLINDEX3(0.28, 0.22, 0.28);
+        expect(ol.olindex3).to.be.closeTo(0.2143, 0.001);
+        expect(ol.hasOlivine).to.be.true;
+    });
+
+    it('should compute TES Surface Type Index distinguishing Basaltic (ST1) vs Andesitic (ST2)', () => {
+        // Syrtis Major (Basaltic Type 1): eps_820 = 0.98, eps_1075 = 0.92
+        // STI = (0.98 - 0.92) / (0.98 + 0.92) = 0.06 / 1.90 = +0.0316 (>= 0 -> Basaltic ST1)
+        const basalt = BandMathEngine.computeTESSurfaceTypeIndex(0.98, 0.92);
+        expect(basalt.surfaceTypeIndex).to.be.closeTo(0.0316, 0.001);
+        expect(basalt.isBasalticType1).to.be.true;
+        expect(basalt.isAndesiticType2).to.be.false;
+
+        // Acidalia Planitia (Andesitic / high-silica Type 2): eps_820 = 0.92, eps_1075 = 0.96
+        // STI = (0.92 - 0.96) / (0.92 + 0.96) = -0.04 / 1.88 = -0.0213 (< 0 -> Andesitic ST2)
+        const andesite = BandMathEngine.computeTESSurfaceTypeIndex(0.92, 0.96);
+        expect(andesite.surfaceTypeIndex).to.be.closeTo(-0.0213, 0.001);
+        expect(andesite.isBasalticType1).to.be.false;
+        expect(andesite.isAndesiticType2).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
