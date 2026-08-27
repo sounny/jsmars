@@ -8386,6 +8386,56 @@ describe('CO2 Rayleigh Scattering, Lithospheric Flexure & Sulfate Mineralogy Ind
     });
 });
 
+describe('Ionospheric Radar Dispersion, Methane Photolysis & Olivine Fo# Solid Solution', () => {
+    it('should calculate ionospheric Total Electron Content (TEC) group delay and radar chirp dispersion', () => {
+        // Daytime Martian ionosphere (TEC = 3e15 e-/m^2 = 0.3 TECU, f = 20 MHz):
+        // Delta_t_g ~ 1.008 microsec, Delta_R ~ 302 m (one-way * c = 302 m)
+        const dayTec = RadarSounderEngine.computeIonosphericTotalElectronContentDispersion(3e15, 20.0, 10.0);
+        expect(dayTec.groupDelayMicrosec).to.be.closeTo(1.008, 0.05);
+        expect(dayTec.rangeShiftMeters).to.be.closeTo(302.2, 10.0);
+        expect(dayTec.tecTECU).to.equal(0.3);
+        expect(dayTec.isSevereDistortion).to.be.true;
+
+        // Nightside Martian ionosphere (TEC = 1e14 e-/m^2 = 0.01 TECU):
+        const nightTec = RadarSounderEngine.computeIonosphericTotalElectronContentDispersion(1e14, 20.0, 10.0);
+        expect(nightTec.groupDelayMicrosec).to.be.lessThan(0.05);
+        expect(nightTec.isSevereDistortion).to.be.false;
+    });
+
+    it('should calculate atmospheric trace methane column abundance and photolysis lifetime', () => {
+        // Gale Crater MSL SAM TLS background methane (0.4 ppb):
+        const bgMethane = MCDEngine.computeMethaneTraceGasColumnAbundanceAndLossRate(0.4, 610.0, false);
+        expect(bgMethane.methaneMixingRatioPpb).to.equal(0.4);
+        expect(bgMethane.isEnrichedPlume).to.be.false;
+        expect(bgMethane.photochemicalLifetimeYears).to.equal(320.0);
+        expect(bgMethane.columnMassMicrogramsM2).to.be.greaterThan(0);
+
+        // High concentration plume event (15.0 ppb) with active soil oxidation sink:
+        const plumeMethane = MCDEngine.computeMethaneTraceGasColumnAbundanceAndLossRate(15.0, 610.0, true);
+        expect(plumeMethane.isEnrichedPlume).to.be.true;
+        expect(plumeMethane.photochemicalLifetimeYears).to.equal(0.5);
+        expect(plumeMethane.lifetimeSols).to.be.closeTo(334.3, 5.0);
+    });
+
+    it('should calculate olivine Forsterite number Fo# from 1 um crystal field absorption minimum', () => {
+        // Magnesian Olivine (Fo90 Forsterite / Dunite): absorption minimum at 1040 nm
+        const forsterite = BandMathEngine.computeCRISMOlivineFoNumberAndComposition(1040.0, 0.12);
+        expect(forsterite.foNumberPct).to.be.closeTo(90.0, 1.0);
+        expect(forsterite.faNumberPct).to.be.closeTo(10.0, 1.0);
+        expect(forsterite.isMagnesianFoRich).to.be.true;
+        expect(forsterite.isIronFaRich).to.be.false;
+        expect(forsterite.olivineClass).to.include('Forsterite-Rich');
+
+        // Iron-rich Olivine (Fo20 Fayalite / Differentiated Basalt): absorption minimum at 1075 nm
+        const fayalite = BandMathEngine.computeCRISMOlivineFoNumberAndComposition(1075.0, 0.10);
+        expect(fayalite.foNumberPct).to.be.closeTo(20.0, 1.0);
+        expect(fayalite.faNumberPct).to.be.closeTo(80.0, 1.0);
+        expect(fayalite.isIronFaRich).to.be.true;
+        expect(fayalite.isMagnesianFoRich).to.be.false;
+        expect(fayalite.olivineClass).to.include('Fayalite-Rich');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

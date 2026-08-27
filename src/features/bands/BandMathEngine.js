@@ -2392,6 +2392,53 @@ export class BandMathEngine {
       isHydratedSulfate
     };
   }
+
+  /**
+   * Calculate olivine Forsterite number (Fo# = Mg/(Mg+Fe) mol%) and composition from CRISM 1 um Fe2+ crystal field absorption center.
+   * Fo# ~ ( 1085.0 - bandCenterNm ) / 0.50 (constrained between Fo0 fayalite and Fo100 forsterite).
+   * Reference: King & Ridley (1987), Sunshine & Pieters (1998), Koeppen & Hamilton (2008) for Nili Fossae & Argyre olivines.
+   * @param {number} olivineBandCenterNm - 1.05 um composite absorption center wavelength in nanometers (1030 nm to 1090 nm)
+   * @param {number} [bandDepth=0.08] - Absorption band depth (0.0 to 1.0)
+   * @returns {{foNumberPct: number, faNumberPct: number, olivineClass: string, isMagnesianFoRich: boolean, isIronFaRich: boolean}}
+   */
+  static computeCRISMOlivineFoNumberAndComposition(olivineBandCenterNm, bandDepth = 0.08) {
+    const center = Math.max(950.0, Math.min(1150.0, olivineBandCenterNm));
+    const depth = Math.max(0.0, bandDepth);
+
+    if (depth < 0.02) {
+      return {
+        foNumberPct: 0.0,
+        faNumberPct: 0.0,
+        olivineClass: 'None / Below Detection Threshold',
+        isMagnesianFoRich: false,
+        isIronFaRich: false
+      };
+    }
+
+    // Empirical linear calibration: Fo90 at 1040 nm, Fo30 at 1070 nm, Fo10 at 1080 nm
+    const fo = Math.min(100.0, Math.max(0.0, (1085.0 - center) / 0.50));
+    const fa = 100.0 - fo;
+
+    let olivineClass = 'Intermediate Olivine (Fo40-Fo70 / Martian Basaltic Mantle/Crust)';
+    let isMagnesian = false;
+    let isIron = false;
+
+    if (fo >= 70.0) {
+      olivineClass = 'Forsterite-Rich / Magnesian Olivine (Fo70-Fo100 / Ultramafic Dunite)';
+      isMagnesian = true;
+    } else if (fo <= 35.0) {
+      olivineClass = 'Fayalite-Rich / Iron Olivine (Fo0-Fo35 / Highly Differentiated)';
+      isIron = true;
+    }
+
+    return {
+      foNumberPct: parseFloat(fo.toFixed(1)),
+      faNumberPct: parseFloat(fa.toFixed(1)),
+      olivineClass,
+      isMagnesianFoRich: isMagnesian,
+      isIronFaRich: isIron
+    };
+  }
 }
 
 

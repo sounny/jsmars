@@ -2119,6 +2119,43 @@ export class MCDEngine {
       isRayleighNegligibleComparedToDust: tauRayleigh < 0.05
     };
   }
+
+  /**
+   * Calculate atmospheric trace methane (CH4) column abundance, molecular column density, and photochemical destruction rate.
+   * N_CH4 = ( q_CH4_ppb * 1e-9 ) * ( P_0 / (mu_atm * m_u * g) )
+   * Reference: Webster et al. (2015, 2018) for MSL SAM TLS, Krasnopolsky (2012), Formisano et al. (2004) for PFS.
+   * @param {number} methaneMixingRatioPpb - Methane volume mixing ratio in parts-per-billion (e.g. 0.4 ppb background, 10-20 ppb plume)
+   * @param {number} [surfacePressurePa=610.0] - Surface pressure in Pascals
+   * @param {boolean} [hasFastNonPhotochemicalSink=false] - Whether rapid regolith oxidant/electro-oxidation sink is active (100-300 sols vs 300 years)
+   * @returns {{methaneMixingRatioPpb: number, columnDensityMoleculesCm2: number, columnMassMicrogramsM2: number, photochemicalLifetimeYears: number, lifetimeSols: number, isEnrichedPlume: boolean}}
+   */
+  static computeMethaneTraceGasColumnAbundanceAndLossRate(methaneMixingRatioPpb, surfacePressurePa = 610.0, hasFastNonPhotochemicalSink = false) {
+    const ppb = Math.max(0.0, methaneMixingRatioPpb);
+    const P = Math.max(1e-2, surfacePressurePa);
+
+    const mU = 1.660539e-27; // kg (atomic mass unit)
+    const muAtm = 43.34;      // mean molecular weight Mars air
+    const gMars = 3.72076;
+    const mCH4Kg = 16.04 * mU; // kg per CH4 molecule
+
+    const nAirTotalM2 = P / (muAtm * mU * gMars);
+    const nCH4M2 = (ppb * 1e-9) * nAirTotalM2;
+    const nCH4Cm2 = nCH4M2 * 1e-4; // molecules / cm^2
+    const massCH4UgM2 = (nCH4M2 * mCH4Kg) * 1e9; // micrograms / m^2
+
+    // Lifetime
+    const lifetimeYears = hasFastNonPhotochemicalSink ? 0.5 : 320.0;
+    const lifetimeSols = lifetimeYears * 668.599;
+
+    return {
+      methaneMixingRatioPpb: parseFloat(ppb.toFixed(2)),
+      columnDensityMoleculesCm2: parseFloat(nCH4Cm2.toExponential(4)),
+      columnMassMicrogramsM2: parseFloat(massCH4UgM2.toFixed(3)),
+      photochemicalLifetimeYears: parseFloat(lifetimeYears.toFixed(1)),
+      lifetimeSols: parseFloat(lifetimeSols.toFixed(1)),
+      isEnrichedPlume: ppb >= 5.0
+    };
+  }
 }
 
 

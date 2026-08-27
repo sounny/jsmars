@@ -1906,6 +1906,39 @@ export class RadarSounderEngine {
       isPenetrable: twoWayLoss < 60.0 // 60 dB dynamic range detection threshold
     };
   }
+
+  /**
+   * Calculate Martian ionospheric Total Electron Content (TEC) group delay and radar chirp dispersion.
+   * Delta_t_g = ( e^2 / (8*pi^2 * eps_0 * m_e * c * f^2) ) * TEC
+   * Delta_t_g ~= ( 1.3445e-7 / f^2 ) * TEC (seconds)
+   * Delta_R = c * Delta_t_g / 2 (apparent one-way / two-way range delay in meters)
+   * Reference: Campbell et al. (2011), Safaeinili et al. (2007) for SHARAD / MARSIS.
+   * @param {number} tecTotalElectronsM2 - Ionospheric column electron density (e.g. 1e14 nightside, 3e15 dayside, 1e16 peak storm in e-/m^2)
+   * @param {number} [carrierFreqMHz=20.0] - Sounder center frequency f_0 in MHz (20 MHz SHARAD, 4 MHz MARSIS)
+   * @param {number} [chirpBandwidthMHz=10.0] - Chirp bandwidth B in MHz (10 MHz for SHARAD 15-25 MHz)
+   * @returns {{groupDelayMicrosec: number, rangeShiftMeters: number, tecTECU: number, isSevereDistortion: boolean}}
+   */
+  static computeIonosphericTotalElectronContentDispersion(tecTotalElectronsM2, carrierFreqMHz = 20.0, chirpBandwidthMHz = 10.0) {
+    const tec = Math.max(0.0, tecTotalElectronsM2);
+    const f0 = Math.max(0.1, carrierFreqMHz) * 1e6; // Hz
+    const b = Math.max(0.1, chirpBandwidthMHz) * 1e6; // Hz
+
+    // Dispersion constant K_p = 1.3445e-7 m^3 / s
+    const Kp = 1.3445e-7;
+    const groupDelaySec = (Kp / (f0 * f0)) * tec;
+    const groupDelayMicrosec = groupDelaySec * 1e6;
+
+    // Range shift Delta_R (m)
+    const rangeShiftMeters = (RadarSounderEngine.C * groupDelaySec);
+    const tecTECU = tec / 1e16;
+
+    return {
+      groupDelayMicrosec: parseFloat(groupDelayMicrosec.toFixed(3)),
+      rangeShiftMeters: parseFloat(rangeShiftMeters.toFixed(2)),
+      tecTECU: parseFloat(tecTECU.toFixed(4)),
+      isSevereDistortion: groupDelayMicrosec > 0.50 // requires automated matched-filter phase compensation
+    };
+  }
 }
 
 
