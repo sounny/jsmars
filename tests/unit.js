@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -7689,6 +7689,33 @@ describe('Crater Morphometry & Neukum Production Function (CSFDEngine)', () => {
         // phi(3.8) ~ 5.44e-14 * exp(14.022) = 5.44e-14 * 1.229e6 = 6.68e-8 -> massive exponential boost
         const n38Ga = CSFDEngine.computeNeukumProductionFunctionCumulativeN(1.0, 3.8);
         expect(n38Ga.cumulativeNCratersPer10_6Km2).to.be.closeTo(3105.92, 5.0);
+    });
+});
+
+describe('Polar Stereographic Cartographic Projections (Geo)', () => {
+    it('should calculate forward North Polar Stereographic projection coordinates and conformal scale factor', () => {
+        // North Pole (lat = 90°, lon = 0°): rho = 0, x = 0, y = 0, k = 1.0
+        const northPole = computePolarStereographicProjection(90.0, 0.0, true, 0.0, 1.0, 3389.5);
+        expect(northPole.xKm).to.equal(0.0);
+        expect(northPole.yKm).to.equal(0.0);
+        expect(northPole.scaleFactorK).to.equal(1.0);
+
+        // Planum Boreum at lat = 80°N, lon = 90°E (lambda0 = 0°):
+        // rho = 2 * 3389.5 * tan(45° - 40°) = 6779.0 * tan(5°) = 6779.0 * 0.0874886 = 593.085 km
+        // x = 593.085 * sin(90°) = 593.085 km, y = -593.085 * cos(90°) = 0 km
+        const boreum = computePolarStereographicProjection(80.0, 90.0, true, 0.0, 1.0, 3389.5);
+        expect(boreum.xKm).to.be.closeTo(593.085, 0.5);
+        expect(boreum.yKm).to.be.closeTo(0.0, 0.5);
+        expect(boreum.scaleFactorK).to.be.closeTo(1.0076, 0.005);
+    });
+
+    it('should accurately invert Polar Stereographic (x, y) back to (lat, lon)', () => {
+        // Planum Australe South Pole at lat = -80°S, lon = 45°E:
+        const fwdSouth = computePolarStereographicProjection(-80.0, 45.0, false, 0.0, 1.0, 3389.5);
+        const invSouth = computePolarStereographicInverse(fwdSouth.xKm, fwdSouth.yKm, false, 0.0, 1.0, 3389.5);
+
+        expect(invSouth.latDeg).to.be.closeTo(-80.0, 0.001);
+        expect(invSouth.lonDeg).to.be.closeTo(45.0, 0.001);
     });
 });
 

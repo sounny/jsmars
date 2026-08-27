@@ -1595,6 +1595,107 @@ export function computeLambertConformalConicInverse(xKm, yKm, stdParallel1Deg, s
   };
 }
 
+// --- Polar Stereographic Cartographic Projections ---
+
+/**
+ * Calculate forward Polar Stereographic cartographic projection coordinates (x, y) in km.
+ * Used for JMARS North/South Polar stereographic views (Snyder 1987).
+ * North: rho = 2*R*k0 * tan(pi/4 - phi/2), x = rho*sin(lam - lam0), y = -rho*cos(lam - lam0)
+ * South: rho = 2*R*k0 * tan(pi/4 + phi/2), x = rho*sin(lam - lam0), y = rho*cos(lam - lam0)
+ * @param {number} latDeg - Planetocentric latitude in degrees (-90 to +90)
+ * @param {number} lonDeg - Longitude in degrees (-180 to +180)
+ * @param {boolean} [isNorthPole=true] - True for North Polar Stereographic, false for South
+ * @param {number} [centerLonDeg=0.0] - Central meridian lambda0 in degrees
+ * @param {number} [k0=1.0] - Scale factor at pole
+ * @param {number} [radiusKm=3389.5] - Planetary spherical radius in km
+ * @returns {{xKm: number, yKm: number, radialDistanceKm: number, scaleFactorK: number}}
+ */
+export function computePolarStereographicProjection(latDeg, lonDeg, isNorthPole = true, centerLonDeg = 0.0, k0 = 1.0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi = (latDeg * Math.PI) / 180.0;
+  const dLon = ((lonDeg - centerLonDeg) * Math.PI) / 180.0;
+
+  let rho = 0.0;
+  let x = 0.0;
+  let y = 0.0;
+  let k = 1.0;
+
+  if (isNorthPole) {
+    if (latDeg >= 90.0) {
+      return { xKm: 0.0, yKm: 0.0, radialDistanceKm: 0.0, scaleFactorK: parseFloat(k0.toFixed(4)) };
+    }
+    const clampedLat = Math.min(89.99999, Math.max(-89.99999, latDeg));
+    const phiClamped = (clampedLat * Math.PI) / 180.0;
+    rho = 2.0 * R * k0 * Math.tan(Math.PI / 4.0 - phiClamped / 2.0);
+    x = rho * Math.sin(dLon);
+    y = -rho * Math.cos(dLon);
+    k = (2.0 * k0) / (1.0 + Math.sin(phiClamped));
+  } else {
+    if (latDeg <= -90.0) {
+      return { xKm: 0.0, yKm: 0.0, radialDistanceKm: 0.0, scaleFactorK: parseFloat(k0.toFixed(4)) };
+    }
+    const clampedLat = Math.min(89.99999, Math.max(-89.99999, latDeg));
+    const phiClamped = (clampedLat * Math.PI) / 180.0;
+    rho = 2.0 * R * k0 * Math.tan(Math.PI / 4.0 + phiClamped / 2.0);
+    x = rho * Math.sin(dLon);
+    y = rho * Math.cos(dLon);
+    k = (2.0 * k0) / (1.0 - Math.sin(phiClamped));
+  }
+
+  return {
+    xKm: parseFloat(x.toFixed(3)),
+    yKm: parseFloat(y.toFixed(3)),
+    radialDistanceKm: parseFloat(rho.toFixed(3)),
+    scaleFactorK: parseFloat(k.toFixed(4))
+  };
+}
+
+/**
+ * Calculate inverse Polar Stereographic cartographic projection coordinates (lat, lon).
+ * @param {number} xKm - Projected X coordinate in km
+ * @param {number} yKm - Projected Y coordinate in km
+ * @param {boolean} [isNorthPole=true] - True for North Polar, false for South Polar
+ * @param {number} [centerLonDeg=0.0] - Central meridian lambda0 in degrees
+ * @param {number} [k0=1.0] - Scale factor at pole
+ * @param {number} [radiusKm=3389.5] - Planetary spherical radius in km
+ * @returns {{latDeg: number, lonDeg: number}}
+ */
+export function computePolarStereographicInverse(xKm, yKm, isNorthPole = true, centerLonDeg = 0.0, k0 = 1.0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const rho = Math.sqrt(xKm * xKm + yKm * yKm);
+
+  if (rho === 0.0) {
+    return {
+      latDeg: isNorthPole ? 90.0 : -90.0,
+      lonDeg: centerLonDeg
+    };
+  }
+
+  const c = 2.0 * Math.atan(rho / (2.0 * R * k0));
+
+  let latRad = 0.0;
+  let lonRad = 0.0;
+
+  if (isNorthPole) {
+    latRad = Math.PI / 2.0 - c;
+    lonRad = (centerLonDeg * Math.PI) / 180.0 + Math.atan2(xKm, -yKm);
+  } else {
+    latRad = -Math.PI / 2.0 + c;
+    lonRad = (centerLonDeg * Math.PI) / 180.0 + Math.atan2(xKm, yKm);
+  }
+
+  let latDeg = (latRad * 180.0) / Math.PI;
+  let lonDeg = (lonRad * 180.0) / Math.PI;
+
+  while (lonDeg > 180) lonDeg -= 360;
+  while (lonDeg < -180) lonDeg += 360;
+
+  return {
+    latDeg: parseFloat(latDeg.toFixed(4)),
+    lonDeg: parseFloat(lonDeg.toFixed(4))
+  };
+}
+
 
 
 
