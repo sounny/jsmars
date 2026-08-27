@@ -1535,6 +1535,70 @@ export class MCDEngine {
       layers
     };
   }
+
+  // --- Atmospheric Speed of Sound, Sutherland Viscosity & Aerodynamic Mach Solvers ---
+
+  /**
+   * Calculate local speed of sound c_s = sqrt( gamma * R_specific * T ) in Martian CO2 atmosphere.
+   * @param {number} temperatureK - Atmospheric kinetic temperature in Kelvin
+   * @param {number} [gammaRatio=1.29] - Adiabatic index cp/cv (1.29 for CO2)
+   * @returns {{speedOfSoundMS: number, speedOfSoundKmH: number, temperatureK: number}}
+   */
+  static computeMartianSpeedOfSound(temperatureK, gammaRatio = 1.29) {
+    const T = Math.max(1.0, temperatureK);
+    const gamma = Math.max(1.0, Math.min(1.67, gammaRatio));
+    const R_spec = 188.92; // Specific gas constant for CO2 [J/(kg K)]
+
+    const c = Math.sqrt(gamma * R_spec * T);
+    const cKmH = c * 3.6;
+
+    return {
+      speedOfSoundMS: parseFloat(c.toFixed(2)),
+      speedOfSoundKmH: parseFloat(cKmH.toFixed(1)),
+      temperatureK: parseFloat(T.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate dynamic viscosity mu(T) of Martian CO2 atmosphere using Sutherland's Law.
+   * mu = mu_0 * (T / T_0)^(3/2) * (T_0 + S) / (T + S)
+   * @param {number} temperatureK - Temperature in Kelvin
+   * @returns {{dynamicViscosityPaS: number, temperatureK: number}}
+   */
+  static computeCO2DynamicViscosity(temperatureK) {
+    const T = Math.max(1.0, temperatureK);
+    const mu0 = 1.370e-5; // Reference dynamic viscosity for CO2 at T0 = 273.15 K [Pa s]
+    const T0 = 273.15;
+    const S = 240.0;     // Sutherland temperature for CO2 [K]
+
+    const ratio = T / T0;
+    const mu = mu0 * Math.pow(ratio, 1.5) * ((T0 + S) / (T + S));
+
+    return {
+      dynamicViscosityPaS: parseFloat(mu.toExponential(4)),
+      temperatureK: parseFloat(T.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate aerodynamic flight Mach number M = v / c_s for Mars entry/descent/landing (EDL).
+   * @param {number} velocityMS - Vehicle airspeed in m/s
+   * @param {number} temperatureK - Ambient atmospheric temperature in Kelvin
+   * @returns {{machNumber: number, isSupersonic: boolean, isHypersonic: boolean, isSubsonic: boolean}}
+   */
+  static computeAerodynamicMachNumber(velocityMS, temperatureK) {
+    const v = Math.max(0, velocityMS);
+    const cs = MCDEngine.computeMartianSpeedOfSound(temperatureK).speedOfSoundMS;
+
+    const mach = v / Math.max(1e-4, cs);
+
+    return {
+      machNumber: parseFloat(mach.toFixed(3)),
+      isSubsonic: mach < 1.0,
+      isSupersonic: mach >= 1.0 && mach < 5.0,
+      isHypersonic: mach >= 5.0
+    };
+  }
 }
 
 

@@ -6171,6 +6171,35 @@ describe('Surface Thermal Emission, Downwelling Flux & Net Energy Balance (KRCEn
     });
 });
 
+describe('Martian Speed of Sound, Sutherland Viscosity & Aerodynamic Mach (MCDEngine)', () => {
+    it('should calculate local speed of sound in CO2 and Sutherland dynamic viscosity', () => {
+        // At surface T = 220 K, gamma = 1.29, R_spec = 188.92 J/(kg K)
+        // c_s = sqrt(1.29 * 188.92 * 220) = sqrt(53610.9) = 231.54 m/s (833.5 km/h)
+        const sound = MCDEngine.computeMartianSpeedOfSound(220.0, 1.29);
+        expect(sound.speedOfSoundMS).to.be.closeTo(231.54, 0.1);
+        expect(sound.speedOfSoundKmH).to.be.closeTo(833.5, 1.0);
+
+        // Viscosity at T = 220 K (ratio = 220/273.15 = 0.80542)
+        // mu = 1.37e-5 * 0.80542^1.5 * (513.15 / 460.0) ~ 1.109e-5 Pa s
+        const visc = MCDEngine.computeCO2DynamicViscosity(220.0);
+        expect(visc.dynamicViscosityPaS).to.be.closeTo(1.11e-5, 0.05e-5);
+    });
+
+    it('should calculate entry vehicle aerodynamic Mach numbers and regime', () => {
+        // Hypersonic atmospheric entry (Perseverance entry interface: v = 5400 m/s at T = 180 K)
+        // c_s = sqrt(1.29 * 188.92 * 180) = 209.43 m/s -> M = 5400 / 209.43 = 25.78
+        const hyper = MCDEngine.computeAerodynamicMachNumber(5400.0, 180.0);
+        expect(hyper.machNumber).to.be.closeTo(25.78, 0.1);
+        expect(hyper.isHypersonic).to.be.true;
+        expect(hyper.isSupersonic).to.be.false;
+
+        // Subsonic parachute descent (v = 80 m/s at T = 215 K -> c_s = 228.90 m/s -> M = 0.349)
+        const sub = MCDEngine.computeAerodynamicMachNumber(80.0, 215.0);
+        expect(sub.machNumber).to.be.closeTo(0.349, 0.01);
+        expect(sub.isSubsonic).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
