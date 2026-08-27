@@ -8030,6 +8030,33 @@ describe('CRISM Hydrated Phyllosilicates & Clay Minerals (BandMathEngine)', () =
     });
 });
 
+describe('Hapke Regolith Photometry & Opposition Surge (ThreeDEngine)', () => {
+    it('should calculate Henyey-Greenstein single particle scattering phase function p(g)', () => {
+        // Exact backscattering opposition (g = 0°), xi = -0.25 (Martian dust backscatter):
+        // p(0) = (1 - xi^2) / (1 + 2*xi + xi^2)^1.5 = (1 - 0.0625) / (1 - 0.5 + 0.0625)^1.5 = 0.9375 / (0.5625)^1.5 = 0.9375 / 0.421875 = 2.2222
+        const oppPhase = ThreeDEngine.computeHapkeSingleParticlePhaseFunction(0.0, -0.25);
+        expect(oppPhase.phaseFunctionValue).to.be.closeTo(2.2222, 0.001);
+        expect(oppPhase.isBackscattering).to.be.true;
+
+        // Right angle phase (g = 90°): cos(90) = 0 -> p(90) = 0.9375 / (1.0625)^1.5 = 0.9375 / 1.0952 = 0.8560
+        const rightPhase = ThreeDEngine.computeHapkeSingleParticlePhaseFunction(90.0, -0.25);
+        expect(rightPhase.phaseFunctionValue).to.be.closeTo(0.8560, 0.001);
+        expect(oppPhase.phaseFunctionValue).to.be.greaterThan(rightPhase.phaseFunctionValue);
+    });
+
+    it('should calculate Hapke shadow-hiding opposition surge multiplier B_SH(g)', () => {
+        // At exact opposition (g = 0°): tan(0) = 0 -> B_SH = 1.0 + B_0 = 2.0 (100% surge doubling)
+        const exactOpp = ThreeDEngine.computeHapkeOppositionSurgeMultiplier(0.0, 1.0, 0.06);
+        expect(exactOpp.oppositionSurgeMultiplier).to.equal(2.0);
+        expect(exactOpp.isOppositionSpike).to.be.true;
+
+        // At large phase angle (g = 30°): tan(15°) = 0.26795 -> B_SH = 1 + 1 / (1 + 0.26795 / 0.06) = 1 + 1 / 5.4658 = 1.1830
+        const widePhase = ThreeDEngine.computeHapkeOppositionSurgeMultiplier(30.0, 1.0, 0.06);
+        expect(widePhase.oppositionSurgeMultiplier).to.be.closeTo(1.1830, 0.01);
+        expect(widePhase.isOppositionSpike).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

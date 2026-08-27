@@ -1620,6 +1620,53 @@ export class ThreeDEngine {
       minnaertExponent: parseFloat(k.toFixed(3))
     };
   }
+
+  // --- Hapke Regolith Photometry & Opposition Surge Solvers ---
+
+  /**
+   * Calculate Henyey-Greenstein single particle scattering phase function p(g) (Hapke 1981, 1993).
+   * p(g) = (1 - xi^2) / (1 + 2*xi*cos(g) + xi^2)^(1.5)
+   * @param {number} phaseAngleDeg - Phase angle g (sun-target-observer) in degrees (0 to 180)
+   * @param {number} [asymmetryParam=-0.25] - Asymmetry factor xi (-1 for backscattering, +1 for forward scattering)
+   * @returns {{phaseFunctionValue: number, asymmetryParam: number, isBackscattering: boolean}}
+   */
+  static computeHapkeSingleParticlePhaseFunction(phaseAngleDeg, asymmetryParam = -0.25) {
+    const gRad = (Math.min(180.0, Math.max(0.0, phaseAngleDeg)) * Math.PI) / 180.0;
+    const xi = Math.min(0.99, Math.max(-0.99, asymmetryParam));
+
+    const num = 1.0 - xi * xi;
+    const den = Math.pow(1.0 + 2.0 * xi * Math.cos(gRad) + xi * xi, 1.5);
+    const pG = den > 0 ? num / den : 1.0;
+
+    return {
+      phaseFunctionValue: parseFloat(pG.toFixed(4)),
+      asymmetryParam: parseFloat(xi.toFixed(3)),
+      isBackscattering: xi < 0
+    };
+  }
+
+  /**
+   * Calculate Hapke Shadow-Hiding Opposition Effect (SHOE) surge factor B_SH(g).
+   * B_SH(g) = 1.0 + B_0 / ( 1.0 + tan(g / 2) / h_s )
+   * @param {number} phaseAngleDeg - Phase angle g in degrees (0 to 180)
+   * @param {number} [oppositionAmplitudeB0=1.0] - Opposition amplitude B_0 (typically 1.0)
+   * @param {number} [oppositionWidthHs=0.06] - Angular half-width h_s (typically 0.04 to 0.08)
+   * @returns {{oppositionSurgeMultiplier: number, phaseAngleDeg: number, isOppositionSpike: boolean}}
+   */
+  static computeHapkeOppositionSurgeMultiplier(phaseAngleDeg, oppositionAmplitudeB0 = 1.0, oppositionWidthHs = 0.06) {
+    const gRad = (Math.min(180.0, Math.max(0.0, phaseAngleDeg)) * Math.PI) / 180.0;
+    const b0 = Math.max(0.0, oppositionAmplitudeB0);
+    const hs = Math.max(1e-4, oppositionWidthHs);
+
+    const tanHalfG = Math.tan(gRad / 2.0);
+    const bSH = 1.0 + (b0 / (1.0 + (tanHalfG / hs)));
+
+    return {
+      oppositionSurgeMultiplier: parseFloat(bSH.toFixed(4)),
+      phaseAngleDeg: parseFloat(phaseAngleDeg.toFixed(2)),
+      isOppositionSpike: phaseAngleDeg <= (2.0 * (Math.atan(hs) * 180.0 / Math.PI))
+    };
+  }
 }
 
 
