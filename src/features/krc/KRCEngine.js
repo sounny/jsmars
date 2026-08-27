@@ -1744,6 +1744,65 @@ export class KRCEngine {
       temperatureK: parseFloat(T.toFixed(2))
     };
   }
+
+  // --- Subsurface Thermal Diffusion & Skin Depth Solvers ---
+
+  /**
+   * Calculate diurnal and annual thermal skin depth (penetration depth) and bulk thermal conductivity on Mars.
+   * d_s = ( I / (rho * c_p) ) * sqrt( P_sol / pi )
+   * d_annual = d_s * sqrt( N_sols_year )  [N_sols_year = 668.6 on Mars]
+   * k = I^2 / (rho * c_p)  (W / (m K))
+   * @param {number} thermalInertiaTiu - Thermal inertia in tiu (J m^-2 K^-1 s^-1/2) (typically 50-800 on Mars)
+   * @param {number} [bulkDensityKg_M3=1500.0] - Regolith bulk density in kg/m^3
+   * @param {number} [heatCapacityJ_KgK=800.0] - Specific heat capacity in J / (kg K)
+   * @returns {{diurnalSkinDepthMeters: number, diurnalSkinDepthCm: number, annualSkinDepthMeters: number, thermalConductivityW_MK: number}}
+   */
+  static computeDiurnalAndAnnualSkinDepth(thermalInertiaTiu, bulkDensityKg_M3 = 1500.0, heatCapacityJ_KgK = 800.0) {
+    const I = Math.max(1.0, thermalInertiaTiu);
+    const rho = Math.max(100.0, bulkDensityKg_M3);
+    const cp = Math.max(100.0, heatCapacityJ_KgK);
+
+    const Psol = 88775.244; // seconds in 1 Martian sol
+    const rhoCp = rho * cp;
+
+    const ds = (I / rhoCp) * Math.sqrt(Psol / Math.PI);
+    const dsCm = ds * 100.0;
+    const dAnnual = ds * Math.sqrt(668.5991);
+    const k = (I * I) / rhoCp;
+
+    return {
+      diurnalSkinDepthMeters: parseFloat(ds.toFixed(4)),
+      diurnalSkinDepthCm: parseFloat(dsCm.toFixed(2)),
+      annualSkinDepthMeters: parseFloat(dAnnual.toFixed(3)),
+      thermalConductivityW_MK: parseFloat(k.toFixed(5))
+    };
+  }
+
+  /**
+   * Calculate damped diurnal subsurface temperature amplitude and phase lag at physical depth z.
+   * Delta_T(z) = Delta_T_0 * exp( -z / d_s )
+   * Lag = ( z / d_s ) * ( P_sol / (2*pi) ) (hours)
+   * @param {number} surfaceAmplitudeK - Peak-to-peak surface diurnal temperature swing (Delta T_0) in Kelvin
+   * @param {number} depthMeters - Subsurface physical depth z in meters
+   * @param {number} skinDepthMeters - Diurnal thermal skin depth d_s in meters
+   * @returns {{dampedAmplitudeK: number, phaseLagHours: number, phaseLagRadians: number}}
+   */
+  static computeSubsurfaceTemperatureDampingAndLag(surfaceAmplitudeK, depthMeters, skinDepthMeters) {
+    const deltaT0 = Math.max(0.0, surfaceAmplitudeK);
+    const z = Math.max(0.0, depthMeters);
+    const ds = Math.max(1e-4, skinDepthMeters);
+
+    const zRatio = z / ds;
+    const dampedT = deltaT0 * Math.exp(-zRatio);
+    const lagRad = zRatio;
+    const lagHours = zRatio * (24.65979 / (2.0 * Math.PI)); // 24.65979 hours per sol
+
+    return {
+      dampedAmplitudeK: parseFloat(dampedT.toFixed(2)),
+      phaseLagHours: parseFloat(lagHours.toFixed(2)),
+      phaseLagRadians: parseFloat(lagRad.toFixed(3))
+    };
+  }
 }
 
 

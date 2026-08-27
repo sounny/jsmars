@@ -7222,6 +7222,46 @@ describe('Solar Zenith Angle & Diurnal Solar Flux (MarsTime)', () => {
     });
 });
 
+describe('Subsurface Thermal Skin Depth & Damping (KRCEngine)', () => {
+    it('should calculate diurnal and annual thermal skin depth and conductivity on Mars', () => {
+        // Typical Martian regolith (I = 250 tiu, rho = 1500 kg/m^3, cp = 800 J/(kg K)):
+        // rho * cp = 1.2e6 J / (m^3 K)
+        // sqrt(88775.244 / pi) = sqrt(28258.0) = 168.101
+        // d_s = (250 / 1.2e6) * 168.101 = 0.00020833 * 168.101 = 0.03502 meters = 3.50 cm
+        // d_annual = 0.03502 * sqrt(668.6) = 0.03502 * 25.857 = 0.9055 meters
+        // k = (250)^2 / 1.2e6 = 62500 / 1.2e6 = 0.05208 W / (m K)
+        const regolith = KRCEngine.computeDiurnalAndAnnualSkinDepth(250.0, 1500.0, 800.0);
+        expect(regolith.diurnalSkinDepthMeters).to.be.closeTo(0.035, 0.002);
+        expect(regolith.diurnalSkinDepthCm).to.be.closeTo(3.50, 0.2);
+        expect(regolith.annualSkinDepthMeters).to.be.closeTo(0.906, 0.02);
+        expect(regolith.thermalConductivityW_MK).to.be.closeTo(0.0521, 0.001);
+
+        // Solid basaltic bedrock (I = 2000 tiu, rho = 2800 kg/m^3, cp = 850 J/(kg K)):
+        // d_s ~ 14 cm, d_annual ~ 3.6 meters
+        const bedrock = KRCEngine.computeDiurnalAndAnnualSkinDepth(2000.0, 2800.0, 850.0);
+        expect(bedrock.diurnalSkinDepthCm).to.be.closeTo(14.13, 0.5);
+        expect(bedrock.annualSkinDepthMeters).to.be.closeTo(3.65, 0.2);
+    });
+
+    it('should compute damped temperature amplitude and diurnal phase lag with depth', () => {
+        // Surface swing Delta_T0 = 80 K on regolith with d_s = 0.035 m (3.5 cm)
+        // At depth z = 0.035 m (1 skin depth):
+        // Delta_T = 80 * exp(-1) = 80 * 0.36788 = 29.43 K (damped by ~63%)
+        // Lag = 1.0 rad = 24.66 / (2*pi) = 3.92 hours
+        const at1Skin = KRCEngine.computeSubsurfaceTemperatureDampingAndLag(80.0, 0.035, 0.035);
+        expect(at1Skin.dampedAmplitudeK).to.be.closeTo(29.43, 0.5);
+        expect(at1Skin.phaseLagHours).to.be.closeTo(3.92, 0.1);
+        expect(at1Skin.phaseLagRadians).to.equal(1.0);
+
+        // At depth z = 0.105 m (3 skin depths):
+        // Delta_T = 80 * exp(-3) = 80 * 0.04979 = 3.98 K (< 5% residual swing)
+        // Lag = 3 * 3.92 = 11.77 hours (nearly half a sol out of phase!)
+        const at3Skin = KRCEngine.computeSubsurfaceTemperatureDampingAndLag(80.0, 0.105, 0.035);
+        expect(at3Skin.dampedAmplitudeK).to.be.closeTo(3.98, 0.2);
+        expect(at3Skin.phaseLagHours).to.be.closeTo(11.77, 0.2);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
