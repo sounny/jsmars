@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -5984,6 +5984,41 @@ describe('Martian Solar Position, Shadow Ratio & Right Ascension (MarsTime)', ()
         const ra90 = MarsTime.computeMarsAreocentricRightAscension(90.0, 25.19);
         expect(ra90.rightAscensionDeg).to.equal(90.0);
         expect(ra90.rightAscensionHours).to.equal(6.0);
+    });
+});
+
+describe('Map Projections & Grid Convergence (Lambert Equal-Area & Polar Stereographic)', () => {
+    it('should calculate Lambert Azimuthal Equal-Area (LAEA) forward coordinates', () => {
+        // Projection center at (lat0 = 0, lon0 = 0) on Mars (R = 3389.5 km)
+        // Center point projects to origin (0, 0)
+        const center = computeLambertAzimuthalEqualArea(0.0, 0.0, 0.0, 0.0, 3389.5);
+        expect(center.xKm).to.equal(0);
+        expect(center.yKm).to.equal(0);
+        expect(center.scaleFactor).to.equal(1.0);
+        expect(center.isAntipodal).to.be.false;
+
+        // North pole (lat = 90) with center at equator -> x = 0, y = R * sqrt(2) * 1 = 3389.5 * 1.4142 = 4793.47 km
+        const pole = computeLambertAzimuthalEqualArea(90.0, 0.0, 0.0, 0.0, 3389.5);
+        expect(pole.xKm).to.be.closeTo(0.0, 0.01);
+        expect(pole.yKm).to.be.closeTo(4793.47, 1.0);
+    });
+
+    it('should compute Polar Stereographic coordinates and meridian convergence angle', () => {
+        // North Polar Stereographic (lat = 90° North Pole) -> rho = 0, x = 0, y = 0
+        const np = computePolarStereographic(90.0, 0.0, 0.0, true, 3389.5);
+        expect(np.xKm).to.equal(0);
+        expect(np.yKm).to.equal(0);
+        expect(np.radialDistanceKm).to.equal(0);
+
+        // Grid convergence angle: lat = 45°, deltaLon = +10° -> gamma = 10 * sin(45°) = 7.0711°
+        const conv = computeMeridianConvergenceAngle(45.0, 10.0, 0.0);
+        expect(conv.convergenceAngleDeg).to.be.closeTo(7.0711, 0.001);
+        expect(conv.isWestOfMeridian).to.be.false;
+
+        // West of central meridian (deltaLon = -20°): gamma = -14.1421°
+        const convW = computeMeridianConvergenceAngle(45.0, -20.0, 0.0);
+        expect(convW.convergenceAngleDeg).to.be.closeTo(-14.1421, 0.001);
+        expect(convW.isWestOfMeridian).to.be.true;
     });
 });
 

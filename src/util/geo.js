@@ -1031,6 +1031,112 @@ export function computeGreatCircleRhumbLineHeading(lat1, lon1, lat2, lon2) {
   };
 }
 
+// --- Lambert Azimuthal Equal-Area (LAEA), Polar Stereographic & Grid Convergence Solvers ---
+
+/**
+ * Calculate forward Lambert Azimuthal Equal-Area (LAEA) projection coordinates (x, y) in km.
+ * k' = sqrt( 2 / ( 1 + sin(phi0)*sin(phi) + cos(phi0)*cos(phi)*cos(lam - lam0) ) )
+ * x = R * k' * cos(phi) * sin(lam - lam0)
+ * y = R * k' * ( cos(phi0)*sin(phi) - sin(phi0)*cos(phi)*cos(lam - lam0) )
+ * @param {number} latDeg - Point latitude in degrees
+ * @param {number} lonDeg - Point longitude in degrees
+ * @param {number} [centerLatDeg=0] - Projection center latitude phi0
+ * @param {number} [centerLonDeg=0] - Projection center longitude lambda0
+ * @param {number} [radiusKm=3389.5] - Mean spherical radius of the planetary body in km
+ * @returns {{xKm: number, yKm: number, scaleFactor: number, isAntipodal: boolean}}
+ */
+export function computeLambertAzimuthalEqualArea(latDeg, lonDeg, centerLatDeg = 0, centerLonDeg = 0, radiusKm = 3389.5) {
+  const phi = (latDeg * Math.PI) / 180.0;
+  const lam = (lonDeg * Math.PI) / 180.0;
+  const phi0 = (centerLatDeg * Math.PI) / 180.0;
+  const lam0 = (centerLonDeg * Math.PI) / 180.0;
+  const R = Math.max(1.0, radiusKm);
+
+  let dLam = lam - lam0;
+  while (dLam > Math.PI) dLam -= 2.0 * Math.PI;
+  while (dLam < -Math.PI) dLam += 2.0 * Math.PI;
+
+  const denom = 1.0 + Math.sin(phi0) * Math.sin(phi) + Math.cos(phi0) * Math.cos(phi) * Math.cos(dLam);
+  if (denom <= 1e-10) {
+    // Point is at the antipode of the projection center
+    return { xKm: 0, yKm: 0, scaleFactor: 0, isAntipodal: true };
+  }
+
+  const kPrime = Math.sqrt(2.0 / denom);
+  const x = R * kPrime * Math.cos(phi) * Math.sin(dLam);
+  const y = R * kPrime * (Math.cos(phi0) * Math.sin(phi) - Math.sin(phi0) * Math.cos(phi) * Math.cos(dLam));
+
+  return {
+    xKm: parseFloat(x.toFixed(3)),
+    yKm: parseFloat(y.toFixed(3)),
+    scaleFactor: parseFloat(kPrime.toFixed(4)),
+    isAntipodal: false
+  };
+}
+
+/**
+ * Calculate Polar Stereographic conformal projection coordinates (x, y) in km.
+ * For North Pole: rho = 2 * R * tan(pi/4 - phi/2),  x = rho * sin(lam - lam0),  y = -rho * cos(lam - lam0)
+ * @param {number} latDeg - Latitude in degrees
+ * @param {number} lonDeg - Longitude in degrees
+ * @param {number} [centerLonDeg=0] - Central meridian lambda0 in degrees
+ * @param {boolean} [isNorthPole=true] - True for North Polar Stereographic, false for South Polar
+ * @param {number} [radiusKm=3389.5] - Planetary radius in km
+ * @returns {{xKm: number, yKm: number, radialDistanceKm: number}}
+ */
+export function computePolarStereographic(latDeg, lonDeg, centerLonDeg = 0, isNorthPole = true, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi = (latDeg * Math.PI) / 180.0;
+  const lam = (lonDeg * Math.PI) / 180.0;
+  const lam0 = (centerLonDeg * Math.PI) / 180.0;
+
+  let dLam = lam - lam0;
+  while (dLam > Math.PI) dLam -= 2.0 * Math.PI;
+  while (dLam < -Math.PI) dLam += 2.0 * Math.PI;
+
+  let rho;
+  let x, y;
+  if (isNorthPole) {
+    rho = 2.0 * R * Math.tan(Math.PI / 4.0 - phi / 2.0);
+    x = rho * Math.sin(dLam);
+    y = -rho * Math.cos(dLam);
+  } else {
+    rho = 2.0 * R * Math.tan(Math.PI / 4.0 + phi / 2.0);
+    x = rho * Math.sin(dLam);
+    y = rho * Math.cos(dLam);
+  }
+
+  return {
+    xKm: parseFloat(x.toFixed(3)),
+    yKm: parseFloat(y.toFixed(3)),
+    radialDistanceKm: parseFloat(rho.toFixed(3))
+  };
+}
+
+/**
+ * Calculate grid meridian convergence angle gamma (angle between Grid North and True Geographic North).
+ * gamma = (lambda - lambda0) * sin(phi)
+ * @param {number} latDeg - Point latitude in degrees
+ * @param {number} lonDeg - Point longitude in degrees
+ * @param {number} [centerLonDeg=0] - Central reference meridian in degrees
+ * @returns {{convergenceAngleDeg: number, convergenceAngleRad: number, isWestOfMeridian: boolean}}
+ */
+export function computeMeridianConvergenceAngle(latDeg, lonDeg, centerLonDeg = 0) {
+  const phiRad = (latDeg * Math.PI) / 180.0;
+  let dLon = lonDeg - centerLonDeg;
+  while (dLon > 180) dLon -= 360;
+  while (dLon < -180) dLon += 360;
+
+  const gammaDeg = dLon * Math.sin(phiRad);
+  const gammaRad = (gammaDeg * Math.PI) / 180.0;
+
+  return {
+    convergenceAngleDeg: parseFloat(gammaDeg.toFixed(4)),
+    convergenceAngleRad: parseFloat(gammaRad.toFixed(5)),
+    isWestOfMeridian: dLon < 0
+  };
+}
+
 
 
 
