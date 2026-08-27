@@ -375,5 +375,81 @@ export class SamplingTool {
 
         return points;
     }
+
+    // --- Topographic Roughness & Position Indices (TRI / TPI) ---
+
+    /**
+     * Calculate Riley's Terrain Ruggedness Index (TRI) from a 3x3 neighborhood of elevations.
+     * TRI = sqrt( sum( (z_i - z_0)^2 ) / 8 )
+     * @param {Array<number>} elevationGrid3x3 - Array of 9 elevations ordered [top-left...bottom-right] or [center, 8 neighbors]
+     * @returns {{triMeters: number, roughnessClass: string}}
+     */
+    static computeTerrainRuggednessIndex(elevationGrid3x3) {
+        if (!Array.isArray(elevationGrid3x3) || elevationGrid3x3.length < 9) {
+            return { triMeters: 0, roughnessClass: 'Level' };
+        }
+
+        // Center cell is index 4 in 3x3 row-major grid
+        const z0 = elevationGrid3x3[4];
+        let sumSqDiff = 0;
+        let count = 0;
+
+        for (let i = 0; i < 9; i++) {
+            if (i === 4) continue;
+            const diff = elevationGrid3x3[i] - z0;
+            sumSqDiff += diff * diff;
+            count++;
+        }
+
+        const tri = Math.sqrt(sumSqDiff / count);
+
+        let rClass = 'Level';
+        if (tri > 499) {
+            rClass = 'Extremely Rugged';
+        } else if (tri > 239) {
+            rClass = 'Moderately Rugged';
+        } else if (tri > 160) {
+            rClass = 'Slightly Rugged';
+        } else if (tri > 80) {
+            rClass = 'Nearly Level';
+        }
+
+        return {
+            triMeters: parseFloat(tri.toFixed(2)),
+            roughnessClass: rClass
+        };
+    }
+
+    /**
+     * Calculate Topographic Position Index (TPI) comparing a center cell elevation to the neighborhood mean.
+     * TPI = z_0 - mean(z_neighbors)
+     * @param {number} centerElevationMeters - Center elevation z_0 in meters
+     * @param {Array<number>} neighborElevationsMeters - Array of surrounding neighbor elevations
+     * @returns {{tpiMeters: number, landscapePosition: string}}
+     */
+    static computeTopographicPositionIndex(centerElevationMeters, neighborElevationsMeters) {
+        if (!Array.isArray(neighborElevationsMeters) || neighborElevationsMeters.length === 0) {
+            return { tpiMeters: 0, landscapePosition: 'Flat' };
+        }
+
+        const meanN = neighborElevationsMeters.reduce((a, b) => a + b, 0) / neighborElevationsMeters.length;
+        const tpi = centerElevationMeters - meanN;
+
+        let pos = 'Flat / Mid-slope';
+        if (tpi > 100) {
+            pos = 'Major Ridge / Peak';
+        } else if (tpi > 25) {
+            pos = 'Upper Slope / Mound';
+        } else if (tpi < -100) {
+            pos = 'Valley / Crater Floor';
+        } else if (tpi < -25) {
+            pos = 'Lower Slope / Toe';
+        }
+
+        return {
+            tpiMeters: parseFloat(tpi.toFixed(2)),
+            landscapePosition: pos
+        };
+    }
 }
 

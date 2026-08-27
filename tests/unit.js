@@ -6992,6 +6992,42 @@ describe('Transient Crater Cavity Scaling & Impact Kinetic Energy (CSFDEngine)',
     });
 });
 
+describe('Terrain Ruggedness Index & Topographic Position (SamplingTool)', () => {
+    it('should calculate Riley Terrain Ruggedness Index (TRI) from 3x3 elevation grid', () => {
+        // Flat level plain: all 9 cells at -3000 m
+        const flatGrid = [-3000, -3000, -3000, -3000, -3000, -3000, -3000, -3000, -3000];
+        const flat = SamplingTool.computeTerrainRuggednessIndex(flatGrid);
+        expect(flat.triMeters).to.equal(0);
+        expect(flat.roughnessClass).to.equal('Level');
+
+        // Rugged mountainous scarp: center = 0 m, surrounding cells = [-600, +800, -500, +700, -400, +600, -300, +500]
+        // sumSq = 36e4 + 64e4 + 25e4 + 49e4 + 16e4 + 36e4 + 9e4 + 25e4 = 260e4
+        // meanSq = 260e4 / 8 = 32.5e4 -> TRI = sqrt(325000) = 570.08 m (> 499 m -> Extremely Rugged)
+        const ruggedGrid = [
+            -600, 800, -500,
+             700,   0, -400,
+             600, -300, 500
+        ];
+        const rugged = SamplingTool.computeTerrainRuggednessIndex(ruggedGrid);
+        expect(rugged.triMeters).to.be.closeTo(570.08, 0.5);
+        expect(rugged.roughnessClass).to.equal('Extremely Rugged');
+    });
+
+    it('should compute Topographic Position Index (TPI) and classify landscape morphology', () => {
+        // High volcanic peak: center = 21000 m (Olympus Mons summit), surrounding caldera rim/flank = 18000 m
+        // meanNeighbors = 18000 m -> TPI = +3000 m (> 100 m -> Major Ridge / Peak)
+        const peak = SamplingTool.computeTopographicPositionIndex(21000, [18000, 18000, 18000, 18000]);
+        expect(peak.tpiMeters).to.equal(3000);
+        expect(peak.landscapePosition).to.equal('Major Ridge / Peak');
+
+        // Deep crater floor: center = -4000 m, surrounding rim terrain = -2500 m
+        // TPI = -4000 - (-2500) = -1500 m (< -100 m -> Valley / Crater Floor)
+        const crater = SamplingTool.computeTopographicPositionIndex(-4000, [-2500, -2500, -2500, -2500]);
+        expect(crater.tpiMeters).to.equal(-1500);
+        expect(crater.landscapePosition).to.equal('Valley / Crater Floor');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
