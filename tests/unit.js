@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -7968,6 +7968,36 @@ describe('Crater Ejecta Blanket & Transient Cavity Excavation (CSFDEngine)', () 
         const galeCavity = CSFDEngine.computeCraterTransientCavityAndExcavationVolume(154.0);
         expect(galeCavity.transientDiameterKm).to.be.closeTo(96.94, 0.5);
         expect(galeCavity.excavationVolumeKm3).to.be.greaterThan(100000.0);
+    });
+});
+
+describe('Mollweide Equal-Area Cartographic Projections (Geo)', () => {
+    it('should calculate forward Mollweide equal-area projection coordinates', () => {
+        // Origin (lat = 0°, lon = 0°):
+        // theta = 0°, x = 0, y = 0
+        const origin = computeMollweideProjection(0.0, 0.0, 0.0, 3389.5);
+        expect(origin.xKm).to.equal(0.0);
+        expect(origin.yKm).to.equal(0.0);
+        expect(origin.auxiliaryThetaDeg).to.equal(0.0);
+        expect(origin.isWithinGlobeBoundary).to.be.true;
+
+        // North Pole (lat = 90°N, lon = 0°):
+        // 2*theta + sin(2*theta) = pi -> theta = pi/2 = 90°
+        // y = sqrt(2) * 3389.5 = 4793.476 km, x = 0
+        const northPole = computeMollweideProjection(90.0, 0.0, 0.0, 3389.5);
+        expect(northPole.xKm).to.equal(0.0);
+        expect(northPole.yKm).to.be.closeTo(4793.48, 0.5);
+        expect(northPole.auxiliaryThetaDeg).to.be.closeTo(90.0, 0.01);
+    });
+
+    it('should accurately invert Mollweide (x, y) back to (lat, lon)', () => {
+        // Olympus Mons at lat = 18.65°N, lon = -133.8°W (centerLon = 0°):
+        const fwdOlympus = computeMollweideProjection(18.65, -133.8, 0.0, 3389.5);
+        const invOlympus = computeMollweideInverse(fwdOlympus.xKm, fwdOlympus.yKm, 0.0, 3389.5);
+
+        expect(invOlympus.latDeg).to.be.closeTo(18.65, 0.01);
+        expect(invOlympus.lonDeg).to.be.closeTo(-133.8, 0.01);
+        expect(invOlympus.isValidCoordinate).to.be.true;
     });
 });
 

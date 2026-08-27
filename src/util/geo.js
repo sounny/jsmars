@@ -1696,6 +1696,116 @@ export function computePolarStereographicInverse(xKm, yKm, isNorthPole = true, c
   };
 }
 
+// --- Mollweide Equal-Area Pseudocylindrical Cartographic Projections ---
+
+/**
+ * Calculate forward Mollweide equal-area projection coordinates (x, y) in km.
+ * 2*theta + sin(2*theta) = pi * sin(phi)
+ * x = (2*sqrt(2)/pi) * R * (lam - lam0) * cos(theta)
+ * y = sqrt(2) * R * sin(theta)
+ * @param {number} latDeg - Planetocentric latitude in degrees (-90 to +90)
+ * @param {number} lonDeg - Longitude in degrees (-180 to +180)
+ * @param {number} [centerLonDeg=0.0] - Central meridian lambda0 in degrees
+ * @param {number} [radiusKm=3389.5] - Planetary spherical radius in km
+ * @returns {{xKm: number, yKm: number, auxiliaryThetaDeg: number, isWithinGlobeBoundary: boolean}}
+ */
+export function computeMollweideProjection(latDeg, lonDeg, centerLonDeg = 0.0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const sqrt2 = Math.SQRT2;
+
+  if (latDeg >= 90.0) {
+    return {
+      xKm: 0.0,
+      yKm: parseFloat((sqrt2 * R).toFixed(3)),
+      auxiliaryThetaDeg: 90.0,
+      isWithinGlobeBoundary: true
+    };
+  }
+  if (latDeg <= -90.0) {
+    return {
+      xKm: 0.0,
+      yKm: parseFloat((-sqrt2 * R).toFixed(3)),
+      auxiliaryThetaDeg: -90.0,
+      isWithinGlobeBoundary: true
+    };
+  }
+
+  const phiRad = (latDeg * Math.PI) / 180.0;
+  const dLon = ((lonDeg - centerLonDeg) * Math.PI) / 180.0;
+
+  // Newton-Raphson iteration for auxiliary angle theta
+  const target = Math.PI * Math.sin(phiRad);
+  let theta = phiRad; // Initial guess
+
+  for (let iter = 0; iter < 20; iter++) {
+    const f = 2.0 * theta + Math.sin(2.0 * theta) - target;
+    const fPrime = 2.0 + 2.0 * Math.cos(2.0 * theta);
+    if (Math.abs(fPrime) < 1e-12) break;
+    const dTheta = f / fPrime;
+    theta -= dTheta;
+    if (Math.abs(dTheta) < 1e-12) break;
+  }
+
+  const x = (2.0 * sqrt2 / Math.PI) * R * dLon * Math.cos(theta);
+  const y = sqrt2 * R * Math.sin(theta);
+
+  // Maximum width at equator: 2 * sqrt(2) * R
+  const isInside = Math.abs(x) <= (2.0 * sqrt2 * R * Math.cos(theta) + 1e-3);
+
+  return {
+    xKm: parseFloat(x.toFixed(3)),
+    yKm: parseFloat(y.toFixed(3)),
+    auxiliaryThetaDeg: parseFloat(((theta * 180.0) / Math.PI).toFixed(4)),
+    isWithinGlobeBoundary: isInside
+  };
+}
+
+/**
+ * Calculate inverse Mollweide equal-area projection coordinates (lat, lon).
+ * theta = asin( y / (sqrt(2) * R) )
+ * phi = asin( (2*theta + sin(2*theta)) / pi )
+ * lam = lam0 + (pi * x) / (2 * sqrt(2) * R * cos(theta))
+ * @param {number} xKm - Projected X coordinate in km
+ * @param {number} yKm - Projected Y coordinate in km
+ * @param {number} [centerLonDeg=0.0] - Central meridian lambda0 in degrees
+ * @param {number} [radiusKm=3389.5] - Planetary spherical radius in km
+ * @returns {{latDeg: number, lonDeg: number, isValidCoordinate: boolean}}
+ */
+export function computeMollweideInverse(xKm, yKm, centerLonDeg = 0.0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const sqrt2 = Math.SQRT2;
+
+  const sinTheta = yKm / (sqrt2 * R);
+  if (Math.abs(sinTheta) > 1.0) {
+    return { latDeg: 0.0, lonDeg: 0.0, isValidCoordinate: false };
+  }
+
+  const theta = Math.asin(sinTheta);
+  const sinPhi = (2.0 * theta + Math.sin(2.0 * theta)) / Math.PI;
+  const phiClamped = Math.max(-1.0, Math.min(1.0, sinPhi));
+  const latRad = Math.asin(phiClamped);
+
+  const cosTheta = Math.cos(theta);
+  let lonRad = 0.0;
+  if (Math.abs(cosTheta) > 1e-8) {
+    lonRad = (centerLonDeg * Math.PI) / 180.0 + (Math.PI * xKm) / (2.0 * sqrt2 * R * cosTheta);
+  } else {
+    lonRad = (centerLonDeg * Math.PI) / 180.0;
+  }
+
+  let latDeg = (latRad * 180.0) / Math.PI;
+  let lonDeg = (lonRad * 180.0) / Math.PI;
+
+  while (lonDeg > 180) lonDeg -= 360;
+  while (lonDeg < -180) lonDeg += 360;
+
+  return {
+    latDeg: parseFloat(latDeg.toFixed(4)),
+    lonDeg: parseFloat(lonDeg.toFixed(4)),
+    isValidCoordinate: true
+  };
+}
+
 
 
 
