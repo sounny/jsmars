@@ -1939,6 +1939,54 @@ export class RadarSounderEngine {
       isSevereDistortion: groupDelayMicrosec > 0.50 // requires automated matched-filter phase compensation
     };
   }
+
+  /**
+   * Calculate Fresnel reflection coefficient, power reflectivity (dB), and travel time delay at dielectric layer interfaces.
+   * r_12 = ( sqrt(eps_1) - sqrt(eps_2) ) / ( sqrt(eps_1) + sqrt(eps_2) )
+   * R_dB = 20 * log10( |r_12| )
+   * Reference: Phillips et al. (2008), Plaut et al. (2009), Bierson et al. (2016) for SHARAD SPLD CO2 deposits.
+   * @param {number} topLayerDielectric - Real dielectric permittivity eps'_1 of upper layer (e.g. 2.15 for CO2 ice, 3.15 for H2O ice)
+   * @param {number} bottomLayerDielectric - Real dielectric permittivity eps'_2 of lower layer (e.g. 3.15 for H2O ice, 8.5 for basalt)
+   * @param {number} [layerThicknessMeters=100.0] - Upper layer physical thickness d in meters
+   * @param {number} [chirpBandwidthMHz=10.0] - Chirp bandwidth B in MHz (10 MHz for SHARAD)
+   * @returns {{fresnelAmplitudeCoefficient: number, powerReflectivityPct: number, powerReflectivityDB: number, twoWayTravelTimeMicrosec: number, verticalRangeResolutionMeters: number, interfaceType: string}}
+   */
+  static computeMultiLayerSubsurfaceRadarReflectivity(topLayerDielectric, bottomLayerDielectric, layerThicknessMeters = 100.0, chirpBandwidthMHz = 10.0) {
+    const eps1 = Math.max(1.0, topLayerDielectric);
+    const eps2 = Math.max(1.0, bottomLayerDielectric);
+    const d = Math.max(0.1, layerThicknessMeters);
+    const B = Math.max(0.1, chirpBandwidthMHz) * 1e6; // Hz
+
+    const n1 = Math.sqrt(eps1);
+    const n2 = Math.sqrt(eps2);
+
+    const r12 = (n1 - n2) / (n1 + n2);
+    const RPower = r12 * r12;
+    const RdB = RPower > 1e-12 ? 10.0 * Math.log10(RPower) : -120.0;
+
+    // Two-way travel time: Delta_t = 2 * d * n1 / c
+    const twoWayTimeSec = (2.0 * d * n1) / RadarSounderEngine.C;
+    const twoWayTimeMicrosec = twoWayTimeSec * 1e6;
+
+    // Vertical range resolution in medium 1: Delta_z = c / (2 * B * n1)
+    const vertResMeters = RadarSounderEngine.C / (2.0 * B * n1);
+
+    let ifaceType = 'Dielectric Transition Interface';
+    if (Math.abs(eps1 - 2.15) < 0.2 && Math.abs(eps2 - 3.15) < 0.3) {
+      ifaceType = 'CO2 Ice / H2O Ice Stratigraphic Boundary (SPLD High-Reflectivity Interface)';
+    } else if (Math.abs(eps1 - 3.15) < 0.3 && eps2 > 6.0) {
+      ifaceType = 'Basal Ice / Volcanic Bedrock Basement Interface';
+    }
+
+    return {
+      fresnelAmplitudeCoefficient: parseFloat(r12.toFixed(4)),
+      powerReflectivityPct: parseFloat((RPower * 100.0).toFixed(3)),
+      powerReflectivityDB: parseFloat(RdB.toFixed(2)),
+      twoWayTravelTimeMicrosec: parseFloat(twoWayTimeMicrosec.toFixed(3)),
+      verticalRangeResolutionMeters: parseFloat(vertResMeters.toFixed(2)),
+      interfaceType: ifaceType
+    };
+  }
 }
 
 

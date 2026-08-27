@@ -2684,6 +2684,55 @@ export class BandMathEngine {
       isHydratedOxychlorineCandidate: isCandidate
     };
   }
+
+  /**
+   * Calculate Pyroxene / Olivine Band Area Ratio (BAR = Area_B2 / Area_B1) and modal mineral abundance.
+   * BAR = Area(2 um) / Area(1 um)
+   * Reference: Cloutis et al. (1986, 2011), Gaffey et al. (1993, 2002), Sunshine & Pieters (1993).
+   * @param {number} band1Area - Integrated absorption band area of 1 um feature (nm * reflectance)
+   * @param {number} band2Area - Integrated absorption band area of 2 um feature (nm * reflectance)
+   * @param {number} [band1CenterNm=1000.0] - Absorption minimum center wavelength of Band 1 in nm
+   * @param {number} [band2CenterNm=2100.0] - Absorption minimum center wavelength of Band 2 in nm
+   * @returns {{bandAreaRatio: number, pyroxeneFractionPct: number, olivineFractionPct: number, maficClass: string, isClinopyroxeneDominated: boolean, isOrthopyroxeneDominated: boolean}}
+   */
+  static computePyroxeneBandAreaRatio(band1Area, band2Area, band1CenterNm = 1000.0, band2CenterNm = 2100.0) {
+    const a1 = Math.max(1e-4, band1Area);
+    const a2 = Math.max(0.0, band2Area);
+    const c1 = Math.max(700.0, band1CenterNm);
+    const c2 = Math.max(1500.0, band2CenterNm);
+
+    const bar = a2 / a1;
+
+    // Linear unmixing calibration (Cloutis et al. 1986):
+    // BAR = 0 -> 100% Olivine / 0% Pyroxene; BAR >= 1.0 -> ~100% Pyroxene
+    let pxPct = Math.min(100.0, Math.max(0.0, bar * 100.0));
+    let olPct = 100.0 - pxPct;
+
+    let maficClass = 'Intermediate Pyroxene-Olivine Mix';
+    let isCpx = false;
+    let isOpx = false;
+
+    if (bar < 0.20 || a2 < 0.05 * a1) {
+      maficClass = 'Olivine Dominated Lithology (Dunite / Picrite / Chassignite)';
+      pxPct = 0.0;
+      olPct = 100.0;
+    } else if (c1 >= 1000.0 && c2 >= 2100.0 && bar >= 1.2) {
+      maficClass = 'High-Calcium Clinopyroxene (Augite / Diopside / Basalt)';
+      isCpx = true;
+    } else if (c1 < 980.0 && c2 < 2050.0 && bar >= 0.7) {
+      maficClass = 'Low-Calcium Orthopyroxene (Enstatite / Hypersthene / Norite)';
+      isOpx = true;
+    }
+
+    return {
+      bandAreaRatio: parseFloat(bar.toFixed(4)),
+      pyroxeneFractionPct: parseFloat(pxPct.toFixed(1)),
+      olivineFractionPct: parseFloat(olPct.toFixed(1)),
+      maficClass,
+      isClinopyroxeneDominated: isCpx,
+      isOrthopyroxeneDominated: isOpx
+    };
+  }
 }
 
 

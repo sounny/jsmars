@@ -1261,6 +1261,58 @@ export class TrajectoryEngine {
       groundTrackDistanceKm: parseFloat(groundTrackKm.toFixed(1))
     };
   }
+
+  /**
+   * Calculate heliocentric Earth-Mars distance, One-Way Light Time (OWLT), and Sun-Earth-Probe (SEP) conjunction geometry.
+   * r_mars(Ls) = a * (1 - e^2) / ( 1 + e * cos(Ls - 251 deg) )
+   * OWLT = d_EM / c
+   * Reference: Allison & McEwen (2000), Vallado (2013).
+   * @param {number} solarLongitudeLsDeg - Areocentric solar longitude L_s in degrees (0 to 360)
+   * @param {number} [phaseOffsetDeg=0.0] - Relative heliocentric longitude difference between Earth and Mars (0 = opposition, 180 = superior conjunction)
+   * @returns {{heliocentricMarsDistanceAU: number, earthMarsDistanceAU: number, earthMarsDistanceKm: number, oneWayLightTimeMinutes: number, twoWayLightTimeMinutes: number, sepAngleDeg: number, isSolarConjunctionBlackout: boolean}}
+   */
+  static computeEarthSunProbeAndAntennaPointingGeometry(solarLongitudeLsDeg, phaseOffsetDeg = 0.0) {
+    const aMars = 1.52368; // AU
+    const eMars = 0.0934;
+    const perihelionLs = 251.0; // deg
+
+    const lsRad = (solarLongitudeLsDeg * Math.PI) / 180.0;
+    const periRad = (perihelionLs * Math.PI) / 180.0;
+    const nu = lsRad - periRad;
+
+    // Mars heliocentric distance in AU
+    const rMars = (aMars * (1.0 - eMars * eMars)) / (1.0 + eMars * Math.cos(nu));
+    const rEarth = 1.0; // AU
+
+    const dLonRad = (phaseOffsetDeg * Math.PI) / 180.0;
+
+    // Law of cosines for Earth-Mars distance d_EM
+    const dEMAU = Math.sqrt(Math.max(0.01, rMars * rMars + rEarth * rEarth - 2.0 * rMars * rEarth * Math.cos(dLonRad)));
+    const dEMKm = dEMAU * 149597870.7; // 1 AU in km
+
+    // Speed of light c = 299,792.458 km/s -> ~499.005 s / AU = 8.31675 min / AU
+    const owltMin = dEMAU * 8.316746;
+    const twltMin = owltMin * 2.0;
+
+    // Sun-Earth-Probe (SEP) angle: angle at Earth between Sun and Mars
+    // By law of sines / cosines:
+    const cosSEP = (rEarth * rEarth + dEMAU * dEMAU - rMars * rMars) / (2.0 * rEarth * dEMAU);
+    const clampedCosSEP = Math.max(-1.0, Math.min(1.0, cosSEP));
+    const sepRad = Math.acos(clampedCosSEP);
+    const sepDeg = (sepRad * 180.0) / Math.PI;
+
+    const isBlackout = sepDeg <= 3.0; // Solar conjunction blackout
+
+    return {
+      heliocentricMarsDistanceAU: parseFloat(rMars.toFixed(4)),
+      earthMarsDistanceAU: parseFloat(dEMAU.toFixed(4)),
+      earthMarsDistanceKm: parseFloat(dEMKm.toFixed(0)),
+      oneWayLightTimeMinutes: parseFloat(owltMin.toFixed(2)),
+      twoWayLightTimeMinutes: parseFloat(twltMin.toFixed(2)),
+      sepAngleDeg: parseFloat(sepDeg.toFixed(2)),
+      isSolarConjunctionBlackout: isBlackout
+    };
+  }
 }
 
 

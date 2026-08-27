@@ -8667,6 +8667,57 @@ describe('Ground Station Telemetry Elevation, Regolith Rock Fraction & Perchlora
     });
 });
 
+describe('Earth-Sun-Probe Geometry, Multi-Layer Radar Reflectivity & Pyroxene Band Area Ratio (BAR)', () => {
+    it('should calculate heliocentric Earth-Mars distance, light time (OWLT), and solar conjunction blackout', () => {
+        // Opposition (phaseOffset = 0 deg, closest approach at perihelion Ls = 251 deg):
+        // d_EM ~ 0.38 AU, OWLT ~ 3.1-4.5 minutes
+        const opposition = TrajectoryEngine.computeEarthSunProbeAndAntennaPointingGeometry(251.0, 0.0);
+        expect(opposition.heliocentricMarsDistanceAU).to.be.closeTo(1.381, 0.05);
+        expect(opposition.earthMarsDistanceAU).to.be.closeTo(0.381, 0.05);
+        expect(opposition.oneWayLightTimeMinutes).to.be.closeTo(3.17, 0.3);
+        expect(opposition.isSolarConjunctionBlackout).to.be.false;
+
+        // Superior conjunction (phaseOffset = 180 deg, Mars directly behind Sun):
+        // d_EM ~ 2.38-2.66 AU, OWLT ~ 20-22 minutes, SEP < 3 deg (blackout alert)
+        const conjunction = TrajectoryEngine.computeEarthSunProbeAndAntennaPointingGeometry(251.0, 180.0);
+        expect(conjunction.earthMarsDistanceAU).to.be.closeTo(2.381, 0.05);
+        expect(conjunction.oneWayLightTimeMinutes).to.be.closeTo(19.8, 0.5);
+        expect(conjunction.sepAngleDeg).to.be.lessThan(3.0);
+        expect(conjunction.isSolarConjunctionBlackout).to.be.true;
+    });
+
+    it('should calculate SHARAD multi-layer subsurface radar reflectivity and two-way travel time delay', () => {
+        // CO2 Ice over H2O Ice interface (SPLD: eps1 = 2.15, eps2 = 3.15, d = 100 m):
+        const spldInterface = RadarSounderEngine.computeMultiLayerSubsurfaceRadarReflectivity(2.15, 3.15, 100.0, 10.0);
+        expect(spldInterface.fresnelAmplitudeCoefficient).to.be.closeTo(-0.095, 0.01);
+        expect(spldInterface.powerReflectivityDB).to.be.closeTo(-20.4, 1.0);
+        expect(spldInterface.twoWayTravelTimeMicrosec).to.be.closeTo(0.978, 0.05);
+        expect(spldInterface.verticalRangeResolutionMeters).to.be.closeTo(10.23, 0.2);
+        expect(spldInterface.interfaceType).to.include('SPLD');
+
+        // Basal Ice over Volcanic Basalt bedrock (eps1 = 3.15, eps2 = 8.5, d = 500 m):
+        const basalBedrock = RadarSounderEngine.computeMultiLayerSubsurfaceRadarReflectivity(3.15, 8.5, 500.0, 10.0);
+        expect(basalBedrock.fresnelAmplitudeCoefficient).to.be.closeTo(-0.244, 0.02);
+        expect(basalBedrock.powerReflectivityDB).to.be.closeTo(-12.2, 1.0);
+        expect(basalBedrock.interfaceType).to.include('Basal Ice / Volcanic Bedrock');
+    });
+
+    it('should calculate Pyroxene Band Area Ratio (BAR) and separate Clinopyroxene, Orthopyroxene, and Olivine', () => {
+        // High-Ca Clinopyroxene (Augite): strong 2 um band (Area2 / Area1 >= 1.2, centers at 1050 nm & 2300 nm)
+        const augite = BandMathEngine.computePyroxeneBandAreaRatio(100.0, 150.0, 1050.0, 2300.0);
+        expect(augite.bandAreaRatio).to.equal(1.5);
+        expect(augite.isClinopyroxeneDominated).to.be.true;
+        expect(augite.isOrthopyroxeneDominated).to.be.false;
+        expect(augite.maficClass).to.include('High-Calcium Clinopyroxene');
+
+        // Pure Olivine Lithology (Dunite): virtually no 2 um band (Area2 ~ 5 nm*refl vs Area1 = 120)
+        const olivine = BandMathEngine.computePyroxeneBandAreaRatio(120.0, 5.0, 1050.0, 2100.0);
+        expect(olivine.bandAreaRatio).to.be.lessThan(0.10);
+        expect(olivine.olivineFractionPct).to.equal(100.0);
+        expect(olivine.maficClass).to.include('Olivine Dominated');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
