@@ -7660,6 +7660,38 @@ describe('SHARAD Fresnel Footprint & Power Reflection Loss (RadarSounderEngine)'
     });
 });
 
+describe('Crater Morphometry & Neukum Production Function (CSFDEngine)', () => {
+    it('should classify simple vs complex crater depth and degradation state', () => {
+        // Pristine simple bowl crater (D = 3.0 km, d_obs = 0.60 km):
+        // d_fresh = 0.20 * (3.0)^1.01 = 0.606 km -> ratio = 0.60 / 0.606 = 0.990 (Pristine)
+        const simplePristine = CSFDEngine.computeCraterDepthAndDegradationState(3.0, 0.60);
+        expect(simplePristine.freshDepthKm).to.be.closeTo(0.606, 0.01);
+        expect(simplePristine.degradationFactor).to.be.closeTo(0.99, 0.02);
+        expect(simplePristine.craterClass).to.include('Simple');
+        expect(simplePristine.degradationState).to.equal('Fresh / Pristine');
+
+        // Severely infilled complex crater (D = 50.0 km, d_obs = 0.40 km):
+        // d_fresh = 0.36 * (50.0)^0.49 = 2.427 km -> factor = 0.40 / 2.427 = 0.165 (< 0.50 -> Severely Infilled)
+        const complexInfilled = CSFDEngine.computeCraterDepthAndDegradationState(50.0, 0.40);
+        expect(complexInfilled.freshDepthKm).to.be.closeTo(2.427, 0.05);
+        expect(complexInfilled.degradationFactor).to.be.closeTo(0.165, 0.02);
+        expect(complexInfilled.craterClass).to.include('Complex');
+        expect(complexInfilled.degradationState).to.equal('Severely Infilled / Degraded');
+    });
+
+    it('should calculate Neukum/Ivanov Mars cumulative crater production N(>D)', () => {
+        // At D = 1.0 km (logD = 0 -> N_1Ga = 10^-3.0876 = 8.173e-4 craters/km^2 = 817.3 per 10^6 km^2)
+        // At 1 Ga:
+        const n1Ga = CSFDEngine.computeNeukumProductionFunctionCumulativeN(1.0, 1.0);
+        expect(n1Ga.cumulativeNCratersPer10_6Km2).to.be.closeTo(817.3, 5.0);
+
+        // At 3.8 Ga (Late Heavy Bombardment / ancient Noachian crust):
+        // phi(3.8) ~ 5.44e-14 * exp(14.022) = 5.44e-14 * 1.229e6 = 6.68e-8 -> massive exponential boost
+        const n38Ga = CSFDEngine.computeNeukumProductionFunctionCumulativeN(1.0, 3.8);
+        expect(n38Ga.cumulativeNCratersPer10_6Km2).to.be.closeTo(3105.92, 5.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -2117,6 +2117,86 @@ export class CSFDEngine {
 
     return bins;
   }
+
+  // --- Crater Morphometry & Neukum Production Function Solvers ---
+
+  /**
+   * Calculate fresh crater depth and degradation state for Martian simple vs complex craters.
+   * Simple (D < 7 km): d_fresh = 0.20 * D^1.01
+   * Complex (D >= 7 km): d_fresh = 0.36 * D^0.49
+   * @param {number} diameterKm - Rim-to-rim crater diameter D in km
+   * @param {number} measuredDepthKm - Measured rim-to-floor crater depth d in km
+   * @returns {{freshDepthKm: number, depthToDiameterRatio: number, degradationFactor: number, craterClass: string, degradationState: string}}
+   */
+  static computeCraterDepthAndDegradationState(diameterKm, measuredDepthKm) {
+    const D = Math.max(0.01, diameterKm);
+    const dObs = Math.max(0.0, measuredDepthKm);
+
+    const isSimple = D < 7.0;
+    let dFresh = 0.0;
+
+    if (isSimple) {
+      dFresh = 0.20 * Math.pow(D, 1.01);
+    } else {
+      dFresh = 0.36 * Math.pow(D, 0.49);
+    }
+
+    const dToD = dObs / D;
+    const degFactor = Math.min(1.0, dObs / Math.max(1e-4, dFresh));
+
+    let state = 'Fresh / Pristine';
+    if (degFactor < 0.50) {
+      state = 'Severely Infilled / Degraded';
+    } else if (degFactor < 0.85) {
+      state = 'Moderately Degraded';
+    }
+
+    return {
+      freshDepthKm: parseFloat(dFresh.toFixed(3)),
+      depthToDiameterRatio: parseFloat(dToD.toFixed(4)),
+      degradationFactor: parseFloat(degFactor.toFixed(3)),
+      craterClass: isSimple ? 'Simple (Bowl-Shaped)' : 'Complex (Central Peak / Terraced)',
+      degradationState: state
+    };
+  }
+
+  /**
+   * Calculate Neukum / Ivanov (2001) Mars standard crater production cumulative number N(>D).
+   * N(>D, t) = N_1Ga(>D) * phi(t)
+   * phi(t) = 5.44e-14 * ( exp(3.69 * t) - 1 ) + 1.25e-3 * t
+   * @param {number} diameterKm - Diameter threshold D in km (e.g. 1.0 km)
+   * @param {number} [ageGa=3.5] - Surface chronological isochron age in Ga
+   * @returns {{cumulativeNCratersPerKm2: number, cumulativeNCratersPer10_6Km2: number, chronologyFactorPhi: number}}
+   */
+  static computeNeukumProductionFunctionCumulativeN(diameterKm, ageGa = 3.5) {
+    const D = Math.max(0.01, diameterKm);
+    const t = Math.max(0.0, ageGa);
+
+    // Neukum/Ivanov polynomial coefficients for Mars (a_0 to a_11):
+    const a = [
+      -3.0876, -1.8267, -0.2801, 0.1793, 0.0763, -0.0124,
+      -0.0118, 0.0006, 0.0009, -0.00004, -0.00002, 0.000002
+    ];
+
+    const logD = Math.log10(D);
+    let logN1Ga = 0.0;
+    for (let j = 0; j < a.length; j++) {
+      logN1Ga += a[j] * Math.pow(logD, j);
+    }
+
+    const n1Ga = Math.pow(10, logN1Ga); // N(>D) per km^2 at 1 Ga reference
+
+    // Chronology multiplier phi(t):
+    const phi = 5.44e-14 * (Math.exp(3.69 * t) - 1.0) + 1.25e-3 * t;
+
+    const nCum = n1Ga * (phi / (5.44e-14 * (Math.exp(3.69 * 1.0) - 1.0) + 1.25e-3 * 1.0));
+
+    return {
+      cumulativeNCratersPerKm2: parseFloat(nCum.toExponential(4)),
+      cumulativeNCratersPer10_6Km2: parseFloat((nCum * 1e6).toFixed(2)),
+      chronologyFactorPhi: parseFloat(phi.toExponential(4))
+    };
+  }
 }
 
 
