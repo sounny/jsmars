@@ -6380,6 +6380,31 @@ describe('SAR Azimuth Resolution, Doppler Shift & PRF Bounds (RadarSounderEngine
     });
 });
 
+describe('Diurnal Thermal Skin Depth & Regolith Heat Storage (KRCEngine)', () => {
+    it('should calculate diurnal thermal wave skin depth and regolith thermal conductivity', () => {
+        // Typical Martian duricrust/sand: I = 250 J m^-2 K^-1 s^-1/2, rho = 1500 kg/m^3, c_p = 800 J/(kg K)
+        // k = 250^2 / (1500 * 800) = 62500 / 1200000 = 0.05208 W/(m K)
+        // d_skin = (250 * sqrt(88775.244)) / (sqrt(pi) * 1200000) = (250 * 297.9517) / (1.77245 * 1200000) = 74487.9 / 2126940 = 0.03502 m = 3.50 cm
+        const skin = KRCEngine.computeDiurnalThermalSkinDepth(250.0, 800.0, 1500.0, 88775.244);
+        expect(skin.thermalConductivityW_mK).to.be.closeTo(0.05208, 0.0001);
+        expect(skin.skinDepthMeters).to.be.closeTo(0.0350, 0.001);
+        expect(skin.skinDepthCm).to.be.closeTo(3.50, 0.1);
+    });
+
+    it('should compute regolith dry bulk density and subsurface sensible heat storage', () => {
+        // Basalt grains (rho_grain = 3000 kg/m^3) with 50% porosity (phi = 0.5) -> rho_bulk = 1500 kg/m^3
+        const bulk = KRCEngine.computeRegolithBulkDensity(3000.0, 0.5);
+        expect(bulk.bulkDensityKg_M3).to.equal(1500.0);
+        expect(bulk.voidRatio).to.equal(1.0);
+
+        // Top 5 cm layer (dz = 0.05 m), warming by Delta_T = 20 K (daytime solar heating)
+        // Delta_Q = 1500 * 800 * 0.05 * 20 = 1200000 * 1.0 = 1200000 J/m^2 (1.2 MJ/m^2)
+        const heat = KRCEngine.computeSubsurfaceSensibleHeatStorage(0.05, 20.0, 1500.0, 800.0);
+        expect(heat.sensibleHeatJ_M2).to.equal(1200000.0);
+        expect(heat.volumetricHeatCapacityJ_M3K).to.equal(1200000.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

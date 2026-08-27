@@ -1547,6 +1547,80 @@ export class KRCEngine {
       isWarming: fNet > 0
     };
   }
+
+  // --- Diurnal Thermal Skin Depth & Regolith Heat Storage Solvers ---
+
+  /**
+   * Calculate diurnal thermal wave penetration depth (skin depth) in meters.
+   * d_skin = ( I * sqrt(P_sol) ) / ( sqrt(pi) * rho * c_p )
+   * @param {number} thermalInertiaSI - Thermal inertia in J m^-2 K^-1 s^-1/2 (e.g. 50 to 800)
+   * @param {number} [heatCapacityJ_KgK=800.0] - Specific heat capacity c_p in J/(kg K)
+   * @param {number} [densityKg_M3=1500.0] - Bulk density in kg/m^3
+   * @param {number} [periodSeconds=88775.244] - Diurnal period P in seconds (1 sol = 88775.244 s)
+   * @returns {{skinDepthMeters: number, skinDepthCm: number, thermalConductivityW_mK: number}}
+   */
+  static computeDiurnalThermalSkinDepth(thermalInertiaSI, heatCapacityJ_KgK = 800.0, densityKg_M3 = 1500.0, periodSeconds = 88775.244) {
+    const I = Math.max(1.0, thermalInertiaSI);
+    const cp = Math.max(10.0, heatCapacityJ_KgK);
+    const rho = Math.max(10.0, densityKg_M3);
+    const P = Math.max(1.0, periodSeconds);
+
+    // Thermal conductivity k = I^2 / (rho * cp)
+    const k = (I * I) / (rho * cp);
+
+    // Skin depth d = I * sqrt(P) / (sqrt(pi) * rho * cp) = sqrt(k * P / (pi * rho * cp))
+    const dMeters = (I * Math.sqrt(P)) / (Math.sqrt(Math.PI) * rho * cp);
+    const dCm = dMeters * 100.0;
+
+    return {
+      skinDepthMeters: parseFloat(dMeters.toFixed(4)),
+      skinDepthCm: parseFloat(dCm.toFixed(2)),
+      thermalConductivityW_mK: parseFloat(k.toFixed(5))
+    };
+  }
+
+  /**
+   * Calculate bulk regolith dry density from grain density and packing porosity.
+   * rho_bulk = rho_grain * (1 - phi)
+   * @param {number} [grainDensityKg_M3=3000.0] - Mineral grain density in kg/m^3 (basalt ~ 3000)
+   * @param {number} [porosity=0.5] - Volume void fraction (0 to 0.9)
+   * @returns {{bulkDensityKg_M3: number, voidRatio: number}}
+   */
+  static computeRegolithBulkDensity(grainDensityKg_M3 = 3000.0, porosity = 0.5) {
+    const rhoG = Math.max(100.0, grainDensityKg_M3);
+    const phi = Math.max(0.0, Math.min(0.9, porosity));
+
+    const rhoBulk = rhoG * (1.0 - phi);
+    const voidRatio = phi / (1.0 - phi);
+
+    return {
+      bulkDensityKg_M3: parseFloat(rhoBulk.toFixed(1)),
+      voidRatio: parseFloat(voidRatio.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate sensible heat energy stored in subsurface layer per unit area (J/m^2).
+   * Delta_Q = rho * c_p * Delta_z * Delta_T
+   * @param {number} layerThicknessMeters - Layer thickness in meters
+   * @param {number} deltaTK - Temperature change in Kelvin
+   * @param {number} [densityKg_M3=1500.0] - Bulk density in kg/m^3
+   * @param {number} [heatCapacityJ_KgK=800.0] - Specific heat capacity in J/(kg K)
+   * @returns {{sensibleHeatJ_M2: number, volumetricHeatCapacityJ_M3K: number}}
+   */
+  static computeSubsurfaceSensibleHeatStorage(layerThicknessMeters, deltaTK, densityKg_M3 = 1500.0, heatCapacityJ_KgK = 800.0) {
+    const dz = Math.max(0, layerThicknessMeters);
+    const rho = Math.max(1.0, densityKg_M3);
+    const cp = Math.max(1.0, heatCapacityJ_KgK);
+
+    const cVol = rho * cp;
+    const dq = cVol * dz * deltaTK;
+
+    return {
+      sensibleHeatJ_M2: parseFloat(dq.toFixed(2)),
+      volumetricHeatCapacityJ_M3K: parseFloat(cVol.toFixed(1))
+    };
+  }
 }
 
 
