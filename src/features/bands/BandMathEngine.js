@@ -2535,6 +2535,59 @@ export class BandMathEngine {
       isDistinctFromAlSmectite: isDistinct
     };
   }
+
+  /**
+   * Calculate CRISM ferric iron (Fe3+) mineralogy indices: BD530 (ferric slope), BD860 (crystalline hematite), and BD920 (goethite/jarosite).
+   * BD530 = 1.0 - ( R_530 / (0.5 * (R_440 + R_770)) )
+   * BD860 = 1.0 - ( R_860 / (0.5 * (R_770 + R_1000)) )
+   * BD920 = 1.0 - ( R_920 / (0.5 * (R_770 + R_1000)) )
+   * Reference: Morris et al. (2000), Christensen et al. (2001) for Meridiani hematite, Viviano-Beck et al. (2014).
+   * @param {number} r440 - Blue reflectance at 440 nm
+   * @param {number} r530 - Green reflectance at 530 nm
+   * @param {number} r770 - Red/near-IR continuum anchor at 770 nm
+   * @param {number} r860 - Hematite absorption minimum at 860 nm
+   * @param {number} r920 - Goethite/Jarosite absorption minimum at 920 nm
+   * @param {number} r1000 - Near-IR continuum anchor at 1000 nm
+   * @returns {{bd530FerricIndex: number, bd860HematiteIndex: number, bd920GoethiteIndex: number, ferricClass: string, isCrystallineHematite: boolean, isGoethiteJarosite: boolean}}
+   */
+  static computeCRISMFerricOxideIndices(r440, r530, r770, r860, r920, r1000) {
+    const c440 = Math.max(1e-4, r440);
+    const b530 = Math.max(1e-4, r530);
+    const c770 = Math.max(1e-4, r770);
+    const b860 = Math.max(1e-4, r860);
+    const b920 = Math.max(1e-4, r920);
+    const c1000 = Math.max(1e-4, r1000);
+
+    const cont530 = 0.5 * (c440 + c770);
+    const bd530 = 1.0 - (b530 / cont530);
+
+    const contIR = 0.5 * (c770 + c1000);
+    const bd860 = 1.0 - (b860 / contIR);
+    const bd920 = 1.0 - (b920 / contIR);
+
+    let ferricClass = 'Low Ferric / Unweathered Basalt';
+    let isHematite = false;
+    let isGoethite = false;
+
+    if (bd860 > 0.035 && bd860 >= bd920) {
+      ferricClass = 'Crystalline Gray Hematite (alpha-Fe2O3 / Opportunity Type)';
+      isHematite = true;
+    } else if (bd920 > 0.035 && bd920 > bd860) {
+      ferricClass = 'Goethite / Jarosite / Ferric Oxyhydroxide (alpha-FeO(OH))';
+      isGoethite = true;
+    } else if (bd530 > 0.05) {
+      ferricClass = 'Nanophase / Amorphous Ferric Oxide (Martian Aeolian Red Dust)';
+    }
+
+    return {
+      bd530FerricIndex: parseFloat(bd530.toFixed(4)),
+      bd860HematiteIndex: parseFloat(bd860.toFixed(4)),
+      bd920GoethiteIndex: parseFloat(bd920.toFixed(4)),
+      ferricClass,
+      isCrystallineHematite: isHematite,
+      isGoethiteJarosite: isGoethite
+    };
+  }
 }
 
 

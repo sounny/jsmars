@@ -2123,6 +2123,55 @@ export class KRCEngine {
       thermalConductivityWmK: parseFloat(k.toFixed(5))
     };
   }
+
+  /**
+   * Calculate subsurface permafrost ground ice stability critical temperature and depth z_ice.
+   * P_sat(T) = exp( 28.868 - 6132.9 / T ) (Pa)
+   * T_crit = 6132.9 / ( 28.868 - ln(P_atm_H2O) )
+   * Reference: Mellon & Phillips (2001), Mellon et al. (2004), Bandfield (2007), Smith (2008) for Phoenix Lander.
+   * @param {number} meanAnnualSurfaceTempK - Mean annual surface temperature T_annual in Kelvin (e.g. 175 K polar, 215 K mid-lat, 240 K equatorial)
+   * @param {number} [atmosphericWaterVaporPrUm=10.0] - Atmospheric water vapor column in precipitable microns (typically 5 to 30 pr-um)
+   * @param {number} [thermalInertia=250.0] - Thermal inertia of dry overburden mantle
+   * @returns {{isGroundIceStable: boolean, criticalStabilityTempK: number, waterVaporPartialPressurePa: number, groundIceDepthCm: number, stabilityZone: string}}
+   */
+  static computePermafrostGroundIceStabilityDepth(meanAnnualSurfaceTempK, atmosphericWaterVaporPrUm = 10.0, thermalInertia = 250.0) {
+    const T = Math.max(100.0, Math.min(300.0, meanAnnualSurfaceTempK));
+    const prUm = Math.max(0.1, atmosphericWaterVaporPrUm);
+    const I = Math.max(20.0, thermalInertia);
+
+    // Water vapor partial pressure P_H2O (Pa) ~ pr_um * 1e-6 * 1000 kg/m3 * 3.72 m/s2
+    const pH2OPa = prUm * 0.00372076;
+
+    // Critical ice stability temperature T_crit
+    const lnP = Math.log(Math.max(1e-7, pH2OPa));
+    const tCritK = 6132.9 / (28.868 - lnP);
+
+    const isStable = T <= (tCritK + 2.0); // account for subsurface annual dampening
+
+    let zIceCm = 200.0;
+    let zone = 'Desiccated / Unstable in Upper Regolith (Equatorial/Tropical)';
+
+    if (T <= tCritK - 15.0) {
+      // High-latitude / Polar region (Phoenix Lander regime): 2-10 cm depth
+      zIceCm = Math.max(2.0, (T - 160.0) * 0.40);
+      zone = 'Shallow Stable Permafrost / Massive Ground Ice (< 10 cm)';
+    } else if (T <= tCritK) {
+      // Mid-latitude lobate debris apron / lineated valley fill regime: 15-80 cm
+      zIceCm = 10.0 + ((T - (tCritK - 15.0)) / 15.0) * 70.0;
+      zone = 'Deep Stable Permafrost (10 - 80 cm mantle)';
+    } else if (T <= tCritK + 10.0) {
+      zIceCm = 80.0 + ((T - tCritK) / 10.0) * 100.0;
+      zone = 'Marginal / Metastable Ice at Multi-Meter Depth';
+    }
+
+    return {
+      isGroundIceStable: isStable,
+      criticalStabilityTempK: parseFloat(tCritK.toFixed(2)),
+      waterVaporPartialPressurePa: parseFloat(pH2OPa.toExponential(4)),
+      groundIceDepthCm: parseFloat(zIceCm.toFixed(1)),
+      stabilityZone: zone
+    };
+  }
 }
 
 

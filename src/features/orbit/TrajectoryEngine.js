@@ -1083,6 +1083,58 @@ export class TrajectoryEngine {
       isDaylight: szaDeg < 90.0
     };
   }
+
+  /**
+   * Calculate orbital J2 gravitational nodal precession rate (deg/day) and Sun-synchronous LTAN drift.
+   * dOmega/dt = -1.5 * J2 * (R_eq / p)^2 * n * cos(i)
+   * Reference: Vallado (2013), Albee et al. (2001) for MGS, Zurek & Smrekar (2007) for MRO.
+   * @param {number} semiMajorAxisKm - Semi-major axis a in km (e.g. 3646 km for MRO, 3775 km for Odyssey)
+   * @param {number} inclinationDeg - Orbital inclination i in degrees (e.g. 92.8 deg for MRO)
+   * @param {number} [eccentricity=0.001] - Orbital eccentricity e
+   * @param {string} [body='mars'] - Planetary body ('mars', 'earth')
+   * @returns {{nodalPrecessionDegPerDay: number, sunSyncPrecessionRateDegPerDay: number, ltanDriftMinutesPerSol: number, sunSyncRequiredInclinationDeg: number, isSunSynchronous: boolean}}
+   */
+  static computeSunSynchronousNodalPrecessionAndLTANDrift(semiMajorAxisKm, inclinationDeg, eccentricity = 0.001, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const isEarth = bKey === 'earth';
+
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const Req = isEarth ? 6378.137 : 3396.19;    // km
+    const J2 = isEarth ? 1.08263e-3 : 1.96045e-3;
+    const yearDays = isEarth ? 365.256 : 686.98;
+    const syncRateDegDay = 360.0 / yearDays; // ~0.524 deg/day Mars, 0.9856 deg/day Earth
+
+    const a = Math.max(100.0, semiMajorAxisKm);
+    const e = Math.min(0.95, Math.max(0.0, eccentricity));
+    const p = a * (1.0 - e * e); // km
+    const n = Math.sqrt(mu / Math.pow(a, 3.0)); // rad/s
+
+    const iRad = (inclinationDeg * Math.PI) / 180.0;
+
+    // dOmega/dt in rad/s:
+    const dOmegaRadSec = -1.5 * J2 * Math.pow(Req / p, 2.0) * n * Math.cos(iRad);
+    const dOmegaDegDay = dOmegaRadSec * (180.0 / Math.PI) * 86400.0;
+
+    // Required sun-sync inclination:
+    const syncRadSec = syncRateDegDay * (Math.PI / 180.0) / 86400.0;
+    const cosISync = -syncRadSec / (1.5 * J2 * Math.pow(Req / p, 2.0) * n);
+    const clampedCosISync = Math.max(-1.0, Math.min(1.0, cosISync));
+    const reqISyncDeg = (Math.acos(clampedCosISync) * 180.0) / Math.PI;
+
+    // Drift in LTAN (minutes per Earth/Mars day: 1 deg ~ 4 minutes)
+    const driftDegDay = dOmegaDegDay - syncRateDegDay;
+    const ltanDriftMin = driftDegDay * 4.0;
+
+    const isSunSync = Math.abs(dOmegaDegDay - syncRateDegDay) < 0.05;
+
+    return {
+      nodalPrecessionDegPerDay: parseFloat(dOmegaDegDay.toFixed(4)),
+      sunSyncPrecessionRateDegPerDay: parseFloat(syncRateDegDay.toFixed(4)),
+      ltanDriftMinutesPerSol: parseFloat(ltanDriftMin.toFixed(3)),
+      sunSyncRequiredInclinationDeg: parseFloat(reqISyncDeg.toFixed(2)),
+      isSunSynchronous: isSunSync
+    };
+  }
 }
 
 

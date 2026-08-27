@@ -8526,6 +8526,52 @@ describe('Hapke Macroscopic Roughness, Oblate Gravity & Opaline Silica Indices',
     });
 });
 
+describe('Sun-Synchronous J2 Nodal Drift, Permafrost Ground Ice & Ferric Iron Indices', () => {
+    it('should calculate Sun-synchronous J2 nodal precession and LTAN drift rate', () => {
+        // Mars Reconnaissance Orbiter (MRO) sun-synchronous frozen orbit:
+        // a = 3646 km (250-316 km altitude), i_req ~ 92.53 deg
+        const reqInc = TrajectoryEngine.computeSunSynchronousNodalPrecessionAndLTANDrift(3646.0, 92.53, 0.001, 'mars');
+        expect(reqInc.sunSyncPrecessionRateDegPerDay).to.be.closeTo(0.524, 0.01);
+        expect(reqInc.nodalPrecessionDegPerDay).to.be.closeTo(0.524, 0.01);
+        expect(reqInc.isSunSynchronous).to.be.true;
+        expect(reqInc.sunSyncRequiredInclinationDeg).to.be.closeTo(92.53, 0.2);
+        expect(Math.abs(reqInc.ltanDriftMinutesPerSol)).to.be.lessThan(0.1); // Constant crossing time
+    });
+
+    it('should calculate subsurface permafrost ground ice stability depth z_ice', () => {
+        // High-latitude polar terrain (Phoenix Lander regime, T = 170 K, pr_um = 15):
+        // Ground ice is stable at shallow depth (< 10 cm)
+        const phoenixIce = KRCEngine.computePermafrostGroundIceStabilityDepth(170.0, 15.0);
+        expect(phoenixIce.isGroundIceStable).to.be.true;
+        expect(phoenixIce.groundIceDepthCm).to.be.lessThan(10.0);
+        expect(phoenixIce.criticalStabilityTempK).to.be.closeTo(193.14, 1.0);
+        expect(phoenixIce.stabilityZone).to.include('Shallow Stable Permafrost');
+
+        // Equatorial warm terrain (T = 230 K > T_crit):
+        // Ground ice is unstable in upper regolith (> 150 cm / desiccated)
+        const equatorIce = KRCEngine.computePermafrostGroundIceStabilityDepth(230.0, 10.0);
+        expect(equatorIce.isGroundIceStable).to.be.false;
+        expect(equatorIce.groundIceDepthCm).to.be.greaterThan(100.0);
+        expect(equatorIce.stabilityZone).to.include('Desiccated');
+    });
+
+    it('should calculate CRISM ferric iron oxide indices and discriminate crystalline hematite vs goethite', () => {
+        // Crystalline Gray Hematite (Meridiani Planum Opportunity type): strong 860 nm minimum (R860 < R920)
+        const hematite = BandMathEngine.computeCRISMFerricOxideIndices(0.18, 0.22, 0.29, 0.23, 0.28, 0.31);
+        expect(hematite.bd860HematiteIndex).to.be.greaterThan(0.15);
+        expect(hematite.isCrystallineHematite).to.be.true;
+        expect(hematite.isGoethiteJarosite).to.be.false;
+        expect(hematite.ferricClass).to.include('Crystalline Gray Hematite');
+
+        // Goethite / Jarosite / Ferric Oxyhydroxide (strong 920 nm minimum, R920 < R860):
+        const goethite = BandMathEngine.computeCRISMFerricOxideIndices(0.18, 0.22, 0.29, 0.28, 0.23, 0.31);
+        expect(goethite.bd920GoethiteIndex).to.be.greaterThan(0.15);
+        expect(goethite.isGoethiteJarosite).to.be.true;
+        expect(goethite.isCrystallineHematite).to.be.false;
+        expect(goethite.ferricClass).to.include('Goethite / Jarosite');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
