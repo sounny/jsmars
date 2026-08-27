@@ -7386,6 +7386,33 @@ describe('Lambert Conformal Conic (LCC) Projections (geo.js)', () => {
     });
 });
 
+describe('CRISM Silica & Carbonate Mineralogy Indices (BandMathEngine)', () => {
+    it('should calculate hydrated opaline silica index (SINDEX2) and detect opals', () => {
+        // Hydrated silica test spectrum with Si-OH absorption minimum at 2290 nm:
+        // R2120 = 0.35, R2290 = 0.29, R2400 = 0.38
+        // continuum = 0.60 * 0.35 + 0.40 * 0.38 = 0.210 + 0.152 = 0.362
+        // SINDEX2 = 1.0 - (0.29 / 0.362) = 1.0 - 0.8011 = 0.1989
+        const opal = BandMathEngine.computeCRISMSilicaSINDEX2(0.35, 0.29, 0.38);
+        expect(opal.sIndex).to.be.closeTo(0.1989, 0.005);
+        expect(opal.hasHydratedSilica).to.be.true;
+
+        // Flat basalt spectrum: R2120 = 0.15, R2290 = 0.15, R2400 = 0.15 -> SINDEX2 = 0.0
+        const basalt = BandMathEngine.computeCRISMSilicaSINDEX2(0.15, 0.15, 0.15);
+        expect(basalt.sIndex).to.equal(0.0);
+        expect(basalt.hasHydratedSilica).to.be.false;
+    });
+
+    it('should calculate carbonate index (CARBINDEX) and detect Mg/Fe carbonates', () => {
+        // Carbonate test spectrum with 2.30 and 2.50 µm vibrational overtone dip:
+        // R2140 = 0.40, R2300 = 0.32, R2500 = 0.30
+        // meanBand = 0.5 * (0.32 + 0.30) = 0.31
+        // CARBINDEX = 1.0 - (0.31 / 0.40) = 1.0 - 0.775 = 0.225
+        const carb = BandMathEngine.computeCRISMCarbonateCARBINDEX(0.40, 0.32, 0.30);
+        expect(carb.carbIndex).to.be.closeTo(0.225, 0.005);
+        expect(carb.hasCarbonates).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

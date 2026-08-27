@@ -2084,6 +2084,45 @@ export class BandMathEngine {
       hasFerricOxides: depth > 0.03
     };
   }
+
+  // --- CRISM Hydrated Silica & Carbonate Mineralogy Solvers ---
+
+  /**
+   * Calculate CRISM Hydrated / Opaline Silica absorption parameter (SINDEX2).
+   * SINDEX2 = 1.0 - R_2290 / ( 0.60 * R_2120 + 0.40 * R_2400 )
+   * @param {number} r2120 - Reflectance at 2120 nm
+   * @param {number} r2290 - Reflectance band minimum at 2290 nm (Si-OH overtone absorption)
+   * @param {number} r2400 - Reflectance at 2400 nm
+   * @returns {{sIndex: number, hasHydratedSilica: boolean}}
+   */
+  static computeCRISMSilicaSINDEX2(r2120, r2290, r2400) {
+    const continuum = 0.60 * Math.max(1e-4, r2120) + 0.40 * Math.max(1e-4, r2400);
+    const depth = 1.0 - (r2290 / continuum);
+
+    return {
+      sIndex: parseFloat(depth.toFixed(4)),
+      hasHydratedSilica: depth > 0.02
+    };
+  }
+
+  /**
+   * Calculate CRISM Carbonate absorption parameter (CARBINDEX) for Mg/Fe carbonates.
+   * CARBINDEX = 1.0 - ( 0.5 * (R_2300 + R_2500) ) / R_2140
+   * @param {number} r2140 - Reflectance continuum anchor at 2140 nm
+   * @param {number} r2300 - Reflectance absorption at 2300 nm
+   * @param {number} r2500 - Reflectance absorption at 2500 nm (CO3 vibrational overtone)
+   * @returns {{carbIndex: number, hasCarbonates: boolean}}
+   */
+  static computeCRISMCarbonateCARBINDEX(r2140, r2300, r2500) {
+    const continuum = Math.max(1e-4, r2140);
+    const meanBand = 0.5 * (Math.max(1e-4, r2300) + Math.max(1e-4, r2500));
+    const depth = 1.0 - (meanBand / continuum);
+
+    return {
+      carbIndex: parseFloat(depth.toFixed(4)),
+      hasCarbonates: depth > 0.03
+    };
+  }
 }
 
 
