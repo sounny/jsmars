@@ -1650,6 +1650,56 @@ export class RadarSounderEngine {
       attenuationRateDbPerKm: parseFloat(alphaDbKm.toFixed(3))
     };
   }
+
+  // --- Subsurface True Depth & Interface Echo Power Solvers ---
+
+  /**
+   * Calculate true physical depth (meters and km) from two-way radar travel time delay.
+   * d = ( c * delta_t ) / ( 2 * sqrt(eps_r) )
+   * @param {number} timeDelayMicroseconds - Two-way travel time delay in microseconds (µs)
+   * @param {number} [dielectricPermittivity=3.15] - Relative dielectric permittivity (e.g. 3.15 for water ice, 5.5 for basaltic regolith)
+   * @returns {{depthMeters: number, depthKm: number, phaseVelocityKmS: number}}
+   */
+  static computeSubsurfaceTrueDepth(timeDelayMicroseconds, dielectricPermittivity = 3.15) {
+    const dtSec = Math.max(0.0, timeDelayMicroseconds) * 1e-6;
+    const er = Math.max(1.0, dielectricPermittivity);
+    const n = Math.sqrt(er);
+
+    const vPhase = RadarSounderEngine.C / n; // m/s
+    const depthM = (vPhase * dtSec) / 2.0;
+
+    return {
+      depthMeters: parseFloat(depthM.toFixed(2)),
+      depthKm: parseFloat((depthM / 1000.0).toFixed(4)),
+      phaseVelocityKmS: parseFloat((vPhase / 1000.0).toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate net received subsurface interface echo power in dB given initial power, reflection coefficient, and two-way path loss.
+   * P_rx = P_tx + R_dB - Loss_2way_dB
+   * @param {number} initialPowerDb - Transmitted / surface reference radar power in dB
+   * @param {number} reflectionCoeffDb - Interface Fresnel power reflection coefficient in dB (negative value, e.g. -15 dB)
+   * @param {number} twoWayLossDb - Total two-way dielectric attenuation loss in dB (positive value, e.g. 12 dB)
+   * @returns {{receivedEchoPowerDb: number, netEchoAttenuationDb: number, isDetectableEcho: boolean}}
+   */
+  static computeSubsurfaceInterfaceReturnPower(initialPowerDb, reflectionCoeffDb, twoWayLossDb) {
+    const pTx = initialPowerDb;
+    const rDb = Math.min(0.0, reflectionCoeffDb);
+    const lossDb = Math.max(0.0, twoWayLossDb);
+
+    const pRx = pTx + rDb - lossDb;
+    const netAtten = Math.abs(rDb) + lossDb;
+
+    // Detectable echo if above noise floor (~ -90 dB relative to transmitted power)
+    const isDet = (pRx - pTx) > -90.0;
+
+    return {
+      receivedEchoPowerDb: parseFloat(pRx.toFixed(2)),
+      netEchoAttenuationDb: parseFloat(netAtten.toFixed(2)),
+      isDetectableEcho: isDet
+    };
+  }
 }
 
 

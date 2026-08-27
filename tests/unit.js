@@ -6926,6 +6926,40 @@ describe('Planck Blackbody Spectral Radiance & Brightness Temperature (KRCEngine
     });
 });
 
+describe('Subsurface True Depth & Interface Echo Power (RadarSounderEngine)', () => {
+    it('should calculate subsurface layer true depth from two-way radar time delay', () => {
+        // Planum Boreum water ice cap (eps_r = 3.15, sqrt(3.15) = 1.77482)
+        // Two-way delay delta_t = 10.0 µs:
+        // v_phase = 299792.458 / 1.77482 = 168914.07 km/s
+        // depth = (168914.07 * 10e-6) / 2 = 0.84457 km = 844.57 meters
+        const ice = RadarSounderEngine.computeSubsurfaceTrueDepth(10.0, 3.15);
+        expect(ice.depthMeters).to.be.closeTo(844.57, 0.5);
+        expect(ice.depthKm).to.be.closeTo(0.8446, 0.001);
+        expect(ice.phaseVelocityKmS).to.be.closeTo(168914.07, 100.0);
+
+        // Volcanic basalt regolith (eps_r = 5.5, sqrt(5.5) = 2.3452)
+        // delta_t = 5.0 µs -> depth = (299792.458 / 2.3452 * 5e-6) / 2 = 0.31958 km = 319.58 m
+        const basalt = RadarSounderEngine.computeSubsurfaceTrueDepth(5.0, 5.5);
+        expect(basalt.depthMeters).to.be.closeTo(319.58, 0.5);
+    });
+
+    it('should compute net received subsurface echo power in dB', () => {
+        // Transmitted power P_tx = 0 dB reference
+        // Basal reflector reflection coeff R_dB = -18.5 dB
+        // Two-way attenuation loss = 14.2 dB
+        // Net echo power P_rx = 0 - 18.5 - 14.2 = -32.7 dB (detectable)
+        const echo = RadarSounderEngine.computeSubsurfaceInterfaceReturnPower(0.0, -18.5, 14.2);
+        expect(echo.receivedEchoPowerDb).to.equal(-32.7);
+        expect(echo.netEchoAttenuationDb).to.equal(32.7);
+        expect(echo.isDetectableEcho).to.be.true;
+
+        // Extremely attenuated reflector below noise floor (-95 dB)
+        const faint = RadarSounderEngine.computeSubsurfaceInterfaceReturnPower(0.0, -40.0, 60.0);
+        expect(faint.receivedEchoPowerDb).to.equal(-100.0);
+        expect(faint.isDetectableEcho).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
