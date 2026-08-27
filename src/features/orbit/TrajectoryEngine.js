@@ -566,6 +566,77 @@ export class TrajectoryEngine {
       isClimbing: gammaDeg > 0.0
     };
   }
+
+  // --- Hohmann Transfer Orbit Budget & Hyperbolic Excess Velocity Solvers ---
+
+  /**
+   * Calculate two-impulse Hohmann orbital transfer maneuver between circular orbits.
+   * a_tx = (r1 + r2) / 2
+   * Delta_v1 = sqrt(mu / r1) * ( sqrt(2*r2 / (r1 + r2)) - 1 )
+   * Delta_v2 = sqrt(mu / r2) * ( 1 - sqrt(2*r1 / (r1 + r2)) )
+   * t_transfer = pi * sqrt( a_tx^3 / mu )
+   * @param {number} r1Km - Initial circular orbit radius in km
+   * @param {number} r2Km - Final target circular orbit radius in km
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{deltaV1KmS: number, deltaV2KmS: number, totalDeltaVKmS: number, transferSemiMajorAxisKm: number, transferDurationMinutes: number, transferDurationHours: number}}
+   */
+  static computeHohmannTransferOrbit(r1Km, r2Km, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const r1 = Math.max(0.1, r1Km);
+    const r2 = Math.max(0.1, r2Km);
+
+    const aTx = (r1 + r2) / 2.0;
+
+    const v1 = Math.sqrt(mu / r1);
+    const v2 = Math.sqrt(mu / r2);
+
+    const dv1 = Math.abs(v1 * (Math.sqrt((2.0 * r2) / (r1 + r2)) - 1.0));
+    const dv2 = Math.abs(v2 * (1.0 - Math.sqrt((2.0 * r1) / (r1 + r2))));
+    const totalDv = dv1 + dv2;
+
+    const tSec = Math.PI * Math.sqrt(Math.pow(aTx, 3) / mu);
+    const tMin = tSec / 60.0;
+    const tHours = tSec / 3600.0;
+
+    return {
+      deltaV1KmS: parseFloat(dv1.toFixed(4)),
+      deltaV2KmS: parseFloat(dv2.toFixed(4)),
+      totalDeltaVKmS: parseFloat(totalDv.toFixed(4)),
+      transferSemiMajorAxisKm: parseFloat(aTx.toFixed(2)),
+      transferDurationMinutes: parseFloat(tMin.toFixed(2)),
+      transferDurationHours: parseFloat(tHours.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate hyperbolic excess velocity v_inf and characteristic energy C3 = v_inf^2.
+   * v_inf = sqrt( v^2 - v_esc^2 )
+   * @param {number} velocityKmS - Spacecraft speed at periapsis in km/s
+   * @param {number} escapeVelocityKmS - Escape velocity at periapsis in km/s
+   * @returns {{vInfinityKmS: number, c3Km2S2: number, isHyperbolic: boolean}}
+   */
+  static computeHyperbolicExcessVelocity(velocityKmS, escapeVelocityKmS) {
+    const v = Math.max(0, velocityKmS);
+    const vEsc = Math.max(0, escapeVelocityKmS);
+
+    if (v <= vEsc) {
+      return {
+        vInfinityKmS: 0.0,
+        c3Km2S2: 0.0,
+        isHyperbolic: false
+      };
+    }
+
+    const vInf = Math.sqrt(v * v - vEsc * vEsc);
+    const c3 = vInf * vInf;
+
+    return {
+      vInfinityKmS: parseFloat(vInf.toFixed(4)),
+      c3Km2S2: parseFloat(c3.toFixed(3)),
+      isHyperbolic: true
+    };
+  }
 }
 
 

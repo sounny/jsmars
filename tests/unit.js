@@ -6297,6 +6297,35 @@ describe('Sinusoidal Cartographic Projection & Mercator Scale Distortion (geo)',
     });
 });
 
+describe('Hohmann Transfer Orbit Maneuvers & Hyperbolic Excess Velocity (TrajectoryEngine)', () => {
+    it('should calculate two-impulse Hohmann transfer delta-V budget and duration', () => {
+        // Low Mars circular orbit (r1 = 3680 km, alt ~290 km) to Areostationary orbit (r2 = 20428 km, alt ~17038 km)
+        // mu = 42828.37 km^3/s^2
+        // a_tx = (3680 + 20428) / 2 = 12054 km
+        // Transfer duration = pi * sqrt(12054^3 / 42828.37) = pi * sqrt(1.751e12 / 42828.37) = pi * sqrt(40884109) = pi * 6394.06 = 20087 s = 334.79 min = 5.58 hours
+        const hoh = TrajectoryEngine.computeHohmannTransferOrbit(3680.0, 20428.0, 'mars');
+        expect(hoh.transferSemiMajorAxisKm).to.equal(12054.0);
+        expect(hoh.transferDurationHours).to.be.closeTo(5.58, 0.05);
+        expect(hoh.totalDeltaVKmS).to.be.greaterThan(1.0);
+        expect(hoh.totalDeltaVKmS).to.be.lessThan(2.0);
+    });
+
+    it('should compute hyperbolic excess velocity and characteristic energy C3', () => {
+        // Spacecraft approaching Mars with periapsis speed v = 6.0 km/s where v_esc = 5.027 km/s
+        // v_inf = sqrt(6.0^2 - 5.027^2) = sqrt(36.0 - 25.271) = sqrt(10.729) = 3.2755 km/s
+        // C3 = v_inf^2 = 10.729 km^2/s^2
+        const hyp = TrajectoryEngine.computeHyperbolicExcessVelocity(6.0, 5.027);
+        expect(hyp.vInfinityKmS).to.be.closeTo(3.2755, 0.005);
+        expect(hyp.c3Km2S2).to.be.closeTo(10.729, 0.05);
+        expect(hyp.isHyperbolic).to.be.true;
+
+        // Sub-escape speed (v = 4.0 km/s < v_esc = 5.027 km/s): bound orbit -> no hyperbolic escape
+        const bound = TrajectoryEngine.computeHyperbolicExcessVelocity(4.0, 5.027);
+        expect(bound.isHyperbolic).to.be.false;
+        expect(bound.vInfinityKmS).to.equal(0.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
