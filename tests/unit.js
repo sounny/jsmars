@@ -6326,6 +6326,35 @@ describe('Hohmann Transfer Orbit Maneuvers & Hyperbolic Excess Velocity (Traject
     });
 });
 
+describe('CRISM Hydration & Fe/Mg Phyllosilicate Summary Parameters (BandMathEngine)', () => {
+    it('should calculate CRISM BD1900 molecular water and BD2300 phyllosilicate band depths', () => {
+        // Hydrated clay (e.g. Mawrth Vallis nontronite): R_1850 = 0.32, R_1930 = 0.28 (strong H2O drop), R_2060 = 0.32
+        // Continuum = 0.32 -> BD1900 = 1 - (0.28 / 0.32) = 1 - 0.875 = 0.125
+        const bd1900 = BandMathEngine.computeCRISMHydratedWaterBD1900(0.32, 0.28, 0.32);
+        expect(bd1900.bd1900).to.equal(0.125);
+        expect(bd1900.hasHydratedWater).to.be.true;
+
+        // Fe/Mg smectite (e.g. Saponite): R_2250 = 0.30, R_2300 = 0.27 (metal-OH band), R_2350 = 0.30
+        // Continuum = 0.30 -> BD2300 = 1 - (0.27 / 0.30) = 1 - 0.90 = 0.10
+        const bd2300 = BandMathEngine.computeCRISMMagnesiumIronPhyllosilicateBD2300(0.30, 0.27, 0.30);
+        expect(bd2300.bd2300).to.equal(0.10);
+        expect(bd2300.hasFeMgPhyllosilicate).to.be.true;
+    });
+
+    it('should compute CRISM BD3000 bulk surface hydration depth', () => {
+        // Heavily hydrated polar permafrost / sulfate: R_2530 = 0.25, R_3000 = 0.18
+        // BD3000 = 1 - (0.18 / 0.25) = 1 - 0.72 = 0.28 (> 0.15 -> hydrated bulk surface)
+        const bd3000 = BandMathEngine.computeCRISMBulkHydrationBD3000(0.25, 0.18);
+        expect(bd3000.bd3000).to.equal(0.28);
+        expect(bd3000.isHydratedBulkSurface).to.be.true;
+
+        // Dry anhydrous basalt (R_2530 = 0.20, R_3000 = 0.19 -> BD3000 = 0.05)
+        const dry = BandMathEngine.computeCRISMBulkHydrationBD3000(0.20, 0.19);
+        expect(dry.bd3000).to.equal(0.05);
+        expect(dry.isHydratedBulkSurface).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

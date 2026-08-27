@@ -1877,6 +1877,61 @@ export class BandMathEngine {
       isSymmetric: Math.abs(asym) <= 0.05
     };
   }
+
+  // --- CRISM Hydrated Water & Fe/Mg Phyllosilicate Summary Parameter Solvers ---
+
+  /**
+   * Calculate CRISM Molecular / Interlayer H2O 1.9 µm absorption band depth (BD1900).
+   * BD1900 = 1.0 - R_1930 / ( 0.5 * (R_1850 + R_2060) )
+   * @param {number} r1850 - Reflectance continuum shoulder at 1850 nm
+   * @param {number} r1930 - Reflectance band center at 1930 nm
+   * @param {number} r2060 - Reflectance continuum shoulder at 2060 nm
+   * @returns {{bd1900: number, hasHydratedWater: boolean}}
+   */
+  static computeCRISMHydratedWaterBD1900(r1850, r1930, r2060) {
+    const continuum = 0.5 * (Math.max(1e-4, r1850) + Math.max(1e-4, r2060));
+    const depth = 1.0 - (r1930 / continuum);
+
+    return {
+      bd1900: parseFloat(depth.toFixed(4)),
+      hasHydratedWater: depth > 0.02
+    };
+  }
+
+  /**
+   * Calculate CRISM Fe/Mg Phyllosilicate (Saponite / Nontronite / Chlorite) 2.3 µm band depth (BD2300).
+   * BD2300 = 1.0 - R_2300 / ( 0.5 * (R_2250 + R_2350) )
+   * @param {number} r2250 - Reflectance at 2250 nm
+   * @param {number} r2300 - Reflectance band center at 2300 nm
+   * @param {number} r2350 - Reflectance at 2350 nm
+   * @returns {{bd2300: number, hasFeMgPhyllosilicate: boolean}}
+   */
+  static computeCRISMMagnesiumIronPhyllosilicateBD2300(r2250, r2300, r2350) {
+    const continuum = 0.5 * (Math.max(1e-4, r2250) + Math.max(1e-4, r2350));
+    const depth = 1.0 - (r2300 / continuum);
+
+    return {
+      bd2300: parseFloat(depth.toFixed(4)),
+      hasFeMgPhyllosilicate: depth > 0.02
+    };
+  }
+
+  /**
+   * Calculate CRISM Bulk Hydration 3.0 µm absorption band depth (BD3000).
+   * BD3000 = 1.0 - R_3000 / R_2530
+   * @param {number} r2530 - Reflectance continuum baseline at 2530 nm
+   * @param {number} r3000 - Reflectance in 3000 nm water absorption band
+   * @returns {{bd3000: number, isHydratedBulkSurface: boolean}}
+   */
+  static computeCRISMBulkHydrationBD3000(r2530, r3000) {
+    const rBase = Math.max(1e-4, r2530);
+    const depth = 1.0 - (r3000 / rBase);
+
+    return {
+      bd3000: parseFloat(depth.toFixed(4)),
+      isHydratedBulkSurface: depth > 0.15
+    };
+  }
 }
 
 
