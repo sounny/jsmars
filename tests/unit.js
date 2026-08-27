@@ -7317,6 +7317,42 @@ describe('Complex Refractive Index & Sounding Vertical Resolution (RadarSounderE
     });
 });
 
+describe('Atmospheric Transmittance & Dust Optical Depth Climatology (MCDEngine)', () => {
+    it('should calculate direct solar atmospheric transmittance via Beer-Lambert law', () => {
+        // Clear sky overhead sun (tau = 0.20, theta_z = 0° -> airmass = 1.0):
+        // T_direct = exp(-0.20) = 0.8187 (81.9% transmission)
+        const overhead = MCDEngine.computeAtmosphericTransmittanceBeerLambert(0.20, 0.0);
+        expect(overhead.directTransmittance).to.be.closeTo(0.8187, 0.001);
+        expect(overhead.opticalAirmass).to.be.closeTo(1.0, 0.01);
+
+        // Oblique sun at 60° solar zenith angle (airmass ~ 2.0):
+        // tau_slant = 0.20 * 2.0 = 0.40 -> T_direct = exp(-0.40) = 0.6703
+        const slant = MCDEngine.computeAtmosphericTransmittanceBeerLambert(0.20, 60.0);
+        expect(slant.directTransmittance).to.be.closeTo(0.6703, 0.01);
+        expect(slant.opticalAirmass).to.be.closeTo(2.0, 0.05);
+
+        // Global dust storm (tau = 2.5, theta_z = 45°): T_direct = exp(-2.5 * 1.414) = exp(-3.535) = 0.029 (heavy extinction)
+        const storm = MCDEngine.computeAtmosphericTransmittanceBeerLambert(2.5, 45.0);
+        expect(storm.directTransmittance).to.be.closeTo(0.029, 0.005);
+    });
+
+    it('should estimate seasonal column dust optical depth across Martian seasons', () => {
+        // Aphelion clear season at Ls = 100°: tau_vis ~ 0.15
+        const aphelion = MCDEngine.estimateSeasonalDustOpticalDepth(100.0, false);
+        expect(aphelion.visibleOpticalDepthTau).to.be.closeTo(0.15, 0.05);
+        expect(aphelion.isDustStormSeason).to.be.false;
+
+        // Perihelion dust storm peak at Ls = 255°: tau_vis ~ 0.85
+        const perihelion = MCDEngine.estimateSeasonalDustOpticalDepth(255.0, false);
+        expect(perihelion.visibleOpticalDepthTau).to.be.closeTo(0.85, 0.05);
+        expect(perihelion.isDustStormSeason).to.be.true;
+
+        // Regional dust storm active during perihelion: tau_vis > 2.0
+        const stormActive = MCDEngine.estimateSeasonalDustOpticalDepth(255.0, true);
+        expect(stormActive.visibleOpticalDepthTau).to.be.greaterThan(2.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

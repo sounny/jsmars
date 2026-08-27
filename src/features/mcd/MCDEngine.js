@@ -1813,6 +1813,75 @@ export class MCDEngine {
       convectiveVelocityScaleMS: parseFloat(wStar.toFixed(2))
     };
   }
+
+  // --- Atmospheric Transmittance & Dust Optical Depth Climatology ---
+
+  /**
+   * Calculate direct atmospheric solar transmittance using Beer-Lambert law with airmass correction.
+   * M(theta_z) = 1 / ( cos(theta_z) + 0.025 * exp(-11 * cos(theta_z)) )
+   * tau_slant = tau_0 * M(theta_z)
+   * T_direct = exp( -tau_slant )
+   * @param {number} zenithOpticalDepthTau - Zenith atmospheric column optical depth (tau_0, typically 0.1 - 2.0 on Mars)
+   * @param {number} solarZenithAngleDeg - Solar zenith angle in degrees (0 - 90°)
+   * @returns {{directTransmittance: number, slantOpticalDepth: number, opticalAirmass: number}}
+   */
+  static computeAtmosphericTransmittanceBeerLambert(zenithOpticalDepthTau, solarZenithAngleDeg) {
+    const tau0 = Math.max(0.0, zenithOpticalDepthTau);
+    const zDeg = Math.max(0.0, Math.min(90.0, solarZenithAngleDeg));
+    const zRad = (zDeg * Math.PI) / 180.0;
+    const cosZ = Math.cos(zRad);
+
+    // Kasten & Young (1989) spherical atmospheric optical airmass formulation
+    const airmass = 1.0 / (cosZ + 0.025 * Math.exp(-11.0 * cosZ));
+    const tauSlant = tau0 * airmass;
+    const trans = Math.exp(-tauSlant);
+
+    return {
+      directTransmittance: parseFloat(trans.toFixed(4)),
+      slantOpticalDepth: parseFloat(tauSlant.toFixed(3)),
+      opticalAirmass: parseFloat(airmass.toFixed(3))
+    };
+  }
+
+  /**
+   * Estimate climatological column dust optical depth (tau_dust) as a function of Solar Longitude (Ls).
+   * Models the clear aphelion season (Ls ~ 70-150°) vs dust storm perihelion season (Ls ~ 200-320°).
+   * @param {number} solarLongitudeLsDeg - Solar Longitude in degrees (0 - 360)
+   * @param {boolean} [hasRegionalStorm=false] - Whether an active regional/global dust storm is occurring
+   * @returns {{visibleOpticalDepthTau: number, infraredOpticalDepthTau: number, seasonName: string, isDustStormSeason: boolean}}
+   */
+  static estimateSeasonalDustOpticalDepth(solarLongitudeLsDeg, hasRegionalStorm = false) {
+    let ls = solarLongitudeLsDeg % 360;
+    if (ls < 0) ls += 360;
+
+    let tauVis = 0.20; // baseline clear
+    const isStormSeason = ls >= 180.0 && ls <= 330.0;
+
+    if (isStormSeason) {
+      // Gaussian peak centered at Ls = 255° (perihelion summer)
+      const dLs = ls - 255.0;
+      const seasonalBoost = 0.60 * Math.exp(-(dLs * dLs) / (2.0 * 35.0 * 35.0));
+      tauVis = 0.25 + seasonalBoost;
+    } else {
+      // Clear aphelion cloud belt minimum at Ls = 100°
+      const dLs = ls - 100.0;
+      tauVis = 0.15 + 0.08 * (1.0 - Math.exp(-(dLs * dLs) / (2.0 * 40.0 * 40.0)));
+    }
+
+    if (hasRegionalStorm) {
+      tauVis += 1.80; // massive dust opacity enhancement
+    }
+
+    // Visible-to-IR (9.3 µm) optical depth ratio on Mars ~ 2.0 (tau_vis / tau_ir ~ 2)
+    const tauIR = tauVis / 2.0;
+
+    return {
+      visibleOpticalDepthTau: parseFloat(tauVis.toFixed(3)),
+      infraredOpticalDepthTau: parseFloat(tauIR.toFixed(3)),
+      seasonName: isStormSeason ? 'Dust Storm Season (Perihelion)' : 'Clear / Aphelion Season',
+      isDustStormSeason: isStormSeason
+    };
+  }
 }
 
 
