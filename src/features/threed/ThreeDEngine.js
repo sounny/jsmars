@@ -1667,6 +1667,60 @@ export class ThreeDEngine {
       isOppositionSpike: phaseAngleDeg <= (2.0 * (Math.atan(hs) * 180.0 / Math.PI))
     };
   }
+
+  /**
+   * Calculate Lommel-Seeliger single-scattering photometric reflectance for particulate regolith.
+   * I/F = ( w_0 / 4*pi ) * ( mu_0 / (mu_0 + mu) ) * p(g)
+   * Reference: Hapke (1981, 1993), McEwen (1991).
+   * @param {number} solarIncidenceDeg - Solar incidence angle i (0 - 90 deg)
+   * @param {number} emissionAngleDeg - Emission angle e (0 - 90 deg)
+   * @param {number} phaseAngleDeg - Phase angle g in degrees
+   * @param {number} [singleScatteringAlbedo=0.25] - Single-scattering albedo w_0 (0.12 Moon, 0.25 Mars)
+   * @returns {{lommelSeeligerReflectance: number, mu0: number, mu: number}}
+   */
+  static computeLommelSeeligerLunarReflectance(solarIncidenceDeg, emissionAngleDeg, phaseAngleDeg, singleScatteringAlbedo = 0.25) {
+    const iRad = (Math.min(89.99, Math.max(0.0, solarIncidenceDeg)) * Math.PI) / 180.0;
+    const eRad = (Math.min(89.99, Math.max(0.0, emissionAngleDeg)) * Math.PI) / 180.0;
+
+    const mu0 = Math.cos(iRad);
+    const mu = Math.cos(eRad);
+    const w0 = Math.min(1.0, Math.max(0.0, singleScatteringAlbedo));
+    const pG = ThreeDEngine.computeHapkeSingleParticlePhaseFunction(phaseAngleDeg).phaseFunctionValue;
+
+    const ls = (w0 / (4.0 * Math.PI)) * (mu0 / (mu0 + mu)) * pG;
+
+    return {
+      lommelSeeligerReflectance: parseFloat(ls.toFixed(6)),
+      mu0: parseFloat(mu0.toFixed(4)),
+      mu: parseFloat(mu.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate McEwen Lunar-Lambert photometric weighting function.
+   * Combines Lommel-Seeliger (rough regolith) and Lambertian (smooth isotropic) laws.
+   * f_LL = 2.0 * L(g) * ( mu_0 / (mu_0 + mu) ) + (1.0 - L(g)) * mu_0
+   * @param {number} solarIncidenceDeg - Incidence angle i in degrees
+   * @param {number} emissionAngleDeg - Emission angle e in degrees
+   * @param {number} [lunarWeightL=0.60] - Lunar-Lambert weighting factor L(g) (1.0 = Lommel-Seeliger, 0.0 = Lambert)
+   * @returns {{lunarLambertFactor: number, lunarWeight: number, isDominantlyLommelSeeliger: boolean}}
+   */
+  static computeLunarLambertPhotometricWeighting(solarIncidenceDeg, emissionAngleDeg, lunarWeightL = 0.60) {
+    const iRad = (Math.min(89.99, Math.max(0.0, solarIncidenceDeg)) * Math.PI) / 180.0;
+    const eRad = (Math.min(89.99, Math.max(0.0, emissionAngleDeg)) * Math.PI) / 180.0;
+
+    const mu0 = Math.cos(iRad);
+    const mu = Math.cos(eRad);
+    const L = Math.min(1.0, Math.max(0.0, lunarWeightL));
+
+    const fLL = 2.0 * L * (mu0 / (mu0 + mu)) + (1.0 - L) * mu0;
+
+    return {
+      lunarLambertFactor: parseFloat(fLL.toFixed(4)),
+      lunarWeight: parseFloat(L.toFixed(3)),
+      isDominantlyLommelSeeliger: L > 0.5
+    };
+  }
 }
 
 

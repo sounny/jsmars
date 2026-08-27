@@ -335,5 +335,75 @@ export class HillshadeLayer {
     const slopeRad = Math.atan(Math.sqrt(zx * zx + zy * zy));
     return parseFloat((slopeRad * 180 / Math.PI).toFixed(2));
   }
+
+  /**
+   * Calculate topographic slope aspect (compass direction of steepest downslope slope in degrees, 0 = North, 90 = East, 180 = South, 270 = West).
+   * @param {number} dzdx - Partial x-derivative
+   * @param {number} dzdy - Partial y-derivative
+   * @returns {{aspectDeg: number, cardinalDirection: string, isFlat: boolean}}
+   */
+  static computeTopographicAspectDegrees(dzdx, dzdy) {
+    const mag = Math.sqrt(dzdx * dzdx + dzdy * dzdy);
+    if (mag < 1e-7) {
+      return { aspectDeg: 0.0, cardinalDirection: 'Flat', isFlat: true };
+    }
+
+    let aspectRad = Math.atan2(-dzdy, -dzdx);
+    let aspectDeg = (aspectRad * 180.0) / Math.PI;
+
+    // Convert from math angle to compass azimuth (0 = N, 90 = E, 180 = S, 270 = W)
+    let compassDeg = 90.0 - aspectDeg;
+    if (compassDeg < 0.0) compassDeg += 360.0;
+    if (compassDeg >= 360.0) compassDeg -= 360.0;
+
+    let dir = 'N';
+    if (compassDeg >= 22.5 && compassDeg < 67.5) dir = 'NE';
+    else if (compassDeg >= 67.5 && compassDeg < 112.5) dir = 'E';
+    else if (compassDeg >= 112.5 && compassDeg < 157.5) dir = 'SE';
+    else if (compassDeg >= 157.5 && compassDeg < 202.5) dir = 'S';
+    else if (compassDeg >= 202.5 && compassDeg < 247.5) dir = 'SW';
+    else if (compassDeg >= 247.5 && compassDeg < 292.5) dir = 'W';
+    else if (compassDeg >= 292.5 && compassDeg < 337.5) dir = 'NW';
+
+    return {
+      aspectDeg: parseFloat(compassDeg.toFixed(2)),
+      cardinalDirection: dir,
+      isFlat: false
+    };
+  }
+
+  /**
+   * Calculate direct solar beam illumination flux (W/m^2) incident on sloping terrain.
+   * cos(i_slope) = cos(theta_z) * cos(S) + sin(theta_z) * sin(S) * cos(psi_sun - Aspect)
+   * F_slope = F_solar_TOA * max(0, cos(i_slope))
+   * @param {number} slopeDeg - Slope angle in degrees (0 to 90)
+   * @param {number} aspectDeg - Slope aspect compass azimuth in degrees (0 to 360)
+   * @param {number} solarZenithDeg - Solar zenith angle theta_z in degrees
+   * @param {number} solarAzimuthDeg - Solar azimuth psi_sun in degrees
+   * @param {number} [solarFluxTOA=590.0] - Top-of-atmosphere solar irradiance in W/m^2 (590 W/m^2 Mars mean, 1361 W/m^2 Earth)
+   * @returns {{incidentFluxWm2: number, cosIncidence: number, isSelfShadowed: boolean}}
+   */
+  static computeDirectSolarInsolationOnSlope(slopeDeg, aspectDeg, solarZenithDeg, solarAzimuthDeg, solarFluxTOA = 590.0) {
+    const sRad = (Math.min(90.0, Math.max(0.0, slopeDeg)) * Math.PI) / 180.0;
+    const aRad = (aspectDeg * Math.PI) / 180.0;
+    const zRad = (Math.min(90.0, Math.max(0.0, solarZenithDeg)) * Math.PI) / 180.0;
+    const sunAzRad = (solarAzimuthDeg * Math.PI) / 180.0;
+
+    const cosZ = Math.cos(zRad);
+    const sinZ = Math.sin(zRad);
+    const cosS = Math.cos(sRad);
+    const sinS = Math.sin(sRad);
+    const cosAzDiff = Math.cos(sunAzRad - aRad);
+
+    const cosI = cosZ * cosS + sinZ * sinS * cosAzDiff;
+    const isSelfShadowed = cosI <= 0.0;
+    const flux = isSelfShadowed ? 0.0 : solarFluxTOA * cosI;
+
+    return {
+      incidentFluxWm2: parseFloat(flux.toFixed(2)),
+      cosIncidence: parseFloat(cosI.toFixed(4)),
+      isSelfShadowed
+    };
+  }
 }
 

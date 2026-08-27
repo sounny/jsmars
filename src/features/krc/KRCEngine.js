@@ -1978,6 +1978,51 @@ export class KRCEngine {
       isCondensing: fNet > 0.0
     };
   }
+
+  /**
+   * Calculate diurnal and annual thermal skin depths and subsurface temperature wave damping.
+   * d_diurnal = ( I / (rho * c_p) ) * sqrt( P_sol / pi )
+   * d_annual = d_diurnal * sqrt( P_year_sols )
+   * Delta_T(z) = Delta_T_surface * exp( -z / d )
+   * Phase_lag_hours = ( z / d ) * ( P_sol_hours / 2*pi )
+   * Reference: Kieffer (2013), Mellon et al. (2000, 2008).
+   * @param {number} thermalInertia - Thermal inertia I in J m^-2 K^-1 s^-1/2 (e.g. 50 dust, 300 sand, 2000 bedrock)
+   * @param {number} [surfaceTempAmplitudeK=50.0] - Surface diurnal temperature swing half-amplitude Delta_T_0 in K
+   * @param {number} [targetDepthMeters=0.10] - Subsurface measurement depth z in meters
+   * @param {number} [densityKgM3=1500.0] - Regolith bulk density rho in kg/m^3
+   * @param {number} [specificHeatJouleKgK=850.0] - Specific heat capacity c_p in J/(kg*K)
+   * @returns {{diurnalSkinDepthCm: number, annualSkinDepthMeters: number, dampedTempAmplitudeK: number, phaseLagHours: number, amplitudeDampingRatio: number}}
+   */
+  static computeThermalSkinDepthAndHarmonicDamping(thermalInertia, surfaceTempAmplitudeK = 50.0, targetDepthMeters = 0.10, densityKgM3 = 1500.0, specificHeatJouleKgK = 850.0) {
+    const I = Math.max(10.0, thermalInertia);
+    const rho = Math.max(100.0, densityKgM3);
+    const cp = Math.max(100.0, specificHeatJouleKgK);
+    const deltaT0 = Math.max(0.0, surfaceTempAmplitudeK);
+    const z = Math.max(0.0, targetDepthMeters);
+
+    const solSeconds = 88775.244;
+    const solHours = 24.65979;
+    const martianYearSols = 668.599;
+
+    // Volumetric heat capacity C_v = rho * c_p
+    const volumetricHeatCapacity = rho * cp;
+    // Thermal conductivity k = I^2 / (rho * c_p)
+    // d_diurnal = sqrt( (k * P_sol) / (pi * rho * c_p) ) = ( I / (rho * c_p) ) * sqrt( P_sol / pi )
+    const dDiurnalM = (I / volumetricHeatCapacity) * Math.sqrt(solSeconds / Math.PI);
+    const dAnnualM = dDiurnalM * Math.sqrt(martianYearSols);
+
+    const decayRatio = Math.exp(-z / dDiurnalM);
+    const dampedAmpK = deltaT0 * decayRatio;
+    const phaseLagHours = (z / dDiurnalM) * (solHours / (2.0 * Math.PI));
+
+    return {
+      diurnalSkinDepthCm: parseFloat((dDiurnalM * 100.0).toFixed(2)),
+      annualSkinDepthMeters: parseFloat(dAnnualM.toFixed(3)),
+      dampedTempAmplitudeK: parseFloat(dampedAmpK.toFixed(2)),
+      phaseLagHours: parseFloat(phaseLagHours.toFixed(2)),
+      amplitudeDampingRatio: parseFloat(decayRatio.toFixed(4))
+    };
+  }
 }
 
 

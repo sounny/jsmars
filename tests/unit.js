@@ -8292,6 +8292,61 @@ describe('MCD Dust Optical Depth, SHARAD Radar Attenuation & CRISM Pyroxene Solv
     });
 });
 
+describe('Photometric Scattering, KRC Subsurface Thermal Waves & Terrain Solar Insolation', () => {
+    it('should calculate Lommel-Seeliger regolith reflectance and Lunar-Lambert weighting', () => {
+        // Normal incidence and emission at zero phase (i = 0, e = 0, g = 0):
+        // mu_0 = 1.0, mu = 1.0 -> mu_0 / (mu_0 + mu) = 0.5
+        // LS = (w_0 / 4pi) * 0.5 * p(0)
+        const exactNorm = ThreeDEngine.computeLommelSeeligerLunarReflectance(0.0, 0.0, 0.0, 0.25);
+        expect(exactNorm.mu0).to.equal(1.0);
+        expect(exactNorm.mu).to.equal(1.0);
+        expect(exactNorm.lommelSeeligerReflectance).to.be.greaterThan(0);
+
+        // Lunar-Lambert factor for L = 0.60
+        const ll = ThreeDEngine.computeLunarLambertPhotometricWeighting(30.0, 0.0, 0.60);
+        expect(ll.lunarWeight).to.equal(0.60);
+        expect(ll.isDominantlyLommelSeeliger).to.be.true;
+        expect(ll.lunarLambertFactor).to.be.greaterThan(0);
+    });
+
+    it('should compute KRC diurnal and annual thermal skin depths and subsurface harmonic damping', () => {
+        // Typical Martian sand (I = 250 J m^-2 K^-1 s^-1/2, rho = 1500 kg/m^3, c_p = 850 J/kg/K):
+        // Volumetric heat capacity = 1500 * 850 = 1.275e6 J/m^3/K
+        // Diurnal skin depth d_diurnal ~ (250 / 1.275e6) * sqrt(88775 / pi) = 1.96e-4 * 168.09 = 0.033 m = 3.3 cm
+        const sandThermal = KRCEngine.computeThermalSkinDepthAndHarmonicDamping(250.0, 50.0, 0.10);
+        expect(sandThermal.diurnalSkinDepthCm).to.be.closeTo(3.3, 0.5);
+        expect(sandThermal.annualSkinDepthMeters).to.be.greaterThan(0.5);
+        expect(sandThermal.annualSkinDepthMeters).to.be.closeTo(sandThermal.diurnalSkinDepthCm * 0.01 * Math.sqrt(668.6), 0.1);
+
+        // At z = 10 cm (depth > 3*d_diurnal), surface wave is damped to < 10%
+        expect(sandThermal.dampedTempAmplitudeK).to.be.lessThan(5.0);
+        expect(sandThermal.phaseLagHours).to.be.greaterThan(5.0);
+    });
+
+    it('should compute topographic aspect azimuth and direct solar insolation on sloping terrain', () => {
+        // 45-degree slope facing due South (dzdx = 0, dzdy = 1.0):
+        const southAspect = HillshadeLayer.computeTopographicAspectDegrees(0.0, 1.0);
+        expect(southAspect.aspectDeg).to.be.closeTo(180.0, 0.1);
+        expect(southAspect.cardinalDirection).to.equal('S');
+
+        // Facing due East (dzdx = -1.0, dzdy = 0.0):
+        const eastAspect = HillshadeLayer.computeTopographicAspectDegrees(-1.0, 0.0);
+        expect(eastAspect.aspectDeg).to.be.closeTo(90.0, 0.1);
+        expect(eastAspect.cardinalDirection).to.equal('E');
+
+        // Direct insolation on south-facing 30-degree slope with midday sun directly overhead in south:
+        const southSlopeInsolation = HillshadeLayer.computeDirectSolarInsolationOnSlope(30.0, 180.0, 30.0, 180.0, 590.0);
+        expect(southSlopeInsolation.cosIncidence).to.be.closeTo(1.0, 0.01);
+        expect(southSlopeInsolation.incidentFluxWm2).to.be.closeTo(590.0, 5.0);
+        expect(southSlopeInsolation.isSelfShadowed).to.be.false;
+
+        // North-facing cliff completely self-shadowed from southern sun:
+        const northSlopeInsolation = HillshadeLayer.computeDirectSolarInsolationOnSlope(60.0, 0.0, 70.0, 180.0, 590.0);
+        expect(northSlopeInsolation.isSelfShadowed).to.be.true;
+        expect(northSlopeInsolation.incidentFluxWm2).to.equal(0.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
