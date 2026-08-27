@@ -6081,6 +6081,36 @@ describe('SHARAD Radar Travel Time, Apparent Thickness & Critical Angle (RadarSo
     });
 });
 
+describe('TES Thermal Infrared Mineralogy & Absorption Asymmetry (BandMathEngine)', () => {
+    it('should calculate TES Silica index and Carbonate 1430 cm^-1 absorption depth', () => {
+        // High silica dacite: eps_1100 = 0.95, eps_1125 = 0.88 (strong Si-O absorption), eps_1150 = 0.94
+        // Index = (0.95 + 0.94) / (2 * 0.88) = 1.89 / 1.76 = 1.0739 (> 1.03 -> silica enrichment)
+        const silica = BandMathEngine.computeTESSilicaIndex(0.95, 0.88, 0.94);
+        expect(silica.silicaIndex).to.be.closeTo(1.0739, 0.001);
+        expect(silica.hasSilicaEnrichment).to.be.true;
+
+        // TES Carbonate (Nili Fossae): eps_1350 = 0.96, eps_1430 = 0.88 (CO3 absorption), eps_1510 = 0.96
+        // Continuum = 0.96 -> BD1430 = 1 - (0.88 / 0.96) = 1 - 0.9167 = 0.0833
+        const carb = BandMathEngine.computeTESCarbonateBD1430(0.96, 0.88, 0.96);
+        expect(carb.bd1430).to.be.closeTo(0.0833, 0.001);
+        expect(carb.hasCarbonate).to.be.true;
+    });
+
+    it('should compute spectral absorption band asymmetry parameter (skewness)', () => {
+        // Left-skewed absorption feature (e.g. olivine 1 µm complex with strong 0.85 µm shoulder):
+        // Area_left = 12.0, Area_right = 6.0 -> Asym = (12 - 6) / 18 = 6 / 18 = +0.3333
+        const leftSkew = BandMathEngine.computeSpectralAsymmetryIndex(12.0, 6.0);
+        expect(leftSkew.asymmetryIndex).to.be.closeTo(0.3333, 0.001);
+        expect(leftSkew.isLeftSkewed).to.be.true;
+        expect(leftSkew.isRightSkewed).to.be.false;
+
+        // Perfectly symmetric band: Area_left = 8.0, Area_right = 8.0 -> Asym = 0.0
+        const sym = BandMathEngine.computeSpectralAsymmetryIndex(8.0, 8.0);
+        expect(sym.asymmetryIndex).to.equal(0.0);
+        expect(sym.isSymmetric).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

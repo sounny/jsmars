@@ -1808,6 +1808,75 @@ export class BandMathEngine {
       isBlueSloped: slope < -0.01
     };
   }
+
+  // --- TES Thermal Infrared Mineralogy & Absorption Asymmetry Solvers ---
+
+  /**
+   * Calculate TES Quartz / Silica Si-O stretching vibrational index.
+   * SilicaIndex = ( eps_1100 + eps_1150 ) / ( 2 * eps_1125 )
+   * @param {number} eps1100 - Emissivity at 1100 cm^-1
+   * @param {number} eps1125 - Emissivity at band center 1125 cm^-1
+   * @param {number} eps1150 - Emissivity at 1150 cm^-1
+   * @returns {{silicaIndex: number, hasSilicaEnrichment: boolean}}
+   */
+  static computeTESSilicaIndex(eps1100, eps1125, eps1150) {
+    const denom = 2.0 * Math.max(1e-4, eps1125);
+    const index = (eps1100 + eps1150) / denom;
+
+    return {
+      silicaIndex: parseFloat(index.toFixed(4)),
+      hasSilicaEnrichment: index > 1.03
+    };
+  }
+
+  /**
+   * Calculate TES Carbonate CO3 stretching fundamental absorption band depth at 1430 cm^-1.
+   * BD1430 = 1.0 - eps_1430 / ( 0.5 * (eps_1350 + eps_1510) )
+   * @param {number} eps1350 - Emissivity continuum shoulder at 1350 cm^-1
+   * @param {number} eps1430 - Emissivity band center at 1430 cm^-1
+   * @param {number} eps1510 - Emissivity continuum shoulder at 1510 cm^-1
+   * @returns {{bd1430: number, hasCarbonate: boolean}}
+   */
+  static computeTESCarbonateBD1430(eps1350, eps1430, eps1510) {
+    const continuum = 0.5 * (Math.max(1e-4, eps1350) + Math.max(1e-4, eps1510));
+    const depth = 1.0 - (eps1430 / continuum);
+
+    return {
+      bd1430: parseFloat(depth.toFixed(4)),
+      hasCarbonate: depth > 0.03
+    };
+  }
+
+  /**
+   * Calculate spectral absorption band asymmetry parameter (skewness).
+   * A_asym = ( Area_left - Area_right ) / ( Area_left + Area_right )
+   * @param {number} leftHalfArea - Integrated area under left half of absorption feature
+   * @param {number} rightHalfArea - Integrated area under right half of absorption feature
+   * @returns {{asymmetryIndex: number, isLeftSkewed: boolean, isRightSkewed: boolean, isSymmetric: boolean}}
+   */
+  static computeSpectralAsymmetryIndex(leftHalfArea, rightHalfArea) {
+    const aLeft = Math.max(0, leftHalfArea);
+    const aRight = Math.max(0, rightHalfArea);
+    const total = aLeft + aRight;
+
+    if (total <= 1e-8) {
+      return {
+        asymmetryIndex: 0.0,
+        isLeftSkewed: false,
+        isRightSkewed: false,
+        isSymmetric: true
+      };
+    }
+
+    const asym = (aLeft - aRight) / total;
+
+    return {
+      asymmetryIndex: parseFloat(asym.toFixed(4)),
+      isLeftSkewed: asym > 0.05,
+      isRightSkewed: asym < -0.05,
+      isSymmetric: Math.abs(asym) <= 0.05
+    };
+  }
 }
 
 
