@@ -8436,6 +8436,56 @@ describe('Ionospheric Radar Dispersion, Methane Photolysis & Olivine Fo# Solid S
     });
 });
 
+describe('Sub-Solar Ephemeris, Thermal Regolith Grain Size & Carbonate Doublet Indices', () => {
+    it('should calculate planetary sub-solar point and Solar Zenith Angle (SZA)', () => {
+        // Northern summer solstice (Ls = 90 deg):
+        // subSolarLatitude = +25.19 deg (maximum northern declination on Mars)
+        const solstice = TrajectoryEngine.computeSubSolarPointAndZenithAngle(90.0, 25.19, 0.0, 12.0, 'mars');
+        expect(solstice.subSolarLatitudeDeg).to.be.closeTo(25.19, 0.1);
+        expect(solstice.solarZenithAngleDeg).to.be.closeTo(0.0, 0.5); // Directly overhead
+        expect(solstice.solarElevationDeg).to.be.closeTo(90.0, 0.5);
+        expect(solstice.isDaylight).to.be.true;
+
+        // Midnight nightside (localSolarTime = 0.0 h): SZA > 90 deg
+        const midnight = TrajectoryEngine.computeSubSolarPointAndZenithAngle(90.0, 25.19, 0.0, 0.0, 'mars');
+        expect(midnight.isDaylight).to.be.false;
+        expect(midnight.solarZenithAngleDeg).to.be.greaterThan(90.0);
+    });
+
+    it('should invert effective regolith grain size and geological texture from thermal inertia', () => {
+        // Fine airborne dust mantle (I = 50): d < 40 um
+        const dust = KRCEngine.computeThermalInertiaEffectiveGrainSize(50.0);
+        expect(dust.effectiveGrainSizeMicrons).to.be.lessThan(40.0);
+        expect(dust.grainClass).to.include('Airborne Dust');
+
+        // Active basaltic dune sand (I = 250): d ~ 150 um
+        const sand = KRCEngine.computeThermalInertiaEffectiveGrainSize(250.0);
+        expect(sand.effectiveGrainSizeMicrons).to.be.closeTo(158.0, 25.0);
+        expect(sand.grainClass).to.include('Active Sand');
+
+        // Solid continuous volcanic bedrock (I = 1800): d > 10 cm (bedrock)
+        const bedrock = KRCEngine.computeThermalInertiaEffectiveGrainSize(1800.0);
+        expect(bedrock.grainClass).to.include('Dense Continuous Bedrock');
+        expect(bedrock.thermalConductivityWmK).to.be.greaterThan(1.5);
+    });
+
+    it('should calculate CRISM carbonate doublet indices and discriminate Fe/Mg vs Ca carbonates', () => {
+        // Fe/Mg-Carbonate (Magnesite / Nili Fossae): strong BD2500 and BD2300 doublet
+        const magnesite = BandMathEngine.computeCRISMCarbonateIndices(0.24, 0.20, 0.25, 0.26, 0.21, 0.27);
+        expect(magnesite.bd2500Index).to.be.greaterThan(0.15);
+        expect(magnesite.bd2300Index).to.be.greaterThan(0.15);
+        expect(magnesite.isCarbonateDetected).to.be.true;
+        expect(magnesite.isFeMgCarbonate).to.be.true;
+        expect(magnesite.carbonateClass).to.include('Fe/Mg-Carbonate');
+
+        // Smectite clay with 2.3 um band but lacking 2.5 um carbonate feature:
+        const smectite = BandMathEngine.computeCRISMCarbonateIndices(0.25, 0.22, 0.26, 0.27, 0.27, 0.27);
+        expect(magnesite.isCarbonateDetected).to.be.true;
+        expect(smectite.isCarbonateDetected).to.be.false;
+        expect(smectite.carbonateClass).to.include('Phyllosilicate');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

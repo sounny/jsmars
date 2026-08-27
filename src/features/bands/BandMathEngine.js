@@ -2439,6 +2439,57 @@ export class BandMathEngine {
       isIronFaRich: isIron
     };
   }
+
+  /**
+   * Calculate CRISM carbonate mineralogy doublet indices (BD2500 and BD2300 C-O vibrational overtone bands).
+   * BD2500 = 1.0 - ( R_2530 / (0.5 * (R_2430 + R_2600)) )
+   * BD2300 = 1.0 - ( R_2330 / (0.5 * (R_2250 + R_2390)) )
+   * Reference: Ehlmann et al. (2008), Viviano-Beck et al. (2014) for Nili Fossae & Jezero crater rim carbonates.
+   * @param {number} r2250 - Short continuum anchor at 2250 nm
+   * @param {number} r2330 - Carbonate/metal-OH absorption at 2330 nm
+   * @param {number} r2390 - Intermediate continuum anchor at 2390 nm
+   * @param {number} r2430 - Pre-2.5 um continuum anchor at 2430 nm
+   * @param {number} r2530 - Primary carbonate C-O overtone minimum at 2530 nm
+   * @param {number} r2600 - Post-2.5 um continuum anchor at 2600 nm
+   * @returns {{bd2500Index: number, bd2300Index: number, carbonateClass: string, isCarbonateDetected: boolean, isFeMgCarbonate: boolean}}
+   */
+  static computeCRISMCarbonateIndices(r2250, r2330, r2390, r2430, r2530, r2600) {
+    const c225 = Math.max(1e-4, r2250);
+    const b233 = Math.max(1e-4, r2330);
+    const c239 = Math.max(1e-4, r2390);
+    const c243 = Math.max(1e-4, r2430);
+    const b253 = Math.max(1e-4, r2530);
+    const c260 = Math.max(1e-4, r2600);
+
+    const cont2300 = 0.5 * (c225 + c239);
+    const bd2300 = 1.0 - (b233 / cont2300);
+
+    const cont2500 = 0.5 * (c243 + c260);
+    const bd2500 = 1.0 - (b253 / cont2500);
+
+    let carbonateClass = 'Unenriched / No Significant Carbonate';
+    const isCarbonate = bd2500 > 0.025 && bd2300 > 0.020;
+    let isFeMg = false;
+
+    if (isCarbonate) {
+      if (bd2500 >= 0.035 && bd2300 >= 0.030) {
+        carbonateClass = 'Fe/Mg-Carbonate (Magnesite / Siderite / Nili Fossae Type)';
+        isFeMg = true;
+      } else {
+        carbonateClass = 'Calcite / Mixed Carbonate-Clay Assemblage';
+      }
+    } else if (bd2300 > 0.03 && bd2500 <= 0.015) {
+      carbonateClass = 'Phyllosilicate (Fe/Mg-Smectite without 2.5 um Carbonate Doublet)';
+    }
+
+    return {
+      bd2500Index: parseFloat(bd2500.toFixed(4)),
+      bd2300Index: parseFloat(bd2300.toFixed(4)),
+      carbonateClass,
+      isCarbonateDetected: isCarbonate,
+      isFeMgCarbonate: isFeMg
+    };
+  }
 }
 
 

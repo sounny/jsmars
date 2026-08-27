@@ -1031,6 +1031,58 @@ export class TrajectoryEngine {
       groundTrackEquatorialDriftDeg: parseFloat(driftDeg.toFixed(3))
     };
   }
+
+  /**
+   * Calculate planetary sub-solar point (latitude/declination, longitude) and target Solar Zenith Angle (SZA).
+   * sin(delta_sun) = sin(obliquity) * sin(Ls)
+   * cos(theta_z) = sin(lat) * sin(delta_sun) + cos(lat) * cos(delta_sun) * cos(lon - lon_sun)
+   * SZA = arccos(cos(theta_z))
+   * @param {number} solarLongitudeLsDeg - Areocentric solar longitude L_s in degrees (0 to 360)
+   * @param {number} [targetLatDeg=0.0] - Target point latitude in degrees (-90 to +90)
+   * @param {number} [targetLonDeg=0.0] - Target point longitude in degrees (-180 to +180 or 0 to 360)
+   * @param {number} [localSolarTimeHours=12.0] - Local solar time at sub-solar reference meridian (hours, 0 to 24)
+   * @param {string} [body='mars'] - Planetary body ('mars', 'moon', 'earth')
+   * @returns {{subSolarLatitudeDeg: number, subSolarLongitudeDeg: number, solarZenithAngleDeg: number, solarElevationDeg: number, isDaylight: boolean}}
+   */
+  static computeSubSolarPointAndZenithAngle(solarLongitudeLsDeg, targetLatDeg = 0.0, targetLonDeg = 0.0, localSolarTimeHours = 12.0, body = 'mars') {
+    const bKey = body.toLowerCase();
+    let obliquityDeg = 25.19; // Mars
+    if (bKey === 'earth') obliquityDeg = 23.44;
+    else if (bKey === 'moon') obliquityDeg = 1.54;
+
+    const lsRad = (solarLongitudeLsDeg * Math.PI) / 180.0;
+    const obliqRad = (obliquityDeg * Math.PI) / 180.0;
+
+    // Declination delta_sun
+    const sinDelta = Math.sin(obliqRad) * Math.sin(lsRad);
+    const deltaRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinDelta)));
+    const subSolarLatDeg = (deltaRad * 180.0) / Math.PI;
+
+    // Sub-solar longitude (where solar time is 12:00 noon)
+    // lon_sun = targetLon + (12.0 - lst) * 15.0
+    const lonShiftDeg = (12.0 - localSolarTimeHours) * 15.0;
+    let subSolarLonDeg = (targetLonDeg + lonShiftDeg) % 360.0;
+    if (subSolarLonDeg > 180.0) subSolarLonDeg -= 360.0;
+    if (subSolarLonDeg < -180.0) subSolarLonDeg += 360.0;
+
+    // Target SZA
+    const phiRad = (targetLatDeg * Math.PI) / 180.0;
+    const dLonRad = ((targetLonDeg - subSolarLonDeg) * Math.PI) / 180.0;
+
+    const cosZ = Math.sin(phiRad) * Math.sin(deltaRad) + Math.cos(phiRad) * Math.cos(deltaRad) * Math.cos(dLonRad);
+    const clampedCosZ = Math.max(-1.0, Math.min(1.0, cosZ));
+    const szaRad = Math.acos(clampedCosZ);
+    const szaDeg = (szaRad * 180.0) / Math.PI;
+    const elevDeg = 90.0 - szaDeg;
+
+    return {
+      subSolarLatitudeDeg: parseFloat(subSolarLatDeg.toFixed(2)),
+      subSolarLongitudeDeg: parseFloat(subSolarLonDeg.toFixed(2)),
+      solarZenithAngleDeg: parseFloat(szaDeg.toFixed(2)),
+      solarElevationDeg: parseFloat(elevDeg.toFixed(2)),
+      isDaylight: szaDeg < 90.0
+    };
+  }
 }
 
 
