@@ -1994,6 +1994,69 @@ export class CSFDEngine {
       n1Density: parseFloat(n1.toExponential(4))
     };
   }
+
+  // --- Impact Dynamics & Transient Crater Cavity Solvers ---
+
+  /**
+   * Calculate transient excavation crater diameter (Dt), depth (dt), and volume (Vexc) from final observed rim diameter (D).
+   * Simple (D < 7 km): Dt = D / 1.25
+   * Complex (D >= 7 km): Dt = ( D * D_sc^0.13 / 1.17 )^(1 / 1.13)   [D_sc = 7.0 km on Mars]
+   * Excavation depth: dt = Dt / 3
+   * Excavation volume: Vexc = (pi / 24) * dt * Dt^2 = 0.04363 * Dt^3
+   * @param {number} finalDiameterKm - Observed rim-to-rim crater diameter in km
+   * @param {number} [transitionDiameterKm=7.0] - Simple-to-complex transition diameter in km (7.0 km for Mars)
+   * @returns {{transientDiameterKm: number, transientDepthKm: number, excavationVolumeKm3: number, isComplexCavity: boolean}}
+   */
+  static computeTransientCraterScaling(finalDiameterKm, transitionDiameterKm = 7.0) {
+    const D = Math.max(0.001, finalDiameterKm);
+    const Dsc = Math.max(1.0, transitionDiameterKm);
+
+    let Dt = 0.0;
+    const isComplex = D >= Dsc;
+
+    if (!isComplex) {
+      Dt = D / 1.25;
+    } else {
+      const term = (D * Math.pow(Dsc, 0.13)) / 1.17;
+      Dt = Math.pow(term, 1.0 / 1.13);
+    }
+
+    const dt = Dt / 3.0;
+    const vExc = (Math.PI / 24.0) * dt * (Dt * Dt);
+
+    return {
+      transientDiameterKm: parseFloat(Dt.toFixed(3)),
+      transientDepthKm: parseFloat(dt.toFixed(3)),
+      excavationVolumeKm3: parseFloat(vExc.toFixed(4)),
+      isComplexCavity: isComplex
+    };
+  }
+
+  /**
+   * Calculate estimated projectile impact kinetic energy in Joules and TNT Megatons based on transient crater diameter.
+   * Uses gravity-regime scaling: E = 0.5 * rho_t * g * Dt^4  (Schmidt-Holsapple / Melosh)
+   * @param {number} transientDiameterKm - Transient crater diameter in km
+   * @param {number} [targetDensityKg_M3=2600.0] - Target crustal density in kg/m^3
+   * @param {number} [gravityMS2=3.72076] - Surface gravitational acceleration in m/s^2
+   * @returns {{energyJoules: number, energyMegatonsTNT: number, gigatonsTNT: number}}
+   */
+  static computeImpactKineticEnergyMegatons(transientDiameterKm, targetDensityKg_M3 = 2600.0, gravityMS2 = 3.72076) {
+    const DtMeters = Math.max(1.0, transientDiameterKm * 1000.0);
+    const rho = Math.max(500.0, targetDensityKg_M3);
+    const g = Math.max(0.1, gravityMS2);
+
+    // Gravity-dominated scaling approximation: E_impact ~ (pi/12) * rho * g * Dt^4 / (coupling_eff ~ 0.2)
+    // Simplified standard: E = 0.40 * rho * g * Dt^4
+    const energyJ = 0.40 * rho * g * Math.pow(DtMeters, 4);
+    const megatonsTNT = energyJ / 4.184e15; // 1 Mt TNT = 4.184e15 Joules
+    const gigatonsTNT = megatonsTNT / 1000.0;
+
+    return {
+      energyJoules: parseFloat(energyJ.toExponential(4)),
+      energyMegatonsTNT: parseFloat(megatonsTNT.toFixed(2)),
+      gigatonsTNT: parseFloat(gigatonsTNT.toFixed(4))
+    };
+  }
 }
 
 

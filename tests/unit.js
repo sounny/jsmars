@@ -6960,6 +6960,38 @@ describe('Subsurface True Depth & Interface Echo Power (RadarSounderEngine)', ()
     });
 });
 
+describe('Transient Crater Cavity Scaling & Impact Kinetic Energy (CSFDEngine)', () => {
+    it('should calculate transient excavation crater diameter, depth, and volume', () => {
+        // Simple bowl crater (D = 5.0 km < 7.0 km):
+        // Dt = 5.0 / 1.25 = 4.0 km
+        // dt = 4.0 / 3 = 1.333 km
+        // Vexc = (pi / 24) * 1.3333 * 16.0 = 2.7925 km^3
+        const simple = CSFDEngine.computeTransientCraterScaling(5.0, 7.0);
+        expect(simple.transientDiameterKm).to.equal(4.0);
+        expect(simple.transientDepthKm).to.be.closeTo(1.333, 0.001);
+        expect(simple.excavationVolumeKm3).to.be.closeTo(2.7925, 0.01);
+        expect(simple.isComplexCavity).to.be.false;
+
+        // Complex collapsed crater (e.g. Jezero crater D = 45.0 km >= 7.0 km):
+        // Dt = (45.0 * 7.0^0.13 / 1.17)^(1 / 1.13) = (45.0 * 1.2882 / 1.17)^0.88496 = (49.544)^0.88496 = 31.42 km
+        const jezero = CSFDEngine.computeTransientCraterScaling(45.0, 7.0);
+        expect(jezero.transientDiameterKm).to.be.closeTo(31.42, 0.5);
+        expect(jezero.isComplexCavity).to.be.true;
+    });
+
+    it('should compute projectile impact kinetic energy in Joules and TNT Megatons', () => {
+        // Transient cavity Dt = 1.0 km in Martian basalt crust (rho = 2600 kg/m^3, g = 3.72 m/s^2)
+        // E = 0.40 * 2600 * 3.72076 * (1000)^4 = 3869.59e12 Joules = 3.8696e15 J
+        // Megatons TNT = 3.8696e15 / 4.184e15 = 0.9248 Mt (~0.92 Megatons)
+        const small = CSFDEngine.computeImpactKineticEnergyMegatons(1.0, 2600.0, 3.72076);
+        expect(small.energyMegatonsTNT).to.be.closeTo(0.92, 0.05);
+
+        // 10 km transient cavity: E scales as Dt^4 = 10000x energy = ~9248 Megatons (9.25 Gigatons TNT)
+        const large = CSFDEngine.computeImpactKineticEnergyMegatons(10.0, 2600.0, 3.72076);
+        expect(large.gigatonsTNT).to.be.closeTo(9.25, 0.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
