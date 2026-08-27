@@ -6681,6 +6681,39 @@ describe('CO2 Frost Sublimation & Regolith Thermal Transport (KRCEngine)', () =>
     });
 });
 
+describe('Impact Crater Morphometry Scaling & Retention Ages (CSFDEngine)', () => {
+    it('should calculate simple vs complex crater morphometry dimensions and ejecta radius', () => {
+        // Simple crater (D = 2.0 km < 7 km):
+        // d = 0.20 * 2.0 = 0.40 km (400 m), h_rim = 0.04 * 2.0^1.01 = 0.0805 km (80.5 m), R_ejecta = 1.15 * 2.0 = 2.30 km
+        const simple = CSFDEngine.computeCraterMorphometryDimensions(2.0, 7.0);
+        expect(simple.depthKm).to.equal(0.4);
+        expect(simple.depthMeters).to.equal(400.0);
+        expect(simple.rimHeightMeters).to.be.closeTo(80.6, 0.5);
+        expect(simple.ejectaRadiusKm).to.equal(2.3);
+        expect(simple.isSimple).to.be.true;
+        expect(simple.isComplex).to.be.false;
+
+        // Complex crater (D = 50 km >= 7 km, e.g. Gale / Jezero scale):
+        // d = 0.36 * 50^0.49 = 0.36 * 6.782 = 2.441 km, R_ejecta = 57.5 km
+        const complex = CSFDEngine.computeCraterMorphometryDimensions(50.0, 7.0);
+        expect(complex.depthKm).to.be.closeTo(2.441, 0.05);
+        expect(complex.ejectaRadiusKm).to.equal(57.5);
+        expect(complex.isComplex).to.be.true;
+    });
+
+    it('should derive surface retention model age and classify geological epoch', () => {
+        // Amazonian young volcanic terrain: N(1) = 1.225e-4 km^-2 -> age = 1.0 * (1.225e-4 / 2.45e-4) = 0.50 Ga
+        const young = CSFDEngine.computeCraterRetentionAgeFromIsochron(1.225e-4, 2.45e-4, 1.0);
+        expect(young.modelAgeGa).to.equal(0.5);
+        expect(young.geologicalEpoch).to.equal('Amazonian');
+
+        // Ancient Noachian highland: N(1) = 9.8e-4 km^-2 -> age = 4.0 Ga
+        const ancient = CSFDEngine.computeCraterRetentionAgeFromIsochron(9.8e-4, 2.45e-4, 1.0);
+        expect(ancient.modelAgeGa).to.equal(4.0);
+        expect(ancient.geologicalEpoch).to.equal('Noachian');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

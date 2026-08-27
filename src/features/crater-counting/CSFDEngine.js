@@ -1926,6 +1926,74 @@ export class CSFDEngine {
       diameterKm: parseFloat(D.toFixed(3))
     };
   }
+
+  // --- Impact Crater Morphometry Scaling & Isochron Age Solvers ---
+
+  /**
+   * Calculate empirical Martian crater morphometric dimensions (rim depth, rim height, ejecta blanket).
+   * Simple (D < 7 km): d = 0.20 * D, h_rim = 0.04 * D^1.01
+   * Complex (D >= 7 km): d = 0.36 * D^0.49, h_rim = 0.03 * D^0.52
+   * Continuous Ejecta: R_ejecta = 1.15 * D = 2.3 * R_crater
+   * @param {number} diameterKm - Crater rim diameter in km
+   * @param {number} [transitionDiameterKm=7.0] - Simple-to-complex transition diameter on Mars in km (~7 km)
+   * @returns {{depthKm: number, depthMeters: number, rimHeightMeters: number, ejectaRadiusKm: number, isComplex: boolean, isSimple: boolean}}
+   */
+  static computeCraterMorphometryDimensions(diameterKm, transitionDiameterKm = 7.0) {
+    const D = Math.max(0.01, diameterKm);
+    const dTrans = Math.max(1.0, transitionDiameterKm);
+
+    const isComplex = D >= dTrans;
+    let depthKm = 0.0;
+    let hRimKm = 0.0;
+
+    if (!isComplex) {
+      depthKm = 0.20 * D;
+      hRimKm = 0.04 * Math.pow(D, 1.01);
+    } else {
+      depthKm = 0.36 * Math.pow(D, 0.49);
+      hRimKm = 0.03 * Math.pow(D, 0.52);
+    }
+
+    const ejectaRadKm = 1.15 * D;
+
+    return {
+      depthKm: parseFloat(depthKm.toFixed(3)),
+      depthMeters: parseFloat((depthKm * 1000.0).toFixed(1)),
+      rimHeightMeters: parseFloat((hRimKm * 1000.0).toFixed(1)),
+      ejectaRadiusKm: parseFloat(ejectaRadKm.toFixed(3)),
+      isComplex: isComplex,
+      isSimple: !isComplex
+    };
+  }
+
+  /**
+   * Derive estimated surface retention model age (Ga) from cumulative N(>1 km) density.
+   * @param {number} n1CumulativePerKm2 - Cumulative crater density N(>1 km) in km^-2
+   * @param {number} [referenceIsochronN1=2.45e-4] - 1 Ga Hartmann reference isochron N(1) in km^-2
+   * @param {number} [ageGaReference=1.0] - Reference isochron age in Ga
+   * @returns {{modelAgeGa: number, geologicalEpoch: string, n1Density: number}}
+   */
+  static computeCraterRetentionAgeFromIsochron(n1CumulativePerKm2, referenceIsochronN1 = 2.45e-4, ageGaReference = 1.0) {
+    const n1 = Math.max(0.0, n1CumulativePerKm2);
+    const refN1 = Math.max(1e-8, referenceIsochronN1);
+
+    // Linear scaling for young/middle Amazonian, non-linear saturation for Noachian
+    let ageGa = ageGaReference * (n1 / refN1);
+    ageGa = Math.min(4.5, ageGa);
+
+    let epoch = 'Amazonian';
+    if (ageGa > 3.7) {
+      epoch = 'Noachian';
+    } else if (ageGa > 3.0) {
+      epoch = 'Hesperian';
+    }
+
+    return {
+      modelAgeGa: parseFloat(ageGa.toFixed(3)),
+      geologicalEpoch: epoch,
+      n1Density: parseFloat(n1.toExponential(4))
+    };
+  }
 }
 
 
