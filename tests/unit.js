@@ -6863,6 +6863,42 @@ describe('Cartesian State Vectors to Keplerian Orbital Elements (TrajectoryEngin
     });
 });
 
+describe('Martian Aerocentric Seasons & Subsolar Point Solvers (MarsTime)', () => {
+    it('should classify Martian seasons and solstice/equinox markers from Solar Longitude (Ls)', () => {
+        // Vernal Equinox (Ls = 0°): Northern Spring, Southern Autumn, 0% progress
+        const vernal = MarsTime.computeMartianSeasonFromLs(0.0);
+        expect(vernal.northernSeason).to.equal('Spring');
+        expect(vernal.southernSeason).to.equal('Autumn');
+        expect(vernal.seasonProgressPercent).to.equal(0.0);
+        expect(vernal.isEquinox).to.be.true;
+        expect(vernal.isSolstice).to.be.false;
+
+        // Northern Summer Solstice (Ls = 90°): 0% progress into Summer
+        const summerSol = MarsTime.computeMartianSeasonFromLs(90.0);
+        expect(summerSol.northernSeason).to.equal('Summer');
+        expect(summerSol.southernSeason).to.equal('Winter');
+        expect(summerSol.isSolstice).to.be.true;
+
+        // Mid Northern Winter (Ls = 315°): 50% through Northern Winter / Southern Summer
+        const midWinter = MarsTime.computeMartianSeasonFromLs(315.0);
+        expect(midWinter.northernSeason).to.equal('Winter');
+        expect(midWinter.southernSeason).to.equal('Summer');
+        expect(midWinter.seasonProgressPercent).to.equal(50.0);
+    });
+
+    it('should calculate exact Martian subsolar latitude and longitude', () => {
+        // Northern Summer Solstice (Ls = 90°): subsolar lat = +25.19° (Tropic of Mars)
+        // At LTST = 12:00 at prime meridian (0°) -> subsolar lon = 0°
+        const subSol = MarsTime.computeMartianSubsolarCoordinates(90.0, 12.0, 0.0, 25.19);
+        expect(subSol.subSolarLatDeg).to.be.closeTo(25.19, 0.01);
+        expect(subSol.subSolarLonDeg).to.equal(0.0);
+
+        // At LTST = 10:00 (2 hours before noon) -> subsolar lon = +30° East
+        const subMorning = MarsTime.computeMartianSubsolarCoordinates(90.0, 10.0, 0.0, 25.19);
+        expect(subMorning.subSolarLonDeg).to.equal(30.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

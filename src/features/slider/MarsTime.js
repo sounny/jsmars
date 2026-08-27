@@ -1878,6 +1878,82 @@ export class MarsTime {
       isSubsolarPoint: zNoon < 0.1
     };
   }
+
+  // --- Martian Aerocentric Seasons & Subsolar Coordinates Solvers ---
+
+  /**
+   * Determine exact Martian seasons, hemisphere names, and seasonal progress (0-100%) from Solar Longitude (Ls).
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @returns {{seasonIndex: number, northernSeason: string, southernSeason: string, seasonProgressPercent: number, isEquinox: boolean, isSolstice: boolean}}
+   */
+  static computeMartianSeasonFromLs(LsDeg) {
+    let ls = LsDeg % 360.0;
+    if (ls < 0) ls += 360.0;
+
+    let seasonIdx = 0;
+    let nSeason = 'Spring';
+    let sSeason = 'Autumn';
+    let lsBase = 0.0;
+
+    if (ls >= 270.0) {
+      seasonIdx = 3;
+      nSeason = 'Winter';
+      sSeason = 'Summer';
+      lsBase = 270.0;
+    } else if (ls >= 180.0) {
+      seasonIdx = 2;
+      nSeason = 'Autumn';
+      sSeason = 'Spring';
+      lsBase = 180.0;
+    } else if (ls >= 90.0) {
+      seasonIdx = 1;
+      nSeason = 'Summer';
+      sSeason = 'Winter';
+      lsBase = 90.0;
+    }
+
+    const progress = ((ls - lsBase) / 90.0) * 100.0;
+    const isEq = Math.abs(ls - 0) < 0.5 || Math.abs(ls - 180) < 0.5;
+    const isSol = Math.abs(ls - 90) < 0.5 || Math.abs(ls - 270) < 0.5;
+
+    return {
+      seasonIndex: seasonIdx,
+      northernSeason: nSeason,
+      southernSeason: sSeason,
+      seasonProgressPercent: parseFloat(progress.toFixed(2)),
+      isEquinox: isEq,
+      isSolstice: isSol
+    };
+  }
+
+  /**
+   * Calculate exact subsolar point geographic coordinates (subsolar latitude and longitude) on Mars.
+   * phi_sub = asin( sin(obliquity) * sin(Ls) )
+   * lam_sub = primeLon + (12 - LTST) * 15
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @param {number} [ltstHours=12.0] - Local True Solar Time at reference meridian
+   * @param {number} [primeMeridianRefLonDeg=0.0] - Reference longitude for LTST
+   * @param {number} [obliquityDeg=25.19] - Mars axial tilt in degrees
+   * @returns {{subSolarLatDeg: number, subSolarLonDeg: number, declinationDeg: number}}
+   */
+  static computeMartianSubsolarCoordinates(LsDeg, ltstHours = 12.0, primeMeridianRefLonDeg = 0.0, obliquityDeg = 25.19) {
+    const epsRad = (obliquityDeg * Math.PI) / 180.0;
+    const lsRad = (LsDeg * Math.PI) / 180.0;
+
+    const sinDelta = Math.sin(epsRad) * Math.sin(lsRad);
+    const deltaRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinDelta)));
+    const deltaDeg = (deltaRad * 180.0) / Math.PI;
+
+    let subLon = primeMeridianRefLonDeg + (12.0 - ltstHours) * 15.0;
+    while (subLon > 180) subLon -= 360;
+    while (subLon < -180) subLon += 360;
+
+    return {
+      subSolarLatDeg: parseFloat(deltaDeg.toFixed(4)),
+      subSolarLonDeg: parseFloat(subLon.toFixed(4)),
+      declinationDeg: parseFloat(deltaDeg.toFixed(4))
+    };
+  }
 }
 
 
