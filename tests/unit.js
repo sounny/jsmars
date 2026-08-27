@@ -6466,6 +6466,34 @@ describe('CO2 Molecular Mean Free Path, Knudsen Regimes & Column Mass (MCDEngine
     });
 });
 
+describe('3D Normal Slope/Aspect Inversion & Solar Incidence Cosine (ThreeDEngine)', () => {
+    it('should invert 3D ENU surface normal vector into topographic slope and aspect', () => {
+        // East-facing slope (s = 30°, a = 90°): n_east = -0.5, n_north = 0, n_up = 0.866025
+        const inv = ThreeDEngine.computeSlopeAndAspectFromNormalVector(-0.5, 0.0, 0.866025);
+        expect(inv.slopeDeg).to.be.closeTo(30.0, 0.05);
+        expect(inv.aspectDeg).to.be.closeTo(90.0, 0.05);
+        expect(inv.isFlat).to.be.false;
+
+        // Flat horizontal terrain: n_east = 0, n_north = 0, n_up = 1.0 -> s = 0°
+        const flat = ThreeDEngine.computeSlopeAndAspectFromNormalVector(0.0, 0.0, 1.0);
+        expect(flat.slopeDeg).to.equal(0.0);
+        expect(flat.isFlat).to.be.true;
+    });
+
+    it('should compute topographic surface area inflation factor and solar incidence cosine', () => {
+        // 60° steep cliff slope: sec(60°) = 1 / 0.5 = 2.0 (2x actual surface area vs planar footprint)
+        const area = ThreeDEngine.computeTopographicAreaCorrectionFactor(60.0);
+        expect(area.areaInflationFactor).to.equal(2.0);
+
+        // Overhead sun (Z = 0°, A = 0°): s_east = 0, s_north = 0, s_up = 1.0
+        // On 30° slope with n_up = 0.8660 -> cos(i) = 0.8660 -> incidence = 30°
+        const sun = ThreeDEngine.computeSolarIncidenceCosineFromNormal(-0.5, 0.0, 0.866025, 0.0, 0.0);
+        expect(sun.cosIncidence).to.be.closeTo(0.8660, 0.001);
+        expect(sun.incidenceAngleDeg).to.be.closeTo(30.0, 0.1);
+        expect(sun.isIlluminated).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

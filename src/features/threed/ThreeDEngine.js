@@ -1320,6 +1320,84 @@ export class ThreeDEngine {
       isFlat: slopeDeg < 0.1
     };
   }
+
+  /**
+   * Invert 3D Topocentric East-North-Up (ENU) normal vector back into topographic slope and aspect.
+   * s = acos( n_up ),  a = atan2( -n_east, -n_north )
+   * @param {number} nEast - East component of normal vector
+   * @param {number} nNorth - North component of normal vector
+   * @param {number} nUp - Up component of normal vector
+   * @returns {{slopeDeg: number, aspectDeg: number, isFlat: boolean}}
+   */
+  static computeSlopeAndAspectFromNormalVector(nEast, nNorth, nUp) {
+    const len = Math.sqrt(nEast * nEast + nNorth * nNorth + nUp * nUp);
+    if (len <= 1e-8) {
+      return { slopeDeg: 0.0, aspectDeg: 0.0, isFlat: true };
+    }
+
+    const normUp = Math.max(-1.0, Math.min(1.0, nUp / len));
+    const sRad = Math.acos(normUp);
+    const slopeDeg = (sRad * 180.0) / Math.PI;
+
+    if (slopeDeg < 0.01) {
+      return { slopeDeg: 0.0, aspectDeg: 0.0, isFlat: true };
+    }
+
+    let aRad = Math.atan2(-nEast, -nNorth);
+    if (aRad < 0) aRad += 2.0 * Math.PI;
+    const aspectDeg = (aRad * 180.0) / Math.PI;
+
+    return {
+      slopeDeg: parseFloat(slopeDeg.toFixed(3)),
+      aspectDeg: parseFloat(aspectDeg.toFixed(3)),
+      isFlat: false
+    };
+  }
+
+  /**
+   * Calculate 3D topographic relief surface area inflation factor f_area = sec(s) = 1 / cos(s).
+   * @param {number} slopeDeg - Surface slope in degrees
+   * @returns {{areaInflationFactor: number, trueSurfaceAreaKm2: Function}}
+   */
+  static computeTopographicAreaCorrectionFactor(slopeDeg) {
+    const s = Math.max(0.0, Math.min(88.0, slopeDeg));
+    const sRad = (s * Math.PI) / 180.0;
+    const factor = 1.0 / Math.cos(sRad);
+
+    return {
+      areaInflationFactor: parseFloat(factor.toFixed(4)),
+      slopeDeg: parseFloat(s.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate local solar illumination incidence angle cosine (cos i) on tilted 3D terrain.
+   * cos(i) = n_east * sin(Z)*sin(A) + n_north * sin(Z)*cos(A) + n_up * cos(Z)
+   * @param {number} nEast - Surface normal East component
+   * @param {number} nNorth - Surface normal North component
+   * @param {number} nUp - Surface normal Up component
+   * @param {number} solarZenithDeg - Solar zenith angle in degrees (0 = overhead, 90 = horizon)
+   * @param {number} solarAzimuthDeg - Solar azimuth angle in degrees (0 = North, 90 = East, 180 = South, 270 = West)
+   * @returns {{cosIncidence: number, incidenceAngleDeg: number, isIlluminated: boolean}}
+   */
+  static computeSolarIncidenceCosineFromNormal(nEast, nNorth, nUp, solarZenithDeg, solarAzimuthDeg) {
+    const zRad = (solarZenithDeg * Math.PI) / 180.0;
+    const aRad = (solarAzimuthDeg * Math.PI) / 180.0;
+
+    const sEast = Math.sin(zRad) * Math.sin(aRad);
+    const sNorth = Math.sin(zRad) * Math.cos(aRad);
+    const sUp = Math.cos(zRad);
+
+    const cosI = nEast * sEast + nNorth * sNorth + nUp * sUp;
+    const clampedCos = Math.max(-1.0, Math.min(1.0, cosI));
+    const iDeg = (Math.acos(clampedCos) * 180.0) / Math.PI;
+
+    return {
+      cosIncidence: parseFloat(clampedCos.toFixed(4)),
+      incidenceAngleDeg: parseFloat(iDeg.toFixed(2)),
+      isIlluminated: clampedCos > 0
+    };
+  }
 }
 
 
