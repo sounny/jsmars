@@ -2172,6 +2172,45 @@ export class KRCEngine {
       stabilityZone: zone
     };
   }
+
+  /**
+   * Calculate dual-component sub-pixel heterogeneous thermal inertia mixture (fine regolith + exposed rocks).
+   * Reference: Christensen (1986), Putzig & Mellon (2007), Edwards et al. (2009) for THEMIS rock abundance.
+   * @param {number} fineInertia - Thermal inertia of fine regolith component (e.g. 70 for dust, 250 for sand)
+   * @param {number} [rockInertia=1800.0] - Thermal inertia of solid bedrock / boulders (e.g. 1500 to 2200)
+   * @param {number} [rockFractionPct=15.0] - Fractional areal rock abundance f_rock in percent (0 to 100)
+   * @returns {{rockFractionPct: number, fineFractionPct: number, apparentNightThermalInertia: number, apparentDayThermalInertia: number, thermalInertiaContrast: number, dominantRegime: string}}
+   */
+  static computeDualComponentThermalInertiaMix(fineInertia, rockInertia = 1800.0, rockFractionPct = 15.0) {
+    const Ifine = Math.max(20.0, fineInertia);
+    const Irock = Math.max(Ifine, rockInertia);
+    const fRock = Math.min(100.0, Math.max(0.0, rockFractionPct)) / 100.0;
+    const fFine = 1.0 - fRock;
+
+    // Linear day-time apparent inertia
+    const Iday = fFine * Ifine + fRock * Irock;
+
+    // Non-linear night-time radiance bias (T^4 weighting amplifies warm rock emission)
+    const Inight = fFine * Ifine + Math.pow(fRock, 0.70) * (Irock - Ifine);
+
+    const contrast = Math.abs(Inight - Iday);
+
+    let regime = 'Fine Regolith Dominated (Dust/Sand Mantle)';
+    if (fRock >= 0.35) {
+      regime = 'Rock/Bedrock Dominated Outcrop';
+    } else if (fRock >= 0.10) {
+      regime = 'Rocky Soil / High Bolder Concentration (Viking 2 / InSight Type)';
+    }
+
+    return {
+      rockFractionPct: parseFloat((fRock * 100.0).toFixed(1)),
+      fineFractionPct: parseFloat((fFine * 100.0).toFixed(1)),
+      apparentNightThermalInertia: parseFloat(Inight.toFixed(1)),
+      apparentDayThermalInertia: parseFloat(Iday.toFixed(1)),
+      thermalInertiaContrast: parseFloat(contrast.toFixed(1)),
+      dominantRegime: regime
+    };
+  }
 }
 
 

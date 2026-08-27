@@ -1201,6 +1201,66 @@ export class TrajectoryEngine {
       isInFullSunlight: false
     };
   }
+
+  /**
+   * Calculate spacecraft-to-ground-station / lander topocentric elevation angle, slant range, and line-of-sight visibility.
+   * tan(El) = ( cos(sigma) - R / (R + h) ) / sin(sigma)
+   * rho = sqrt( R^2 + (R + h)^2 - 2 * R * (R + h) * cos(sigma) )
+   * Reference: Vallado (2013), Wertz & Larson (1999) SMAD.
+   * @param {number} satLatDeg - Sub-satellite latitude in degrees (-90 to +90)
+   * @param {number} satLonDeg - Sub-satellite longitude in degrees (-180 to +180 or 0 to 360)
+   * @param {number} satAltKm - Satellite orbital altitude in km above mean radius
+   * @param {number} stationLatDeg - Ground station / lander latitude in degrees
+   * @param {number} stationLonDeg - Ground station / lander longitude in degrees
+   * @param {number} [minElevationMaskDeg=5.0] - Minimum elevation angle threshold for reliable RF link
+   * @param {string} [body='mars'] - Planetary body ('mars', 'moon', 'earth')
+   * @returns {{elevationAngleDeg: number, slantRangeKm: number, centralAngularDistanceDeg: number, isLineOfSightVisible: boolean, groundTrackDistanceKm: number}}
+   */
+  static computeGroundStationPassGeometryAndElevation(satLatDeg, satLonDeg, satAltKm, stationLatDeg, stationLonDeg, minElevationMaskDeg = 5.0, body = 'mars') {
+    const bKey = body.toLowerCase();
+    let R = 3396.19; // Mars mean radius km
+    if (bKey === 'earth') R = 6378.137;
+    else if (bKey === 'moon') R = 1737.4;
+
+    const h = Math.max(0.1, satAltKm);
+    const rSat = R + h;
+
+    const phiS = (satLatDeg * Math.PI) / 180.0;
+    const lamS = (satLonDeg * Math.PI) / 180.0;
+    const phiG = (stationLatDeg * Math.PI) / 180.0;
+    const lamG = (stationLonDeg * Math.PI) / 180.0;
+
+    // Central angular distance sigma
+    const cosSigma = Math.sin(phiS) * Math.sin(phiG) + Math.cos(phiS) * Math.cos(phiG) * Math.cos(lamS - lamG);
+    const clampedCosSigma = Math.max(-1.0, Math.min(1.0, cosSigma));
+    const sigmaRad = Math.acos(clampedCosSigma);
+    const sigmaDeg = (sigmaRad * 180.0) / Math.PI;
+
+    // Slant range rho
+    const rhoKm = Math.sqrt(Math.max(1e-3, R * R + rSat * rSat - 2.0 * R * rSat * clampedCosSigma));
+
+    // Topocentric elevation angle El
+    let elDeg = -90.0;
+    if (sigmaRad < 1e-6) {
+      elDeg = 90.0; // Directly overhead zenith
+    } else {
+      const sinSigma = Math.sin(sigmaRad);
+      const tanEl = (clampedCosSigma - (R / rSat)) / sinSigma;
+      const elRad = Math.atan(tanEl);
+      elDeg = (elRad * 180.0) / Math.PI;
+    }
+
+    const groundTrackKm = sigmaRad * R;
+    const isVisible = elDeg >= minElevationMaskDeg;
+
+    return {
+      elevationAngleDeg: parseFloat(elDeg.toFixed(2)),
+      slantRangeKm: parseFloat(rhoKm.toFixed(2)),
+      centralAngularDistanceDeg: parseFloat(sigmaDeg.toFixed(2)),
+      isLineOfSightVisible: isVisible,
+      groundTrackDistanceKm: parseFloat(groundTrackKm.toFixed(1))
+    };
+  }
 }
 
 

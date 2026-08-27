@@ -8621,6 +8621,52 @@ describe('Spacecraft Eclipse Duration, Upper Atmosphere Homopause & Pyroxene Ter
     });
 });
 
+describe('Ground Station Telemetry Elevation, Regolith Rock Fraction & Perchlorate Indices', () => {
+    it('should calculate ground station / rover topocentric elevation angle and slant range', () => {
+        // Direct zenith pass: satellite overhead (satLat = 0, satLon = 0, stationLat = 0, stationLon = 0, alt = 300 km)
+        const overheadPass = TrajectoryEngine.computeGroundStationPassGeometryAndElevation(0.0, 0.0, 300.0, 0.0, 0.0, 5.0, 'mars');
+        expect(overheadPass.elevationAngleDeg).to.equal(90.0);
+        expect(overheadPass.slantRangeKm).to.be.closeTo(300.0, 0.1);
+        expect(overheadPass.isLineOfSightVisible).to.be.true;
+
+        // Slanted pass at 15 deg central angle:
+        const slantedPass = TrajectoryEngine.computeGroundStationPassGeometryAndElevation(0.0, 15.0, 300.0, 0.0, 0.0, 5.0, 'mars');
+        expect(slantedPass.centralAngularDistanceDeg).to.be.closeTo(15.0, 0.1);
+        expect(slantedPass.slantRangeKm).to.be.greaterThan(300.0);
+        expect(slantedPass.isLineOfSightVisible).to.be.true;
+
+        // Below horizon (central angle = 45 deg > horizon cutoff):
+        const horizonPass = TrajectoryEngine.computeGroundStationPassGeometryAndElevation(0.0, 45.0, 300.0, 0.0, 0.0, 5.0, 'mars');
+        expect(horizonPass.isLineOfSightVisible).to.be.false;
+        expect(horizonPass.elevationAngleDeg).to.be.lessThan(0.0);
+    });
+
+    it('should calculate dual-component regolith heterogeneous thermal inertia mix and rock abundance', () => {
+        // Sandy soil with 15% rock abundance (I_fine = 200, I_rock = 1800, f_rock = 15%):
+        const rockySoil = KRCEngine.computeDualComponentThermalInertiaMix(200.0, 1800.0, 15.0);
+        expect(rockySoil.rockFractionPct).to.equal(15.0);
+        expect(rockySoil.fineFractionPct).to.equal(85.0);
+        expect(rockySoil.apparentDayThermalInertia).to.be.closeTo(440.0, 10.0);
+        expect(rockySoil.apparentNightThermalInertia).to.be.greaterThan(rockySoil.apparentDayThermalInertia); // Night T^4 bias
+        expect(rockySoil.thermalInertiaContrast).to.be.greaterThan(50.0);
+        expect(rockySoil.dominantRegime).to.include('Rocky Soil');
+    });
+
+    it('should calculate CRISM oxychlorine and perchlorate hydration salt indices', () => {
+        // Hydrated Magnesium Perchlorate (Phoenix / RSL recurring slope lineae type):
+        // Strong shifted 1930 nm hydration + 2140 nm perchlorate combination absorption
+        const perchlorate = BandMathEngine.computeCRISMOxychlorineHydrationIndices(0.25, 0.21, 0.27, 0.22, 0.26);
+        expect(perchlorate.bd1900Index).to.be.greaterThan(0.15);
+        expect(perchlorate.isHydratedOxychlorineCandidate).to.be.true;
+        expect(perchlorate.saltClass).to.include('Perchlorate Brine');
+
+        // Anhydrous / Dry Crust (no 1.9 um hydration feature):
+        const dryCrust = BandMathEngine.computeCRISMOxychlorineHydrationIndices(0.26, 0.26, 0.26, 0.26, 0.26);
+        expect(dryCrust.isHydratedOxychlorineCandidate).to.be.false;
+        expect(dryCrust.saltClass).to.include('Anhydrous');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

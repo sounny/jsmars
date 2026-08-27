@@ -2643,6 +2643,47 @@ export class BandMathEngine {
       pyroxeneFamily: family
     };
   }
+
+  /**
+   * Calculate CRISM oxychlorine / perchlorate hydrated salt indices (shifted 1.9 um and 2.14 um water of hydration).
+   * Reference: Hecht et al. (2009), Hanley et al. (2014), Ojha et al. (2015) for RSL sites, Viviano-Beck et al. (2014).
+   * @param {number} r1850 - Short continuum anchor at 1850 nm
+   * @param {number} r1930 - Hydration absorption minimum at 1930 nm
+   * @param {number} r2060 - Long continuum anchor at 2060 nm
+   * @param {number} r2140 - Perchlorate water combination band at 2140 nm
+   * @param {number} r2400 - Reference anchor at 2400 nm
+   * @returns {{bd1900Index: number, perchlorateIndex: number, saltClass: string, isHydratedOxychlorineCandidate: boolean}}
+   */
+  static computeCRISMOxychlorineHydrationIndices(r1850, r1930, r2060, r2140, r2400) {
+    const c185 = Math.max(1e-4, r1850);
+    const b193 = Math.max(1e-4, r1930);
+    const c206 = Math.max(1e-4, r2060);
+    const b214 = Math.max(1e-4, r2140);
+    const c240 = Math.max(1e-4, r2400);
+
+    const cont1900 = 0.5 * (c185 + c206);
+    const bd1900 = 1.0 - (b193 / cont1900);
+
+    const slope2140 = (c240 - b214) / (c240 + b214);
+    const perchlIndex = bd1900 * (1.0 + Math.max(0.0, slope2140));
+
+    let saltClass = 'Anhydrous / Low Hydration Crust';
+    let isCandidate = false;
+
+    if (bd1900 > 0.04 && b214 < c240 * 0.96) {
+      saltClass = 'Hydrated Oxychlorine Salt / Magnesium-Calcium Perchlorate Brine Candidate';
+      isCandidate = true;
+    } else if (bd1900 > 0.04) {
+      saltClass = 'Hydrated Sulfate / Smectite Clay with Bound Molecular H2O';
+    }
+
+    return {
+      bd1900Index: parseFloat(bd1900.toFixed(4)),
+      perchlorateIndex: parseFloat(perchlIndex.toFixed(4)),
+      saltClass,
+      isHydratedOxychlorineCandidate: isCandidate
+    };
+  }
 }
 
 
