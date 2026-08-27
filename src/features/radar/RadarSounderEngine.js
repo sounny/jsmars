@@ -1806,6 +1806,73 @@ export class RadarSounderEngine {
       powerTransmissionCoeff: parseFloat(transPwr.toFixed(4))
     };
   }
+
+  // --- Radar Clutter Simulation & Doppler Solvers ---
+
+  /**
+   * Calculate off-nadir surface clutter two-way travel time delay relative to nadir return.
+   * R_slant = sqrt( x^2 + y^2 + (h - z)^2 )
+   * Delta_t = 2 * (R_slant - h) / c
+   * @param {number} crossTrackOffsetKm - Across-track distance x from ground track in km
+   * @param {number} alongTrackOffsetKm - Along-track distance y from spacecraft nadir in km
+   * @param {number} [spacecraftAltitudeKm=300.0] - Spacecraft altitude above datum h in km
+   * @param {number} [facetElevationKm=0.0] - Surface topographic feature elevation z in km
+   * @returns {{slantRangeKm: number, nadirRangeKm: number, excessSlantRangeKm: number, clutterExcessDelayMicrosec: number, nadirTravelTimeMicrosec: number}}
+   */
+  static computeRadarOffNadirClutterTimeDelay(crossTrackOffsetKm, alongTrackOffsetKm, spacecraftAltitudeKm = 300.0, facetElevationKm = 0.0) {
+    const x = crossTrackOffsetKm;
+    const y = alongTrackOffsetKm;
+    const h = Math.max(1.0, spacecraftAltitudeKm);
+    const z = facetElevationKm;
+
+    const deltaZ = h - z;
+    const slantRange = Math.sqrt(x * x + y * y + deltaZ * deltaZ);
+    const excessRange = slantRange - h;
+
+    const cKmS = RadarSounderEngine.C / 1000.0; // ~299792.458 km/s
+    const tNadir = (2.0 * h) / cKmS; // seconds
+    const tExcess = (2.0 * excessRange) / cKmS; // seconds
+
+    return {
+      slantRangeKm: parseFloat(slantRange.toFixed(3)),
+      nadirRangeKm: parseFloat(h.toFixed(3)),
+      excessSlantRangeKm: parseFloat(excessRange.toFixed(3)),
+      clutterExcessDelayMicrosec: parseFloat((tExcess * 1e6).toFixed(3)),
+      nadirTravelTimeMicrosec: parseFloat((tNadir * 1e6).toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate radar Doppler frequency shift for off-nadir surface facets.
+   * f_Doppler = (2 * v_sc * f_0 / c) * ( y_along / R_slant )
+   * @param {number} [spacecraftVelocityKmS=3.448] - Spacecraft along-track speed v_sc in km/s (3.448 km/s for MRO)
+   * @param {number} [radarCarrierFreqMHz=20.0] - Carrier frequency f_0 in MHz (20 MHz for SHARAD)
+   * @param {number} [alongTrackOffsetKm=10.0] - Along-track position y in km (+ahead, -behind)
+   * @param {number} [crossTrackOffsetKm=0.0] - Across-track position x in km
+   * @param {number} [spacecraftAltitudeKm=300.0] - Spacecraft altitude h in km
+   * @returns {{dopplerShiftHz: number, wavelengthMeters: number, maxZeroDopplerAngleDeg: number}}
+   */
+  static computeRadarDopplerFrequencyShift(spacecraftVelocityKmS = 3.448, radarCarrierFreqMHz = 20.0, alongTrackOffsetKm = 10.0, crossTrackOffsetKm = 0.0, spacecraftAltitudeKm = 300.0) {
+    const v = spacecraftVelocityKmS * 1000.0; // m/s
+    const f0 = Math.max(0.1, radarCarrierFreqMHz) * 1e6; // Hz
+    const lambda = RadarSounderEngine.C / f0; // m
+
+    const x = crossTrackOffsetKm * 1000.0; // m
+    const y = alongTrackOffsetKm * 1000.0; // m
+    const h = Math.max(1.0, spacecraftAltitudeKm) * 1000.0; // m
+
+    const slantRange = Math.sqrt(x * x + y * y + h * h);
+    const cosThetaV = y / slantRange;
+
+    const fDoppler = ((2.0 * v) / lambda) * cosThetaV;
+    const angleDeg = (Math.asin(Math.min(1.0, Math.max(-1.0, cosThetaV))) * 180.0) / Math.PI;
+
+    return {
+      dopplerShiftHz: parseFloat(fDoppler.toFixed(2)),
+      wavelengthMeters: parseFloat(lambda.toFixed(3)),
+      maxZeroDopplerAngleDeg: parseFloat(angleDeg.toFixed(3))
+    };
+  }
 }
 
 

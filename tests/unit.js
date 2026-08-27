@@ -7906,6 +7906,37 @@ describe('Ground Track Swath Overlap & Sol Repeat (TrajectoryEngine)', () => {
     });
 });
 
+describe('Radar Clutter Simulation & Doppler Solvers (RadarSounderEngine)', () => {
+    it('should calculate off-nadir surface topographic clutter time delay relative to nadir echo', () => {
+        // Off-nadir mountain peak at cross-track x = 40 km, along-track y = 0 km, elevation z = 5 km
+        // Spacecraft altitude h = 300 km:
+        // deltaZ = 300 - 5 = 295 km
+        // R_slant = sqrt( 40^2 + 0^2 + 295^2 ) = sqrt( 1600 + 87025 ) = sqrt( 88625 ) = 297.6995 km
+        // excessRange = 297.6995 - 300 = -2.3005 km (mountain arrives BEFORE nadir datum!)
+        // Delta_t = 2 * (-2.3005) / 299792.458 = -15.347 microseconds
+        const clutter = RadarSounderEngine.computeRadarOffNadirClutterTimeDelay(40.0, 0.0, 300.0, 5.0);
+        expect(clutter.slantRangeKm).to.be.closeTo(297.70, 0.05);
+        expect(clutter.clutterExcessDelayMicrosec).to.be.closeTo(-15.35, 0.1);
+
+        // Flat surface off-nadir crater rim at x = 30 km, y = 0 km, z = 0 km:
+        // R_slant = sqrt( 30^2 + 300^2 ) = sqrt( 900 + 90000 ) = sqrt( 90900 ) = 301.496 km
+        // excessRange = +1.496 km -> Delta_t = 2 * 1.496 / 299792.458 = +9.982 microseconds
+        const flatClutter = RadarSounderEngine.computeRadarOffNadirClutterTimeDelay(30.0, 0.0, 300.0, 0.0);
+        expect(flatClutter.slantRangeKm).to.be.closeTo(301.496, 0.05);
+        expect(flatClutter.clutterExcessDelayMicrosec).to.be.closeTo(9.98, 0.05);
+    });
+
+    it('should calculate along-track radar Doppler frequency shift', () => {
+        // Forward facet at along-track y = 15 km, x = 0 km, h = 300 km:
+        // R_slant = sqrt( 15^2 + 300^2 ) = 300.375 km
+        // cosThetaV = 15 / 300.375 = 0.0499376
+        // f_Doppler = (2 * 3448 / 14.990) * 0.0499376 = 460.04 * 0.0499376 = 22.97 Hz
+        const dop = RadarSounderEngine.computeRadarDopplerFrequencyShift(3.448, 20.0, 15.0, 0.0, 300.0);
+        expect(dop.dopplerShiftHz).to.be.closeTo(22.97, 0.1);
+        expect(dop.wavelengthMeters).to.be.closeTo(14.99, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
