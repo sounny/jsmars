@@ -110,17 +110,19 @@ export class JMARSMap {
     this.discoverLayers();
     this.addControls();
 
-    // Auto-sync view changes to browser URL query string
+    // Auto-sync view changes to jmarsState and browser URL query string
     let syncTimer = null;
     const syncViewToURL = () => {
       clearTimeout(syncTimer);
       syncTimer = setTimeout(() => {
         const center = this.map.getCenter();
+        const zoom = this.map.getZoom();
+        jmarsState.set('view', { lat: center.lat, lng: center.lng, zoom });
         URLStateEngine.syncToBrowserURL({
           body: this.currentBody,
           lat: center.lat,
           lon: center.lng,
-          zoom: this.map.getZoom(),
+          zoom: zoom,
           activeLayers: jmarsState.get('activeLayers')
         });
       }, 400);
@@ -166,7 +168,8 @@ export class JMARSMap {
    * @param {string} bodyKey - Lowercase body key (e.g., 'mars', 'moon', 'earth').
    */
   switchBody(bodyKey) {
-    const bodyConfig = JMARS_CONFIG.bodies[bodyKey];
+    const key = (bodyKey || 'mars').toLowerCase();
+    const bodyConfig = JMARS_CONFIG.bodies[key];
     if (!bodyConfig) return;
 
     console.log(`Switching to body: ${bodyConfig.name}`);
@@ -181,7 +184,10 @@ export class JMARSMap {
     }
 
     // 2. Update context
-    this.currentBody = bodyKey;
+    this.currentBody = key;
+    if (jmarsState.get('body') !== key) {
+      jmarsState.set('body', key);
+    }
 
     // Normalize layer configs so Leaflet always has options objects
     this.availableLayers = (bodyConfig.layers || []).map(l => {

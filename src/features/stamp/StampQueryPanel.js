@@ -123,49 +123,70 @@ export class StampQueryPanel {
   }
 
   /**
-   * Render a scrollable results table.
+   * Render a scrollable results table safely using DOM APIs.
    * @param {Array} results
    */
   _renderResultsTable(results) {
+    this.resultsContainer.innerHTML = '';
     if (results.length === 0) {
-      this.resultsContainer.innerHTML = '<div style="padding:8px;color:#888">No results found.</div>';
+      const emptyDiv = document.createElement('div');
+      emptyDiv.style.padding = '8px';
+      emptyDiv.style.color = '#888';
+      emptyDiv.textContent = 'No results found.';
+      this.resultsContainer.appendChild(emptyDiv);
       return;
     }
 
-    const rows = results.map((p, idx) => `
-      <tr class="stamp-row" data-idx="${idx}">
-        <td title="${p.pdsId}">${this._truncate(p.pdsId, 24)}</td>
-        <td>${p.centerLat.toFixed(2)}</td>
-        <td>${p.centerLon.toFixed(2)}</td>
-        <td>${p.solarLon != null ? p.solarLon.toFixed(1) : '-'}</td>
-      </tr>
-    `).join('');
+    const table = document.createElement('table');
+    table.className = 'stamp-table';
 
-    this.resultsContainer.innerHTML = `
-      <table class="stamp-table">
-        <thead>
-          <tr>
-            <th>Product ID</th>
-            <th>Lat</th>
-            <th>Lon</th>
-            <th>Ls</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    `;
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Product ID', 'Lat', 'Lon', 'Ls'].forEach(colName => {
+      const th = document.createElement('th');
+      th.textContent = colName;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
-    // Click to select and zoom
-    this.resultsContainer.querySelectorAll('.stamp-row').forEach(row => {
-      row.addEventListener('click', () => {
-        const idx = parseInt(row.dataset.idx, 10);
-        this.stampLayer.selectStamp(idx);
-        const product = this.stampLayer.results[idx];
+    const tbody = document.createElement('tbody');
+    results.forEach((p, idx) => {
+      const tr = document.createElement('tr');
+      tr.className = 'stamp-row';
+      tr.dataset.idx = String(idx);
+
+      const tdId = document.createElement('td');
+      tdId.setAttribute('title', p.pdsId || '');
+      tdId.textContent = this._truncate(p.pdsId || '', 24);
+      tr.appendChild(tdId);
+
+      const tdLat = document.createElement('td');
+      tdLat.textContent = typeof p.centerLat === 'number' ? p.centerLat.toFixed(2) : '-';
+      tr.appendChild(tdLat);
+
+      const tdLon = document.createElement('td');
+      tdLon.textContent = typeof p.centerLon === 'number' ? p.centerLon.toFixed(2) : '-';
+      tr.appendChild(tdLon);
+
+      const tdLs = document.createElement('td');
+      tdLs.textContent = p.solarLon != null ? Number(p.solarLon).toFixed(1) : '-';
+      tr.appendChild(tdLs);
+
+      tr.addEventListener('click', () => {
+        const rowIdx = parseInt(tr.dataset.idx, 10);
+        this.stampLayer.selectStamp(rowIdx);
+        const product = this.stampLayer.results[rowIdx];
         if (product) {
           this.stampLayer.map?.flyTo([product.centerLat, product.centerLon], 8);
         }
       });
+
+      tbody.appendChild(tr);
     });
+
+    table.appendChild(tbody);
+    this.resultsContainer.appendChild(table);
   }
 
   /**

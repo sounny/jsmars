@@ -141,32 +141,39 @@ export class LayerManager {
     // activeLayers: [Bottom, ..., Top]
     const activeIds = activeLayers.map(l => l.id);
 
-    // Add missing
+    // Add / Update visible layers, detach hidden layers
     activeIds.forEach(id => {
-      if (!this.jmarsMap.activeLayers[id]) {
-        this.jmarsMap.addLayer(id);
-      }
-      // Update opacity
       const lState = activeLayers.find(x => x.id === id);
-      this.jmarsMap.setLayerOpacity(id, lState.opacity);
-      const leafletLayer = this.jmarsMap.activeLayers[id];
-      if (leafletLayer?.getContainer) {
-        const el = leafletLayer.getContainer();
-        if (el) el.style.mixBlendMode = lState.blendMode || 'normal';
+      const isVisible = lState.visible !== false;
+
+      if (isVisible) {
+        if (!this.jmarsMap.activeLayers[id]) {
+          this.jmarsMap.addLayer(id);
+        }
+        this.jmarsMap.setLayerOpacity(id, lState.opacity);
+        const leafletLayer = this.jmarsMap.activeLayers[id];
+        if (leafletLayer?.getContainer) {
+          const el = leafletLayer.getContainer();
+          if (el) el.style.mixBlendMode = lState.blendMode || 'normal';
+        }
+      } else {
+        // Detach hidden layer from map display while keeping in user active stack
+        if (this.jmarsMap.activeLayers[id]) {
+          this.jmarsMap.removeLayer(id);
+        }
       }
     });
 
-    // Remove stale
+    // Remove stale layers
     Object.keys(this.jmarsMap.activeLayers).forEach(id => {
       if (!activeIds.includes(id)) {
         this.jmarsMap.removeLayer(id);
       }
     });
 
-    // Update Order
-    // Map expects [Top, ..., Bottom]
-    // activeLayers is [Bottom, ..., Top]
-    const reversedIds = [...activeIds].reverse();
+    // Update Order for visible layers
+    const visibleIds = activeLayers.filter(l => l.visible !== false).map(l => l.id);
+    const reversedIds = [...visibleIds].reverse();
     this.jmarsMap.updateLayerOrder(reversedIds);
   }
 
@@ -376,6 +383,22 @@ export class LayerManager {
     btnRemove.style.cursor = 'pointer';
     btnRemove.onclick = () => jmarsState.removeLayer(layerState.id);
 
+    const isVisible = layerState.visible !== false;
+    const btnVisibility = document.createElement('button');
+    btnVisibility.innerHTML = isVisible ? '&#128065;' : '&#128584;'; // 👁️ or 🙈
+    btnVisibility.title = isVisible ? 'Hide Layer' : 'Show Layer';
+    btnVisibility.setAttribute('aria-label', `${isVisible ? 'Hide' : 'Show'} layer ${name}`);
+    btnVisibility.style.marginRight = '5px';
+    btnVisibility.style.background = isVisible ? '#334155' : '#1e293b';
+    btnVisibility.style.border = '1px solid #475569';
+    btnVisibility.style.color = isVisible ? '#38bdf8' : '#64748b';
+    btnVisibility.style.borderRadius = '3px';
+    btnVisibility.style.cursor = 'pointer';
+    btnVisibility.style.padding = '1px 5px';
+    btnVisibility.onclick = () => {
+      jmarsState.updateLayer(layerState.id, { visible: !isVisible });
+    };
+
     const btnSettings = document.createElement('button');
     btnSettings.innerHTML = '&#9881;';
     btnSettings.title = 'Layer Settings';
@@ -383,6 +406,7 @@ export class LayerManager {
     btnSettings.style.marginRight = '5px';
     btnSettings.onclick = () => this.openLayerSettings(layerState.id);
 
+    actions.appendChild(btnVisibility);
     actions.appendChild(btnSettings);
     actions.appendChild(btnUp);
     actions.appendChild(btnDown);

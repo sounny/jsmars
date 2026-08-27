@@ -24,14 +24,19 @@ export class SessionManager {
     /**
      * Save the current session to a downloadable JSON file.
      * Deep-clones state before serialization to avoid capturing
-     * live object references.
+     * live object references. Captures live map viewport.
      */
     saveSession() {
+        const liveState = JSON.parse(JSON.stringify(jmarsState.state));
+        // Canonicalize body key to lowercase
+        if (liveState.body) {
+            liveState.body = liveState.body.toLowerCase();
+        }
+
         const session = {
             version: '1.0',
             timestamp: new Date().toISOString(),
-            // Deep clone state to avoid serializing live references
-            state: JSON.parse(JSON.stringify(jmarsState.state)),
+            state: liveState,
             craters: this.craterLayer ? this.craterLayer.getData() : [],
             measurements: this.measureTool ? this.measureTool.getData() : [],
             bookmarks: this.bookmarksTool ? this.bookmarksTool.getData() : []
@@ -43,7 +48,7 @@ export class SessionManager {
 
     /**
      * Load a session from a JSON File object.
-     * Restores state, layers, view, body, and tool data.
+     * Restores body FIRST, then restores active layers, view, and tool data.
      * @param {File} file - JSON session file chosen by the user
      * @returns {Promise<void>}
      */
@@ -57,31 +62,32 @@ export class SessionManager {
                 console.warn('Session file missing version. Trying best effort.');
             }
 
-            // 1. Restore State
-            if (session.state) {
-                // Active Layers: use the setter to update state properly
-                if (session.state.activeLayers) {
-                    jmarsState.setActiveLayers(session.state.activeLayers);
-                }
-
-                // View (Lat/Lon/Zoom)
-                if (session.state.view) {
-                    jmarsState.set('view', session.state.view);
-                    const event = new CustomEvent(EVENTS.UPDATE_VIEW, { 
-                        detail: session.state.view 
-                    });
-                    document.dispatchEvent(event);
-                }
-
-                // Body
-                if (session.state.body && session.state.body !== jmarsState.get('body')) {
-                    jmarsState.set('body', session.state.body);
-                    const event = new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: session.state.body } });
+            // 1. Restore Planetary Body FIRST so switchBody does not overwrite restored layers
+            if (session.state && session.state.body) {
+                const targetBody = session.state.body.toLowerCase();
+                const currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
+                if (targetBody !== currentBody) {
+                    jmarsState.set('body', targetBody);
+                    const event = new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: targetBody } });
                     document.dispatchEvent(event);
                 }
             }
 
-            // 2. Restore Tools
+            // 2. Restore Active Layers & Layer Properties after body is established
+            if (session.state && session.state.activeLayers) {
+                jmarsState.setActiveLayers(session.state.activeLayers);
+            }
+
+            // 3. Restore View (Lat/Lon/Zoom)
+            if (session.state && session.state.view) {
+                jmarsState.set('view', session.state.view);
+                const event = new CustomEvent(EVENTS.UPDATE_VIEW, { 
+                    detail: session.state.view 
+                });
+                document.dispatchEvent(event);
+            }
+
+            // 4. Restore Tools
             if (session.craters && this.craterLayer) {
                 this.craterLayer.loadData(session.craters);
             }

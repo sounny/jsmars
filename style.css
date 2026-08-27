@@ -1474,3 +1474,254 @@ html {
 .hillshade-tile {
   mix-blend-mode: multiply;
 }
+
+/* ==========================================================================
+   31. Mobile Responsive & Touch Layout (< 768px)
+   ========================================================================== */
+
+/* Mobile sheet handle hidden on desktop */
+.mobile-sheet-handle-wrap {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Dynamic viewport height and safe-area insets */
+  body, html {
+    height: 100%;
+    height: 100dvh;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+  }
+
+  /* Hide desktop sidebar toggle button on mobile */
+  #sidebar-toggle {
+    display: none !important;
+  }
+
+  /* Bottom sheet container */
+  #controls {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 85dvh;
+    border-radius: 16px 16px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    border-top: 1px solid #334155;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+    padding: 0;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    margin: 0;
+    z-index: 2000;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(calc(100% - 64px));
+    touch-action: pan-y;
+  }
+
+  #controls.mobile-sheet-peek {
+    transform: translateY(calc(100% - 64px));
+  }
+
+  #controls.mobile-sheet-expanded {
+    transform: translateY(0);
+  }
+
+  /* Mobile Sheet Drag Handle Header */
+  .mobile-sheet-handle-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px 6px 12px;
+    background: rgba(30, 41, 59, 0.95);
+    border-radius: 16px 16px 0 0;
+    border-bottom: 1px solid #334155;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+  }
+
+  .mobile-sheet-pill {
+    width: 42px;
+    height: 4px;
+    background: #64748b;
+    border-radius: 2px;
+    margin-bottom: 6px;
+  }
+
+  .mobile-sheet-peek-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0 4px;
+  }
+
+  .mobile-sheet-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #38bdf8;
+    letter-spacing: 0.3px;
+  }
+
+  .mobile-sheet-chevron {
+    font-size: 12px;
+    color: #94a3b8;
+    transition: transform 0.2s ease;
+  }
+
+  /* 44px Minimum Practical Touch Hit Targets */
+  .tool-btn,
+  .quick-action-btn,
+  .accordion-header,
+  .layer-section-header,
+  #body-selector,
+  .stamp-search-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+
+  .accordion-header {
+    padding: 12px 14px;
+  }
+
+  /* Leaflet Controls Safe Placement on Mobile */
+  .leaflet-top.leaflet-right {
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+  }
+
+  .leaflet-control-zoom a {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+  }
+
+  /* Mobile Status Bar */
+  #status-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    padding: 0 10px;
+    padding-top: env(safe-area-inset-top);
+    background: rgba(15, 23, 42, 0.9);
+    border-bottom: 1px solid #334155;
+    font-size: 10px;
+    z-index: 1500;
+  }
+}
+
+/* ==========================================================================
+   32. PWA Install & Offline Network Status Banners
+   ========================================================================== */
+
+#pwa-install-banner {
+  display: none;
+  background: linear-gradient(135deg, #1e3a8a, #0284c7);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  margin: 10px 15px;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+  font-size: 12px;
+}
+
+#pwa-install-banner.visible {
+  display: flex;
+}
+
+.pwa-install-btn {
+  background: #fff;
+  color: #0369a1;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.pwa-dismiss-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+#pwa-update-toast {
+  display: none;
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  color: #f8fafc;
+  padding: 10px 18px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 3000;
+  font-size: 12px;
+  align-items: center;
+  gap: 10px;
+}
+
+#pwa-update-toast.visible {
+  display: flex;
+}
+
+.pwa-reload-btn {
+  background: #38bdf8;
+  color: #020617;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.offline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #334155;
+  color: #94a3b8;
+}
+
+.offline-badge.online {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.offline-badge.offline {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+

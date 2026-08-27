@@ -1,0 +1,73 @@
+{
+  "id": "com.sounny.jsmars",
+  "name": "JSMARS - Planetary GIS & Mission Planning",
+  "short_name": "JSMARS",
+  "description": "Browser-based Planetary Geographic Information System and Mission Planning Platform for Mars, Moon, and Earth.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0f172a",
+  "background_color": "#020617",
+  "categories": [
+    "education",
+    "utilities",
+    "science",
+    "navigation"
+  ],
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "jsmars_logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mars Explorer",
+      "short_name": "Mars",
+      "description": "Explore Mars elevation, imagery, and landing sites",
+      "url": "./index.html?body=mars",
+      "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Lunar Explorer",
+      "short_name": "Moon",
+      "description": "Explore the Moon Apollo landing sites and topography",
+      "url": "./index.html?body=moon",
+      "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Earth Satellite Map",
+      "short_name": "Earth",
+      "description": "Open Earth satellite and topographic view",
+      "url": "./index.html?body=earth",
+      "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

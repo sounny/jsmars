@@ -25,7 +25,7 @@ export class JMARSState {
   constructor() {
     /** @type {{ body: string, activeLayers: Array<{id:string, opacity:number, visible:boolean}>, overlays: Object, view: {lat:number, lng:number, zoom:number} }} */
     this.state = {
-      body: 'Mars',
+      body: 'mars',
       activeLayers: [], // List of { id, opacity, visible } in display order (bottom to top)
       overlays: {
         graticule: false,
@@ -60,6 +60,9 @@ export class JMARSState {
    * @param {*} value - The new value.
    */
   set(key, value) {
+    if (key === 'body' && typeof value === 'string') {
+      value = value.toLowerCase();
+    }
     this.state[key] = value;
     this.emit('change', { key, value, state: this.state });
     this.emit(`change:${key}`, value);
@@ -181,7 +184,7 @@ export class JMARSState {
    */
   reset() {
     this.state = {
-      body: 'Mars',
+      body: 'mars',
       activeLayers: [],
       overlays: {
         graticule: false,

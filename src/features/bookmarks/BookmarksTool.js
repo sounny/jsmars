@@ -86,8 +86,12 @@ export class BookmarksTool {
   }
 
   goTo(bookmark) {
-    if (bookmark.body && bookmark.body.toLowerCase() !== this.currentBody) {
-      jmarsState.set('body', bookmark.body);
+    if (!bookmark) return;
+    const targetBody = (bookmark.body || 'mars').toLowerCase();
+    if (targetBody !== this.currentBody) {
+      this.currentBody = targetBody;
+      jmarsState.set('body', targetBody);
+      document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: targetBody } }));
     }
     this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
   }
@@ -160,15 +164,32 @@ export class BookmarksTool {
       item.style.fontSize = '11px';
       item.style.cursor = 'pointer';
 
-      const bodyBadge = b.body ? `<span style="font-size:9px; color:#38bdf8; background:#1e293b; padding:1px 4px; border-radius:2px; margin-right:4px;">${b.body.toUpperCase()}</span>` : '';
-
       const link = document.createElement('div');
-      link.innerHTML = `${bodyBadge}<span style="color:#f8fafc;">${b.name}</span>`;
       link.style.flex = '1';
+      link.style.display = 'flex';
+      link.style.alignItems = 'center';
+
+      if (b.body) {
+        const bodyBadge = document.createElement('span');
+        bodyBadge.style.fontSize = '9px';
+        bodyBadge.style.color = '#38bdf8';
+        bodyBadge.style.background = '#1e293b';
+        bodyBadge.style.padding = '1px 4px';
+        bodyBadge.style.borderRadius = '2px';
+        bodyBadge.style.marginRight = '4px';
+        bodyBadge.textContent = b.body.toUpperCase();
+        link.appendChild(bodyBadge);
+      }
+
+      const nameSpan = document.createElement('span');
+      nameSpan.style.color = '#f8fafc';
+      nameSpan.textContent = b.name || 'Unnamed Bookmark';
+      link.appendChild(nameSpan);
+
       link.onclick = () => this.goTo(b);
 
       const delBtn = document.createElement('span');
-      delBtn.innerHTML = '&times;';
+      delBtn.textContent = '×';
       delBtn.style.color = '#f43f5e';
       delBtn.style.fontSize = '14px';
       delBtn.style.cursor = 'pointer';

@@ -31,6 +31,10 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
+import { PWAManager } from '../src/pwa/PWAManager.js';
+import { MobileSheet } from '../src/ui/MobileSheet.js';
+import { SessionManager } from '../src/ui/SessionManager.js';
+import { StampQueryPanel } from '../src/features/stamp/StampQueryPanel.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -41,13 +45,13 @@ describe('JMARSState', () => {
     });
 
     it('should have default state', () => {
-        expect(jmarsState.get('body')).to.equal('Mars');
+        expect(jmarsState.get('body')).to.equal('mars');
         expect(jmarsState.get('activeLayers')).to.be.an('array').that.is.empty;
     });
 
     it('should update body', () => {
         jmarsState.set('body', 'Earth');
-        expect(jmarsState.get('body')).to.equal('Earth');
+        expect(jmarsState.get('body')).to.equal('earth');
     });
 
     it('should add layer', () => {
@@ -8085,6 +8089,153 @@ describe('CO2 Frost Point & Polar Condensation (KRCEngine)', () => {
     });
 });
 
+describe('PWA Manifest, PWAManager & MobileSheet Architecture', () => {
+    it('should validate PWA Web App Manifest structure and essential fields', async () => {
+        // Fetch and parse manifest.webmanifest
+        const res = await fetch('../manifest.webmanifest');
+        expect(res.status).to.equal(200);
+        const manifest = await res.json();
+
+        expect(manifest.id).to.equal('com.sounny.jsmars');
+        expect(manifest.name).to.include('JSMARS');
+        expect(manifest.short_name).to.equal('JSMARS');
+        expect(manifest.display).to.equal('standalone');
+        expect(manifest.start_url).to.equal('./index.html');
+        expect(manifest.scope).to.equal('./');
+        expect(manifest.theme_color).to.equal('#0f172a');
+        expect(manifest.background_color).to.equal('#020617');
+        expect(manifest.icons).to.be.an('array').with.length.greaterThan(2);
+
+        const has192 = manifest.icons.some(i => i.sizes === '192x192');
+        const has512 = manifest.icons.some(i => i.sizes === '512x512');
+        const hasMaskable = manifest.icons.some(i => i.purpose && i.purpose.includes('maskable'));
+        expect(has192).to.be.true;
+        expect(has512).to.be.true;
+        expect(hasMaskable).to.be.true;
+    });
+
+    it('should test PWAManager lifecycle state and offline network indicators', () => {
+        const pwa = new PWAManager();
+        expect(pwa.isOnline).to.be.a('boolean');
+        expect(pwa.isInstalled).to.be.false;
+
+        // Test status update methods
+        pwa._updateNetworkBadge();
+        expect(pwa.deferredPrompt).to.be.null;
+    });
+
+    it('should coordinate MobileSheet state machine (peek, expanded, toggle)', () => {
+        const container = document.createElement('div');
+        container.id = 'test-controls';
+        document.body.appendChild(container);
+
+        const sheet = new MobileSheet(container, null);
+        expect(sheet.state).to.equal('peek');
+
+        // Toggle to expanded
+        sheet.toggleSheet();
+        expect(sheet.state).to.equal('expanded');
+        expect(container.classList.contains('mobile-sheet-expanded')).to.be.true;
+
+        // Toggle back to peek
+        sheet.toggleSheet();
+        expect(sheet.state).to.equal('peek');
+        expect(container.classList.contains('mobile-sheet-peek')).to.be.true;
+
+        // Cleanup
+        document.body.removeChild(container);
+    });
+});
+
+describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Prevention & Visibility', () => {
+    it('should serialize live session state with canonical lowercase body key', () => {
+        jmarsState.set('body', 'Moon');
+        jmarsState.set('view', { lat: 15.5, lng: -45.2, zoom: 6 });
+
+        const sessionMgr = new SessionManager(null, null, null);
+        let downloadedContent = null;
+        sessionMgr.downloadFile = (name, content) => {
+            downloadedContent = JSON.parse(content);
+        };
+
+        sessionMgr.saveSession();
+        expect(downloadedContent).to.not.be.null;
+        expect(downloadedContent.state.body).to.equal('moon');
+        expect(downloadedContent.state.view.lat).to.equal(15.5);
+        expect(downloadedContent.state.view.lng).to.equal(-45.2);
+    });
+
+    it('should handle cross-body bookmark navigation by dispatching BODY_CHANGED event', (done) => {
+        const mockMap = {
+            center: [0, 0],
+            zoom: 2,
+            setView: (c, z) => {
+                mockMap.center = c;
+                mockMap.zoom = z;
+            }
+        };
+
+        const bookmarks = new BookmarksTool(mockMap, null);
+        bookmarks.currentBody = 'mars';
+
+        const bodyChangeHandler = (e) => {
+            expect(e.detail.body).to.equal('moon');
+            document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+            done();
+        };
+        document.addEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+
+        // Navigate to Moon POI
+        bookmarks.goTo({ id: 'apollo11', name: 'Apollo 11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
+        expect(mockMap.center[0]).to.equal(0.67);
+        expect(mockMap.center[1]).to.equal(23.47);
+    });
+
+    it('should render bookmark names safely without executing markup strings (XSS resilience)', () => {
+        const container = document.createElement('div');
+        const mockMap = { setView: () => {} };
+        const bookmarks = new BookmarksTool(mockMap, container);
+
+        // Inject malicious markup string
+        bookmarks.bookmarks = [
+            { id: 'xss-test', name: '<img src=x onerror=alert(1)> Olympus Mons', lat: 18.0, lng: -133.0, zoom: 5, body: 'mars' }
+        ];
+        bookmarks.render();
+
+        // The img tag must NOT be created as a DOM element; the text must remain plain text
+        const imgElements = container.querySelectorAll('img');
+        expect(imgElements.length).to.equal(0);
+        expect(container.textContent).to.include('<img src=x onerror=alert(1)> Olympus Mons');
+    });
+
+    it('should render StampQueryPanel results safely using DOM APIs (XSS resilience)', () => {
+        const container = document.createElement('div');
+        const mockStampLayer = {
+            getInstruments: () => [{ id: 'THEMIS', name: 'THEMIS' }],
+            results: [],
+            activate: () => {},
+            query: async () => {},
+            clear: () => {},
+            exportCSV: () => {}
+        };
+
+        const panel = new StampQueryPanel(container, mockStampLayer);
+        // Provide mock results with malicious markup in product ID
+        const malformedResults = [
+            { pdsId: '<script>alert("xss")</script>THEMIS_IR_123', centerLat: 10.5, centerLon: -45.2, solarLon: 120.0 }
+        ];
+
+        panel._renderResultsTable(malformedResults);
+        const scriptElements = container.querySelectorAll('script');
+        expect(scriptElements.length).to.equal(0);
+        const td = container.querySelector('td');
+        expect(td).to.not.be.null;
+        expect(td.getAttribute('title')).to.equal('<script>alert("xss")</script>THEMIS_IR_123');
+        expect(container.textContent).to.include('<script>alert("xss")');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
+

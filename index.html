@@ -4,7 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="jsmars_logo.svg">
+  <link rel="manifest" href="manifest.webmanifest">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JSMARS">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <title>JSMARS - JMARS for the Web</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -22,6 +28,13 @@
 
   <!-- Status Bar -->
   <div id="status-bar"></div>
+
+  <!-- PWA Update Notification Toast -->
+  <div id="pwa-update-toast">
+    <span>✨ New JSMARS version available!</span>
+    <button class="pwa-reload-btn">Reload to update</button>
+  </div>
+
   <div class="welcome-modal-backdrop" id="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
     <div class="welcome-modal">
       <img src="jsmars_logo.svg" alt="JSMARS Logo">
@@ -43,6 +56,19 @@
       <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;" />
       <div id="body-selector-container" style="margin-top: 10px;"></div>
       <div id="quick-actions-container" style="margin-top: 12px;"></div>
+
+      <!-- PWA Install Banner -->
+      <div id="pwa-install-banner">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>🚀</span>
+          <span><strong>Install App</strong> for offline access</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="pwa-install-btn" id="pwa-install-action-btn">Install</button>
+          <button class="pwa-dismiss-btn" id="pwa-install-dismiss-btn" title="Dismiss">&times;</button>
+        </div>
+      </div>
+
       <div style="margin-top: 8px; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;">
         <a href="about.html" target="_blank" style="color: #aaa; text-decoration: none; font-size: 12px;">About</a>
         <a href="docs/index.html" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 12px; font-weight: 600;">📖 Docs</a>
@@ -493,11 +519,30 @@
     import { PlanetaryScaleBar } from './src/ui/PlanetaryScaleBar.js';
     import { RadarPanel } from './src/features/radar/RadarPanel.js';
     import { TrajectoryPanel } from './src/features/orbit/TrajectoryPanel.js';
+    import { PWAManager } from './src/pwa/PWAManager.js';
+    import { MobileSheet } from './src/ui/MobileSheet.js';
 
     // Initialize Map
     const jmars = new JMARSMap('map');
     jmars.init();
     window.jmars = jmars; // Expose for debugging
+
+    // Initialize PWA Manager (Service Worker, install prompts, offline status)
+    const pwaManager = new PWAManager();
+    pwaManager.init();
+    window.pwaManager = pwaManager;
+
+    const installActionBtn = document.getElementById('pwa-install-action-btn');
+    if (installActionBtn) {
+      installActionBtn.addEventListener('click', () => pwaManager.promptInstall());
+    }
+    const installDismissBtn = document.getElementById('pwa-install-dismiss-btn');
+    if (installDismissBtn) {
+      installDismissBtn.addEventListener('click', () => {
+        const banner = document.getElementById('pwa-install-banner');
+        if (banner) banner.classList.remove('visible');
+      });
+    }
 
     // Welcome modal (one-time per session)
     const welcomeBackdrop = document.getElementById('welcome-modal');
@@ -520,6 +565,8 @@
     const statusBar = new StatusBar(jmars.map, 'status-bar');
     const fixedOverlays = new FixedOverlays(jmars, 'fixed-overlays');
     const sidebar = new Sidebar('controls', 'sidebar-toggle');
+    const mobileSheet = new MobileSheet('controls', jmars.map);
+    window.mobileSheet = mobileSheet;
     const searchBar = new SearchBar(jmars.map, 'search-bar-container');
     const toolsGroup = new CollapsibleGroup('tools-list');
     const bodySelector = new BodySelector('body-selector-container');

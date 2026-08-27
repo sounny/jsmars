@@ -45,8 +45,11 @@ def run_tests():
         def log_message(self, format, *args):
             pass
 
-    socketserver.TCPServer.allow_reuse_address = True
-    server = socketserver.TCPServer(("127.0.0.1", 0), Handler)
+    class ThreadedServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    server = ThreadedServer(("127.0.0.1", 0), Handler)
     port = server.server_address[1]
 
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
