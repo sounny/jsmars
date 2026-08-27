@@ -7123,6 +7123,36 @@ describe('CRISM Olivine & Ferric Oxide Mineralogy Indices (BandMathEngine)', () 
     });
 });
 
+describe('Hapke Opposition Effect & Angular Solar Phase Angle (ThreeDEngine)', () => {
+    it('should calculate solar phase angle from incidence, emission, and azimuth difference', () => {
+        // Direct specular / subsolar backscattering geometry: i = 30°, e = 30°, delta_phi = 0°
+        // cos(alpha) = cos(30)*cos(30) + sin(30)*sin(30)*1.0 = 0.75 + 0.25 = 1.0 -> alpha = 0.0°
+        const zeroPhase = ThreeDEngine.computePhaseAngleFromAngles(30.0, 30.0, 0.0);
+        expect(zeroPhase.phaseAngleDeg).to.equal(0.0);
+        expect(zeroPhase.cosPhaseAngle).to.equal(1.0);
+
+        // Right angle scattering: i = 45°, e = 45°, delta_phi = 180°
+        // cos(alpha) = cos(45)*cos(45) + sin(45)*sin(45)*(-1.0) = 0.5 - 0.5 = 0.0 -> alpha = 90.0°
+        const rightAngle = ThreeDEngine.computePhaseAngleFromAngles(45.0, 45.0, 180.0);
+        expect(rightAngle.phaseAngleDeg).to.equal(90.0);
+        expect(rightAngle.cosPhaseAngle).to.be.closeTo(0.0, 0.0001);
+    });
+
+    it('should compute Hapke shadow-hiding opposition surge factor B(g)', () => {
+        // Exact opposition (g = 0°): tan(0) = 0 -> B(0) = 1.0 + B_0 / 1.0 = 1.0 + 1.0 = 2.0 (100% surge spike)
+        const exact = ThreeDEngine.computeHapkeOppositionSurgeFactor(0.0, 1.0, 0.05);
+        expect(exact.oppositionSurgeFactor).to.equal(2.0);
+        expect(exact.isOppositionSpike).to.be.true;
+
+        // Moderate phase angle g = 30°: tan(15°) = 0.26795
+        // denominator = 1.0 + (1 / 0.05) * 0.26795 = 1.0 + 20 * 0.26795 = 1.0 + 5.359 = 6.359
+        // B(30) = 1.0 + 1.0 / 6.359 = 1.1573
+        const mod = ThreeDEngine.computeHapkeOppositionSurgeFactor(30.0, 1.0, 0.05);
+        expect(mod.oppositionSurgeFactor).to.be.closeTo(1.1573, 0.001);
+        expect(mod.isOppositionSpike).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

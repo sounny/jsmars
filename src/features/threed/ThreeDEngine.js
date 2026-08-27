@@ -1455,6 +1455,55 @@ export class ThreeDEngine {
       isDirectlyIlluminated: cosIncidence > 0
     };
   }
+
+  // --- Hapke Photometry & Opposition Surge Solvers ---
+
+  /**
+   * Calculate solar illumination phase angle (alpha) from incidence, emission, and azimuth difference angles.
+   * cos(alpha) = cos(i) * cos(e) + sin(i) * sin(e) * cos(delta_phi)
+   * @param {number} incidenceDeg - Solar incidence angle in degrees
+   * @param {number} emissionDeg - Spacecraft emission / viewing angle in degrees
+   * @param {number} [azimuthDiffDeg=0.0] - Azimuth difference angle between sun and observer in degrees
+   * @returns {{phaseAngleDeg: number, cosPhaseAngle: number}}
+   */
+  static computePhaseAngleFromAngles(incidenceDeg, emissionDeg, azimuthDiffDeg = 0.0) {
+    const iRad = (incidenceDeg * Math.PI) / 180.0;
+    const eRad = (emissionDeg * Math.PI) / 180.0;
+    const dPhiRad = (azimuthDiffDeg * Math.PI) / 180.0;
+
+    const cosAlpha = Math.cos(iRad) * Math.cos(eRad) + Math.sin(iRad) * Math.sin(eRad) * Math.cos(dPhiRad);
+    const clampedCos = Math.max(-1.0, Math.min(1.0, cosAlpha));
+    const alphaRad = Math.acos(clampedCos);
+    const alphaDeg = (alphaRad * 180.0) / Math.PI;
+
+    return {
+      phaseAngleDeg: parseFloat(alphaDeg.toFixed(3)),
+      cosPhaseAngle: parseFloat(clampedCos.toFixed(5))
+    };
+  }
+
+  /**
+   * Calculate Hapke shadow-hiding opposition surge enhancement factor B(g).
+   * B(g) = 1.0 + B_0 / ( 1.0 + (1 / h) * tan(g / 2) )
+   * @param {number} phaseAngleDeg - Solar phase angle in degrees
+   * @param {number} [amplitudeB0=1.0] - Opposition surge amplitude parameter B_0 (0 to 1)
+   * @param {number} [widthH=0.05] - Angular width parameter h (typically 0.02 - 0.08 for lunar/martian regolith)
+   * @returns {{oppositionSurgeFactor: number, isOppositionSpike: boolean}}
+   */
+  static computeHapkeOppositionSurgeFactor(phaseAngleDeg, amplitudeB0 = 1.0, widthH = 0.05) {
+    const gDeg = Math.max(0.0, Math.min(180.0, phaseAngleDeg));
+    const gRad = (gDeg * Math.PI) / 180.0;
+    const B0 = Math.max(0.0, amplitudeB0);
+    const h = Math.max(1e-4, widthH);
+
+    const tanHalfG = Math.tan(gRad / 2.0);
+    const bg = 1.0 + B0 / (1.0 + (1.0 / h) * tanHalfG);
+
+    return {
+      oppositionSurgeFactor: parseFloat(bg.toFixed(4)),
+      isOppositionSpike: gDeg <= 5.0
+    };
+  }
 }
 
 
