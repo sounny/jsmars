@@ -1750,6 +1750,64 @@ export class BandMathEngine {
       numBands: n
     };
   }
+
+  // --- CRISM Structural Water (BD1400), Al-OH Smectite (BD2210) & Continuum Slope Solvers ---
+
+  /**
+   * Calculate CRISM 1.4 µm Structural H2O / Hydroxyl (OH) Band Depth Index BD1400.
+   * BD1400 = 1.0 - ( R1395 / ( 0.7 * R1330 + 0.3 * R1510 ) )
+   * @param {number} r1330 - Reflectance at 1.330 µm shoulder
+   * @param {number} r1395 - Reflectance at 1.395 µm H2O/OH overtone absorption minimum
+   * @param {number} r1510 - Reflectance at 1.510 µm shoulder
+   * @returns {{bd1400: number, hasHydration: boolean}}
+   */
+  static computeCRISMStructuralWaterBD1400(r1330, r1395, r1510) {
+    const continuum = 0.7 * Math.max(1e-4, r1330) + 0.3 * Math.max(1e-4, r1510);
+    const depth = 1.0 - (r1395 / continuum);
+
+    return {
+      bd1400: parseFloat(depth.toFixed(4)),
+      hasHydration: depth > 0.02
+    };
+  }
+
+  /**
+   * Calculate CRISM 2.21 µm Al-OH Smectite / Montmorillonite / Kaolinite Band Depth Index BD2210.
+   * BD2210 = 1.0 - ( R2210 / ( 0.6 * R2140 + 0.4 * R2250 ) )
+   * @param {number} r2140 - Reflectance at 2.140 µm shoulder
+   * @param {number} r2210 - Reflectance at 2.210 µm Al-OH stretching overtone minimum
+   * @param {number} r2250 - Reflectance at 2.250 µm shoulder
+   * @returns {{bd2210: number, hasAlSmectite: boolean}}
+   */
+  static computeCRISMSmectiteBD2210(r2140, r2210, r2250) {
+    const continuum = 0.6 * Math.max(1e-4, r2140) + 0.4 * Math.max(1e-4, r2250);
+    const depth = 1.0 - (r2210 / continuum);
+
+    return {
+      bd2210: parseFloat(depth.toFixed(4)),
+      hasAlSmectite: depth > 0.025
+    };
+  }
+
+  /**
+   * Calculate spectral continuum slope normalized across wavelength interval.
+   * S_cont = ( R_lambda2 - R_lambda1 ) / ( lambda2 - lambda1 )
+   * @param {number} r1 - Reflectance at wavelength lambda1
+   * @param {number} r2 - Reflectance at wavelength lambda2
+   * @param {number} lambda1Microns - Shorter wavelength in µm
+   * @param {number} lambda2Microns - Longer wavelength in µm
+   * @returns {{slopePerMicron: number, isRedSloped: boolean, isBlueSloped: boolean}}
+   */
+  static computeContinuumNormalizedSlope(r1, r2, lambda1Microns, lambda2Microns) {
+    const dLambda = Math.max(1e-4, Math.abs(lambda2Microns - lambda1Microns));
+    const slope = (r2 - r1) / dLambda;
+
+    return {
+      slopePerMicron: parseFloat(slope.toFixed(4)),
+      isRedSloped: slope > 0.01,
+      isBlueSloped: slope < -0.01
+    };
+  }
 }
 
 

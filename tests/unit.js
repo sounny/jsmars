@@ -5857,6 +5857,40 @@ describe('Subsolar Equilibrium, Conductive Flux & Insolation (KRCEngine)', () =>
     });
 });
 
+describe('CRISM Structural Water (BD1400), Al-OH Smectite (BD2210) & Slope (BandMathEngine)', () => {
+    it('should compute CRISM 1.4 µm structural H2O / hydroxyl absorption index BD1400', () => {
+        // Hydrated sulfate/opal signature: strong absorption at 1.395 µm
+        // r1330 = 0.35, r1395 = 0.28, r1510 = 0.33
+        // Continuum = 0.7 * 0.35 + 0.3 * 0.33 = 0.245 + 0.099 = 0.344
+        // BD1400 = 1.0 - (0.28 / 0.344) = 1.0 - 0.81395 = 0.1860
+        const h2o = BandMathEngine.computeCRISMStructuralWaterBD1400(0.35, 0.28, 0.33);
+        expect(h2o.bd1400).to.be.closeTo(0.1860, 0.001);
+        expect(h2o.hasHydration).to.be.true;
+
+        // Anhydrous basaltic terrain: flat spectrum
+        const dry = BandMathEngine.computeCRISMStructuralWaterBD1400(0.30, 0.30, 0.30);
+        expect(dry.bd1400).to.equal(0.0);
+        expect(dry.hasHydration).to.be.false;
+    });
+
+    it('should calculate CRISM 2.21 µm Al-OH smectite index BD2210 and continuum normalized slope', () => {
+        // Montmorillonite / Al-smectite clay absorption at 2.210 µm
+        // r2140 = 0.40, r2210 = 0.34, r2250 = 0.38
+        // Continuum = 0.6 * 0.40 + 0.4 * 0.38 = 0.24 + 0.152 = 0.392
+        // BD2210 = 1.0 - (0.34 / 0.392) = 1.0 - 0.86735 = 0.1327
+        const clay = BandMathEngine.computeCRISMSmectiteBD2210(0.40, 0.34, 0.38);
+        expect(clay.bd2210).to.be.closeTo(0.1327, 0.001);
+        expect(clay.hasAlSmectite).to.be.true;
+
+        // Red spectral slope (ferric dust / nanophase iron): r(0.5 µm) = 0.12, r(1.0 µm) = 0.28
+        // Slope = (0.28 - 0.12) / (1.0 - 0.5) = 0.16 / 0.5 = +0.32 µm^-1
+        const slope = BandMathEngine.computeContinuumNormalizedSlope(0.12, 0.28, 0.5, 1.0);
+        expect(slope.slopePerMicron).to.equal(0.32);
+        expect(slope.isRedSloped).to.be.true;
+        expect(slope.isBlueSloped).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
