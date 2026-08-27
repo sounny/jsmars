@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -6261,6 +6261,39 @@ describe('Newton-Raphson Kepler Solver & Orbit Solar Flux Dilution (MarsTime)', 
         expect(aph.distanceAU).to.be.closeTo(1.6660, 0.001);
         expect(aph.solarFluxRatio).to.be.closeTo(0.3603, 0.001);
         expect(aph.isNearAphelion).to.be.true;
+    });
+});
+
+describe('Sinusoidal Cartographic Projection & Mercator Scale Distortion (geo)', () => {
+    it('should calculate forward and inverse Sinusoidal equal-area projection coordinates', () => {
+        // Point at (lat = 0°, lon = 0°) on Mars (R = 3389.5 km) -> projects to (0, 0)
+        const origin = computeSinusoidalProjection(0.0, 0.0, 0.0, 3389.5);
+        expect(origin.xKm).to.equal(0);
+        expect(origin.yKm).to.equal(0);
+
+        // Point at (lat = 45°, lon = 60°):
+        // y = 3389.5 * (45 * pi / 180) = 3389.5 * 0.785398 = 2662.09 km
+        // x = 3389.5 * (60 * pi / 180) * cos(45°) = 3389.5 * 1.047197 * 0.707106 = 2509.77 km
+        const fwd = computeSinusoidalProjection(45.0, 60.0, 0.0, 3389.5);
+        expect(fwd.xKm).to.be.closeTo(2509.77, 0.1);
+        expect(fwd.yKm).to.be.closeTo(2662.09, 0.1);
+
+        // Inverse projection: invert (2509.77 km, 2662.09 km) -> (lat = 45.0°, lon = 60.0°)
+        const inv = computeSinusoidalInverse(fwd.xKm, fwd.yKm, 0.0, 3389.5);
+        expect(inv.latDeg).to.be.closeTo(45.0, 0.01);
+        expect(inv.lonDeg).to.be.closeTo(60.0, 0.01);
+    });
+
+    it('should compute conformal Mercator linear and areal scale distortion factors', () => {
+        // At equator (lat = 0°): k = 1.0, k_area = 1.0
+        const eq = computeMercatorScaleDistortionFactor(0.0);
+        expect(eq.scaleFactor).to.equal(1.0);
+        expect(eq.areaScaleFactor).to.equal(1.0);
+
+        // At lat = 60°: cos(60°) = 0.5 -> k = 1 / 0.5 = 2.0, k_area = 4.0
+        const highLat = computeMercatorScaleDistortionFactor(60.0);
+        expect(highLat.scaleFactor).to.equal(2.0);
+        expect(highLat.areaScaleFactor).to.equal(4.0);
     });
 });
 

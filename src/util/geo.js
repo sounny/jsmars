@@ -1137,6 +1137,86 @@ export function computeMeridianConvergenceAngle(latDeg, lonDeg, centerLonDeg = 0
   };
 }
 
+// --- Sinusoidal (Sanson-Flamsteed) Equal-Area & Mercator Scale Distortion Solvers ---
+
+/**
+ * Calculate forward Sinusoidal (Sanson-Flamsteed) equal-area cartographic projection (x, y) in km.
+ * x = R * (lam - lam0) * cos(phi),  y = R * phi
+ * @param {number} latDeg - Point latitude in degrees (-90 to +90)
+ * @param {number} lonDeg - Point longitude in degrees
+ * @param {number} [centerLonDeg=0] - Central reference meridian in degrees
+ * @param {number} [radiusKm=3389.5] - Mean spherical planetary radius in km
+ * @returns {{xKm: number, yKm: number, radiusKm: number}}
+ */
+export function computeSinusoidalProjection(latDeg, lonDeg, centerLonDeg = 0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi = (latDeg * Math.PI) / 180.0;
+  let dLon = lonDeg - centerLonDeg;
+  while (dLon > 180) dLon -= 360;
+  while (dLon < -180) dLon += 360;
+  const dLam = (dLon * Math.PI) / 180.0;
+
+  const x = R * dLam * Math.cos(phi);
+  const y = R * phi;
+
+  return {
+    xKm: parseFloat(x.toFixed(3)),
+    yKm: parseFloat(y.toFixed(3)),
+    radiusKm: parseFloat(R.toFixed(1))
+  };
+}
+
+/**
+ * Calculate inverse Sinusoidal projection from Cartesian (x, y) coordinates back to (lat, lon).
+ * phi = y / R,  lam = lam0 + x / (R * cos(phi))
+ * @param {number} xKm - Projected X coordinate in km
+ * @param {number} yKm - Projected Y coordinate in km
+ * @param {number} [centerLonDeg=0] - Central meridian in degrees
+ * @param {number} [radiusKm=3389.5] - Planetary radius in km
+ * @returns {{latDeg: number, lonDeg: number}}
+ */
+export function computeSinusoidalInverse(xKm, yKm, centerLonDeg = 0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi = yKm / R;
+  const latDeg = (phi * 180.0) / Math.PI;
+
+  const cosPhi = Math.cos(phi);
+  let dLamDeg = 0;
+  if (Math.abs(cosPhi) > 1e-6) {
+    const dLam = xKm / (R * cosPhi);
+    dLamDeg = (dLam * 180.0) / Math.PI;
+  }
+
+  let lonDeg = centerLonDeg + dLamDeg;
+  while (lonDeg > 180) lonDeg -= 360;
+  while (lonDeg < -180) lonDeg += 360;
+
+  return {
+    latDeg: parseFloat(latDeg.toFixed(4)),
+    lonDeg: parseFloat(lonDeg.toFixed(4))
+  };
+}
+
+/**
+ * Calculate conformal Mercator scale distortion factor k = sec(phi) = 1 / cos(phi).
+ * @param {number} latDeg - Latitude in degrees (-85 to +85)
+ * @returns {{scaleFactor: number, areaScaleFactor: number, latitudeDeg: number}}
+ */
+export function computeMercatorScaleDistortionFactor(latDeg) {
+  const clampedLat = Math.max(-85.0, Math.min(85.0, latDeg));
+  const phiRad = (clampedLat * Math.PI) / 180.0;
+  const cosPhi = Math.cos(phiRad);
+
+  const k = 1.0 / Math.max(1e-4, cosPhi);
+  const kArea = k * k;
+
+  return {
+    scaleFactor: parseFloat(k.toFixed(4)),
+    areaScaleFactor: parseFloat(kArea.toFixed(4)),
+    latitudeDeg: parseFloat(clampedLat.toFixed(2))
+  };
+}
+
 
 
 
