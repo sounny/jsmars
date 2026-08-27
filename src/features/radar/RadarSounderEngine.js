@@ -1873,6 +1873,39 @@ export class RadarSounderEngine {
       maxZeroDopplerAngleDeg: parseFloat(angleDeg.toFixed(3))
     };
   }
+
+  /**
+   * Calculate dielectric attenuation rate (dB/m), skin depth (m), and two-way power loss (dB).
+   * alpha_dB_m = 8.686 * ( pi * f * sqrt(eps_r) * tan(delta) ) / c
+   * skin_depth = 8.686 / alpha_dB_m
+   * L_2way = 2.0 * alpha_dB_m * depth_m
+   * Reference: Picardi et al. (2005), Phillips et al. (2008) for SHARAD / MARSIS.
+   * @param {number} [carrierFreqMHz=20.0] - Sounder frequency in MHz (20 MHz SHARAD, 4 MHz MARSIS)
+   * @param {number} [relativePermittivity=3.15] - Dielectric permittivity eps_r (3.15 pure water ice, 7.0 basaltic regolith)
+   * @param {number} [lossTangent=0.001] - Dielectric loss tangent tan(delta) (0.0005 - 0.002 polar ice, 0.01 - 0.03 volcanic bedrock)
+   * @param {number} [targetDepthMeters=1000.0] - Target reflector penetration depth z in meters
+   * @returns {{attenuationDbPerMeter: number, skinDepthMeters: number, twoWayLossDb: number, isPenetrable: boolean}}
+   */
+  static computeSubsurfaceRadarAttenuationAndSkinDepth(carrierFreqMHz = 20.0, relativePermittivity = 3.15, lossTangent = 0.001, targetDepthMeters = 1000.0) {
+    const f = Math.max(0.1, carrierFreqMHz) * 1e6; // Hz
+    const epsR = Math.max(1.0, relativePermittivity);
+    const tanDelta = Math.max(1e-6, lossTangent);
+    const z = Math.max(0.0, targetDepthMeters);
+
+    // alpha (Np/m) = (pi * f * sqrt(eps_r) * tan(delta)) / c
+    // alpha (dB/m) = 8.685889638 * alpha (Np/m)
+    const alphaNpM = (Math.PI * f * Math.sqrt(epsR) * tanDelta) / RadarSounderEngine.C;
+    const alphaDbM = 8.685889638 * alphaNpM;
+    const skinDepth = alphaDbM > 1e-12 ? 8.685889638 / alphaDbM : 1e6;
+    const twoWayLoss = 2.0 * alphaDbM * z;
+
+    return {
+      attenuationDbPerMeter: parseFloat(alphaDbM.toFixed(6)),
+      skinDepthMeters: parseFloat(skinDepth.toFixed(1)),
+      twoWayLossDb: parseFloat(twoWayLoss.toFixed(2)),
+      isPenetrable: twoWayLoss < 60.0 // 60 dB dynamic range detection threshold
+    };
+  }
 }
 
 

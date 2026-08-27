@@ -8235,6 +8235,63 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
     });
 });
 
+describe('MCD Dust Optical Depth, SHARAD Radar Attenuation & CRISM Pyroxene Solvers', () => {
+    it('should calculate wavelength-dependent aerosol optical depth and rover solar power yield loss', () => {
+        // Visible tau = 1.0 at 0.67 um:
+        // Blue wavelength (0.44 um): tau = 1.0 * (0.44 / 0.67)^(-0.25) ~ 1.0 * (0.6567)^(-0.25) ~ 1.11
+        const blueDust = MCDEngine.computeSpectralDustOpticalDepth(1.0, 0.44, 0.25);
+        expect(blueDust.spectralOpticalDepth).to.be.closeTo(1.11, 0.05);
+        expect(blueDust.isExtinctionStrongerThanVis).to.be.true;
+
+        // Infrared wavelength (1.02 um): tau < 1.0
+        const irDust = MCDEngine.computeSpectralDustOpticalDepth(1.0, 1.02, 0.25);
+        expect(irDust.spectralOpticalDepth).to.be.lessThan(1.0);
+        expect(irDust.isExtinctionStrongerThanVis).to.be.false;
+
+        // Clean arrays under clear sky (tau = 0.3, panel dust = 0.0) -> high yield
+        const clearYield = MCDEngine.computeRoverSolarPowerYieldLoss(0.3, 0.0, 900.0);
+        expect(clearYield.dailyYieldWattHours).to.be.greaterThan(500.0);
+        expect(clearYield.isCriticalPowerDeficit).to.be.false;
+
+        // Global dust storm (tau = 5.0, panel dust = 0.80) -> critical deficit (< 250 Wh critical threshold)
+        const stormYield = MCDEngine.computeRoverSolarPowerYieldLoss(5.0, 0.80, 900.0);
+        expect(stormYield.dailyYieldWattHours).to.be.lessThan(100.0);
+        expect(stormYield.isCriticalPowerDeficit).to.be.true;
+    });
+
+    it('should calculate SHARAD subsurface dielectric attenuation and skin depth for ice vs basalt', () => {
+        // Pure water ice (f = 20 MHz, eps_r = 3.15, tan_delta = 0.0005, depth = 1000 m):
+        // alpha_dB_m ~ 0.0016 dB/m -> 2-way loss ~ 3.2 dB (highly penetrable)
+        const iceSounding = RadarSounderEngine.computeSubsurfaceRadarAttenuationAndSkinDepth(20.0, 3.15, 0.0005, 1000.0);
+        expect(iceSounding.attenuationDbPerMeter).to.be.closeTo(0.0016, 0.0005);
+        expect(iceSounding.twoWayLossDb).to.be.lessThan(10.0);
+        expect(iceSounding.isPenetrable).to.be.true;
+        expect(iceSounding.skinDepthMeters).to.be.greaterThan(1000.0);
+
+        // Dense volcanic basalt (f = 20 MHz, eps_r = 7.0, tan_delta = 0.02, depth = 1000 m):
+        // alpha_dB_m ~ 0.096 dB/m -> 2-way loss ~ 193 dB (impenetrable)
+        const basaltSounding = RadarSounderEngine.computeSubsurfaceRadarAttenuationAndSkinDepth(20.0, 7.0, 0.02, 1000.0);
+        expect(basaltSounding.twoWayLossDb).to.be.greaterThan(100.0);
+        expect(basaltSounding.isPenetrable).to.be.false;
+    });
+
+    it('should classify CRISM Low-Calcium Pyroxene (LCP) vs High-Calcium Pyroxene (HCP)', () => {
+        // LCP (Orthopyroxene / Norite): Band I at 920 nm, Band II at 1900 nm
+        const lcp = BandMathEngine.computeCRISMPyroxeneCompositionLCPvsHCP(920.0, 1900.0, 0.12, 0.10);
+        expect(lcp.isLCP).to.be.true;
+        expect(lcp.isHCP).to.be.false;
+        expect(lcp.pyroxeneClass).to.include('Low-Calcium Pyroxene');
+        expect(lcp.estimatedWoContentPct).to.be.closeTo(10.0, 1.0);
+
+        // HCP (Clinopyroxene / Augite-Basalt): Band I at 1030 nm, Band II at 2250 nm
+        const hcp = BandMathEngine.computeCRISMPyroxeneCompositionLCPvsHCP(1030.0, 2250.0, 0.14, 0.12);
+        expect(hcp.isHCP).to.be.true;
+        expect(hcp.isLCP).to.be.false;
+        expect(hcp.pyroxeneClass).to.include('High-Calcium Pyroxene');
+        expect(hcp.estimatedWoContentPct).to.be.closeTo(45.0, 1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

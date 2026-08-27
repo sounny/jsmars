@@ -2026,6 +2026,60 @@ export class MCDEngine {
       airMass: parseFloat(airMass.toFixed(2))
     };
   }
+
+  /**
+   * Calculate wavelength-dependent dust aerosol optical depth using Angstrom power law.
+   * tau(lambda) = tau_ref * ( lambda / lambda_ref )^( -alpha )
+   * Reference: Lemmon et al. (2004), Wolff et al. (2009) for Martian airborne mineral dust (alpha ~ 0.25).
+   * @param {number} tauVis - Visible reference optical depth at 670 nm (0.67 um)
+   * @param {number} wavelengthUm - Target observation wavelength in microns (e.g. 0.44 um blue, 1.02 um near-IR, 9.3 um thermal IR)
+   * @param {number} [angstromExponent=0.25] - Dust Angstrom scattering exponent (typical Mars dust = 0.20 - 0.35)
+   * @returns {{wavelengthUm: number, spectralOpticalDepth: number, opticalDepthRatio: number, isExtinctionStrongerThanVis: boolean}}
+   */
+  static computeSpectralDustOpticalDepth(tauVis, wavelengthUm, angstromExponent = 0.25) {
+    const tau0 = Math.max(0.0, tauVis);
+    const lambda = Math.max(0.1, wavelengthUm);
+    const lambda0 = 0.67; // 670 nm MER/MSL mastcam reference
+    const alpha = angstromExponent;
+
+    const ratio = Math.pow(lambda / lambda0, -alpha);
+    const tauLambda = tau0 * ratio;
+
+    return {
+      wavelengthUm: parseFloat(lambda.toFixed(3)),
+      spectralOpticalDepth: parseFloat(tauLambda.toFixed(4)),
+      opticalDepthRatio: parseFloat(ratio.toFixed(4)),
+      isExtinctionStrongerThanVis: tauLambda > tau0
+    };
+  }
+
+  /**
+   * Calculate photovoltaic rover solar panel power yield and dust obscuration loss per sol.
+   * E_yield = E_unattenuated * T_total * ( 1.0 - dustCoverageFraction )
+   * @param {number} tauDust - Atmospheric visible optical depth tau
+   * @param {number} panelDustDepositionFraction - Fraction of top panel area coated by settled dust (0.0 clean to 0.85 heavy coating)
+   * @param {number} [nominalPowerWatts=900.0] - Nominal clear-sky midday array output in Watt-hours per sol (e.g., 900 Wh for Opportunity, 1100 Wh for InSight)
+   * @returns {{dailyYieldWattHours: number, yieldFraction: number, isCriticalPowerDeficit: boolean, dustLossFraction: number}}
+   */
+  static computeRoverSolarPowerYieldLoss(tauDust, panelDustDepositionFraction, nominalPowerWatts = 900.0) {
+    const tau = Math.max(0.0, tauDust);
+    const dustPanel = Math.min(0.99, Math.max(0.0, panelDustDepositionFraction));
+    const pNominal = Math.max(10.0, nominalPowerWatts);
+
+    // Midday mean zenith angle ~ 30 deg -> cosZ ~ 0.866
+    const transmission = MCDEngine.computeAtmosphericSolarTransmission(tau, 30.0).totalTransmission;
+    const arrayCleanness = 1.0 - dustPanel;
+
+    const yieldFraction = transmission * arrayCleanness;
+    const dailyYieldWh = pNominal * yieldFraction;
+
+    return {
+      dailyYieldWattHours: parseFloat(dailyYieldWh.toFixed(1)),
+      yieldFraction: parseFloat(yieldFraction.toFixed(4)),
+      dustLossFraction: parseFloat(dustPanel.toFixed(4)),
+      isCriticalPowerDeficit: dailyYieldWh < 250.0 // Critical survival threshold for thermal heaters
+    };
+  }
 }
 
 

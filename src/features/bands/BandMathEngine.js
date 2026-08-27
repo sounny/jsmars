@@ -2288,6 +2288,60 @@ export class BandMathEngine {
       mineralFamily: depth > 0.03 ? 'Fe/Mg-Smectite / Nontronite / Saponite' : 'Unenriched / No Fe/Mg-OH Detected'
     };
   }
+
+  /**
+   * Classify pyroxene mineralogy (LCP vs HCP) using CRISM Band I (1 um) and Band II (2 um) crystal field absorption minima.
+   * LCP (Orthopyroxene / Enstatite): Band I center < 950 nm, Band II center < 1950 nm.
+   * HCP (Clinopyroxene / Augite / Diopside): Band I center > 1000 nm, Band II center > 2100 nm.
+   * Reference: Cloutis & Gaffey (1991), Mustard et al. (2005), Viviano-Beck et al. (2014).
+   * @param {number} band1MinNm - Band I absorption minimum wavelength in nanometers (e.g. 910 to 1050 nm)
+   * @param {number} band2MinNm - Band II absorption minimum wavelength in nanometers (e.g. 1850 to 2350 nm)
+   * @param {number} [band1Depth=0.08] - Band I absorption depth (0.0 to 1.0)
+   * @param {number} [band2Depth=0.06] - Band II absorption depth (0.0 to 1.0)
+   * @returns {{pyroxeneClass: string, isLCP: boolean, isHCP: boolean, isMixedOrIndeterminate: boolean, estimatedWoContentPct: number}}
+   */
+  static computeCRISMPyroxeneCompositionLCPvsHCP(band1MinNm, band2MinNm, band1Depth = 0.08, band2Depth = 0.06) {
+    const b1 = Math.max(800.0, band1MinNm);
+    const b2 = Math.max(1600.0, band2MinNm);
+    const d1 = Math.max(0.0, band1Depth);
+    const d2 = Math.max(0.0, band2Depth);
+
+    if (d1 < 0.01 && d2 < 0.01) {
+      return {
+        pyroxeneClass: 'None / Below Detection Threshold',
+        isLCP: false,
+        isHCP: false,
+        isMixedOrIndeterminate: true,
+        estimatedWoContentPct: 0.0
+      };
+    }
+
+    // Wollastonite (Wo) Ca-content empirical scaling from Band II center:
+    // Wo (mol%) ~ (b2 - 1800) / 10.0 constrained between 0% (pure enstatite/ferrosilite) and 50% (pure diopside/hedenbergite)
+    const estimatedWo = Math.min(50.0, Math.max(0.0, (b2 - 1800.0) / 10.0));
+
+    let pyroxeneClass = 'Indeterminate / Mixed Pyroxene';
+    let isLCP = false;
+    let isHCP = false;
+
+    if (b1 < 960.0 && b2 < 2000.0) {
+      pyroxeneClass = 'Low-Calcium Pyroxene (LCP / Orthopyroxene / Norite)';
+      isLCP = true;
+    } else if (b1 >= 990.0 && b2 >= 2100.0) {
+      pyroxeneClass = 'High-Calcium Pyroxene (HCP / Clinopyroxene / Augite-Basalt)';
+      isHCP = true;
+    } else {
+      pyroxeneClass = 'Pigeonite / Intermediate Ca-Pyroxene';
+    }
+
+    return {
+      pyroxeneClass,
+      isLCP,
+      isHCP,
+      isMixedOrIndeterminate: !isLCP && !isHCP,
+      estimatedWoContentPct: parseFloat(estimatedWo.toFixed(1))
+    };
+  }
 }
 
 
