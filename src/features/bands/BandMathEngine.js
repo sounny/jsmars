@@ -2490,6 +2490,51 @@ export class BandMathEngine {
       isFeMgCarbonate: isFeMg
     };
   }
+
+  /**
+   * Calculate CRISM hydrated opaline silica and volcanic glass index (BD2250 and Si-OH asymmetric absorption).
+   * BD2250 = 1.0 - ( R_2250 / (0.5 * (R_2140 + R_2350)) )
+   * Reference: Squyres et al. (2008) for Home Plate Gusev, Rice et al. (2013), Viviano-Beck et al. (2014).
+   * @param {number} r2140 - Short continuum anchor at 2140 nm
+   * @param {number} r2210 - Al-OH absorption band at 2210 nm
+   * @param {number} r2250 - Si-OH opaline silica absorption minimum at 2250 nm
+   * @param {number} r2350 - Long continuum anchor at 2350 nm
+   * @returns {{bd2250SilicaIndex: number, bd2210Index: number, silicaClass: string, isHydratedSilicaOpal: boolean, isDistinctFromAlSmectite: boolean}}
+   */
+  static computeCRISMHydratedSilicaOpalIndex(r2140, r2210, r2250, r2350) {
+    const c214 = Math.max(1e-4, r2140);
+    const b221 = Math.max(1e-4, r2210);
+    const b225 = Math.max(1e-4, r2250);
+    const c235 = Math.max(1e-4, r2350);
+
+    const cont = 0.5 * (c214 + c235);
+    const bd2250 = 1.0 - (b225 / cont);
+    const bd2210 = 1.0 - (b221 / cont);
+
+    let silicaClass = 'Unenriched / No Significant Hydrated Silica';
+    let isSilica = false;
+    let isDistinct = false;
+
+    if (bd2250 > 0.03) {
+      if (b225 <= b221 || bd2250 >= bd2210 * 0.95) {
+        silicaClass = 'Opaline Hydrated Silica (Opal-A / Opal-CT / Hydrothermal Sinter)';
+        isSilica = true;
+        isDistinct = true;
+      } else {
+        silicaClass = 'Al-Smectite / Montmorillonite with Secondary Silica';
+        isSilica = true;
+        isDistinct = false;
+      }
+    }
+
+    return {
+      bd2250SilicaIndex: parseFloat(bd2250.toFixed(4)),
+      bd2210Index: parseFloat(bd2210.toFixed(4)),
+      silicaClass,
+      isHydratedSilicaOpal: isSilica,
+      isDistinctFromAlSmectite: isDistinct
+    };
+  }
 }
 
 

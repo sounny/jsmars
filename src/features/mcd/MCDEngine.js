@@ -2156,6 +2156,42 @@ export class MCDEngine {
       isEnrichedPlume: ppb >= 5.0
     };
   }
+
+  /**
+   * Calculate latitude-dependent surface gravity on oblate Mars and local barometric scale height.
+   * g(phi) = g_e * ( 1.0 + beta * sin^2(phi) - gamma * sin^2(2*phi) )
+   * H = ( R_spec * T ) / g(phi)
+   * Reference: Smith et al. (2001) MOLA gravity model, Forget et al. (1998) MCD.
+   * @param {number} latitudeDeg - Planetocentric latitude in degrees (-90 to +90)
+   * @param {number} [temperatureK=215.0] - Ambient atmospheric temperature in Kelvin
+   * @returns {{latitudeDeg: number, surfaceGravityMS2: number, scaleHeightKm: number, scaleHeightMeters: number}}
+   */
+  static computeOblateSurfaceGravityAndScaleHeight(latitudeDeg, temperatureK = 215.0) {
+    const phi = Math.min(90.0, Math.max(-90.0, latitudeDeg));
+    const T = Math.max(50.0, temperatureK);
+
+    const phiRad = (phi * Math.PI) / 180.0;
+    const sinPhi = Math.sin(phiRad);
+    const sin2Phi = Math.sin(2.0 * phiRad);
+
+    const ge = 3.711;     // equatorial gravity m/s^2
+    const beta = 0.00524;  // Mars gravity flattening coefficient
+    const gamma = 1.0e-5;
+
+    const gPhi = ge * (1.0 + beta * sinPhi * sinPhi - gamma * sin2Phi * sin2Phi);
+
+    // Specific gas constant for Mars CO2 air: R_spec = R / mu = 8314.46 / 43.34 ~ 191.84 J/(kg*K)
+    const Rspec = 191.8427;
+    const HMeters = (Rspec * T) / gPhi;
+    const HKm = HMeters / 1000.0;
+
+    return {
+      latitudeDeg: parseFloat(phi.toFixed(2)),
+      surfaceGravityMS2: parseFloat(gPhi.toFixed(4)),
+      scaleHeightKm: parseFloat(HKm.toFixed(2)),
+      scaleHeightMeters: parseFloat(HMeters.toFixed(1))
+    };
+  }
 }
 
 

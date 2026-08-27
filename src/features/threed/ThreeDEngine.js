@@ -1721,6 +1721,50 @@ export class ThreeDEngine {
       isDominantlyLommelSeeliger: L > 0.5
     };
   }
+
+  /**
+   * Calculate Hapke sub-resolution macroscopic surface roughness shadowing correction factor S(i, e, g, theta_bar).
+   * Reference: Hapke (1984, 1993), McEwen (1991), Shepard & Campbell (1998).
+   * @param {number} solarIncidenceDeg - Solar incidence angle i in degrees (0 to 89.9)
+   * @param {number} emissionAngleDeg - Emission angle e in degrees (0 to 89.9)
+   * @param {number} phaseAngleDeg - Phase angle g in degrees (0 to 180)
+   * @param {number} [meanRoughnessSlopeDeg=20.0] - Mean sub-resolution facet slope angle theta_bar (0 = smooth, 20-30 = rough regolith)
+   * @returns {{roughnessCorrectionFactor: number, meanSlopeDeg: number, isRoughSurface: boolean}}
+   */
+  static computeHapkeRoughnessSurfaceCorrection(solarIncidenceDeg, emissionAngleDeg, phaseAngleDeg, meanRoughnessSlopeDeg = 20.0) {
+    const thetaBarDeg = Math.min(60.0, Math.max(0.0, meanRoughnessSlopeDeg));
+    if (thetaBarDeg < 0.5) {
+      return { roughnessCorrectionFactor: 1.0, meanSlopeDeg: 0.0, isRoughSurface: false };
+    }
+
+    const iRad = (Math.min(89.9, Math.max(0.0, solarIncidenceDeg)) * Math.PI) / 180.0;
+    const eRad = (Math.min(89.9, Math.max(0.0, emissionAngleDeg)) * Math.PI) / 180.0;
+    const gRad = (Math.min(180.0, Math.max(0.0, phaseAngleDeg)) * Math.PI) / 180.0;
+    const thRad = (thetaBarDeg * Math.PI) / 180.0;
+
+    const tanTh = Math.tan(thRad);
+    const chi = 1.0 / Math.sqrt(1.0 + Math.PI * tanTh * tanTh);
+
+    // Azimuth angle psi between illumination and viewing planes:
+    const sinISinE = Math.max(1e-5, Math.sin(iRad) * Math.sin(eRad));
+    const cosPsi = Math.max(-1.0, Math.min(1.0, (Math.cos(gRad) - Math.cos(iRad) * Math.cos(eRad)) / sinISinE));
+    const psiRad = Math.acos(cosPsi);
+    const fPsi = Math.sin(psiRad / 2.0) * Math.sin(psiRad / 2.0);
+
+    // Shadowing correction factor S(i,e,g)
+    const mu0 = Math.cos(iRad);
+    const mu = Math.cos(eRad);
+    const effRatio = (mu0 + mu > 1e-4) ? (2.0 * mu0 * mu) / (mu0 + mu) : 1.0;
+    const S = chi / (1.0 - fPsi + fPsi * chi * (1.0 + (1.0 - chi) * (1.0 - effRatio)));
+
+    const clampedS = Math.min(2.0, Math.max(0.1, S));
+
+    return {
+      roughnessCorrectionFactor: parseFloat(clampedS.toFixed(4)),
+      meanSlopeDeg: parseFloat(thetaBarDeg.toFixed(1)),
+      isRoughSurface: thetaBarDeg >= 15.0
+    };
+  }
 }
 
 

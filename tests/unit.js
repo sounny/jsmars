@@ -8486,6 +8486,46 @@ describe('Sub-Solar Ephemeris, Thermal Regolith Grain Size & Carbonate Doublet I
     });
 });
 
+describe('Hapke Macroscopic Roughness, Oblate Gravity & Opaline Silica Indices', () => {
+    it('should calculate Hapke macroscopic roughness shadowing correction factor', () => {
+        // Smooth surface (theta_bar = 0 deg) -> correction factor exactly 1.0
+        const smooth = ThreeDEngine.computeHapkeRoughnessSurfaceCorrection(30.0, 0.0, 30.0, 0.0);
+        expect(smooth.roughnessCorrectionFactor).to.equal(1.0);
+        expect(smooth.isRoughSurface).to.be.false;
+
+        // Rough terrain (theta_bar = 25 deg) at specular/backscatter geometry
+        const rough = ThreeDEngine.computeHapkeRoughnessSurfaceCorrection(45.0, 30.0, 60.0, 25.0);
+        expect(rough.roughnessCorrectionFactor).to.be.greaterThan(0.5);
+        expect(rough.roughnessCorrectionFactor).to.be.lessThan(1.5);
+        expect(rough.isRoughSurface).to.be.true;
+    });
+
+    it('should calculate latitude-dependent surface gravity on oblate Mars and barometric scale height', () => {
+        // Mars equator (lat = 0 deg): g = 3.711 m/s^2, H ~ 11.1 km at 215 K
+        const equator = MCDEngine.computeOblateSurfaceGravityAndScaleHeight(0.0, 215.0);
+        expect(equator.surfaceGravityMS2).to.be.closeTo(3.711, 0.001);
+        expect(equator.scaleHeightKm).to.be.closeTo(11.12, 0.1);
+
+        // Mars poles (lat = 90 deg): g = 3.730 m/s^2 (higher due to rotational flattening)
+        const pole = MCDEngine.computeOblateSurfaceGravityAndScaleHeight(90.0, 215.0);
+        expect(pole.surfaceGravityMS2).to.be.greaterThan(equator.surfaceGravityMS2);
+        expect(pole.scaleHeightKm).to.be.lessThan(equator.scaleHeightKm);
+    });
+
+    it('should calculate CRISM hydrated opaline silica index and distinguish from Al-smectite', () => {
+        // Hydrothermal Opaline Silica (Home Plate Gusev / Opal-A): broad absorption at 2250 nm (R2250 < R2210)
+        const opal = BandMathEngine.computeCRISMHydratedSilicaOpalIndex(0.28, 0.25, 0.22, 0.29);
+        expect(opal.bd2250SilicaIndex).to.be.greaterThan(0.20);
+        expect(opal.isHydratedSilicaOpal).to.be.true;
+        expect(opal.isDistinctFromAlSmectite).to.be.true;
+        expect(opal.silicaClass).to.include('Opaline Hydrated Silica');
+
+        // Pure Al-Smectite / Kaolinite (narrow band minimum at 2210 nm, R2210 < R2250):
+        const smectite = BandMathEngine.computeCRISMHydratedSilicaOpalIndex(0.28, 0.21, 0.27, 0.29);
+        expect(smectite.isDistinctFromAlSmectite).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
