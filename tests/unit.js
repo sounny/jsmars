@@ -7749,6 +7749,34 @@ describe('Lommel-Seeliger & Minnaert Photometric Solvers (ThreeDEngine)', () => 
     });
 });
 
+describe('Linear Least-Squares Spectral Unmixing (BandMathEngine)', () => {
+    it('should calculate constrained 2-endmember linear unmixing abundance fractions and RMSE', () => {
+        // Synthetic 75% Endmember A + 25% Endmember B:
+        const emA = [0.90, 0.85, 0.70, 0.65, 0.95];
+        const emB = [0.60, 0.95, 0.90, 0.80, 0.70];
+        const syntheticMeas = emA.map((val, idx) => 0.75 * val + 0.25 * emB[idx]);
+
+        const unmix = BandMathEngine.computeLinearSpectralUnmixing2Components(syntheticMeas, emA, emB);
+        expect(unmix.fraction1).to.be.closeTo(0.75, 0.001);
+        expect(unmix.fraction2).to.be.closeTo(0.25, 0.001);
+        expect(unmix.fraction1Percent).to.be.closeTo(75.0, 0.1);
+        expect(unmix.fraction2Percent).to.be.closeTo(25.0, 0.1);
+        expect(unmix.rootMeanSquareError).to.be.closeTo(0.0, 0.0001);
+    });
+
+    it('should classify dark basaltic bedrock vs bright dust mantle from TES thermal IR emissivity', () => {
+        // Dark volcanic plain (Syrtis Major - 85% basalt, 15% dust):
+        const basaltEM = [0.98, 0.96, 0.94, 0.91, 0.92, 0.95, 0.97, 0.96, 0.94, 0.98];
+        const dustEM =   [0.91, 0.92, 0.95, 0.98, 0.97, 0.93, 0.90, 0.89, 0.91, 0.95];
+        const syrtisMajor = basaltEM.map((b, i) => 0.85 * b + 0.15 * dustEM[i]);
+
+        const tesRes = BandMathEngine.computeTESBasaltDustFraction(syrtisMajor);
+        expect(tesRes.basaltFraction).to.be.closeTo(0.85, 0.01);
+        expect(tesRes.dustFraction).to.be.closeTo(0.15, 0.01);
+        expect(tesRes.surfaceType).to.include('Dark Basaltic Bedrock');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

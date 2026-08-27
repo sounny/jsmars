@@ -2165,6 +2165,87 @@ export class BandMathEngine {
       hasHighCalciumPyroxene: depth > 0.04
     };
   }
+
+  // --- Linear Spectral Least Squares Unmixing (TES / THEMIS) ---
+
+  /**
+   * Calculate constrained linear least-squares spectral unmixing for 2 endmembers with sum-to-one constraint.
+   * epsilon_meas = f_1 * epsilon_1 + (1 - f_1) * epsilon_2
+   * y = epsilon_meas - epsilon_2, x = epsilon_1 - epsilon_2
+   * f_1 = (x . y) / (x . x)
+   * @param {number[]} measuredSpectrum - Array of measured multi-channel reflectance or emissivity values
+   * @param {number[]} endmember1 - Spectral values for Endmember 1 (e.g. Basalt)
+   * @param {number[]} endmember2 - Spectral values for Endmember 2 (e.g. Dust)
+   * @returns {{fraction1: number, fraction2: number, fraction1Percent: number, fraction2Percent: number, rootMeanSquareError: number}}
+   */
+  static computeLinearSpectralUnmixing2Components(measuredSpectrum, endmember1, endmember2) {
+    if (!Array.isArray(measuredSpectrum) || !Array.isArray(endmember1) || !Array.isArray(endmember2)) {
+      return { fraction1: 0.5, fraction2: 0.5, fraction1Percent: 50.0, fraction2Percent: 50.0, rootMeanSquareError: 0.0 };
+    }
+
+    const n = Math.min(measuredSpectrum.length, endmember1.length, endmember2.length);
+    if (n === 0) {
+      return { fraction1: 0.5, fraction2: 0.5, fraction1Percent: 50.0, fraction2Percent: 50.0, rootMeanSquareError: 0.0 };
+    }
+
+    let dotXY = 0.0;
+    let dotXX = 0.0;
+
+    for (let i = 0; i < n; i++) {
+      const y = measuredSpectrum[i] - endmember2[i];
+      const x = endmember1[i] - endmember2[i];
+      dotXY += x * y;
+      dotXX += x * x;
+    }
+
+    let f1 = dotXX > 1e-8 ? dotXY / dotXX : 0.5;
+    f1 = Math.max(0.0, Math.min(1.0, f1));
+    const f2 = 1.0 - f1;
+
+    // Calculate RMSE of the linear mixture fit
+    let sumSqErr = 0.0;
+    for (let i = 0; i < n; i++) {
+      const modeled = f1 * endmember1[i] + f2 * endmember2[i];
+      const err = measuredSpectrum[i] - modeled;
+      sumSqErr += err * err;
+    }
+    const rmse = Math.sqrt(sumSqErr / n);
+
+    return {
+      fraction1: parseFloat(f1.toFixed(4)),
+      fraction2: parseFloat(f2.toFixed(4)),
+      fraction1Percent: parseFloat((f1 * 100.0).toFixed(2)),
+      fraction2Percent: parseFloat((f2 * 100.0).toFixed(2)),
+      rootMeanSquareError: parseFloat(rmse.toFixed(5))
+    };
+  }
+
+  /**
+   * Estimate surface basalt vs dust areal fraction from Thermal Emission Spectrometer (TES) emissivity.
+   * @param {number[]} measuredEmissivity - Measured 10-band thermal infrared emissivity spectrum
+   * @returns {{basaltFraction: number, dustFraction: number, surfaceType: string, rootMeanSquareError: number}}
+   */
+  static computeTESBasaltDustFraction(measuredEmissivity) {
+    // Canonical TES Type 1 Basalt (Syrtis Major) and Bright Dust endmembers (Christensen et al., 2000; Bandfield et al., 2000)
+    const basaltEM = [0.98, 0.96, 0.94, 0.91, 0.92, 0.95, 0.97, 0.96, 0.94, 0.98];
+    const dustEM =   [0.91, 0.92, 0.95, 0.98, 0.97, 0.93, 0.90, 0.89, 0.91, 0.95];
+
+    const unmix = BandMathEngine.computeLinearSpectralUnmixing2Components(measuredEmissivity, basaltEM, dustEM);
+
+    let type = 'Mixed Basalt & Dust Mantle';
+    if (unmix.fraction1 >= 0.70) {
+      type = 'Dark Basaltic Bedrock / Low-Albedo';
+    } else if (unmix.fraction2 >= 0.70) {
+      type = 'Bright Oxidized Dust Mantle';
+    }
+
+    return {
+      basaltFraction: unmix.fraction1,
+      dustFraction: unmix.fraction2,
+      surfaceType: type,
+      rootMeanSquareError: unmix.rootMeanSquareError
+    };
+  }
 }
 
 
