@@ -2057,6 +2057,66 @@ export class CSFDEngine {
       gigatonsTNT: parseFloat(gigatonsTNT.toFixed(4))
     };
   }
+
+  // --- CSFD Relative (R) Plotting & Standard Sqrt(2) Bins ---
+
+  /**
+   * Calculate crater Relative Plot (R-value) for an incremental diameter bin.
+   * R = ( D_geom^3 * N_inc ) / ( Area * (D_upper - D_lower) )
+   * D_geom = sqrt( D_lower * D_upper )
+   * @param {number} incrementalCount - Number of craters observed in the diameter bin
+   * @param {number} areaKm2 - Counted surface area in km^2
+   * @param {number} dLowerKm - Lower bin diameter limit in km
+   * @param {number} dUpperKm - Upper bin diameter limit in km
+   * @returns {{rValue: number, geometricMeanDiameterKm: number, binWidthKm: number, isSaturationEquilibrium: boolean}}
+   */
+  static computeCraterRelativePlotRValue(incrementalCount, areaKm2, dLowerKm, dUpperKm) {
+    const N = Math.max(0, incrementalCount);
+    const A = Math.max(1.0, areaKm2);
+    const dLow = Math.max(1e-4, dLowerKm);
+    const dUp = Math.max(dLow + 1e-4, dUpperKm);
+
+    const dGeom = Math.sqrt(dLow * dUp);
+    const deltaD = dUp - dLow;
+
+    const rVal = (Math.pow(dGeom, 3) * N) / (A * deltaD);
+
+    return {
+      rValue: parseFloat(rVal.toExponential(4)),
+      geometricMeanDiameterKm: parseFloat(dGeom.toFixed(3)),
+      binWidthKm: parseFloat(deltaD.toFixed(3)),
+      isSaturationEquilibrium: rVal >= 0.05
+    };
+  }
+
+  /**
+   * Generate standard NASA / Lunar & Planetary Institute sqrt(2) geometric diameter bins.
+   * D_(i+1) = D_i * sqrt(2)
+   * @param {number} [minDiameterKm=1.0] - Minimum crater diameter in km
+   * @param {number} [maxDiameterKm=128.0] - Maximum crater diameter in km
+   * @returns {Array<{dLower: number, dUpper: number, dGeom: number}>}
+   */
+  static generateLogSqrt2DiameterBins(minDiameterKm = 1.0, maxDiameterKm = 128.0) {
+    const minD = Math.max(0.01, minDiameterKm);
+    const maxD = Math.max(minD * 1.5, maxDiameterKm);
+    const sqrt2 = Math.SQRT2;
+
+    const bins = [];
+    let curLower = minD;
+
+    while (curLower < maxD) {
+      const curUpper = curLower * sqrt2;
+      const dGeom = Math.sqrt(curLower * curUpper);
+      bins.push({
+        dLower: parseFloat(curLower.toFixed(3)),
+        dUpper: parseFloat(curUpper.toFixed(3)),
+        dGeom: parseFloat(dGeom.toFixed(3))
+      });
+      curLower = curUpper;
+    }
+
+    return bins;
+  }
 }
 
 

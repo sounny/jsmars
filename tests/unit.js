@@ -7262,6 +7262,34 @@ describe('Subsurface Thermal Skin Depth & Damping (KRCEngine)', () => {
     });
 });
 
+describe('CSFD Relative (R) Plotting & Sqrt(2) Bins (CSFDEngine)', () => {
+    it('should calculate relative R-value and detect saturation equilibrium', () => {
+        // Bin [1.0 km, 1.414 km]: D_geom = sqrt(1.414) = 1.1892 km, deltaD = 0.4142 km
+        // Area A = 10000 km^2, N = 10 craters:
+        // R = ( (1.1892)^3 * 10 ) / ( 10000 * 0.4142 ) = (1.6818 * 10) / 4142 = 16.818 / 4142 = 0.00406
+        const rLow = CSFDEngine.computeCraterRelativePlotRValue(10, 10000, 1.0, 1.4142);
+        expect(rLow.rValue).to.be.closeTo(0.00406, 0.0001);
+        expect(rLow.geometricMeanDiameterKm).to.be.closeTo(1.189, 0.01);
+        expect(rLow.isSaturationEquilibrium).to.be.false;
+
+        // Heavy Noachian saturation crater field (R >= 0.05): N = 200 in 10000 km^2 -> R = 0.0812
+        const rSat = CSFDEngine.computeCraterRelativePlotRValue(200, 10000, 1.0, 1.4142);
+        expect(rSat.rValue).to.be.closeTo(0.0812, 0.001);
+        expect(rSat.isSaturationEquilibrium).to.be.true;
+    });
+
+    it('should generate standard sqrt(2) geometric diameter intervals', () => {
+        // Generate bins from 1 km to 16 km: 1->1.414, 1.414->2.0, 2.0->2.828, 2.828->4.0, 4.0->5.657, 5.657->8.0, 8.0->11.314, 11.314->16.0
+        const bins = CSFDEngine.generateLogSqrt2DiameterBins(1.0, 16.0);
+        expect(bins.length).to.be.at.least(8);
+        expect(bins[0].dLower).to.equal(1.0);
+        expect(bins[0].dUpper).to.be.closeTo(1.414, 0.001);
+        expect(bins[0].dGeom).to.be.closeTo(1.189, 0.001);
+        expect(bins[1].dLower).to.be.closeTo(1.414, 0.001);
+        expect(bins[1].dUpper).to.be.closeTo(2.0, 0.001);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
