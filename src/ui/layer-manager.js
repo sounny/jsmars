@@ -190,8 +190,9 @@ export class LayerManager {
 
     const activeContent = document.createElement('div');
     activeContent.className = 'layer-section-content';
+    activeContent.style.display = this.sectionsState.active ? 'block' : 'none';
     if (!this.sectionsState.active) {
-      activeContent.style.display = 'none';
+      activeContent.classList.add('collapsed');
     }
 
     const activeLayers = [...jmarsState.get('activeLayers')];
@@ -225,8 +226,9 @@ export class LayerManager {
 
     const availableContent = document.createElement('div');
     availableContent.className = 'layer-section-content';
+    availableContent.style.display = this.sectionsState.available ? 'block' : 'none';
     if (!this.sectionsState.available) {
-      availableContent.style.display = 'none';
+      availableContent.classList.add('collapsed');
     }
 
     const filterWrap = document.createElement('div');

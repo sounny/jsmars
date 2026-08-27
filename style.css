@@ -911,12 +911,17 @@ html {
   flex: 1;
 }
 
-.layer-section-content {
+/* Tools start collapsed by default; Layer Manager sections control their own display */
+#tools-list .layer-section-content {
   display: none;
 }
 
+#layer-list .layer-section-content {
+  display: block;
+}
+
 .layer-section-content.collapsed {
-  display: none;
+  display: none !important;
 }
 
 /* Icon used in collapsible section headers */
