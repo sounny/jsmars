@@ -2046,6 +2046,44 @@ export class BandMathEngine {
       hasHighCalciumPyroxene: depth > 0.04
     };
   }
+
+  // --- CRISM Olivine & Ferric Oxide Mineralogy Solvers ---
+
+  /**
+   * Calculate CRISM Olivine 1.0 µm broad Fe2+ absorption parameter (OLINDEX3).
+   * OLINDEX3 = 1.0 - R_1080 / ( 0.65 * R_1690 + 0.35 * R_2530 )
+   * @param {number} r1080 - Reflectance at 1080 nm (center of broad Fe2+ olivine absorption)
+   * @param {number} r1690 - Reflectance at 1690 nm (near-IR shoulder)
+   * @param {number} r2530 - Reflectance at 2530 nm (short-wave IR anchor)
+   * @returns {{olIndex: number, hasOlivine: boolean}}
+   */
+  static computeCRISMOlivineOLINDEX3(r1080, r1690, r2530) {
+    const continuum = 0.65 * Math.max(1e-4, r1690) + 0.35 * Math.max(1e-4, r2530);
+    const depth = 1.0 - (r1080 / continuum);
+
+    return {
+      olIndex: parseFloat(depth.toFixed(4)),
+      hasOlivine: depth > 0.05
+    };
+  }
+
+  /**
+   * Calculate CRISM Ferric Iron oxide (Fe3+) 900 nm electronic absorption parameter (FE3INDEX).
+   * FE3INDEX = 1.0 - R_920 / ( 0.5 * (R_770 + R_1080) )
+   * @param {number} r770 - Reflectance at 770 nm
+   * @param {number} r920 - Reflectance band center at 920 nm
+   * @param {number} r1080 - Reflectance at 1080 nm
+   * @returns {{fe3Index: number, hasFerricOxides: boolean}}
+   */
+  static computeCRISMFerricOxideFE3INDEX(r770, r920, r1080) {
+    const continuum = 0.5 * (Math.max(1e-4, r770) + Math.max(1e-4, r1080));
+    const depth = 1.0 - (r920 / continuum);
+
+    return {
+      fe3Index: parseFloat(depth.toFixed(4)),
+      hasFerricOxides: depth > 0.03
+    };
+  }
 }
 
 

@@ -7091,6 +7091,38 @@ describe('Equidistant Cylindrical (Plate Carrée) Forward & Inverse Projections 
     });
 });
 
+describe('CRISM Olivine & Ferric Oxide Mineralogy Indices (BandMathEngine)', () => {
+    it('should calculate CRISM Olivine 1.0 µm broad absorption parameter (OLINDEX3)', () => {
+        // Nili Fossae olivine-rich bedrock:
+        // R1080 = 0.18 (deep broad Fe2+ absorption), R1690 = 0.28, R2530 = 0.32
+        // continuum = 0.65 * 0.28 + 0.35 * 0.32 = 0.182 + 0.112 = 0.294
+        // depth = 1.0 - (0.18 / 0.294) = 1.0 - 0.61224 = 0.3878 (> 0.05 -> Olivine present)
+        const oli = BandMathEngine.computeCRISMOlivineOLINDEX3(0.18, 0.28, 0.32);
+        expect(oli.olIndex).to.be.closeTo(0.3878, 0.001);
+        expect(oli.hasOlivine).to.be.true;
+
+        // Flat dust spectrum: R1080 = 0.30, R1690 = 0.30, R2530 = 0.30 -> continuum = 0.30 -> depth = 0.0
+        const dust = BandMathEngine.computeCRISMOlivineOLINDEX3(0.30, 0.30, 0.30);
+        expect(dust.olIndex).to.equal(0);
+        expect(dust.hasOlivine).to.be.false;
+    });
+
+    it('should calculate CRISM Ferric Iron oxide (Fe3+) electronic absorption (FE3INDEX)', () => {
+        // Meridiani Planum hematite-rich terrain:
+        // R770 = 0.24, R920 = 0.19 (Fe3+ band center), R1080 = 0.26
+        // continuum = 0.5 * (0.24 + 0.26) = 0.25
+        // fe3Index = 1.0 - (0.19 / 0.25) = 1.0 - 0.76 = 0.24 (> 0.03 -> Ferric oxides present)
+        const hem = BandMathEngine.computeCRISMFerricOxideFE3INDEX(0.24, 0.19, 0.26);
+        expect(hem.fe3Index).to.equal(0.24);
+        expect(hem.hasFerricOxides).to.be.true;
+
+        // Basaltic sand: R770 = 0.15, R920 = 0.15, R1080 = 0.15 -> fe3Index = 0.0
+        const basalt = BandMathEngine.computeCRISMFerricOxideFE3INDEX(0.15, 0.15, 0.15);
+        expect(basalt.fe3Index).to.equal(0);
+        expect(basalt.hasFerricOxides).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
