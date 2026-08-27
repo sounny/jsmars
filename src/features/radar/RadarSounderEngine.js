@@ -1589,6 +1589,67 @@ export class RadarSounderEngine {
       hasValidPRFWrap: prfMin <= prfMax
     };
   }
+
+  // --- Fresnel Reflection & Two-Way Subsurface Attenuation Solvers ---
+
+  /**
+   * Calculate normal incidence Fresnel power reflection (R) and transmission (T) coefficients across dielectric interfaces.
+   * R = ( (sqrt(eps1) - sqrt(eps2)) / (sqrt(eps1) + sqrt(eps2)) )^2
+   * T = 1 - R
+   * R_dB = 10 * log10(R)
+   * @param {number} [eps1=1.0] - Upper medium dielectric real permittivity (e.g. 1.0 for vacuum/air)
+   * @param {number} [eps2=3.15] - Lower medium dielectric real permittivity (e.g. 3.15 for water ice, ~8.0 for basalt)
+   * @returns {{powerReflectionCoeff: number, powerTransmissionCoeff: number, reflectionCoeffDb: number}}
+   */
+  static computeFresnelReflectionAndTransmissionCoefficients(eps1 = 1.0, eps2 = 3.15) {
+    const e1 = Math.max(1.0, eps1);
+    const e2 = Math.max(1.0, eps2);
+
+    const n1 = Math.sqrt(e1);
+    const n2 = Math.sqrt(e2);
+
+    const num = n1 - n2;
+    const den = n1 + n2;
+    const r = (num * num) / (den * den);
+    const t = 1.0 - r;
+    const rDb = r > 1e-12 ? 10.0 * Math.log10(r) : -120.0;
+
+    return {
+      powerReflectionCoeff: parseFloat(r.toFixed(5)),
+      powerTransmissionCoeff: parseFloat(t.toFixed(5)),
+      reflectionCoeffDb: parseFloat(rDb.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate two-way subsurface radar sounding attenuation loss in dB.
+   * alpha_dB/m = 8.686 * (pi * f * sqrt(eps_r) * tan(delta)) / c
+   * Loss_2way_dB = 2 * alpha_dB/m * depthMeters
+   * @param {number} frequencyHz - Radar center frequency in Hz (e.g. 20 MHz = 20e6 for SHARAD, 4 MHz for MARSIS)
+   * @param {number} dielectricPermittivity - Subsurface real relative permittivity (e.g. 3.15 for pure ice)
+   * @param {number} lossTangent - Subsurface dielectric loss tangent tan(delta) (e.g. 0.001 for cold pure ice)
+   * @param {number} depthMeters - Penetration sounding depth in meters
+   * @returns {{twoWayLossDb: number, attenuationRateDbPerM: number, attenuationRateDbPerKm: number}}
+   */
+  static computeTwoWayRadarSubsurfaceAttenuation(frequencyHz, dielectricPermittivity, lossTangent, depthMeters) {
+    const f = Math.max(1e3, frequencyHz);
+    const er = Math.max(1.0, dielectricPermittivity);
+    const tanD = Math.max(1e-7, lossTangent);
+    const z = Math.max(0.0, depthMeters);
+
+    // Attenuation constant alpha in Np/m
+    const alphaNp = (Math.PI * f * Math.sqrt(er) * tanD) / RadarSounderEngine.C;
+    const alphaDbM = 8.685889638 * alphaNp; // 1 Np = 8.685889638 dB
+    const alphaDbKm = alphaDbM * 1000.0;
+
+    const twoWayLoss = 2.0 * alphaDbM * z;
+
+    return {
+      twoWayLossDb: parseFloat(twoWayLoss.toFixed(3)),
+      attenuationRateDbPerM: parseFloat(alphaDbM.toExponential(4)),
+      attenuationRateDbPerKm: parseFloat(alphaDbKm.toFixed(3))
+    };
+  }
 }
 
 

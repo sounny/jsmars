@@ -6624,6 +6624,30 @@ describe('J2 Oblateness Nodal & Apsidal Precession Solvers (TrajectoryEngine)', 
     });
 });
 
+describe('Fresnel Dielectric Reflection & Two-Way Radar Attenuation (RadarSounderEngine)', () => {
+    it('should calculate normal incidence Fresnel reflection and transmission coefficients', () => {
+        // Vacuum to pure water ice interface (eps1 = 1.0, eps2 = 3.15):
+        // sqrt(1) = 1.0, sqrt(3.15) = 1.7748
+        // R = ((1 - 1.7748) / (1 + 1.7748))^2 = (-0.7748 / 2.7748)^2 = (-0.27923)^2 = 0.07797 (~7.8% reflected power)
+        // R_dB = 10 * log10(0.07797) = -11.08 dB
+        const ice = RadarSounderEngine.computeFresnelReflectionAndTransmissionCoefficients(1.0, 3.15);
+        expect(ice.powerReflectionCoeff).to.be.closeTo(0.07797, 0.001);
+        expect(ice.powerTransmissionCoeff).to.be.closeTo(0.92203, 0.001);
+        expect(ice.reflectionCoeffDb).to.be.closeTo(-11.08, 0.1);
+    });
+
+    it('should compute two-way subsurface radar attenuation loss in dB', () => {
+        // SHARAD (f = 20 MHz) sounding in cold polar layered deposits (PLD pure ice):
+        // er = 3.15, tan(delta) = 0.001, depth = 1000 m (1 km)
+        // alpha_Np = (pi * 20e6 * sqrt(3.15) * 0.001) / 299792458 = 111.517 / 299792458 = 3.7198e-7 Np/m
+        // alpha_dB/m = 8.6858896 * 3.7198e-7 = 3.231e-6 dB/m = 3.231 dB/km
+        // Loss_2way = 2 * 3.231 = 6.462 dB
+        const loss = RadarSounderEngine.computeTwoWayRadarSubsurfaceAttenuation(20e6, 3.15, 0.001, 1000.0);
+        expect(loss.twoWayLossDb).to.be.closeTo(6.462, 0.1);
+        expect(loss.attenuationRateDbPerKm).to.be.closeTo(3.231, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
