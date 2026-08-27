@@ -5954,6 +5954,39 @@ describe('3D Ellipsoid Geodesy, Ray Picking & Horizon Dip (ThreeDEngine)', () =>
     });
 });
 
+describe('Martian Solar Position, Shadow Ratio & Right Ascension (MarsTime)', () => {
+    it('should calculate Martian solar elevation, azimuth bearing, and shadow length', () => {
+        // At Martian equator (lat = 0) at equinox (Ls = 0) at local noon (LTST = 12.0h)
+        // Sun at zenith: elevation = 90°, zenith = 0°
+        const noonEquinox = MarsTime.computeMartianSolarElevationAndAzimuth(0.0, 0.0, 12.0);
+        expect(noonEquinox.solarElevationDeg).to.equal(90.0);
+        expect(noonEquinox.solarZenithDeg).to.equal(0.0);
+        expect(noonEquinox.isDaylight).to.be.true;
+
+        // Shadow ratio at 45° solar elevation: tan(45°) = 1.0 -> 1.0 m mast casts 1.0 m shadow
+        const shadow45 = MarsTime.computeMartianShadowRatio(45.0, 1.0);
+        expect(shadow45.shadowLengthMeters).to.equal(1.0);
+        expect(shadow45.shadowRatio).to.equal(1.0);
+        expect(shadow45.isShadowCast).to.be.true;
+
+        // Nighttime (sun below horizon, elev = -10°): no shadow
+        const night = MarsTime.computeMartianShadowRatio(-10.0, 1.0);
+        expect(night.isShadowCast).to.be.false;
+    });
+
+    it('should compute Mars Areocentric Right Ascension from Solar Longitude', () => {
+        // At Ls = 0 (Northern spring equinox): RA = 0° = 0.0h
+        const ra0 = MarsTime.computeMarsAreocentricRightAscension(0.0, 25.19);
+        expect(ra0.rightAscensionDeg).to.equal(0.0);
+        expect(ra0.rightAscensionHours).to.equal(0.0);
+
+        // At Ls = 90 (Northern summer solstice): RA = 90° = 6.0h
+        const ra90 = MarsTime.computeMarsAreocentricRightAscension(90.0, 25.19);
+        expect(ra90.rightAscensionDeg).to.equal(90.0);
+        expect(ra90.rightAscensionHours).to.equal(6.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1617,6 +1617,109 @@ export class MarsTime {
       lightTravelTimeMinutes: parseFloat(lightMinutes.toFixed(2))
     };
   }
+
+  // --- Martian Solar Azimuth/Elevation, Shadow Projection & Right Ascension Solvers ---
+
+  /**
+   * Calculate exact solar elevation angle and solar azimuth bearing on Mars from latitude, Ls, and LTST.
+   * sin(alpha) = sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(H)
+   * cos(gamma_s) = ( sin(alpha) * sin(phi) - sin(delta) ) / ( cos(alpha) * cos(phi) )
+   * @param {number} latitudeDeg - Observer latitude in degrees
+   * @param {number} LsDeg - Mars Solar Longitude in degrees
+   * @param {number} localTrueSolarTimeHours - Local True Solar Time in decimal hours (0 to 24)
+   * @returns {{solarElevationDeg: number, solarZenithDeg: number, solarAzimuthDeg: number, isDaylight: boolean}}
+   */
+  static computeMartianSolarElevationAndAzimuth(latitudeDeg, LsDeg, localTrueSolarTimeHours) {
+    const phiRad = (latitudeDeg * Math.PI) / 180.0;
+    const decDeg = MarsTime.computeSubSolarDeclination(LsDeg).subSolarLatitudeDeg;
+    const deltaRad = (decDeg * Math.PI) / 180.0;
+
+    // Hour angle H (15 deg per martian hour, H = 0 at noon = 12h)
+    const HRad = ((localTrueSolarTimeHours - 12.0) * 15.0 * Math.PI) / 180.0;
+
+    const sinAlpha = Math.sin(phiRad) * Math.sin(deltaRad) + Math.cos(phiRad) * Math.cos(deltaRad) * Math.cos(HRad);
+    const alphaRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinAlpha)));
+    const alphaDeg = (alphaRad * 180.0) / Math.PI;
+    const zenithDeg = 90.0 - alphaDeg;
+
+    let azDeg = 180.0; // Default south at noon
+    const cosAlpha = Math.cos(alphaRad);
+    const cosPhi = Math.cos(phiRad);
+
+    if (cosAlpha > 1e-4 && Math.abs(cosPhi) > 1e-4) {
+      const cosAz = (Math.sin(alphaRad) * Math.sin(phiRad) - Math.sin(deltaRad)) / (cosAlpha * cosPhi);
+      const azRad = Math.acos(Math.max(-1.0, Math.min(1.0, cosAz)));
+      azDeg = (azRad * 180.0) / Math.PI;
+
+      // Adjust for afternoon (H > 0 -> azimuth West of North/South)
+      if (Math.sin(HRad) > 0) {
+        azDeg = 360.0 - azDeg;
+      }
+    }
+
+    return {
+      solarElevationDeg: parseFloat(alphaDeg.toFixed(3)),
+      solarZenithDeg: parseFloat(zenithDeg.toFixed(3)),
+      solarAzimuthDeg: parseFloat(azDeg.toFixed(2)),
+      isDaylight: alphaDeg > 0.0
+    };
+  }
+
+  /**
+   * Calculate rover/lander shadow length and shadow ratio on horizontal Martian surface.
+   * L_shadow = h / tan(alpha)
+   * @param {number} solarElevationDeg - Solar elevation angle above horizon in degrees
+   * @param {number} [objectHeightMeters=1.0] - Object or mast height in meters
+   * @returns {{shadowLengthMeters: number, shadowRatio: number, isShadowCast: boolean}}
+   */
+  static computeMartianShadowRatio(solarElevationDeg, objectHeightMeters = 1.0) {
+    const h = Math.max(0.01, objectHeightMeters);
+    const elev = solarElevationDeg;
+
+    if (elev <= 0.0) {
+      return {
+        shadowLengthMeters: Infinity,
+        shadowRatio: Infinity,
+        isShadowCast: false
+      };
+    }
+
+    const elevRad = (elev * Math.PI) / 180.0;
+    const tanElev = Math.tan(elevRad);
+    const shadowLen = h / tanElev;
+    const ratio = 1.0 / tanElev;
+
+    return {
+      shadowLengthMeters: parseFloat(shadowLen.toFixed(3)),
+      shadowRatio: parseFloat(ratio.toFixed(3)),
+      isShadowCast: true
+    };
+  }
+
+  /**
+   * Calculate Areocentric Right Ascension alpha_s of the Sun from Solar Longitude (Ls).
+   * tan(alpha_s) = cos(obliquity) * tan(Ls)
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @param {number} [obliquityDeg=25.19] - Mars axial obliquity in degrees
+   * @returns {{rightAscensionDeg: number, rightAscensionHours: number}}
+   */
+  static computeMarsAreocentricRightAscension(LsDeg, obliquityDeg = 25.19) {
+    const epsRad = (obliquityDeg * Math.PI) / 180.0;
+    const lsRad = (LsDeg * Math.PI) / 180.0;
+
+    const y = Math.cos(epsRad) * Math.sin(lsRad);
+    const x = Math.cos(lsRad);
+    let raRad = Math.atan2(y, x);
+    if (raRad < 0) raRad += 2.0 * Math.PI;
+
+    const raDeg = (raRad * 180.0) / Math.PI;
+    const raHours = raDeg / 15.0;
+
+    return {
+      rightAscensionDeg: parseFloat(raDeg.toFixed(3)),
+      rightAscensionHours: parseFloat(raHours.toFixed(4))
+    };
+  }
 }
 
 
