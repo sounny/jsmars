@@ -1677,6 +1677,77 @@ export class MCDEngine {
       columnMassG_Cm2: parseFloat(mGCm2.toFixed(3))
     };
   }
+
+  // --- Dynamic Viscosity (Sutherland's Law) & Aerodynamic Reynolds Solvers ---
+
+  /**
+   * Calculate dynamic viscosity of Martian CO2 atmosphere using Sutherland's Formula.
+   * mu(T) = mu0 * (T / T0)^(3/2) * ( (T0 + S) / (T + S) )
+   * For CO2: mu0 = 1.370e-5 Pa s, T0 = 273.15 K, S = 222.0 K
+   * @param {number} temperatureK - Atmospheric temperature in Kelvin
+   * @returns {{dynamicViscosityPaS: number, temperatureK: number}}
+   */
+  static computeCO2DynamicViscositySutherland(temperatureK) {
+    const T = Math.max(50.0, temperatureK);
+    const mu0 = 1.370e-5; // Pa s at T0
+    const T0 = 273.15;
+    const S = 222.0; // Sutherland constant for CO2 (K)
+
+    const tr = T / T0;
+    const mu = mu0 * Math.pow(tr, 1.5) * ((T0 + S) / (T + S));
+
+    return {
+      dynamicViscosityPaS: parseFloat(mu.toExponential(4)),
+      temperatureK: parseFloat(T.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate aerodynamic Reynolds number (Re) for entry vehicles, parachutes, and helicopter blades.
+   * Re = ( rho * v * L ) / mu(T)
+   * @param {number} densityKg_M3 - Atmospheric gas density in kg/m^3
+   * @param {number} velocityMS - Airspeed / velocity in m/s
+   * @param {number} charLengthMeters - Aerodynamic characteristic chord / length in meters
+   * @param {number} [temperatureK=220.0] - Atmospheric temperature in Kelvin
+   * @returns {{reynoldsNumber: number, isLaminar: boolean, isTurbulent: boolean}}
+   */
+  static computeAtmosphericReynoldsNumber(densityKg_M3, velocityMS, charLengthMeters, temperatureK = 220.0) {
+    const rho = Math.max(1e-8, densityKg_M3);
+    const v = Math.max(0.0, velocityMS);
+    const L = Math.max(1e-4, charLengthMeters);
+
+    const visc = MCDEngine.computeCO2DynamicViscositySutherland(temperatureK);
+    const mu = visc.dynamicViscosityPaS;
+
+    const re = (rho * v * L) / mu;
+
+    return {
+      reynoldsNumber: parseFloat(re.toFixed(1)),
+      isLaminar: re < 5.0e5,
+      isTurbulent: re >= 5.0e5
+    };
+  }
+
+  /**
+   * Calculate atmospheric scale height H_scale = ( R_spec * T ) / g_mars in meters and km.
+   * R_spec = 188.92 J / (kg K) for CO2
+   * @param {number} temperatureK - Mean atmospheric temperature in Kelvin
+   * @param {number} [gravityMS2=3.72076] - Surface gravitational acceleration in m/s^2
+   * @returns {{scaleHeightKm: number, scaleHeightMeters: number}}
+   */
+  static computeAtmosphericScaleHeightDetailed(temperatureK, gravityMS2 = 3.72076) {
+    const T = Math.max(50.0, temperatureK);
+    const g = Math.max(0.1, gravityMS2);
+    const Rspec = 188.92; // J / (kg K) for CO2
+
+    const hMeters = (Rspec * T) / g;
+    const hKm = hMeters / 1000.0;
+
+    return {
+      scaleHeightKm: parseFloat(hKm.toFixed(3)),
+      scaleHeightMeters: parseFloat(hMeters.toFixed(1))
+    };
+  }
 }
 
 

@@ -6714,6 +6714,38 @@ describe('Impact Crater Morphometry Scaling & Retention Ages (CSFDEngine)', () =
     });
 });
 
+describe('CO2 Dynamic Viscosity, Reynolds Number & Scale Height (MCDEngine)', () => {
+    it('should calculate CO2 dynamic viscosity via Sutherland law and atmospheric scale height', () => {
+        // Mars surface mean temperature T = 220 K:
+        // mu0 = 1.370e-5, T0 = 273.15, S = 222.0
+        // (220 / 273.15)^1.5 = 0.8054^1.5 = 0.7228
+        // (273.15 + 222) / (220 + 222) = 495.15 / 442.0 = 1.1202
+        // mu = 1.370e-5 * 0.7228 * 1.1202 = 1.1093e-5 Pa s
+        const visc = MCDEngine.computeCO2DynamicViscositySutherland(220.0);
+        expect(visc.dynamicViscosityPaS).to.be.closeTo(1.109e-5, 0.05e-5);
+
+        // Scale height at T = 220 K: H = 188.92 * 220 / 3.72076 = 41562.4 / 3.72076 = 11170.4 m = 11.170 km
+        const h = MCDEngine.computeAtmosphericScaleHeightDetailed(220.0, 3.72076);
+        expect(h.scaleHeightKm).to.be.closeTo(11.170, 0.05);
+    });
+
+    it('should compute aerodynamic Reynolds number and flow regime', () => {
+        // Ingenuity rotor blade in Martian atmosphere:
+        // rho = 0.015 kg/m^3 (surface ~610 Pa), v = 150 m/s blade tip, L = 0.12 m chord, T = 220 K
+        // mu = 1.109e-5 Pa s
+        // Re = (0.015 * 150 * 0.12) / 1.109e-5 = 0.27 / 1.109e-5 = 24346 (< 5e5 -> laminar)
+        const rotor = MCDEngine.computeAtmosphericReynoldsNumber(0.015, 150.0, 0.12, 220.0);
+        expect(rotor.reynoldsNumber).to.be.closeTo(24346.0, 500.0);
+        expect(rotor.isLaminar).to.be.true;
+        expect(rotor.isTurbulent).to.be.false;
+
+        // High-velocity entry aeroshell (v = 5000 m/s, L = 2.65 m, rho = 0.005 kg/m^3)
+        // Re = (0.005 * 5000 * 2.65) / 1.109e-5 = 66.25 / 1.109e-5 = 5.97e6 (>= 5e5 -> turbulent boundary layer)
+        const entry = MCDEngine.computeAtmosphericReynoldsNumber(0.005, 5000.0, 2.65, 220.0);
+        expect(entry.isTurbulent).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
