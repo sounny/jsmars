@@ -2123,6 +2123,48 @@ export class BandMathEngine {
       hasCarbonates: depth > 0.03
     };
   }
+
+  // --- CRISM Mafic Mineralogy & Pyroxene Band Solvers ---
+
+  /**
+   * Calculate CRISM Low-Calcium Pyroxene / Orthopyroxene index (LCPINDEX2).
+   * LCPINDEX2 = 1.0 - ( 0.5 * (R_2120 + R_2140) ) / ( 0.5 * (R_1690 + R_2530) )
+   * @param {number} r1690 - Short-wavelength continuum anchor at 1690 nm
+   * @param {number} r2120 - Absorption band at 2120 nm
+   * @param {number} r2140 - Absorption band minimum at 2140 nm
+   * @param {number} r2530 - Long-wavelength continuum anchor at 2530 nm
+   * @returns {{lcpIndex: number, hasLowCalciumPyroxene: boolean}}
+   */
+  static computeCRISMPyroxeneLCPINDEX2(r1690, r2120, r2140, r2530) {
+    const continuum = 0.5 * (Math.max(1e-4, r1690) + Math.max(1e-4, r2530));
+    const meanBand = 0.5 * (Math.max(1e-4, r2120) + Math.max(1e-4, r2140));
+    const depth = 1.0 - (meanBand / continuum);
+
+    return {
+      lcpIndex: parseFloat(depth.toFixed(4)),
+      hasLowCalciumPyroxene: depth > 0.04
+    };
+  }
+
+  /**
+   * Calculate CRISM High-Calcium Pyroxene / Clinopyroxene index (HCPINDEX2).
+   * HCPINDEX2 = 1.0 - ( 0.5 * (R_2350 + R_2390) ) / ( 0.5 * (R_1815 + R_2530) )
+   * @param {number} r1815 - Short-wavelength continuum anchor at 1815 nm
+   * @param {number} r2350 - Absorption band at 2350 nm
+   * @param {number} r2390 - Absorption band minimum at 2390 nm
+   * @param {number} r2530 - Long-wavelength continuum anchor at 2530 nm
+   * @returns {{hcpIndex: number, hasHighCalciumPyroxene: boolean}}
+   */
+  static computeCRISMPyroxeneHCPINDEX2(r1815, r2350, r2390, r2530) {
+    const continuum = 0.5 * (Math.max(1e-4, r1815) + Math.max(1e-4, r2530));
+    const meanBand = 0.5 * (Math.max(1e-4, r2350) + Math.max(1e-4, r2390));
+    const depth = 1.0 - (meanBand / continuum);
+
+    return {
+      hcpIndex: parseFloat(depth.toFixed(4)),
+      hasHighCalciumPyroxene: depth > 0.04
+    };
+  }
 }
 
 

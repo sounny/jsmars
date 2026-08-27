@@ -7569,6 +7569,40 @@ describe('KRC Rock Mixing & Sloped Direct Insolation (KRCEngine)', () => {
     });
 });
 
+describe('CRISM Pyroxene Mineralogy (LCPINDEX2 & HCPINDEX2) (BandMathEngine)', () => {
+    it('should calculate Low-Calcium Pyroxene / Orthopyroxene 2.1 um band depth (LCPINDEX2)', () => {
+        // Ancient Noachian crustal basalt with strong 2140 nm absorption:
+        // r1690 = 0.28, r2120 = 0.21, r2140 = 0.20, r2530 = 0.26
+        // continuum = 0.5 * (0.28 + 0.26) = 0.27
+        // meanBand = 0.5 * (0.21 + 0.20) = 0.205
+        // depth = 1.0 - (0.205 / 0.27) = 1.0 - 0.75926 = 0.2407 (> 0.04 -> LCP rich)
+        const lcp = BandMathEngine.computeCRISMPyroxeneLCPINDEX2(0.28, 0.21, 0.20, 0.26);
+        expect(lcp.lcpIndex).to.be.closeTo(0.2407, 0.001);
+        expect(lcp.hasLowCalciumPyroxene).to.be.true;
+
+        // Flat neutral spectrum without 2.1 um band:
+        const flat = BandMathEngine.computeCRISMPyroxeneLCPINDEX2(0.25, 0.25, 0.25, 0.25);
+        expect(flat.lcpIndex).to.equal(0.0);
+        expect(flat.hasLowCalciumPyroxene).to.be.false;
+    });
+
+    it('should calculate High-Calcium Pyroxene / Clinopyroxene 2.38 um band depth (HCPINDEX2)', () => {
+        // Hesperian/Amazonian volcanic flood basalt with augite absorption at 2350-2390 nm:
+        // r1815 = 0.30, r2350 = 0.23, r2390 = 0.22, r2530 = 0.28
+        // continuum = 0.5 * (0.30 + 0.28) = 0.29
+        // meanBand = 0.5 * (0.23 + 0.22) = 0.225
+        // depth = 1.0 - (0.225 / 0.29) = 1.0 - 0.77586 = 0.2241 (> 0.04 -> HCP rich)
+        const hcp = BandMathEngine.computeCRISMPyroxeneHCPINDEX2(0.30, 0.23, 0.22, 0.28);
+        expect(hcp.hcpIndex).to.be.closeTo(0.2241, 0.001);
+        expect(hcp.hasHighCalciumPyroxene).to.be.true;
+
+        // Neutral spectrum without HCP band:
+        const flat = BandMathEngine.computeCRISMPyroxeneHCPINDEX2(0.25, 0.25, 0.25, 0.25);
+        expect(flat.hcpIndex).to.equal(0.0);
+        expect(flat.hasHighCalciumPyroxene).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
