@@ -2246,6 +2246,48 @@ export class BandMathEngine {
       rootMeanSquareError: unmix.rootMeanSquareError
     };
   }
+
+  // --- CRISM Hydrated Phyllosilicate & Clay Mineral Solvers ---
+
+  /**
+   * Calculate CRISM Aluminum-Smectite / Kaolinite Al-OH absorption band depth (BD2210).
+   * BD2210 = 1.0 - ( R_2210 / (0.5 * (R_2140 + R_2250)) )
+   * @param {number} r2140 - Short continuum anchor at 2140 nm
+   * @param {number} r2210 - Al-OH absorption band minimum at 2210 nm
+   * @param {number} r2250 - Long continuum anchor at 2250 nm
+   * @returns {{bd2210Index: number, hasAlPhyllosilicate: boolean, mineralFamily: string}}
+   */
+  static computeCRISMAlOHMineralIndexBD2210(r2140, r2210, r2250) {
+    const continuum = 0.5 * (Math.max(1e-4, r2140) + Math.max(1e-4, r2250));
+    const band = Math.max(1e-4, r2210);
+    const depth = 1.0 - (band / continuum);
+
+    return {
+      bd2210Index: parseFloat(depth.toFixed(4)),
+      hasAlPhyllosilicate: depth > 0.03,
+      mineralFamily: depth > 0.03 ? 'Al-Smectite / Montmorillonite / Kaolinite' : 'Unenriched / No Al-OH Detected'
+    };
+  }
+
+  /**
+   * Calculate CRISM Fe/Mg-Smectite / Chlorite Fe/Mg-OH absorption band depth (BD2300).
+   * BD2300 = 1.0 - ( R_2300 / (0.5 * (R_2250 + R_2350)) )
+   * @param {number} r2250 - Short continuum anchor at 2250 nm
+   * @param {number} r2300 - Fe/Mg-OH absorption band minimum at 2300 nm
+   * @param {number} r2350 - Long continuum anchor at 2350 nm
+   * @returns {{bd2300Index: number, hasFeMgPhyllosilicate: boolean, mineralFamily: string}}
+   */
+  static computeCRISMFeMgOHMineralIndexBD2300(r2250, r2300, r2350) {
+    const continuum = 0.5 * (Math.max(1e-4, r2250) + Math.max(1e-4, r2350));
+    const band = Math.max(1e-4, r2300);
+    const depth = 1.0 - (band / continuum);
+
+    return {
+      bd2300Index: parseFloat(depth.toFixed(4)),
+      hasFeMgPhyllosilicate: depth > 0.03,
+      mineralFamily: depth > 0.03 ? 'Fe/Mg-Smectite / Nontronite / Saponite' : 'Unenriched / No Fe/Mg-OH Detected'
+    };
+  }
 }
 
 

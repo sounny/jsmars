@@ -8001,6 +8001,35 @@ describe('Mollweide Equal-Area Cartographic Projections (Geo)', () => {
     });
 });
 
+describe('CRISM Hydrated Phyllosilicates & Clay Minerals (BandMathEngine)', () => {
+    it('should calculate Al-OH phyllosilicate absorption depth (BD2210) for montmorillonite/kaolinite', () => {
+        // Deep Al-OH absorption at 2210 nm (Mawrth Vallis top layer):
+        // r2140 = 0.28, r2210 = 0.23, r2250 = 0.27
+        // continuum = 0.5 * (0.28 + 0.27) = 0.275
+        // BD2210 = 1.0 - (0.23 / 0.275) = 1.0 - 0.83636 = 0.1636 (> 0.03 -> Al-Smectite)
+        const alClay = BandMathEngine.computeCRISMAlOHMineralIndexBD2210(0.28, 0.23, 0.27);
+        expect(alClay.bd2210Index).to.be.closeTo(0.1636, 0.001);
+        expect(alClay.hasAlPhyllosilicate).to.be.true;
+        expect(alClay.mineralFamily).to.include('Al-Smectite');
+
+        // Basalt surface without Al-OH absorption:
+        const unaltering = BandMathEngine.computeCRISMAlOHMineralIndexBD2210(0.15, 0.149, 0.15);
+        expect(alClay.bd2210Index).to.be.greaterThan(unaltering.bd2210Index);
+        expect(unaltering.hasAlPhyllosilicate).to.be.false;
+    });
+
+    it('should calculate Fe/Mg-OH phyllosilicate absorption depth (BD2300) for nontronite/saponite', () => {
+        // Deep Fe/Mg-OH absorption at 2300 nm (Nili Fossae bedrock):
+        // r2250 = 0.25, r2300 = 0.21, r2350 = 0.24
+        // continuum = 0.5 * (0.25 + 0.24) = 0.245
+        // BD2300 = 1.0 - (0.21 / 0.245) = 1.0 - 0.85714 = 0.1429 (> 0.03 -> Fe/Mg-Smectite)
+        const femgClay = BandMathEngine.computeCRISMFeMgOHMineralIndexBD2300(0.25, 0.21, 0.24);
+        expect(femgClay.bd2300Index).to.be.closeTo(0.1429, 0.001);
+        expect(femgClay.hasFeMgPhyllosilicate).to.be.true;
+        expect(femgClay.mineralFamily).to.include('Fe/Mg-Smectite');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
