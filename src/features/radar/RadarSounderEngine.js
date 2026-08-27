@@ -1448,6 +1448,81 @@ export class RadarSounderEngine {
       twoWayAttenuationDbPerKm: parseFloat(alphaTwoWayDbKm.toFixed(3))
     };
   }
+
+  // --- Subsurface Radar Travel Time, Apparent Thickness & Critical Angle Solvers ---
+
+  /**
+   * Calculate two-way radar travel time (TWT) across a subsurface dielectric stratum.
+   * Delta_t_twt = ( 2 * Delta_z * sqrt(eps_r) ) / c
+   * @param {number} layerThicknessMeters - True stratum thickness in meters
+   * @param {number} [dielectricPermittivity=3.15] - Relative dielectric permittivity eps_r (3.15 for water ice)
+   * @returns {{twtMicroseconds: number, twtNanoseconds: number, propagationVelocityKmS: number}}
+   */
+  static computeLayerTwoWayTravelTime(layerThicknessMeters, dielectricPermittivity = 3.15) {
+    const dz = Math.max(0.1, layerThicknessMeters);
+    const eps = Math.max(1.0, dielectricPermittivity);
+
+    const v = RadarSounderEngine.C / Math.sqrt(eps); // Phase speed in m/s
+    const twtSeconds = (2.0 * dz) / v;
+    const twtUs = twtSeconds * 1e6;
+    const twtNs = twtSeconds * 1e9;
+
+    return {
+      twtMicroseconds: parseFloat(twtUs.toFixed(4)),
+      twtNanoseconds: parseFloat(twtNs.toFixed(2)),
+      propagationVelocityKmS: parseFloat((v / 1000.0).toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate apparent radar free-space thickness (time-delay stretched thickness) for radargram visualization.
+   * Delta_z_apparent = Delta_z_true * sqrt(eps_r)
+   * @param {number} trueThicknessMeters - Physical stratum thickness in meters
+   * @param {number} [dielectricPermittivity=3.15] - Subsurface relative permittivity
+   * @returns {{apparentThicknessMeters: number, stretchRatio: number}}
+   */
+  static computeLayerApparentThicknessInFreeSpace(trueThicknessMeters, dielectricPermittivity = 3.15) {
+    const dz = Math.max(0.1, trueThicknessMeters);
+    const eps = Math.max(1.0, dielectricPermittivity);
+
+    const sqrtEps = Math.sqrt(eps);
+    const zApparent = dz * sqrtEps;
+
+    return {
+      apparentThicknessMeters: parseFloat(zApparent.toFixed(2)),
+      stretchRatio: parseFloat(sqrtEps.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate Snell's law critical angle of total internal reflection for subsurface radar waves.
+   * theta_c = arcsin( sqrt(eps2 / eps1) ) when eps1 > eps2 (e.g. ice-to-CO2 transition)
+   * @param {number} epsUpper - Permittivity of incident medium eps1
+   * @param {number} epsLower - Permittivity of transmitted medium eps2
+   * @returns {{hasCriticalAngle: boolean, criticalAngleDeg: number, criticalAngleRad: number}}
+   */
+  static computeCriticalAngleOfRefraction(epsUpper, epsLower) {
+    const eps1 = Math.max(1.0, epsUpper);
+    const eps2 = Math.max(1.0, epsLower);
+
+    if (eps1 <= eps2) {
+      return {
+        hasCriticalAngle: false,
+        criticalAngleDeg: 90.0,
+        criticalAngleRad: Math.PI / 2.0
+      };
+    }
+
+    const sinThetaC = Math.sqrt(eps2 / eps1);
+    const thetaCRad = Math.asin(Math.min(1.0, sinThetaC));
+    const thetaCDeg = (thetaCRad * 180.0) / Math.PI;
+
+    return {
+      hasCriticalAngle: true,
+      criticalAngleDeg: parseFloat(thetaCDeg.toFixed(3)),
+      criticalAngleRad: parseFloat(thetaCRad.toFixed(5))
+    };
+  }
 }
 
 

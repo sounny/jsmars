@@ -6052,6 +6052,35 @@ describe('Orbital Vis-Viva Velocity, Escape Speed & Flight Path Angle (Trajector
     });
 });
 
+describe('SHARAD Radar Travel Time, Apparent Thickness & Critical Angle (RadarSounderEngine)', () => {
+    it('should calculate subsurface radar two-way travel time (TWT) and apparent depth stretch', () => {
+        // Planum Boreum water ice layer (dz = 1000 m, eps_r = 3.15)
+        // v = c / sqrt(3.15) = 299792458 / 1.774824 = 168913904 m/s (168.91 km/s)
+        // TWT = 2 * 1000 / 168913904 = 1.184e-5 s = 11.84 µs
+        const twt = RadarSounderEngine.computeLayerTwoWayTravelTime(1000.0, 3.15);
+        expect(twt.twtMicroseconds).to.be.closeTo(11.84, 0.01);
+        expect(twt.propagationVelocityKmS).to.be.closeTo(168913.9, 1.0);
+
+        // Apparent free-space thickness in radargram: dz_apparent = 1000 * sqrt(3.15) = 1774.82 m
+        const apparent = RadarSounderEngine.computeLayerApparentThicknessInFreeSpace(1000.0, 3.15);
+        expect(apparent.apparentThicknessMeters).to.be.closeTo(1774.82, 0.1);
+        expect(apparent.stretchRatio).to.be.closeTo(1.7748, 0.001);
+    });
+
+    it('should compute Snell critical angle of total internal reflection between dielectric strata', () => {
+        // Water ice (eps1 = 3.15) to CO2 dry ice (eps2 = 2.15): eps1 > eps2 -> critical angle exists
+        // sin(theta_c) = sqrt(2.15 / 3.15) = sqrt(0.68254) = 0.82616 -> theta_c = 55.706°
+        const crit = RadarSounderEngine.computeCriticalAngleOfRefraction(3.15, 2.15);
+        expect(crit.hasCriticalAngle).to.be.true;
+        expect(crit.criticalAngleDeg).to.be.closeTo(55.706, 0.01);
+
+        // CO2 dry ice (eps1 = 2.15) into water ice (eps2 = 3.15): eps1 < eps2 -> no total internal reflection
+        const noCrit = RadarSounderEngine.computeCriticalAngleOfRefraction(2.15, 3.15);
+        expect(noCrit.hasCriticalAngle).to.be.false;
+        expect(noCrit.criticalAngleDeg).to.equal(90.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
