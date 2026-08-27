@@ -5819,6 +5819,44 @@ describe('Official LMD/CNRS/ESA Mars Climate Database (MCD v6.1) Ingestion (MCDE
     });
 });
 
+describe('Subsolar Equilibrium, Conductive Flux & Insolation (KRCEngine)', () => {
+    it('should calculate subsolar radiative equilibrium temperature and conductive heat flux', () => {
+        // Mars mean distance r = 1.524 AU, Albedo A = 0.25, Emissivity = 0.95
+        // S_mars = 1361 / (1.524^2) = 1361 / 2.32258 = 586.03 W/m^2
+        // Absorbed = 0.75 * 586.03 = 439.52 W/m^2
+        // T_ss = (439.52 / (0.95 * 5.67037e-8))^(0.25) = (439.52 / 5.38685e-8)^0.25 = (8.159e9)^0.25 = 300.28 K
+        const eq = KRCEngine.computeSubsolarEquilibriumTemperature(0.25, 1.524, 0.95);
+        expect(eq.subsolarTemperatureK).to.be.closeTo(300.28, 0.5);
+        expect(eq.solarFluxW_M2).to.be.closeTo(586.03, 1.0);
+
+        // Fourier conductive flux: Tu = 240 K, Tl = 210 K, dz = 0.1 m, k = 0.05 W/(m K)
+        // dT/dz = (210 - 240) / 0.1 = -300 K/m
+        // F = -0.05 * (-300) = +15.0 W/m^2 (downward heat flow into soil)
+        const flux = KRCEngine.computeConductiveHeatFlux(240.0, 210.0, 0.1, 0.05);
+        expect(flux.conductiveHeatFluxW_M2).to.equal(15.0);
+        expect(flux.temperatureGradientK_M).to.equal(-300.0);
+        expect(flux.isUpwardFlux).to.be.false;
+
+        // Nighttime upward heat release: Tu = 180 K, Tl = 210 K -> F = -15.0 W/m^2
+        const upward = KRCEngine.computeConductiveHeatFlux(180.0, 210.0, 0.1, 0.05);
+        expect(upward.conductiveHeatFluxW_M2).to.equal(-15.0);
+        expect(upward.isUpwardFlux).to.be.true;
+    });
+
+    it('should compute diurnal integrated solar insolation on horizontal Martian surface', () => {
+        // Equator (lat=0), Equinox (delta=0): H_ss = 90° (pi/2) -> integral = cos(0)*cos(0)*sin(pi/2) = 1.0
+        // E_day = (S_mars * P_sol / pi) = (586.03 * 88775.244 / pi) = 52024765 / 3.14159 = 1.656e7 J/m^2 = 4.60 kWh/m^2
+        const insol = KRCEngine.computeDailyInsolationIntegral(0.0, 0.0, 1.524, 88775.244);
+        expect(insol.dailyInsolationKWh_M2).to.be.closeTo(4.60, 0.1);
+        expect(insol.sunlitHours).to.be.closeTo(12.33, 0.1); // Half sol = 24.66 / 2 = 12.33 h
+
+        // Polar night (lat=80°, delta=-25°): cosHss > 1 -> daylight = 0
+        const polarNight = KRCEngine.computeDailyInsolationIntegral(80.0, -25.0, 1.524);
+        expect(polarNight.dailyInsolationJ_M2).to.equal(0);
+        expect(polarNight.sunlitHours).to.equal(0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

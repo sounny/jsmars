@@ -1387,6 +1387,101 @@ export class KRCEngine {
       periodHours: parseFloat((P / 3600.0).toFixed(2))
     };
   }
+
+  // --- Subsolar Equilibrium, Conductive Flux & Daily Insolation Solvers ---
+
+  /**
+   * Calculate radiative equilibrium subsolar surface temperature T_ss on a planetary body.
+   * T_ss = [ ( (1 - A) * S_0 ) / ( r_AU^2 * epsilon * sigma ) ]^(1/4)
+   * @param {number} [albedo=0.25] - Bolometric Bond/Lambert albedo A (0.25 for Mars mean)
+   * @param {number} [heliocentricDistanceAU=1.524] - Orbital distance r in AU
+   * @param {number} [emissivity=0.95] - Thermal infrared emissivity epsilon (0.95 for silicate regolith)
+   * @returns {{subsolarTemperatureK: number, solarFluxW_M2: number, heliocentricDistanceAU: number}}
+   */
+  static computeSubsolarEquilibriumTemperature(albedo = 0.25, heliocentricDistanceAU = 1.524, emissivity = 0.95) {
+    const A = Math.max(0.0, Math.min(0.99, albedo));
+    const rAU = Math.max(0.1, heliocentricDistanceAU);
+    const eps = Math.max(0.1, Math.min(1.0, emissivity));
+
+    const S0 = 1361.0; // Solar constant at 1 AU (W/m^2)
+    const sigma = 5.670374419e-8; // Stefan-Boltzmann constant (W / (m^2 K^4))
+
+    const solarFlux = S0 / (rAU * rAU);
+    const absorbedFlux = (1.0 - A) * solarFlux;
+    const T_ss = Math.pow(absorbedFlux / (eps * sigma), 0.25);
+
+    return {
+      subsolarTemperatureK: parseFloat(T_ss.toFixed(2)),
+      solarFluxW_M2: parseFloat(solarFlux.toFixed(2)),
+      heliocentricDistanceAU: parseFloat(rAU.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate 1D Fourier conductive heat flux F_cond across regolith subsurface layer.
+   * F_cond = -k * ( (T_lower - T_upper) / dz )
+   * @param {number} temperatureUpperK - Temperature of upper boundary in K
+   * @param {number} temperatureLowerK - Temperature of lower boundary in K
+   * @param {number} layerThicknessMeters - Vertical layer thickness dz in meters
+   * @param {number} [thermalConductivityW_mK=0.05] - Regolith bulk thermal conductivity k in W/(m K)
+   * @returns {{conductiveHeatFluxW_M2: number, temperatureGradientK_M: number, isUpwardFlux: boolean}}
+   */
+  static computeConductiveHeatFlux(temperatureUpperK, temperatureLowerK, layerThicknessMeters, thermalConductivityW_mK = 0.05) {
+    const Tu = Math.max(1.0, temperatureUpperK);
+    const Tl = Math.max(1.0, temperatureLowerK);
+    const dz = Math.max(0.001, layerThicknessMeters);
+    const k = Math.max(0.0001, thermalConductivityW_mK);
+
+    const dT_dz = (Tl - Tu) / dz;
+    const flux = -k * dT_dz; // Positive if heat flows downward (Tl < Tu), negative if upward (Tl > Tu)
+
+    return {
+      conductiveHeatFluxW_M2: parseFloat(flux.toFixed(4)),
+      temperatureGradientK_M: parseFloat(dT_dz.toFixed(4)),
+      isUpwardFlux: flux < 0
+    };
+  }
+
+  /**
+   * Calculate diurnal integrated solar insolation on a horizontal planetary surface (J/m^2 and kWh/m^2).
+   * E_day = ( S_0 * P_sol / ( pi * r_AU^2 ) ) * [ H_ss * sin(phi) * sin(delta) + cos(phi) * cos(delta) * sin(H_ss) ]
+   * @param {number} latitudeDeg - Observer latitude in degrees
+   * @param {number} solarDeclinationDeg - Subsolar declination in degrees
+   * @param {number} [heliocentricDistanceAU=1.524] - Orbital distance in AU
+   * @param {number} [solDurationSeconds=88775.244] - Martian Sol duration in seconds
+   * @returns {{dailyInsolationJ_M2: number, dailyInsolationKWh_M2: number, sunlitHours: number}}
+   */
+  static computeDailyInsolationIntegral(latitudeDeg, solarDeclinationDeg, heliocentricDistanceAU = 1.524, solDurationSeconds = 88775.244) {
+    const phiRad = (latitudeDeg * Math.PI) / 180.0;
+    const deltaRad = (solarDeclinationDeg * Math.PI) / 180.0;
+    const rAU = Math.max(0.1, heliocentricDistanceAU);
+    const Psol = Math.max(100.0, solDurationSeconds);
+
+    const S0 = 1361.0;
+    const S_mars = S0 / (rAU * rAU);
+
+    // Sunset hour angle H_ss
+    const cosHss = -Math.tan(phiRad) * Math.tan(deltaRad);
+    let HssRad;
+    if (cosHss >= 1.0) {
+      HssRad = 0.0; // Polar night
+    } else if (cosHss <= -1.0) {
+      HssRad = Math.PI; // Polar day
+    } else {
+      HssRad = Math.acos(cosHss);
+    }
+
+    const integral = HssRad * Math.sin(phiRad) * Math.sin(deltaRad) + Math.cos(phiRad) * Math.cos(deltaRad) * Math.sin(HssRad);
+    const E_day = (S_mars * Psol / Math.PI) * Math.max(0, integral);
+    const E_kWh = E_day / 3.6e6;
+    const daylightHours = (HssRad / Math.PI) * (Psol / 3600.0);
+
+    return {
+      dailyInsolationJ_M2: parseFloat(E_day.toFixed(1)),
+      dailyInsolationKWh_M2: parseFloat(E_kWh.toFixed(3)),
+      sunlitHours: parseFloat(daylightHours.toFixed(2))
+    };
+  }
 }
 
 
