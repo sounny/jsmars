@@ -5891,6 +5891,33 @@ describe('CRISM Structural Water (BD1400), Al-OH Smectite (BD2210) & Slope (Band
     });
 });
 
+describe('Crater Differential Frequency, R-Plot & Hartmann Isochron (CSFDEngine)', () => {
+    it('should calculate differential crater frequency dN/dD and R-plot relative density', () => {
+        // Bin [1 km, 2 km]: N(>1) = 1.0e-3 km^-2, N(>2) = 2.5e-4 km^-2 -> deltaN = 7.5e-4 km^-2
+        // deltaD = 1.0 km -> dN/dD = 7.5e-4 km^-3
+        // dGeom = sqrt(1 * 2) = 1.414 km
+        const diff = CSFDEngine.computeDifferentialFrequencyFromCumulative(1.0e-3, 2.5e-4, 1.0, 2.0);
+        expect(diff.differentialFrequencyPerKm3).to.equal(7.5e-4);
+        expect(diff.geometricMeanDiameterKm).to.be.closeTo(1.414, 0.001);
+        expect(diff.deltaDKm).to.equal(1.0);
+
+        // R-plot: R = dGeom^3 * (dN/dD) = (1.41421^3) * 7.5e-4 = 2.8284 * 7.5e-4 = 2.121e-3
+        const rplot = CSFDEngine.computeRPlotFromDifferentialFrequency(diff.geometricMeanDiameterKm, diff.differentialFrequencyPerKm3);
+        expect(rplot.rValue).to.be.closeTo(2.121e-3, 0.01e-3);
+        expect(rplot.log10RValue).to.be.closeTo(-2.673, 0.01);
+    });
+
+    it('should compute Hartmann (2005) isochron cumulative crater production scaling', () => {
+        // 1 Ga baseline vs 3.5 Ga ancient Noachian isochron (exponential bombardment increase)
+        const d1km_1Ga = CSFDEngine.computeHartmannProductionFunctionCumulative(1.0, 1.0);
+        const d1km_35Ga = CSFDEngine.computeHartmannProductionFunctionCumulative(1.0, 3.5);
+
+        expect(d1km_1Ga.isochronAgeGa).to.equal(1.0);
+        expect(d1km_35Ga.isochronAgeGa).to.equal(3.5);
+        expect(d1km_35Ga.cumulativeDensityPerKm2).to.be.greaterThan(d1km_1Ga.cumulativeDensityPerKm2 * 3.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1683,6 +1683,89 @@ export class CSFDEngine {
       isAmazonian: systemPeriod === 'Amazonian'
     };
   }
+
+  // --- Differential Frequency, R-Plot & Hartmann Isochron Solvers ---
+
+  /**
+   * Calculate differential crater frequency dN/dD from cumulative bin counts.
+   * dN/dD = ( N(>D1) - N(>D2) ) / ( D2 - D1 ) in craters / (km * km^2)
+   * @param {number} cumulativeDensity1PerKm2 - Cumulative density at lower bound D1 (km^-2)
+   * @param {number} cumulativeDensity2PerKm2 - Cumulative density at upper bound D2 (km^-2)
+   * @param {number} dMinKm - Lower diameter bound in km
+   * @param {number} dMaxKm - Upper diameter bound in km
+   * @returns {{differentialFrequencyPerKm3: number, geometricMeanDiameterKm: number, deltaDKm: number}}
+   */
+  static computeDifferentialFrequencyFromCumulative(cumulativeDensity1PerKm2, cumulativeDensity2PerKm2, dMinKm, dMaxKm) {
+    const n1 = Math.max(0, cumulativeDensity1PerKm2);
+    const n2 = Math.max(0, cumulativeDensity2PerKm2);
+    const d1 = Math.max(1e-4, dMinKm);
+    const d2 = Math.max(d1 + 1e-4, dMaxKm);
+
+    const deltaD = d2 - d1;
+    const deltaN = Math.max(0, n1 - n2);
+    const diffFreq = deltaN / deltaD;
+    const dGeom = Math.sqrt(d1 * d2);
+
+    return {
+      differentialFrequencyPerKm3: parseFloat(diffFreq.toExponential(4)),
+      geometricMeanDiameterKm: parseFloat(dGeom.toFixed(3)),
+      deltaDKm: parseFloat(deltaD.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate Relative Crater Density (R-Plot representation) from differential frequency dN/dD.
+   * R = D_geom^3 * ( dN / dD ) = ( D_geom^3 * Delta_N ) / ( Area * Delta_D )
+   * @param {number} geometricMeanDiameterKm - Bin geometric mean diameter in km
+   * @param {number} differentialFrequencyPerKm3 - Differential frequency dN/dD in km^-3
+   * @returns {{rValue: number, log10RValue: number, geometricMeanDiameterKm: number}}
+   */
+  static computeRPlotFromDifferentialFrequency(geometricMeanDiameterKm, differentialFrequencyPerKm3) {
+    const dGeom = Math.max(1e-4, geometricMeanDiameterKm);
+    const diffFreq = Math.max(1e-15, differentialFrequencyPerKm3);
+
+    const r = Math.pow(dGeom, 3) * diffFreq;
+    const logR = Math.log10(r);
+
+    return {
+      rValue: parseFloat(r.toExponential(4)),
+      log10RValue: parseFloat(logR.toFixed(4)),
+      geometricMeanDiameterKm: parseFloat(dGeom.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate Hartmann (2005) Mars Cumulative Isochron function N(>D, T) for a given surface age T in Ga.
+   * N(>D, T) = N_1Ga(>D) * [ ( exp(6.93 * T) - 1 ) / ( exp(6.93) - 1 ) ] (for T >= 3.0 Ga)
+   * or N_1Ga(>D) * T (for T < 3.0 Ga linear regime)
+   * @param {number} diameterKm - Diameter in km
+   * @param {number} [isochronAgeGa=3.0] - Surface isochron age in Ga
+   * @returns {{cumulativeDensityPerKm2: number, isochronAgeGa: number, diameterKm: number}}
+   */
+  static computeHartmannProductionFunctionCumulative(diameterKm, isochronAgeGa = 3.0) {
+    const D = Math.max(0.005, diameterKm);
+    const T = Math.max(0.001, Math.min(4.5, isochronAgeGa));
+
+    // Baseline 1 Ga cumulative density from Ivanov/Neukum MPF
+    const base1Ga = CSFDEngine.computeNeukumProductionFunctionCumulative(D).cumulativeDensityPerKm2;
+
+    let timeScalingFactor;
+    if (T < 3.0) {
+      timeScalingFactor = T;
+    } else {
+      // Hartmann & Neukum exponential early bombardment scaling
+      const lambda = 6.93;
+      timeScalingFactor = (Math.exp(lambda * (T - 3.0)) + 3.0 * Math.exp(0) - 1.0) / (Math.exp(0) + 2.0);
+    }
+
+    const nCum = base1Ga * timeScalingFactor;
+
+    return {
+      cumulativeDensityPerKm2: parseFloat(nCum.toExponential(4)),
+      isochronAgeGa: parseFloat(T.toFixed(2)),
+      diameterKm: parseFloat(D.toFixed(3))
+    };
+  }
 }
 
 
