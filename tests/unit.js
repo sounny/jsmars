@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -7053,6 +7053,41 @@ describe('Surface Friction Velocity, Wind Shear Stress & PBL Depth (MCDEngine)',
         expect(pbl.pblDepthKm).to.be.closeTo(7.53, 0.2);
         expect(pbl.pblDepthMeters).to.be.closeTo(7525.0, 200.0);
         expect(pbl.convectiveVelocityScaleMS).to.be.greaterThan(2.0);
+    });
+});
+
+describe('Equidistant Cylindrical (Plate Carrée) Forward & Inverse Projections (geo.js)', () => {
+    it('should calculate forward Equidistant Cylindrical coordinates and scale distortion', () => {
+        // Equator at central meridian (0, 0): x = 0, y = 0, scale k = 1.0
+        const origin = computeEquidistantCylindricalProjection(0.0, 0.0, 0.0, 0.0, 3389.5);
+        expect(origin.xKm).to.equal(0);
+        expect(origin.yKm).to.equal(0);
+        expect(origin.parallelScaleFactor).to.equal(1.0);
+
+        // Gale Crater (lat = -5.4° S, lon = 137.8° E) on standard Plate Carrée (phi1 = 0°):
+        // dLam = 137.8 * pi / 180 = 2.40506 rad
+        // x = 3389.5 * 2.40506 = 8152.0 rad -> 8151.96 km
+        // y = 3389.5 * (-5.4 * pi / 180) = -319.46 km
+        // k = cos(-5.4°) = 0.99557
+        const gale = computeEquidistantCylindricalProjection(-5.4, 137.8, 0.0, 0.0, 3389.5);
+        expect(gale.xKm).to.be.closeTo(8151.96, 0.5);
+        expect(gale.yKm).to.be.closeTo(-319.46, 0.5);
+        expect(gale.parallelScaleFactor).to.be.closeTo(0.9956, 0.001);
+    });
+
+    it('should invert Equidistant Cylindrical planar coordinates back to geographic latitude and longitude', () => {
+        // Forward Gale Crater coordinates
+        const proj = computeEquidistantCylindricalProjection(-5.4, 137.8, 0.0, 0.0, 3389.5);
+        // Inverse conversion
+        const inv = computeEquidistantCylindricalInverse(proj.xKm, proj.yKm, 0.0, 0.0, 3389.5);
+        expect(inv.latDeg).to.be.closeTo(-5.4, 0.001);
+        expect(inv.lonDeg).to.be.closeTo(137.8, 0.001);
+
+        // Standard parallel phi1 = 30°
+        const proj30 = computeEquidistantCylindricalProjection(25.0, -45.0, 30.0, 0.0, 3389.5);
+        const inv30 = computeEquidistantCylindricalInverse(proj30.xKm, proj30.yKm, 30.0, 0.0, 3389.5);
+        expect(inv30.latDeg).to.be.closeTo(25.0, 0.001);
+        expect(inv30.lonDeg).to.be.closeTo(-45.0, 0.001);
     });
 });
 

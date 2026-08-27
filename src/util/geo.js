@@ -1416,6 +1416,77 @@ export function computeGnomonicInverse(xKm, yKm, centerLatDeg = 0, centerLonDeg 
   };
 }
 
+// --- Equidistant Cylindrical / Plate Carrée Forward & Inverse Projections ---
+
+/**
+ * Calculate forward Equidistant Cylindrical (Plate Carrée when standardParallelDeg = 0) projection coordinates.
+ * x = R * (lambda - lambda0) * cos(phi1)
+ * y = R * phi
+ * Scale along meridian: h = 1.0 (true to scale)
+ * Scale along parallel: k = cos(phi) / cos(phi1)
+ * @param {number} latDeg - Point latitude in degrees
+ * @param {number} lonDeg - Point longitude in degrees
+ * @param {number} [standardParallelDeg=0.0] - Standard parallel phi1 in degrees
+ * @param {number} [centerLonDeg=0.0] - Central meridian lambda0 in degrees
+ * @param {number} [radiusKm=3389.5] - Mean spherical planetary radius in km
+ * @returns {{xKm: number, yKm: number, parallelScaleFactor: number, arealDistortion: number}}
+ */
+export function computeEquidistantCylindricalProjection(latDeg, lonDeg, standardParallelDeg = 0.0, centerLonDeg = 0.0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi = (latDeg * Math.PI) / 180.0;
+  const phi1 = (standardParallelDeg * Math.PI) / 180.0;
+
+  let dLon = lonDeg - centerLonDeg;
+  while (dLon > 180) dLon -= 360;
+  while (dLon < -180) dLon += 360;
+  const dLam = (dLon * Math.PI) / 180.0;
+
+  const cosPhi1 = Math.max(1e-6, Math.cos(phi1));
+  const cosPhi = Math.cos(phi);
+
+  const x = R * dLam * cosPhi1;
+  const y = R * phi;
+
+  const k = cosPhi / cosPhi1;
+
+  return {
+    xKm: parseFloat(x.toFixed(3)),
+    yKm: parseFloat(y.toFixed(3)),
+    parallelScaleFactor: parseFloat(k.toFixed(4)),
+    arealDistortion: parseFloat(k.toFixed(4))
+  };
+}
+
+/**
+ * Calculate inverse Equidistant Cylindrical projection from planar (x, y) coordinates in km back to (lat, lon).
+ * @param {number} xKm - Projected X coordinate in km
+ * @param {number} yKm - Projected Y coordinate in km
+ * @param {number} [standardParallelDeg=0.0] - Standard parallel phi1 in degrees
+ * @param {number} [centerLonDeg=0.0] - Central meridian lambda0 in degrees
+ * @param {number} [radiusKm=3389.5] - Mean spherical planetary radius in km
+ * @returns {{latDeg: number, lonDeg: number}}
+ */
+export function computeEquidistantCylindricalInverse(xKm, yKm, standardParallelDeg = 0.0, centerLonDeg = 0.0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi1 = (standardParallelDeg * Math.PI) / 180.0;
+  const cosPhi1 = Math.max(1e-6, Math.cos(phi1));
+
+  const phi = yKm / R;
+  const dLam = xKm / (R * cosPhi1);
+
+  let latDeg = (phi * 180.0) / Math.PI;
+  let lonDeg = centerLonDeg + (dLam * 180.0) / Math.PI;
+
+  latDeg = Math.max(-90.0, Math.min(90.0, latDeg));
+  while (lonDeg > 180) lonDeg -= 360;
+  while (lonDeg < -180) lonDeg += 360;
+
+  return {
+    latDeg: parseFloat(latDeg.toFixed(4)),
+    lonDeg: parseFloat(lonDeg.toFixed(4))
+  };
+}
+
 
 
 
