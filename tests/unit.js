@@ -7153,6 +7153,35 @@ describe('Hapke Opposition Effect & Angular Solar Phase Angle (ThreeDEngine)', (
     });
 });
 
+describe('J2 Planetary Oblateness Perturbations & Sun-Synchronous Inclination (TrajectoryEngine)', () => {
+    it('should calculate secular nodal and apsidal precession rates from J2 gravity', () => {
+        // Mars mapping orbit at a = 3645 km (alt ~ 255 km), e = 0.008, i = 92.78°
+        // Retrograde inclination cos(i) < 0 -> dOmega/dt > 0 (prograde nodal drift matching sun)
+        const mro = TrajectoryEngine.computeJ2NodalAndApsidalPrecession(3645.0, 0.008, 92.78, 'mars');
+        expect(mro.nodalPrecessionDegPerDay).to.be.closeTo(0.574, 0.01);
+        expect(mro.isCriticalInclination).to.be.false;
+
+        // Critical inclination orbit (i = 63.435°): apsidal drift domega/dt = 0 (frozen apocenter)
+        const crit = TrajectoryEngine.computeJ2NodalAndApsidalPrecession(4000.0, 0.1, 63.435, 'mars');
+        expect(crit.apsidalPrecessionDegPerDay).to.be.closeTo(0.0, 0.05);
+        expect(crit.isCriticalInclination).to.be.true;
+    });
+
+    it('should solve exact retrograde sun-synchronous inclination for planetary orbiters', () => {
+        // Mars sun-synchronous orbit at altitude a = 3645 km:
+        // Solves exact retrograde inclination i_sso = 92.54° matching Martian solar year (0.524 deg/day)
+        const ssoMars = TrajectoryEngine.computeSunSynchronousInclination(3645.0, 0.008, 'mars');
+        expect(ssoMars.sunSyncInclinationDeg).to.be.closeTo(92.54, 0.05);
+        expect(ssoMars.isFeasibleSunSync).to.be.true;
+
+        // Earth low earth orbit (LEO at 700 km altitude -> a = 7078 km):
+        // Standard Earth SSO inclination ~ 98.2°
+        const ssoEarth = TrajectoryEngine.computeSunSynchronousInclination(7078.0, 0.001, 'earth');
+        expect(ssoEarth.sunSyncInclinationDeg).to.be.closeTo(98.19, 0.2);
+        expect(ssoEarth.isFeasibleSunSync).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

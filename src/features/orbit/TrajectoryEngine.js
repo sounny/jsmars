@@ -795,6 +795,103 @@ export class TrajectoryEngine {
       isBoundOrbit: isBound
     };
   }
+
+  // --- J2 Planetary Oblateness Perturbations & Sun-Synchronous Orbits ---
+
+  /**
+   * Calculate secular nodal precession rate (dOmega/dt) and apsidal precession rate (domega/dt) from J2 oblateness.
+   * dOmega/dt = -1.5 * J2 * (R/p)^2 * n * cos(i)
+   * domega/dt = 0.75 * J2 * (R/p)^2 * n * ( 5 * cos^2(i) - 1 )
+   * @param {number} semiMajorAxisKm - Semi-major axis in km
+   * @param {number} eccentricity - Orbital eccentricity (0 to <1)
+   * @param {number} inclinationDeg - Orbital inclination in degrees
+   * @param {string} [body='mars'] - Planetary body ('mars', 'earth', 'moon')
+   * @returns {{nodalPrecessionDegPerDay: number, apsidalPrecessionDegPerDay: number, isCriticalInclination: boolean}}
+   */
+  static computeJ2NodalAndApsidalPrecession(semiMajorAxisKm, eccentricity, inclinationDeg, body = 'mars') {
+    const a = Math.max(100.0, semiMajorAxisKm);
+    const e = Math.max(0.0, Math.min(0.99, eccentricity));
+    const incRad = (inclinationDeg * Math.PI) / 180.0;
+
+    let mu = 42828.37; // km^3/s^2 for Mars
+    let R = 3389.5; // km
+    let J2 = 0.00196045; // Mars J2
+
+    if (body.toLowerCase() === 'earth') {
+      mu = 398600.4418;
+      R = 6378.137;
+      J2 = 0.00108263;
+    } else if (body.toLowerCase() === 'moon') {
+      mu = 4902.8;
+      R = 1737.4;
+      J2 = 0.0002027;
+    }
+
+    const p = a * (1.0 - e * e); // Semi-latus rectum in km
+    const n = Math.sqrt(mu / Math.pow(a, 3)); // Mean motion in rad/s
+
+    const factor = 1.5 * J2 * Math.pow(R / p, 2) * n;
+    const cosI = Math.cos(incRad);
+
+    const dOmegaSec = -factor * cosI; // rad/s
+    const domegaSec = 0.5 * factor * (5.0 * cosI * cosI - 1.0); // rad/s
+
+    const radToDegPerDay = (180.0 / Math.PI) * 86400.0;
+    const dOmegaDegDay = dOmegaSec * radToDegPerDay;
+    const domegaDegDay = domegaSec * radToDegPerDay;
+
+    // Critical inclination where domega/dt = 0 (i = 63.435° or 116.565°)
+    const isCrit = Math.abs(5.0 * cosI * cosI - 1.0) < 0.05;
+
+    return {
+      nodalPrecessionDegPerDay: parseFloat(dOmegaDegDay.toFixed(4)),
+      apsidalPrecessionDegPerDay: parseFloat(domegaDegDay.toFixed(4)),
+      isCriticalInclination: isCrit
+    };
+  }
+
+  /**
+   * Calculate exact retrograde inclination required for a sun-synchronous frozen orbit.
+   * cos(i_sso) = -(2 * dOmega_solar * p^2) / (3 * J2 * R^2 * n)
+   * @param {number} semiMajorAxisKm - Semi-major axis in km (e.g. 3645 km for MRO)
+   * @param {number} [eccentricity=0.001] - Orbital eccentricity
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{sunSyncInclinationDeg: number, isFeasibleSunSync: boolean}}
+   */
+  static computeSunSynchronousInclination(semiMajorAxisKm, eccentricity = 0.001, body = 'mars') {
+    const a = Math.max(100.0, semiMajorAxisKm);
+    const e = Math.max(0.0, Math.min(0.99, eccentricity));
+
+    let mu = 42828.37;
+    let R = 3389.5;
+    let J2 = 0.00196045;
+    // Mean solar precession rate dOmega_solar in rad/s:
+    // Mars: 2*pi / (686.98 * 86400) = 1.0583e-7 rad/s (0.5240 deg/day)
+    let dOmegaSolar = (2.0 * Math.PI) / (686.98 * 86400.0);
+
+    if (body.toLowerCase() === 'earth') {
+      mu = 398600.4418;
+      R = 6378.137;
+      J2 = 0.00108263;
+      dOmegaSolar = (2.0 * Math.PI) / (365.2422 * 86400.0); // 0.9856 deg/day
+    }
+
+    const p = a * (1.0 - e * e);
+    const n = Math.sqrt(mu / Math.pow(a, 3));
+
+    const num = -2.0 * dOmegaSolar * Math.pow(p, 2);
+    const den = 3.0 * J2 * Math.pow(R, 2) * n;
+    const cosI = num / den;
+
+    const isFeasible = cosI >= -1.0 && cosI <= 1.0;
+    const clampedCos = Math.max(-1.0, Math.min(1.0, cosI));
+    const incDeg = (Math.acos(clampedCos) * 180.0) / Math.PI;
+
+    return {
+      sunSyncInclinationDeg: parseFloat(incDeg.toFixed(3)),
+      isFeasibleSunSync: isFeasible
+    };
+  }
 }
 
 
