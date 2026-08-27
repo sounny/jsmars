@@ -6597,6 +6597,33 @@ describe('OMEGA Ferric Iron, Olivine & TES Surface Type Indices (BandMathEngine)
     });
 });
 
+describe('J2 Oblateness Nodal & Apsidal Precession Solvers (TrajectoryEngine)', () => {
+    it('should calculate J2 nodal precession rate and detect sun-synchronous orbits', () => {
+        // Mars Reconnaissance Orbiter (MRO) mapping orbit:
+        // alt ~ 290 km -> a = 3389.5 + 290 = 3679.5 km, e ~ 0.01, inclination = 92.7° (retrograde)
+        const mro = TrajectoryEngine.computeJ2NodalPrecessionRate(3679.5, 0.01, 92.7, 'mars');
+        expect(mro.nodalPrecessionDegPerDay).to.be.greaterThan(0.4);
+        expect(mro.nodalPrecessionDegPerDay).to.be.lessThan(0.6);
+        expect(mro.isSunSynchronousCandidate).to.be.true;
+
+        // Prograde equatorial orbit (i = 0°): dOmega/dt < 0 (regressing westwards)
+        const eq = TrajectoryEngine.computeJ2NodalPrecessionRate(4000.0, 0.0, 0.0, 'mars');
+        expect(eq.nodalPrecessionDegPerDay).to.be.lessThan(0.0);
+    });
+
+    it('should compute J2 apsidal pericenter drift rate and detect critical frozen inclination', () => {
+        // Mars Frozen Orbit at critical inclination i = 63.435° (or 116.565°)
+        const frozen = TrajectoryEngine.computeJ2ApsidalPrecessionRate(4000.0, 0.05, 63.435, 'mars');
+        expect(frozen.apsidalPrecessionDegPerDay).to.be.closeTo(0.0, 0.001);
+        expect(frozen.isCriticalFrozenInclination).to.be.true;
+
+        // Polar orbit (i = 90°): 5*cos^2(90) - 1 = -1 -> domega/dt < 0
+        const polar = TrajectoryEngine.computeJ2ApsidalPrecessionRate(4000.0, 0.05, 90.0, 'mars');
+        expect(polar.apsidalPrecessionDegPerDay).to.be.lessThan(0.0);
+        expect(polar.isCriticalFrozenInclination).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

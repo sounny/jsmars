@@ -637,6 +637,85 @@ export class TrajectoryEngine {
       isHyperbolic: true
     };
   }
+
+  // Planetary J2 oblateness harmonic coefficients
+  static J2_BODIES = {
+    earth: 1.08263e-3,
+    mars: 1.96045e-3,
+    moon: 2.027e-4
+  };
+
+  // --- J2 Nodal (RAAN) & Apsidal (Pericenter) Precession Solvers ---
+
+  /**
+   * Calculate J2 oblateness nodal precession rate dOmega/dt in degrees per Earth day.
+   * dOmega/dt = -1.5 * J2 * (R_body / p)^2 * n * cos(i)
+   * @param {number} semiMajorAxisKm - Orbit semi-major axis in km
+   * @param {number} eccentricity - Orbit eccentricity (0 to 0.99)
+   * @param {number} inclinationDeg - Orbit inclination in degrees (0 to 180)
+   * @param {string} [body='mars'] - Central body ('mars' or 'earth')
+   * @returns {{nodalPrecessionDegPerDay: number, nodalPrecessionRadPerSec: number, isSunSynchronousCandidate: boolean}}
+   */
+  static computeJ2NodalPrecessionRate(semiMajorAxisKm, eccentricity, inclinationDeg, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const j2 = TrajectoryEngine.J2_BODIES[bKey] || TrajectoryEngine.J2_BODIES.mars;
+    const rBody = (TrajectoryEngine.ORBITS[bKey] && TrajectoryEngine.ORBITS[bKey].radiusKm) || 3389.5;
+
+    const a = Math.max(rBody + 10.0, semiMajorAxisKm);
+    const e = Math.max(0.0, Math.min(0.99, eccentricity));
+    const incRad = (inclinationDeg * Math.PI) / 180.0;
+
+    const p = a * (1.0 - e * e); // Semi-latus rectum (km)
+    const n = Math.sqrt(mu / Math.pow(a, 3)); // Mean motion (rad/s)
+
+    const dOmegaRadSec = -1.5 * j2 * Math.pow(rBody / p, 2) * n * Math.cos(incRad);
+    const dOmegaDegDay = (dOmegaRadSec * 180.0 / Math.PI) * 86400.0;
+
+    // Sun-synchronous drift on Mars is ~0.524 deg/day (retrograde inclination > 90°)
+    const isSunSync = Math.abs(dOmegaDegDay - 0.524) < 0.05;
+
+    return {
+      nodalPrecessionDegPerDay: parseFloat(dOmegaDegDay.toFixed(5)),
+      nodalPrecessionRadPerSec: parseFloat(dOmegaRadSec.toExponential(4)),
+      isSunSynchronousCandidate: isSunSync
+    };
+  }
+
+  /**
+   * Calculate J2 oblateness apsidal precession (argument of periapsis drift) domega/dt in degrees per Earth day.
+   * domega/dt = 0.75 * J2 * (R_body / p)^2 * n * ( 5*cos^2(i) - 1 )
+   * @param {number} semiMajorAxisKm - Orbit semi-major axis in km
+   * @param {number} eccentricity - Orbit eccentricity (0 to 0.99)
+   * @param {number} inclinationDeg - Orbit inclination in degrees (0 to 180)
+   * @param {string} [body='mars'] - Central body ('mars' or 'earth')
+   * @returns {{apsidalPrecessionDegPerDay: number, isCriticalFrozenInclination: boolean}}
+   */
+  static computeJ2ApsidalPrecessionRate(semiMajorAxisKm, eccentricity, inclinationDeg, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const j2 = TrajectoryEngine.J2_BODIES[bKey] || TrajectoryEngine.J2_BODIES.mars;
+    const rBody = (TrajectoryEngine.ORBITS[bKey] && TrajectoryEngine.ORBITS[bKey].radiusKm) || 3389.5;
+
+    const a = Math.max(rBody + 10.0, semiMajorAxisKm);
+    const e = Math.max(0.0, Math.min(0.99, eccentricity));
+    const incRad = (inclinationDeg * Math.PI) / 180.0;
+
+    const p = a * (1.0 - e * e);
+    const n = Math.sqrt(mu / Math.pow(a, 3));
+    const cosInc = Math.cos(incRad);
+
+    const domegaRadSec = 0.75 * j2 * Math.pow(rBody / p, 2) * n * (5.0 * cosInc * cosInc - 1.0);
+    const domegaDegDay = (domegaRadSec * 180.0 / Math.PI) * 86400.0;
+
+    // Critical inclination where 5*cos^2(i) - 1 = 0 is 63.435° or 116.565°
+    const isFrozen = Math.abs(Math.abs(inclinationDeg) - 63.435) < 0.5 || Math.abs(Math.abs(inclinationDeg) - 116.565) < 0.5;
+
+    return {
+      apsidalPrecessionDegPerDay: parseFloat(domegaDegDay.toFixed(5)),
+      isCriticalFrozenInclination: isFrozen
+    };
+  }
 }
 
 
