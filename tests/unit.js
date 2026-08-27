@@ -6831,6 +6831,38 @@ describe('CRISM Carbonate, Al-OH Phyllosilicate & High-Ca Pyroxene (BandMathEngi
     });
 });
 
+describe('Cartesian State Vectors to Keplerian Orbital Elements (TrajectoryEngine)', () => {
+    it('should convert 3D circular equatorial orbit state vectors into Keplerian elements', () => {
+        // Mars circular orbit at r = 4000 km in equatorial plane (z = 0, vz = 0):
+        // v_circ = sqrt(mu / r) = sqrt(42828.3752 / 4000) = 3.27216 km/s along +y
+        const rVec = { x: 4000.0, y: 0.0, z: 0.0 };
+        const vVec = { vx: 0.0, vy: 3.272168, vz: 0.0 };
+        const orb = TrajectoryEngine.computeOrbitalElementsFromStateVectors(rVec, vVec, 'mars');
+
+        expect(orb.semiMajorAxisKm).to.be.closeTo(4000.0, 1.0);
+        expect(orb.eccentricity).to.be.closeTo(0.0, 0.001);
+        expect(orb.inclinationDeg).to.equal(0.0);
+        expect(orb.isBoundOrbit).to.be.true;
+        // Period T = 2 * pi * sqrt(4000^3 / 42828.3752) = 2 * pi * 1222.42 = 7680.6 sec = 128.01 min
+        expect(orb.orbitalPeriodMinutes).to.be.closeTo(128.0, 0.5);
+    });
+
+    it('should convert inclined polar orbit state vectors and detect unbound escape trajectories', () => {
+        // Mars polar orbit (inclination = 90°): r along +x, v along +z
+        const rPol = { x: 4000.0, y: 0.0, z: 0.0 };
+        const vPol = { vx: 0.0, vy: 0.0, vz: 3.272168 };
+        const polar = TrajectoryEngine.computeOrbitalElementsFromStateVectors(rPol, vPol, 'mars');
+        expect(polar.inclinationDeg).to.equal(90.0);
+        expect(polar.isBoundOrbit).to.be.true;
+
+        // Hyperbolic escape trajectory: v = 6.0 km/s (> v_esc = sqrt(2*mu/r) = 4.627 km/s)
+        const vHyp = { vx: 0.0, vy: 6.0, vz: 0.0 };
+        const hyp = TrajectoryEngine.computeOrbitalElementsFromStateVectors(rPol, vHyp, 'mars');
+        expect(hyp.isBoundOrbit).to.be.false;
+        expect(hyp.eccentricity).to.be.greaterThan(1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

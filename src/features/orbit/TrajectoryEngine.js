@@ -716,6 +716,85 @@ export class TrajectoryEngine {
       isCriticalFrozenInclination: isFrozen
     };
   }
+
+  // --- Cartesian State Vectors to Keplerian Orbital Elements Solver ---
+
+  /**
+   * Convert 3D Cartesian position r = (x, y, z) and velocity v = (vx, vy, vz) state vectors into Keplerian elements.
+   * Energy: eps = v^2 / 2 - mu / r
+   * Semi-major axis: a = -mu / (2 * eps)
+   * Angular momentum: h = r x v
+   * Eccentricity: e = sqrt( 1 + 2 * eps * h^2 / mu^2 )
+   * Inclination: i = acos( hz / h )
+   * @param {{x: number, y: number, z: number}} rVecKm - Position vector in km
+   * @param {{vx: number, vy: number, vz: number}} vVecKmS - Velocity vector in km/s
+   * @param {string} [body='mars'] - Central celestial body ('mars' or 'earth')
+   * @returns {{semiMajorAxisKm: number, eccentricity: number, inclinationDeg: number, specificEnergyKm2S2: number, angularMomentumKm2S: number, orbitalPeriodMinutes: number, isBoundOrbit: boolean}}
+   */
+  static computeOrbitalElementsFromStateVectors(rVecKm, vVecKmS, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+
+    const rx = rVecKm.x || 0;
+    const ry = rVecKm.y || 0;
+    const rz = rVecKm.z || 0;
+    const r = Math.sqrt(rx * rx + ry * ry + rz * rz);
+
+    const vx = vVecKmS.vx || 0;
+    const vy = vVecKmS.vy || 0;
+    const vz = vVecKmS.vz || 0;
+    const v2 = vx * vx + vy * vy + vz * vz;
+
+    if (r <= 1e-6) {
+      return {
+        semiMajorAxisKm: 0,
+        eccentricity: 0,
+        inclinationDeg: 0,
+        specificEnergyKm2S2: 0,
+        angularMomentumKm2S: 0,
+        orbitalPeriodMinutes: 0,
+        isBoundOrbit: false
+      };
+    }
+
+    // Specific orbital energy (km^2 / s^2)
+    const eps = (v2 / 2.0) - (mu / r);
+    const isBound = eps < -1e-6;
+
+    // Semi-major axis (km)
+    const a = isBound ? -mu / (2.0 * eps) : 0.0;
+
+    // Angular momentum vector h = r x v
+    const hx = ry * vz - rz * vy;
+    const hy = rz * vx - rx * vz;
+    const hz = rx * vy - ry * vx;
+    const h = Math.sqrt(hx * hx + hy * hy + hz * hz);
+
+    // Eccentricity
+    const term = 1.0 + (2.0 * eps * h * h) / (mu * mu);
+    const e = Math.sqrt(Math.max(0.0, term));
+
+    // Inclination
+    const cosInc = h > 1e-6 ? Math.max(-1.0, Math.min(1.0, hz / h)) : 1.0;
+    const incDeg = (Math.acos(cosInc) * 180.0) / Math.PI;
+
+    // Orbital Period T = 2 * pi * sqrt( a^3 / mu )
+    let periodMin = 0.0;
+    if (isBound && a > 0) {
+      const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(a, 3) / mu);
+      periodMin = periodSec / 60.0;
+    }
+
+    return {
+      semiMajorAxisKm: parseFloat(a.toFixed(2)),
+      eccentricity: parseFloat(e.toFixed(5)),
+      inclinationDeg: parseFloat(incDeg.toFixed(3)),
+      specificEnergyKm2S2: parseFloat(eps.toFixed(4)),
+      angularMomentumKm2S: parseFloat(h.toFixed(2)),
+      orbitalPeriodMinutes: parseFloat(periodMin.toFixed(2)),
+      isBoundOrbit: isBound
+    };
+  }
 }
 
 
