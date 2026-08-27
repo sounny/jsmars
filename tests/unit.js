@@ -7878,6 +7878,34 @@ describe('Subsolar Ephemeris & Daylight Duration (MarsTime)', () => {
     });
 });
 
+describe('Ground Track Swath Overlap & Sol Repeat (TrajectoryEngine)', () => {
+    it('should calculate instrument swath overlap fraction across latitudes', () => {
+        // CTX camera swath (W = 30 km), equatorial spacing dx = 28 km:
+        // At equator (phi = 0°): dx = 28 km -> overlap = 30 - 28 = 2 km (6.67% overlap, seamless)
+        const eqCTX = TrajectoryEngine.computeGroundTrackSwathOverlap(30.0, 28.0, 0.0);
+        expect(eqCTX.overlapKm).to.be.closeTo(2.0, 0.1);
+        expect(eqCTX.overlapPercent).to.be.closeTo(6.67, 0.1);
+        expect(eqCTX.isSeamlessCoverage).to.be.true;
+
+        // At mid-latitude (phi = 60°): dx = 28 * cos(60°) = 14 km -> overlap = 30 - 14 = 16 km (53.33% overlap)
+        const midCTX = TrajectoryEngine.computeGroundTrackSwathOverlap(30.0, 28.0, 60.0);
+        expect(midCTX.overlapKm).to.be.closeTo(16.0, 0.1);
+        expect(midCTX.overlapPercent).to.be.closeTo(53.33, 0.1);
+    });
+
+    it('should calculate orbit period and daily revolutions per Martian sol', () => {
+        // MRO low-altitude science orbit (a = 3645 km, mu_mars = 42828.37 km^3/s^2):
+        // T = 2 * pi * sqrt( (3645)^3 / 42828.37 ) = 2 * pi * 1063.48 = 6682.04 s = 111.37 min = 1.856 hours
+        // Revs/sol = 88775.244 / 6682.04 = 13.285 revs/sol
+        // Drift = (6682.04 / 88775.244) * 360 = 27.098° West/rev
+        const mro = TrajectoryEngine.computeOrbitPeriodAndRevolutionsPerSol(3645.0, 'mars');
+        expect(mro.periodMinutes).to.be.closeTo(111.37, 0.5);
+        expect(mro.periodHours).to.be.closeTo(1.856, 0.01);
+        expect(mro.revolutionsPerSol).to.be.closeTo(13.285, 0.05);
+        expect(mro.groundTrackEquatorialDriftDeg).to.be.closeTo(27.10, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

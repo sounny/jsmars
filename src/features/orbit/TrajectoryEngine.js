@@ -972,6 +972,65 @@ export class TrajectoryEngine {
       transferSemiMajorAxisAU: parseFloat((aTx / AU_KM).toFixed(4))
     };
   }
+
+  // --- Ground Track Swath Overlap & Sol Repeat Solvers ---
+
+  /**
+   * Calculate satellite instrument swath overlap and gap coverage across planetary latitudes.
+   * Delta_x(phi) = Delta_x_eq * cos(phi)
+   * Overlap = 1.0 - Delta_x(phi) / Swath_width
+   * @param {number} swathWidthKm - Instrument cross-track swath width in km (e.g. 30 km for CTX, 20 km for THEMIS)
+   * @param {number} equatorialSpacingKm - Ground track longitudinal track spacing at equator in km
+   * @param {number} [latitudeDeg=0.0] - Latitude phi in degrees (-90 to +90)
+   * @returns {{overlapFraction: number, overlapPercent: number, overlapKm: number, trackSpacingKm: number, isSeamlessCoverage: boolean}}
+   */
+  static computeGroundTrackSwathOverlap(swathWidthKm, equatorialSpacingKm, latitudeDeg = 0.0) {
+    const w = Math.max(0.01, swathWidthKm);
+    const dxEq = Math.max(0.0, equatorialSpacingKm);
+    const phiRad = (Math.min(90.0, Math.max(-90.0, latitudeDeg)) * Math.PI) / 180.0;
+
+    const dxLat = dxEq * Math.cos(phiRad);
+    const overlapDist = Math.max(0.0, w - dxLat);
+    const overlapFrac = Math.max(0.0, Math.min(1.0, 1.0 - (dxLat / w)));
+
+    return {
+      overlapFraction: parseFloat(overlapFrac.toFixed(4)),
+      overlapPercent: parseFloat((overlapFrac * 100.0).toFixed(2)),
+      overlapKm: parseFloat(overlapDist.toFixed(2)),
+      trackSpacingKm: parseFloat(dxLat.toFixed(2)),
+      isSeamlessCoverage: w >= dxLat
+    };
+  }
+
+  /**
+   * Calculate orbital period and daily ground track repeat cycles (revolutions per sol).
+   * T = 2 * pi * sqrt( a^3 / mu )
+   * N_sol = P_sol / T
+   * @param {number} semiMajorAxisKm - Orbit semi-major axis in km (e.g. 3645 km for MRO)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{periodMinutes: number, periodHours: number, revolutionsPerSol: number, groundTrackEquatorialDriftDeg: number}}
+   */
+  static computeOrbitPeriodAndRevolutionsPerSol(semiMajorAxisKm, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const solSec = (TrajectoryEngine.ORBITS[bKey] && TrajectoryEngine.ORBITS[bKey].rotationPeriodSec) || 88775.244;
+
+    const a = Math.max(100.0, semiMajorAxisKm);
+    const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(a, 3) / mu);
+    const periodMin = periodSec / 60.0;
+    const periodH = periodSec / 3600.0;
+
+    const revsPerSol = solSec / periodSec;
+    // Longitudinal shift of successive ground tracks at equator (degrees West per rev):
+    const driftDeg = (periodSec / solSec) * 360.0;
+
+    return {
+      periodMinutes: parseFloat(periodMin.toFixed(2)),
+      periodHours: parseFloat(periodH.toFixed(3)),
+      revolutionsPerSol: parseFloat(revsPerSol.toFixed(3)),
+      groundTrackEquatorialDriftDeg: parseFloat(driftDeg.toFixed(3))
+    };
+  }
 }
 
 
