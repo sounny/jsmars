@@ -7632,6 +7632,34 @@ describe('Hydrostatic Pressure Profile & Acoustic Sound Speed (MCDEngine)', () =
     });
 });
 
+describe('SHARAD Fresnel Footprint & Power Reflection Loss (RadarSounderEngine)', () => {
+    it('should calculate unfocused First Fresnel Zone radius and footprint diameter', () => {
+        // SHARAD on MRO at h = 300 km, f = 20 MHz (lambda = 14.990 m):
+        // r_fresnel = sqrt( 14.990 * 300000 / 2 ) = sqrt( 2248500 ) = 1499.5 m (~1.50 km)
+        // Footprint diameter = 2.999 km (~3.0 km)
+        const sharad = RadarSounderEngine.computeRadarFirstFresnelZoneRadius(300.0, 20.0);
+        expect(sharad.wavelengthMeters).to.be.closeTo(14.99, 0.01);
+        expect(sharad.fresnelRadiusMeters).to.be.closeTo(1499.5, 1.0);
+        expect(sharad.fresnelDiameterKm).to.be.closeTo(2.999, 0.01);
+    });
+
+    it('should calculate normal-incidence Fresnel power reflection loss across planetary materials', () => {
+        // Pure water ice cap (eps_r = 3.15, n = 1.7748):
+        // r_field = (1.7748 - 1) / (1.7748 + 1) = 0.7748 / 2.7748 = 0.2792
+        // R_pwr = (0.2792)^2 = 0.0780 (7.80% reflection) -> Loss = 10 * log10(0.0780) = -11.08 dB
+        const ice = RadarSounderEngine.computeRadarSurfacePowerReflectionLoss(3.15);
+        expect(ice.powerReflectionCoeff).to.be.closeTo(0.0780, 0.001);
+        expect(ice.reflectionLossDb).to.be.closeTo(-11.08, 0.05);
+        expect(ice.powerTransmissionCoeff).to.be.closeTo(0.9220, 0.001);
+
+        // Volcanic basalt rock surface (eps_r = 7.50, n = 2.7386):
+        // r_field = 1.7386 / 3.7386 = 0.4650 -> R_pwr = 0.2163 (21.63%) -> Loss = -6.65 dB
+        const basalt = RadarSounderEngine.computeRadarSurfacePowerReflectionLoss(7.50);
+        expect(basalt.powerReflectionCoeff).to.be.closeTo(0.2163, 0.001);
+        expect(basalt.reflectionLossDb).to.be.closeTo(-6.65, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

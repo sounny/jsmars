@@ -1758,6 +1758,54 @@ export class RadarSounderEngine {
       mediumWavelengthMeters: parseFloat((RadarSounderEngine.C / (20e6 * n)).toFixed(3)) // for 20 MHz reference
     };
   }
+
+  // --- Fresnel Zone Footprint & Normal-Incidence Power Reflection ---
+
+  /**
+   * Calculate unfocused First Fresnel Zone radius and diameter on the planetary surface.
+   * lambda = c / f
+   * r_fresnel = sqrt( (lambda * h) / 2 )
+   * @param {number} spacecraftAltitudeKm - Spacecraft altitude above surface h in km (e.g. 250 - 320 km for MRO)
+   * @param {number} [radarFrequencyMhz=20.0] - Carrier frequency in MHz (20 MHz for SHARAD, 4 MHz for MARSIS)
+   * @returns {{wavelengthMeters: number, fresnelRadiusMeters: number, fresnelDiameterKm: number}}
+   */
+  static computeRadarFirstFresnelZoneRadius(spacecraftAltitudeKm, radarFrequencyMhz = 20.0) {
+    const h = Math.max(10.0, spacecraftAltitudeKm) * 1000.0; // meters
+    const f = Math.max(0.1, radarFrequencyMhz) * 1e6; // Hz
+
+    const lambda = RadarSounderEngine.C / f; // meters
+    const rFresnel = Math.sqrt((lambda * h) / 2.0);
+    const dFresnelKm = (2.0 * rFresnel) / 1000.0;
+
+    return {
+      wavelengthMeters: parseFloat(lambda.toFixed(3)),
+      fresnelRadiusMeters: parseFloat(rFresnel.toFixed(1)),
+      fresnelDiameterKm: parseFloat(dFresnelKm.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate normal-incidence Fresnel power reflection coefficient and reflection loss in decibels.
+   * R_pwr = ( (sqrt(eps_r) - 1) / (sqrt(eps_r) + 1) )^2
+   * Loss_dB = 10 * log10(R_pwr)
+   * @param {number} dielectricPermittivityEpsilon - Real relative permittivity (e.g. 3.15 for ice, 7.5 for basalt)
+   * @returns {{powerReflectionCoeff: number, reflectionLossDb: number, powerTransmissionCoeff: number}}
+   */
+  static computeRadarSurfacePowerReflectionLoss(dielectricPermittivityEpsilon) {
+    const er = Math.max(1.0, dielectricPermittivityEpsilon);
+    const n = Math.sqrt(er);
+
+    const rField = (n - 1.0) / (n + 1.0);
+    const rPwr = rField * rField;
+    const lossDb = rPwr > 0 ? 10.0 * Math.log10(rPwr) : -99.0;
+    const transPwr = 1.0 - rPwr;
+
+    return {
+      powerReflectionCoeff: parseFloat(rPwr.toFixed(4)),
+      reflectionLossDb: parseFloat(lossDb.toFixed(2)),
+      powerTransmissionCoeff: parseFloat(transPwr.toFixed(4))
+    };
+  }
 }
 
 
