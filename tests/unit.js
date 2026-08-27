@@ -7182,6 +7182,46 @@ describe('J2 Planetary Oblateness Perturbations & Sun-Synchronous Inclination (T
     });
 });
 
+describe('Solar Zenith Angle & Diurnal Solar Flux (MarsTime)', () => {
+    it('should calculate solar zenith angle and classify day/night/twilight on Mars', () => {
+        // High noon at subsolar point (lat = 0°, Ls = 0° vernal equinox, LTST = 12.0):
+        // delta = 0°, h = 0° -> cos(theta_z) = 1.0 -> zenith = 0.0°, elevation = 90.0° (overhead sun)
+        const noon = MarsTime.computeMartianSolarZenithAndElevation(0.0, 0.0, 12.0, 25.19);
+        expect(noon.zenithAngleDeg).to.equal(0.0);
+        expect(noon.elevationAngleDeg).to.equal(90.0);
+        expect(noon.isDaylight).to.be.true;
+        expect(noon.isTwilight).to.be.false;
+
+        // Midnight at equator (LTST = 0.0): h = 180° -> cos(theta_z) = -1.0 -> zenith = 180.0°, elevation = -90.0°
+        const midnight = MarsTime.computeMartianSolarZenithAndElevation(0.0, 0.0, 0.0, 25.19);
+        expect(midnight.zenithAngleDeg).to.equal(180.0);
+        expect(midnight.elevationAngleDeg).to.equal(-90.0);
+        expect(midnight.isDaylight).to.be.false;
+
+        // Dusk twilight at equator (LTST = 18.4): elevation = -6.0° (civil twilight)
+        const dusk = MarsTime.computeMartianSolarZenithAndElevation(0.0, 0.0, 18.4, 25.19);
+        expect(dusk.elevationAngleDeg).to.be.closeTo(-6.0, 0.5);
+        expect(dusk.isTwilight).to.be.true;
+    });
+
+    it('should compute top-of-atmosphere insolation and direct solar flux factoring in eccentricity', () => {
+        // Mars at perihelion (Ls = 251°, r_sun = a * (1 - e) = 1.52368 * 0.9066 = 1.3813 AU):
+        // TOA Insolation S = 1361 / (1.3813)^2 = 1361 / 1.9080 = 713.3 W/m^2
+        const peri = MarsTime.computeMartianDayFractionAndSolarFlux(251.0, 0.0, 1361.0);
+        expect(peri.heliocentricDistanceAU).to.be.closeTo(1.3813, 0.005);
+        expect(peri.toaInsolationW_M2).to.be.closeTo(713.3, 2.0);
+        expect(peri.directFluxW_M2).to.be.closeTo(713.3, 2.0);
+
+        // Mars at aphelion (Ls = 71°, r_sun = a * (1 + e) = 1.52368 * 1.0934 = 1.6660 AU):
+        // TOA Insolation S = 1361 / (1.6660)^2 = 1361 / 2.7756 = 490.3 W/m^2 (~45% variation across year!)
+        const aph = MarsTime.computeMartianDayFractionAndSolarFlux(71.0, 60.0, 1361.0);
+        expect(aph.heliocentricDistanceAU).to.be.closeTo(1.6660, 0.005);
+        expect(aph.toaInsolationW_M2).to.be.closeTo(490.3, 2.0);
+        // At 60° zenith angle: cos(60) = 0.5 -> Direct flux = 490.3 * 0.5 = 245.15 W/m^2
+        expect(aph.directFluxW_M2).to.be.closeTo(245.15, 2.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

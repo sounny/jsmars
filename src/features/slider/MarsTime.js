@@ -1954,6 +1954,73 @@ export class MarsTime {
       declinationDeg: parseFloat(deltaDeg.toFixed(4))
     };
   }
+
+  // --- Solar Zenith Angle & Diurnal Solar Flux Solvers ---
+
+  /**
+   * Calculate exact solar zenith angle (theta_z) and solar elevation angle (a_sun) on Mars.
+   * cos(theta_z) = sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h)
+   * h = (LTST - 12) * 15°
+   * @param {number} latitudeDeg - Observer latitude in degrees
+   * @param {number} LsDeg - Solar Longitude in degrees (0 - 360)
+   * @param {number} [ltstHours=12.0] - Local True Solar Time (0 - 24 hours)
+   * @param {number} [obliquityDeg=25.19] - Mars axial tilt in degrees
+   * @returns {{zenithAngleDeg: number, elevationAngleDeg: number, isDaylight: boolean, isTwilight: boolean}}
+   */
+  static computeMartianSolarZenithAndElevation(latitudeDeg, LsDeg, ltstHours = 12.0, obliquityDeg = 25.19) {
+    const phiRad = (latitudeDeg * Math.PI) / 180.0;
+    const epsRad = (obliquityDeg * Math.PI) / 180.0;
+    const lsRad = (LsDeg * Math.PI) / 180.0;
+
+    const sinDelta = Math.sin(epsRad) * Math.sin(lsRad);
+    const deltaRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinDelta)));
+
+    const hRad = ((ltstHours - 12.0) * 15.0 * Math.PI) / 180.0;
+
+    const cosZenith = Math.sin(phiRad) * Math.sin(deltaRad) + Math.cos(phiRad) * Math.cos(deltaRad) * Math.cos(hRad);
+    const clampedCos = Math.max(-1.0, Math.min(1.0, cosZenith));
+    const zenithRad = Math.acos(clampedCos);
+    const zenithDeg = (zenithRad * 180.0) / Math.PI;
+    const elevationDeg = 90.0 - zenithDeg;
+
+    return {
+      zenithAngleDeg: parseFloat(zenithDeg.toFixed(3)),
+      elevationAngleDeg: parseFloat(elevationDeg.toFixed(3)),
+      isDaylight: elevationDeg > 0.0,
+      isTwilight: elevationDeg <= 0.0 && elevationDeg >= -12.0
+    };
+  }
+
+  /**
+   * Calculate top-of-atmosphere insolation and direct solar flux on Mars taking into account orbital eccentricity (e = 0.0934).
+   * r_sun = a * (1 - e^2) / ( 1 + e * cos(Ls - 251°) )
+   * S_mars = S_0 / r_sun^2  (W/m^2)
+   * Flux = S_mars * max(0, cos(theta_z))
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @param {number} solarZenithDeg - Solar zenith angle in degrees
+   * @param {number} [solarConstant1AU=1361.0] - Solar constant at 1 AU in W/m^2
+   * @returns {{heliocentricDistanceAU: number, toaInsolationW_M2: number, directFluxW_M2: number}}
+   */
+  static computeMartianDayFractionAndSolarFlux(LsDeg, solarZenithDeg, solarConstant1AU = 1361.0) {
+    const a = 1.52368; // AU semi-major axis of Mars
+    const e = 0.0934; // Orbital eccentricity of Mars
+    const lsPeri = 251.0; // Ls of perihelion
+
+    const dLsRad = ((LsDeg - lsPeri) * Math.PI) / 180.0;
+    const rSun = (a * (1.0 - e * e)) / (1.0 + e * Math.cos(dLsRad));
+
+    const sToa = solarConstant1AU / (rSun * rSun);
+
+    const zRad = (solarZenithDeg * Math.PI) / 180.0;
+    const cosZ = Math.max(0.0, Math.cos(zRad));
+    const flux = sToa * cosZ;
+
+    return {
+      heliocentricDistanceAU: parseFloat(rSun.toFixed(4)),
+      toaInsolationW_M2: parseFloat(sToa.toFixed(2)),
+      directFluxW_M2: parseFloat(flux.toFixed(2))
+    };
+  }
 }
 
 
