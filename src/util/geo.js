@@ -1487,6 +1487,114 @@ export function computeEquidistantCylindricalInverse(xKm, yKm, standardParallelD
   };
 }
 
+// --- Lambert Conformal Conic (LCC) Forward & Inverse Projections ---
+
+/**
+ * Calculate forward Lambert Conformal Conic (LCC) projection coordinates and scale factor.
+ * Ideal for mid-latitude east-west regional maps (e.g. Valles Marineris, Arabia Terra, landing corridors).
+ * @param {number} latDeg - Point latitude in degrees
+ * @param {number} lonDeg - Point longitude in degrees
+ * @param {number} stdParallel1Deg - First standard parallel phi1 in degrees
+ * @param {number} stdParallel2Deg - Second standard parallel phi2 in degrees
+ * @param {number} [originLatDeg=0.0] - Latitude of grid origin phi0 in degrees
+ * @param {number} [centerLonDeg=0.0] - Central meridian lambda0 in degrees
+ * @param {number} [radiusKm=3389.5] - Mean spherical planetary radius in km
+ * @returns {{xKm: number, yKm: number, scaleFactor: number, coneConstantN: number}}
+ */
+export function computeLambertConformalConicProjection(latDeg, lonDeg, stdParallel1Deg, stdParallel2Deg, originLatDeg = 0.0, centerLonDeg = 0.0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi = (latDeg * Math.PI) / 180.0;
+  const phi1 = (stdParallel1Deg * Math.PI) / 180.0;
+  const phi2 = (stdParallel2Deg * Math.PI) / 180.0;
+  const phi0 = (originLatDeg * Math.PI) / 180.0;
+
+  let dLon = lonDeg - centerLonDeg;
+  while (dLon > 180) dLon -= 360;
+  while (dLon < -180) dLon += 360;
+  const dLam = (dLon * Math.PI) / 180.0;
+
+  let n = 0;
+  if (Math.abs(phi1 - phi2) < 1e-6) {
+    n = Math.sin(phi1);
+  } else {
+    const numN = Math.log(Math.cos(phi1) / Math.cos(phi2));
+    const denN = Math.log(Math.tan(Math.PI / 4.0 + phi2 / 2.0) / Math.tan(Math.PI / 4.0 + phi1 / 2.0));
+    n = numN / denN;
+  }
+
+  const F = (Math.cos(phi1) * Math.pow(Math.tan(Math.PI / 4.0 + phi1 / 2.0), n)) / n;
+
+  const t = 1.0 / Math.tan(Math.PI / 4.0 + phi / 2.0);
+  const t0 = 1.0 / Math.tan(Math.PI / 4.0 + phi0 / 2.0);
+
+  const rho = R * F * Math.pow(t, n);
+  const rho0 = R * F * Math.pow(t0, n);
+
+  const theta = n * dLam;
+  const x = rho * Math.sin(theta);
+  const y = rho0 - rho * Math.cos(theta);
+
+  const cosPhi = Math.max(1e-6, Math.cos(phi));
+  const k = (rho * n) / (R * cosPhi);
+
+  return {
+    xKm: parseFloat(x.toFixed(3)),
+    yKm: parseFloat(y.toFixed(3)),
+    scaleFactor: parseFloat(k.toFixed(4)),
+    coneConstantN: parseFloat(n.toFixed(4))
+  };
+}
+
+/**
+ * Calculate inverse Lambert Conformal Conic (LCC) projection from planar coordinates back to (lat, lon).
+ * @param {number} xKm - Projected X coordinate in km
+ * @param {number} yKm - Projected Y coordinate in km
+ * @param {number} stdParallel1Deg - First standard parallel phi1 in degrees
+ * @param {number} stdParallel2Deg - Second standard parallel phi2 in degrees
+ * @param {number} [originLatDeg=0.0] - Latitude of grid origin phi0 in degrees
+ * @param {number} [centerLonDeg=0.0] - Central meridian lambda0 in degrees
+ * @param {number} [radiusKm=3389.5] - Mean spherical planetary radius in km
+ * @returns {{latDeg: number, lonDeg: number}}
+ */
+export function computeLambertConformalConicInverse(xKm, yKm, stdParallel1Deg, stdParallel2Deg, originLatDeg = 0.0, centerLonDeg = 0.0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi1 = (stdParallel1Deg * Math.PI) / 180.0;
+  const phi2 = (stdParallel2Deg * Math.PI) / 180.0;
+  const phi0 = (originLatDeg * Math.PI) / 180.0;
+
+  let n = 0;
+  if (Math.abs(phi1 - phi2) < 1e-6) {
+    n = Math.sin(phi1);
+  } else {
+    const numN = Math.log(Math.cos(phi1) / Math.cos(phi2));
+    const denN = Math.log(Math.tan(Math.PI / 4.0 + phi2 / 2.0) / Math.tan(Math.PI / 4.0 + phi1 / 2.0));
+    n = numN / denN;
+  }
+
+  const F = (Math.cos(phi1) * Math.pow(Math.tan(Math.PI / 4.0 + phi1 / 2.0), n)) / n;
+  const t0 = 1.0 / Math.tan(Math.PI / 4.0 + phi0 / 2.0);
+  const rho0 = R * F * Math.pow(t0, n);
+
+  const signN = n >= 0 ? 1 : -1;
+  const rhoPrime = Math.sqrt(xKm * xKm + (rho0 - yKm) * (rho0 - yKm)) * signN;
+  const thetaPrime = Math.atan2(xKm * signN, (rho0 - yKm) * signN);
+
+  const tPrime = Math.pow(rhoPrime / (R * F), 1.0 / n);
+  const phiPrime = 2.0 * Math.atan(1.0 / tPrime) - Math.PI / 2.0;
+
+  let latDeg = (phiPrime * 180.0) / Math.PI;
+  let lonDeg = centerLonDeg + (thetaPrime / n) * (180.0 / Math.PI);
+
+  latDeg = Math.max(-90.0, Math.min(90.0, latDeg));
+  while (lonDeg > 180) lonDeg -= 360;
+  while (lonDeg < -180) lonDeg += 360;
+
+  return {
+    latDeg: parseFloat(latDeg.toFixed(4)),
+    lonDeg: parseFloat(lonDeg.toFixed(4))
+  };
+}
+
 
 
 

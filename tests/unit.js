@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -7350,6 +7350,39 @@ describe('Atmospheric Transmittance & Dust Optical Depth Climatology (MCDEngine)
         // Regional dust storm active during perihelion: tau_vis > 2.0
         const stormActive = MCDEngine.estimateSeasonalDustOpticalDepth(255.0, true);
         expect(stormActive.visibleOpticalDepthTau).to.be.greaterThan(2.0);
+    });
+});
+
+describe('Lambert Conformal Conic (LCC) Projections (geo.js)', () => {
+    it('should project forward and maintain exact scale factor k = 1.0 at standard parallels', () => {
+        // Mars regional map with standard parallels phi1 = 15°N, phi2 = 45°N, origin at (0°, 0°)
+        // At standard parallel 1 (lat = 15°, lon = 0°):
+        const pt1 = computeLambertConformalConicProjection(15.0, 0.0, 15.0, 45.0, 0.0, 0.0);
+        expect(pt1.xKm).to.equal(0.0);
+        expect(pt1.scaleFactor).to.be.closeTo(1.0, 0.0001); // True scale at standard parallel!
+
+        // At standard parallel 2 (lat = 45°, lon = 0°):
+        const pt2 = computeLambertConformalConicProjection(45.0, 0.0, 15.0, 45.0, 0.0, 0.0);
+        expect(pt2.xKm).to.equal(0.0);
+        expect(pt2.scaleFactor).to.be.closeTo(1.0, 0.0001); // True scale at standard parallel!
+
+        // East offset point (lat = 30°, lon = 20°):
+        const ptEast = computeLambertConformalConicProjection(30.0, 20.0, 15.0, 45.0, 0.0, 0.0);
+        expect(ptEast.xKm).to.be.greaterThan(500.0);
+        expect(ptEast.coneConstantN).to.be.closeTo(0.507, 0.02);
+    });
+
+    it('should invert LCC planar coordinates back to original spherical lat/lon coordinates', () => {
+        const originLat = 10.0;
+        const centerLon = -45.0;
+        const p1 = 20.0;
+        const p2 = 50.0;
+
+        const forward = computeLambertConformalConicProjection(35.5, -30.2, p1, p2, originLat, centerLon);
+        const inv = computeLambertConformalConicInverse(forward.xKm, forward.yKm, p1, p2, originLat, centerLon);
+
+        expect(inv.latDeg).to.be.closeTo(35.5, 0.001);
+        expect(inv.lonDeg).to.be.closeTo(-30.2, 0.001);
     });
 });
 
