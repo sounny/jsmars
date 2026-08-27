@@ -6807,6 +6807,30 @@ describe('Stereo Photogrammetry B/H & Lambertian Radiance (ThreeDEngine)', () =>
     });
 });
 
+describe('CRISM Carbonate, Al-OH Phyllosilicate & High-Ca Pyroxene (BandMathEngine)', () => {
+    it('should calculate CRISM BD2500 carbonate and BD2200 Al-OH phyllosilicate absorption depths', () => {
+        // Nili Fossae Mg/Fe Carbonate outcrop: R_2430 = 0.30, R_2500 = 0.26 (carbonate band), R_2570 = 0.30
+        // Continuum = 0.30 -> BD2500 = 1 - (0.26 / 0.30) = 1 - 0.8667 = 0.1333 (> 0.02)
+        const carb = BandMathEngine.computeCRISMCarbonateBD2500(0.30, 0.26, 0.30);
+        expect(carb.bd2500).to.be.closeTo(0.1333, 0.001);
+        expect(carb.hasCarbonate).to.be.true;
+
+        // Mawrth Vallis Kaolinite / Montmorillonite (Al-OH): R_2140 = 0.32, R_2200 = 0.28, R_2250 = 0.32
+        // Continuum = 0.32 -> BD2200 = 1 - (0.28 / 0.32) = 1 - 0.875 = 0.125 (> 0.02)
+        const aloh = BandMathEngine.computeCRISMAlOHPhyllosilicateBD2200(0.32, 0.28, 0.32);
+        expect(aloh.bd2200).to.equal(0.125);
+        expect(aloh.hasAlOHPhyllosilicate).to.be.true;
+    });
+
+    it('should compute CRISM High-Calcium Pyroxene (Augite) HCPINDEX ferrous absorption', () => {
+        // Syrtis Major basaltic Augite: R_800 = 0.20, R_1000 = 0.16 (broad Fe2+ band), R_1300 = 0.24
+        // Continuum = 0.5 * (0.20 + 0.24) = 0.22 -> HCPINDEX = 1 - (0.16 / 0.22) = 1 - 0.7273 = 0.2727 (> 0.04)
+        const hcp = BandMathEngine.computeCRISMPyroxeneHCPINDEX(0.20, 0.16, 0.24);
+        expect(hcp.hcpIndex).to.be.closeTo(0.2727, 0.001);
+        expect(hcp.hasHighCalciumPyroxene).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

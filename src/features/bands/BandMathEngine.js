@@ -1990,6 +1990,62 @@ export class BandMathEngine {
       isAndesiticType2: sti < 0.0
     };
   }
+
+  // --- CRISM Carbonate, Al-OH Phyllosilicate & High-Calcium Pyroxene Solvers ---
+
+  /**
+   * Calculate CRISM Carbonate (Magnesite / Siderite / Calcite) 2.50 µm absorption band depth (BD2500).
+   * BD2500 = 1.0 - R_2500 / ( 0.5 * (R_2430 + R_2570) )
+   * @param {number} r2430 - Reflectance at 2430 nm
+   * @param {number} r2500 - Reflectance band center at 2500 nm
+   * @param {number} r2570 - Reflectance at 2570 nm
+   * @returns {{bd2500: number, hasCarbonate: boolean}}
+   */
+  static computeCRISMCarbonateBD2500(r2430, r2500, r2570) {
+    const continuum = 0.5 * (Math.max(1e-4, r2430) + Math.max(1e-4, r2570));
+    const depth = 1.0 - (r2500 / continuum);
+
+    return {
+      bd2500: parseFloat(depth.toFixed(4)),
+      hasCarbonate: depth > 0.02
+    };
+  }
+
+  /**
+   * Calculate CRISM Al-OH Phyllosilicate (Kaolinite / Montmorillonite / Beidellite) 2.20 µm band depth (BD2200).
+   * BD2200 = 1.0 - R_2200 / ( 0.5 * (R_2140 + R_2250) )
+   * @param {number} r2140 - Reflectance at 2140 nm
+   * @param {number} r2200 - Reflectance band center at 2200 nm
+   * @param {number} r2250 - Reflectance at 2250 nm
+   * @returns {{bd2200: number, hasAlOHPhyllosilicate: boolean}}
+   */
+  static computeCRISMAlOHPhyllosilicateBD2200(r2140, r2200, r2250) {
+    const continuum = 0.5 * (Math.max(1e-4, r2140) + Math.max(1e-4, r2250));
+    const depth = 1.0 - (r2200 / continuum);
+
+    return {
+      bd2200: parseFloat(depth.toFixed(4)),
+      hasAlOHPhyllosilicate: depth > 0.02
+    };
+  }
+
+  /**
+   * Calculate CRISM High-Calcium Pyroxene (Augite / Diopside) 1.0 µm ferrous iron absorption index (HCPINDEX).
+   * HCPINDEX = 1.0 - R_1000 / ( 0.5 * (R_800 + R_1300) )
+   * @param {number} r800 - Reflectance at 800 nm
+   * @param {number} r1000 - Reflectance band center at 1000 nm
+   * @param {number} r1300 - Reflectance at 1300 nm
+   * @returns {{hcpIndex: number, hasHighCalciumPyroxene: boolean}}
+   */
+  static computeCRISMPyroxeneHCPINDEX(r800, r1000, r1300) {
+    const continuum = 0.5 * (Math.max(1e-4, r800) + Math.max(1e-4, r1300));
+    const depth = 1.0 - (r1000 / continuum);
+
+    return {
+      hcpIndex: parseFloat(depth.toFixed(4)),
+      hasHighCalciumPyroxene: depth > 0.04
+    };
+  }
 }
 
 
