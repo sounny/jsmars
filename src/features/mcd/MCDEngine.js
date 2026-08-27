@@ -1948,13 +1948,85 @@ export class MCDEngine {
     return {
       soundSpeedMps: parseFloat(cs.toFixed(2)),
       soundSpeedKmh: parseFloat((cs * 3.6).toFixed(1)),
-      acousticImpedancePaS_M: parseFloat(Z.toFixed(4))
+      acousticImpedancePaS_M: parseFloat(Z.toFixed(3))
+    };
+  }
+
+  // --- MCD Dust Opacity & Atmospheric Solar Transmission Solvers ---
+
+  /**
+   * Calculate Mars Climate Database (MCD) column dust optical depth (tau_dust) normalized to 610 Pa.
+   * Based on Montabone et al. (2015, 2020) climatology & Global Dust Storm (GDS) modeling.
+   * @param {number} solarLongitudeDeg - Solar longitude Ls in degrees (0 - 360)
+   * @param {number} [latitudeDeg=0.0] - Latitude phi in degrees (-90 to +90)
+   * @param {string} [scenario='climatology'] - 'climatology', 'low_dust', or 'global_dust_storm'
+   * @returns {{tauDust: number, scenario: string, dustSeason: string, isStormActive: boolean}}
+   */
+  static computeMCDColumnDustOpticalDepth(solarLongitudeDeg, latitudeDeg = 0.0, scenario = 'climatology') {
+    let ls = solarLongitudeDeg % 360.0;
+    if (ls < 0) ls += 360.0;
+
+    const phiRad = (Math.min(90.0, Math.max(-90.0, latitudeDeg)) * Math.PI) / 180.0;
+    const latFactor = 1.0 - 0.35 * Math.sin(phiRad) * Math.sin(phiRad);
+
+    // Climatology base: tau = 0.10 at aphelion (Ls=70°), tau = 0.50 at perihelion (Ls=250°)
+    const lsRad = ((ls - 70.0) * Math.PI) / 180.0;
+    const tauBase = 0.10 + 0.20 * (1.0 - Math.cos(lsRad));
+
+    let tau = tauBase * latFactor;
+    let stormActive = false;
+
+    const scen = scenario.toLowerCase();
+    if (scen === 'low_dust') {
+      tau = 0.08 * latFactor;
+    } else if (scen === 'global_dust_storm' || scen === 'storm') {
+      // Planet-encircling Global Dust Storm peak centered at Ls = 210° (e.g. MY25/MY34 storms)
+      const dLs = ls - 210.0;
+      const sigmaLs = 25.0;
+      const stormTau = 3.50 * Math.exp(-(dLs * dLs) / (2.0 * sigmaLs * sigmaLs));
+      tau += stormTau;
+      stormActive = stormTau > 0.50;
+    }
+
+    let season = 'Clear / Aphelion Season';
+    if (ls >= 180.0 && ls <= 330.0) {
+      season = 'Dust Storm Season (Perihelion)';
+    }
+
+    return {
+      tauDust: parseFloat(tau.toFixed(3)),
+      scenario: scen,
+      dustSeason: season,
+      isStormActive: stormActive
+    };
+  }
+
+  /**
+   * Calculate atmospheric direct beam solar transmission and diffuse sky fraction.
+   * Direct: T_direct = exp( - tau / cos(theta_z) )
+   * Diffuse: T_diffuse = 0.5 * (1.0 - exp(-tau)) * cos(theta_z)
+   * @param {number} tauDust - Column dust optical depth
+   * @param {number} zenithAngleDeg - Solar zenith angle theta_z in degrees (0 - 90)
+   * @returns {{directTransmission: number, diffuseTransmission: number, totalTransmission: number, airMass: number}}
+   */
+  static computeAtmosphericSolarTransmission(tauDust, zenithAngleDeg) {
+    const tau = Math.max(0.0, tauDust);
+    const thetaZ = Math.min(89.5, Math.max(0.0, zenithAngleDeg));
+    const cosZ = Math.cos((thetaZ * Math.PI) / 180.0);
+    const airMass = 1.0 / cosZ;
+
+    const tDirect = Math.exp(-tau * airMass);
+    const tDiffuse = 0.5 * (1.0 - Math.exp(-tau)) * cosZ;
+    const tTotal = tDirect + tDiffuse;
+
+    return {
+      directTransmission: parseFloat(tDirect.toFixed(4)),
+      diffuseTransmission: parseFloat(tDiffuse.toFixed(4)),
+      totalTransmission: parseFloat(tTotal.toFixed(4)),
+      airMass: parseFloat(airMass.toFixed(2))
     };
   }
 }
-
-
-
 
 
 

@@ -7777,6 +7777,40 @@ describe('Linear Least-Squares Spectral Unmixing (BandMathEngine)', () => {
     });
 });
 
+describe('MCD Dust Opacity & Solar Transmission Solvers (MCDEngine)', () => {
+    it('should calculate seasonal column dust optical depth and global storm peaks', () => {
+        // Equatorial aphelion clear season (Ls = 70°, lat = 0°):
+        // tau = 0.10 + 0.20 * (1 - cos(0)) = 0.10
+        const aphelion = MCDEngine.computeMCDColumnDustOpticalDepth(70.0, 0.0, 'climatology');
+        expect(aphelion.tauDust).to.be.closeTo(0.10, 0.01);
+        expect(aphelion.dustSeason).to.include('Clear');
+        expect(aphelion.isStormActive).to.be.false;
+
+        // Perihelion dust storm peak (Ls = 250°, lat = 0°):
+        // tau = 0.10 + 0.20 * (1 - cos(180°)) = 0.10 + 0.40 = 0.50
+        const perihelion = MCDEngine.computeMCDColumnDustOpticalDepth(250.0, 0.0, 'climatology');
+        expect(perihelion.tauDust).to.be.closeTo(0.50, 0.01);
+        expect(perihelion.dustSeason).to.include('Dust Storm Season');
+
+        // Global Dust Storm scenario (Ls = 210° peak):
+        const gds = MCDEngine.computeMCDColumnDustOpticalDepth(210.0, 0.0, 'global_dust_storm');
+        expect(gds.tauDust).to.be.greaterThan(3.5);
+        expect(gds.isStormActive).to.be.true;
+    });
+
+    it('should calculate Beer-Lambert direct solar beam transmission and diffuse sky fraction', () => {
+        // Overhead sun (theta_z = 0° -> airMass = 1.0) in moderate dust (tau = 0.50):
+        // T_direct = exp(-0.50) = 0.6065
+        // T_diffuse = 0.5 * (1 - exp(-0.50)) * 1.0 = 0.5 * 0.3935 = 0.1967
+        // T_total = 0.8033
+        const trans = MCDEngine.computeAtmosphericSolarTransmission(0.50, 0.0);
+        expect(trans.directTransmission).to.be.closeTo(0.6065, 0.005);
+        expect(trans.diffuseTransmission).to.be.closeTo(0.1967, 0.005);
+        expect(trans.totalTransmission).to.be.closeTo(0.8033, 0.005);
+        expect(trans.airMass).to.equal(1.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
