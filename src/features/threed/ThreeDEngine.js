@@ -1504,6 +1504,72 @@ export class ThreeDEngine {
       isOppositionSpike: gDeg <= 5.0
     };
   }
+
+  // --- Hapke Photometric Multiple Scattering & Bidirectional Reflectance ---
+
+  /**
+   * Calculate Chandrasekhar / Hapke isotropic multiple-scattering H-function.
+   * H(mu, w) = ( 1 + 2*mu ) / ( 1 + 2*mu * sqrt(1 - w) )
+   * @param {number} cosAngleMu - Cosine of incidence or emission angle (0 to 1)
+   * @param {number} singleScatteringAlbedoW - Single scattering albedo w (0 to 1)
+   * @returns {number}
+   */
+  static computeHapkeMultipleScatteringHFunction(cosAngleMu, singleScatteringAlbedoW) {
+    const mu = Math.max(0.0, Math.min(1.0, cosAngleMu));
+    const w = Math.max(0.0, Math.min(0.9999, singleScatteringAlbedoW));
+
+    const gamma = Math.sqrt(1.0 - w);
+    const H = (1.0 + 2.0 * mu) / (1.0 + 2.0 * mu * gamma);
+
+    return parseFloat(H.toFixed(4));
+  }
+
+  /**
+   * Calculate Hapke Bidirectional Reflectance Factor (I/F) for planetary surfaces.
+   * I/F = ( w / (4 * (mu0 + mu)) ) * [ p(g) * B(g) + H(mu0, w) * H(mu, w) - 1 ]
+   * @param {number} incidenceDeg - Solar incidence angle in degrees
+   * @param {number} emissionDeg - Observer emission angle in degrees
+   * @param {number} phaseAngleDeg - Solar phase angle in degrees
+   * @param {number} [singleScatteringAlbedoW=0.5] - Single scattering albedo (0.2 for dark basalt, 0.6 for bright dust)
+   * @param {number} [asymmetryXi=-0.2] - Henyey-Greenstein asymmetry factor (-1 backscatter to +1 forward scatter)
+   * @param {number} [amplitudeB0=1.0] - Opposition surge amplitude parameter
+   * @param {number} [widthH=0.05] - Opposition surge width parameter
+   * @returns {{reflectanceIOF: number, singleScatteringPart: number, multipleScatteringPart: number}}
+   */
+  static computeHapkeBidirectionalReflectance(incidenceDeg, emissionDeg, phaseAngleDeg, singleScatteringAlbedoW = 0.5, asymmetryXi = -0.2, amplitudeB0 = 1.0, widthH = 0.05) {
+    const iRad = (Math.min(89.9, Math.max(0.0, incidenceDeg)) * Math.PI) / 180.0;
+    const eRad = (Math.min(89.9, Math.max(0.0, emissionDeg)) * Math.PI) / 180.0;
+    const gRad = (Math.min(180.0, Math.max(0.0, phaseAngleDeg)) * Math.PI) / 180.0;
+
+    const mu0 = Math.cos(iRad);
+    const mu = Math.cos(eRad);
+    const w = Math.max(0.01, Math.min(0.9999, singleScatteringAlbedoW));
+    const xi = Math.max(-0.99, Math.min(0.99, asymmetryXi));
+
+    // Henyey-Greenstein single-particle phase function p(g)
+    const cosG = Math.cos(gRad);
+    const denom = Math.pow(1.0 + 2.0 * xi * cosG + xi * xi, 1.5);
+    const pg = (1.0 - xi * xi) / Math.max(1e-6, denom);
+
+    // Opposition surge factor B(g)
+    const tanHalfG = Math.tan(gRad / 2.0);
+    const bg = 1.0 + amplitudeB0 / (1.0 + (1.0 / Math.max(1e-4, widthH)) * tanHalfG);
+
+    // Multiple scattering H-functions
+    const H0 = ThreeDEngine.computeHapkeMultipleScatteringHFunction(mu0, w);
+    const H = ThreeDEngine.computeHapkeMultipleScatteringHFunction(mu, w);
+
+    const singlePart = pg * bg;
+    const multiPart = (H0 * H) - 1.0;
+
+    const iof = (w / (4.0 * (mu0 + mu))) * (singlePart + multiPart);
+
+    return {
+      reflectanceIOF: parseFloat(iof.toFixed(5)),
+      singleScatteringPart: parseFloat(singlePart.toFixed(4)),
+      multipleScatteringPart: parseFloat(multiPart.toFixed(4))
+    };
+  }
 }
 
 

@@ -7413,6 +7413,32 @@ describe('CRISM Silica & Carbonate Mineralogy Indices (BandMathEngine)', () => {
     });
 });
 
+describe('Hapke Photometric Bidirectional Reflectance (ThreeDEngine)', () => {
+    it('should calculate multiple-scattering Chandrasekhar H-function', () => {
+        // Pure absorbing medium (w = 0): gamma = 1 -> H(mu, 0) = (1 + 2mu)/(1 + 2mu) = 1.0 identically
+        const hZero = ThreeDEngine.computeHapkeMultipleScatteringHFunction(0.8, 0.0);
+        expect(hZero).to.equal(1.0);
+
+        // High scattering medium (w = 0.90, gamma = sqrt(0.1) = 0.3162, mu = 1.0):
+        // H(1, 0.90) = (1 + 2) / (1 + 2 * 0.3162) = 3 / 1.63245 = 1.8377
+        const hScat = ThreeDEngine.computeHapkeMultipleScatteringHFunction(1.0, 0.90);
+        expect(hScat).to.be.closeTo(1.8377, 0.005);
+    });
+
+    it('should calculate complete Hapke I/F bidirectional reflectance factor', () => {
+        // Mars bright dust regolith (w = 0.65, xi = -0.25, B0 = 1.0, h = 0.05) at normal incidence/emission (i = 0°, e = 0°, g = 0°):
+        // mu0 = 1.0, mu = 1.0 -> opposition spike surge B(0) = 2.0
+        const opposition = ThreeDEngine.computeHapkeBidirectionalReflectance(0.0, 0.0, 0.0, 0.65, -0.25, 1.0, 0.05);
+        expect(opposition.reflectanceIOF).to.be.greaterThan(0.25);
+        expect(opposition.singleScatteringPart).to.be.greaterThan(1.5);
+        expect(opposition.multipleScatteringPart).to.be.greaterThan(0.5);
+
+        // Oblique geometry (i = 60°, e = 45°, g = 30°):
+        const oblique = ThreeDEngine.computeHapkeBidirectionalReflectance(60.0, 45.0, 30.0, 0.50, -0.20, 1.0, 0.05);
+        expect(oblique.reflectanceIOF).to.be.closeTo(0.242, 0.02);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
