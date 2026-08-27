@@ -879,6 +879,7 @@ export class MarsTime {
 
     return {
       trueAnomalyDeg: parseFloat(nuDeg.toFixed(4)),
+      trueAnomalyRad: parseFloat(nuRad.toFixed(5)),
       radialDistanceAU: parseFloat(rAU.toFixed(5)),
       radialDistanceKm: parseFloat(rKm.toFixed(0))
     };
@@ -1718,6 +1719,76 @@ export class MarsTime {
     return {
       rightAscensionDeg: parseFloat(raDeg.toFixed(3)),
       rightAscensionHours: parseFloat(raHours.toFixed(4))
+    };
+  }
+
+  // --- Newton-Raphson Kepler Solver & Mars Orbit Solar Flux Dilution ---
+
+  /**
+   * Solve Kepler's equation M = E - e*sin(E) for eccentric anomaly E using Newton-Raphson iteration.
+   * @param {number} meanAnomalyDeg - Mean anomaly M in degrees (0 to 360)
+   * @param {number} [eccentricity=0.0934] - Orbit eccentricity e (0.0934 for Mars)
+   * @param {number} [maxIterations=10] - Maximum iterations
+   * @param {number} [tolerance=1e-7] - Convergence tolerance in radians
+   * @returns {{eccentricAnomalyDeg: number, eccentricAnomalyRad: number, iterations: number, hasConverged: boolean}}
+   */
+  static solveKeplerEccentricAnomaly(meanAnomalyDeg, eccentricity = 0.0934, maxIterations = 10, tolerance = 1e-7) {
+    const e = Math.max(0, Math.min(0.99, eccentricity));
+    let MRad = (meanAnomalyDeg * Math.PI) / 180.0;
+    while (MRad < 0) MRad += 2.0 * Math.PI;
+    while (MRad >= 2.0 * Math.PI) MRad -= 2.0 * Math.PI;
+
+    // Initial guess E0
+    let E = MRad + e * Math.sin(MRad);
+    let iter = 0;
+    let delta = 1.0;
+
+    while (Math.abs(delta) > tolerance && iter < maxIterations) {
+      const f = E - e * Math.sin(E) - MRad;
+      const fPrime = 1.0 - e * Math.cos(E);
+      delta = f / fPrime;
+      E -= delta;
+      iter++;
+    }
+
+    const EDeg = (E * 180.0) / Math.PI;
+
+    return {
+      eccentricAnomalyDeg: parseFloat(EDeg.toFixed(5)),
+      eccentricAnomalyRad: parseFloat(E.toFixed(6)),
+      iterations: iter,
+      hasConverged: Math.abs(delta) <= tolerance
+    };
+  }
+
+  /**
+   * Calculate Mars-Sun radial distance in AU and solar flux dilution ratio from Solar Longitude (Ls).
+   * r = a*(1 - e^2) / (1 + e*cos(Ls - Ls_p))
+   * S_ratio = 1 / r^2
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @param {number} [semiMajorAxisAU=1.52368] - Mars semi-major axis in AU
+   * @param {number} [eccentricity=0.0934] - Orbit eccentricity
+   * @param {number} [perihelionLsDeg=250.99] - Ls at perihelion in degrees
+   * @returns {{distanceAU: number, solarFluxRatio: number, isNearPerihelion: boolean, isNearAphelion: boolean}}
+   */
+  static computeMarsSolarDistanceAndDilutionFromLs(LsDeg, semiMajorAxisAU = 1.52368, eccentricity = 0.0934, perihelionLsDeg = 250.99) {
+    const a = Math.max(0.1, semiMajorAxisAU);
+    const e = Math.max(0, Math.min(0.5, eccentricity));
+
+    let nuDeg = LsDeg - perihelionLsDeg;
+    while (nuDeg < 0) nuDeg += 360;
+    while (nuDeg >= 360) nuDeg -= 360;
+    const nuRad = (nuDeg * Math.PI) / 180.0;
+
+    const p = a * (1.0 - e * e);
+    const r = p / (1.0 + e * Math.cos(nuRad));
+    const fluxRatio = 1.0 / (r * r);
+
+    return {
+      distanceAU: parseFloat(r.toFixed(4)),
+      solarFluxRatio: parseFloat(fluxRatio.toFixed(4)),
+      isNearPerihelion: Math.abs(nuDeg) < 30 || Math.abs(nuDeg - 360) < 30,
+      isNearAphelion: Math.abs(nuDeg - 180) < 30
     };
   }
 }

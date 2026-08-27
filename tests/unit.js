@@ -6229,6 +6229,41 @@ describe('3D Camera Footprint, Parallax Relief & ENU Normal Vectors (ThreeDEngin
     });
 });
 
+describe('Newton-Raphson Kepler Solver & Orbit Solar Flux Dilution (MarsTime)', () => {
+    it('should iteratively solve Kepler equation for eccentric and true anomaly', () => {
+        // At mean anomaly M = 0°: E = 0°, nu = 0°
+        const kep0 = MarsTime.solveKeplerEccentricAnomaly(0.0, 0.0934);
+        expect(kep0.eccentricAnomalyDeg).to.equal(0.0);
+        expect(kep0.hasConverged).to.be.true;
+
+        // At mean anomaly M = 90°: M = 1.570796 rad, e = 0.0934 -> E ~ 95.32°
+        const kep90 = MarsTime.solveKeplerEccentricAnomaly(90.0, 0.0934);
+        expect(kep90.eccentricAnomalyDeg).to.be.closeTo(95.32, 0.1);
+        expect(kep90.hasConverged).to.be.true;
+
+        // True anomaly from E = 95.32°: tan(nu/2) = sqrt(1.0934/0.9066)*tan(47.66°) = 1.0978 * 1.0976 = 1.205 -> nu ~ 100.6°
+        const nu = MarsTime.computeTrueAnomalyFromEccentricAnomaly(kep90.eccentricAnomalyDeg, 0.0934);
+        expect(nu.trueAnomalyDeg).to.be.closeTo(100.6, 0.2);
+    });
+
+    it('should compute Mars-Sun radial distance and solar flux dilution ratio from Ls', () => {
+        // At perihelion (Ls = 250.99°): r = a*(1 - e) = 1.52368 * (1 - 0.0934) = 1.52368 * 0.9066 = 1.3814 AU
+        // Solar flux ratio = 1 / 1.38137^2 = 0.5241 (vs 1.0 at 1 AU Earth)
+        const peri = MarsTime.computeMarsSolarDistanceAndDilutionFromLs(250.99, 1.52368, 0.0934, 250.99);
+        expect(peri.distanceAU).to.be.closeTo(1.3814, 0.001);
+        expect(peri.solarFluxRatio).to.be.closeTo(0.5241, 0.001);
+        expect(peri.isNearPerihelion).to.be.true;
+        expect(peri.isNearAphelion).to.be.false;
+
+        // At aphelion (Ls = 250.99 + 180 = 70.99°): r = a*(1 + e) = 1.52368 * 1.0934 = 1.6660 AU
+        // Solar flux ratio = 1 / 1.666^2 = 0.3603
+        const aph = MarsTime.computeMarsSolarDistanceAndDilutionFromLs(70.99, 1.52368, 0.0934, 250.99);
+        expect(aph.distanceAU).to.be.closeTo(1.6660, 0.001);
+        expect(aph.solarFluxRatio).to.be.closeTo(0.3603, 0.001);
+        expect(aph.isNearAphelion).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
