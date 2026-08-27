@@ -5918,6 +5918,42 @@ describe('Crater Differential Frequency, R-Plot & Hartmann Isochron (CSFDEngine)
     });
 });
 
+describe('3D Ellipsoid Geodesy, Ray Picking & Horizon Dip (ThreeDEngine)', () => {
+    it('should compute 3D Cartesian coordinates on oblate Mars ellipsoid with elevation', () => {
+        // Equator at prime meridian (lat = 0, lon = 0), elevation = 0 -> X = 3396.19 km, Y = 0, Z = 0
+        const eqPrime = ThreeDEngine.computeTriaxialEllipsoidCartesian3D(0.0, 0.0, 0, 3396.19, 3396.19, 3376.20);
+        expect(eqPrime.xKm).to.equal(3396.19);
+        expect(eqPrime.yKm).to.equal(0);
+        expect(eqPrime.zKm).to.equal(0);
+
+        // North Pole (lat = 90, lon = 0) with 2000m ice cap -> Z = 3376.20 + 2.0 = 3378.20 km
+        const northPole = ThreeDEngine.computeTriaxialEllipsoidCartesian3D(90.0, 0.0, 2000, 3396.19, 3396.19, 3376.20);
+        expect(northPole.xKm).to.be.closeTo(0.0, 0.01);
+        expect(northPole.zKm).to.equal(3378.20);
+    });
+
+    it('should calculate 3D ray-ellipsoid mouse picking intersection and horizon dipping angle', () => {
+        // Ray from camera at (0, 0, 4000 km) pointing down -Z towards Mars center (0, 0, 0)
+        // Polar radius c = 3376.20 km -> Hit point should be at Z = +3376.20 km, hitDistance = 4000 - 3376.20 = 623.80 km
+        const hit = ThreeDEngine.computeRayEllipsoidIntersection(
+            { x: 0, y: 0, z: 4000.0 },
+            { x: 0, y: 0, z: -1.0 },
+            3396.19,
+            3376.20
+        );
+        expect(hit.hasHit).to.be.true;
+        expect(hit.hitDistanceKm).to.equal(623.8);
+        expect(hit.hitPoint.z).to.equal(3376.2);
+
+        // Horizon dip from 300 km orbit around Mars (R = 3389.5 km):
+        // cos(theta) = 3389.5 / (3389.5 + 300) = 3389.5 / 3689.5 = 0.918688 -> theta = 23.266°
+        // d_horizon = sqrt(2 * 3389.5 * 300 + 300^2) = sqrt(2033700 + 90000) = sqrt(2123700) = 1457.29 km
+        const horizon = ThreeDEngine.computeHorizonDipAngle(300.0, 3389.5);
+        expect(horizon.horizonDipAngleDeg).to.be.closeTo(23.266, 0.01);
+        expect(horizon.horizonDistanceKm).to.be.closeTo(1457.29, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

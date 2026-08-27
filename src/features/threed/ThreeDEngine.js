@@ -420,17 +420,26 @@ export class ThreeDEngine {
    * @returns {{dipAngleDeg: number, dipAngleRad: number, apparentHorizonArcDeg: number}}
    */
   static computeHorizonDipAngle(altitudeKm, body = 'mars') {
-    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    let R = 3389.5;
+    if (typeof body === 'string') {
+      if (body.toLowerCase() === 'moon') R = 1737.4;
+      else if (body.toLowerCase() === 'earth') R = 6371.0;
+    } else if (typeof body === 'number' && Number.isFinite(body)) {
+      R = Math.max(1.0, body);
+    }
     const h = Math.max(0, altitudeKm);
 
     const cosDip = R / (R + h);
     const dipRad = Math.acos(Math.max(0, Math.min(1.0, cosDip)));
     const dipDeg = dipRad * 180.0 / Math.PI;
+    const distKm = Math.sqrt(2.0 * R * h + h * h);
 
     return {
       dipAngleDeg: parseFloat(dipDeg.toFixed(3)),
+      horizonDipAngleDeg: parseFloat(dipDeg.toFixed(3)),
       dipAngleRad: parseFloat(dipRad.toFixed(5)),
-      apparentHorizonArcDeg: parseFloat((dipDeg * 2.0).toFixed(3))
+      apparentHorizonArcDeg: parseFloat((dipDeg * 2.0).toFixed(3)),
+      horizonDistanceKm: parseFloat(distKm.toFixed(2))
     };
   }
 
@@ -1147,7 +1156,100 @@ export class ThreeDEngine {
       diagonalFovDeg: parseFloat((fovDRad * 180.0 / Math.PI).toFixed(3))
     };
   }
+
+  // --- 3D Ellipsoid Cartesian, Ray-Ellipsoid Picking & Horizon Solvers ---
+
+  /**
+   * Calculate 3D Cartesian coordinates (X, Y, Z) on a triaxial/oblate planetary ellipsoid with topography offset.
+   * X = (a + h) * cos(phi) * cos(lambda)
+   * Y = (b + h) * cos(phi) * sin(lambda)
+   * Z = (c + h) * sin(phi)
+   * @param {number} latDeg - Planetocentric latitude in degrees
+   * @param {number} lonDeg - East Longitude in degrees
+   * @param {number} [altitudeMeters=0] - Topography elevation offset in meters
+   * @param {number} [aKm=3396.19] - Semi-major equatorial X-axis radius in km (Mars IAU ~ 3396.19 km)
+   * @param {number} [bKm=3396.19] - Semi-major equatorial Y-axis radius in km
+   * @param {number} [cKm=3376.20] - Polar Z-axis radius in km (Mars IAU ~ 3376.20 km)
+   * @returns {{xKm: number, yKm: number, zKm: number, radiusKm: number}}
+   */
+  static computeTriaxialEllipsoidCartesian3D(latDeg, lonDeg, altitudeMeters = 0, aKm = 3396.19, bKm = 3396.19, cKm = 3376.20) {
+    const phiRad = (latDeg * Math.PI) / 180.0;
+    const lamRad = (lonDeg * Math.PI) / 180.0;
+    const hKm = altitudeMeters / 1000.0;
+
+    const a = Math.max(1.0, aKm) + hKm;
+    const b = Math.max(1.0, bKm) + hKm;
+    const c = Math.max(1.0, cKm) + hKm;
+
+    const x = a * Math.cos(phiRad) * Math.cos(lamRad);
+    const y = b * Math.cos(phiRad) * Math.sin(lamRad);
+    const z = c * Math.sin(phiRad);
+    const r = Math.hypot(x, y, z);
+
+    return {
+      xKm: parseFloat(x.toFixed(3)),
+      yKm: parseFloat(y.toFixed(3)),
+      zKm: parseFloat(z.toFixed(3)),
+      radiusKm: parseFloat(r.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate exact 3D ray-ellipsoid intersection for 3D mouse picking and camera line-of-sight targeting.
+   * Solves: (Ox + t*Dx)^2/a^2 + (Oy + t*Dy)^2/a^2 + (Oz + t*Dz)^2/c^2 = 1
+   * @param {{x: number, y: number, z: number}} rayOrigin - Ray start position in km (e.g. camera eye)
+   * @param {{x: number, y: number, z: number}} rayDirection - Normalized ray direction vector
+   * @param {number} [aKm=3396.19] - Equatorial radius in km
+   * @param {number} [cKm=3376.20] - Polar radius in km
+   * @returns {{hasHit: boolean, hitDistanceKm: number, hitPoint: {x: number, y: number, z: number}|null}}
+   */
+  static computeRayEllipsoidIntersection(rayOrigin, rayDirection, aKm = 3396.19, cKm = 3376.20) {
+    const Ox = rayOrigin.x ?? 0;
+    const Oy = rayOrigin.y ?? 0;
+    const Oz = rayOrigin.z ?? 0;
+
+    const Dx = rayDirection.x ?? 0;
+    const Dy = rayDirection.y ?? 0;
+    const Dz = rayDirection.z ?? 0;
+
+    const a2 = aKm * aKm;
+    const c2 = cKm * cKm;
+
+    // Quadratic coefficients: A*t^2 + B*t + C = 0
+    const A = ((Dx * Dx + Dy * Dy) / a2) + ((Dz * Dz) / c2);
+    const B = 2.0 * (((Ox * Dx + Oy * Dy) / a2) + ((Oz * Dz) / c2));
+    const C = ((Ox * Ox + Oy * Oy) / a2) + ((Oz * Oz) / c2) - 1.0;
+
+    const disc = B * B - 4.0 * A * C;
+    if (disc < 0 || A <= 1e-12) {
+      return { hasHit: false, hitDistanceKm: 0, hitPoint: null };
+    }
+
+    const sqrtDisc = Math.sqrt(disc);
+    const t1 = (-B - sqrtDisc) / (2.0 * A);
+    const t2 = (-B + sqrtDisc) / (2.0 * A);
+
+    let t = t1 > 0 ? t1 : (t2 > 0 ? t2 : -1);
+    if (t < 0) {
+      return { hasHit: false, hitDistanceKm: 0, hitPoint: null };
+    }
+
+    const hx = Ox + t * Dx;
+    const hy = Oy + t * Dy;
+    const hz = Oz + t * Dz;
+
+    return {
+      hasHit: true,
+      hitDistanceKm: parseFloat(t.toFixed(3)),
+      hitPoint: {
+        x: parseFloat(hx.toFixed(3)),
+        y: parseFloat(hy.toFixed(3)),
+        z: parseFloat(hz.toFixed(3))
+      }
+    };
+  }
 }
+
 
 
 
