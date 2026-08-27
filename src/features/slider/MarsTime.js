@@ -1791,6 +1791,93 @@ export class MarsTime {
       isNearAphelion: Math.abs(nuDeg - 180) < 30
     };
   }
+
+  // --- Martian Sunrise/Sunset Times & Solar Noon Zenith Solvers ---
+
+  /**
+   * Calculate exact Martian sunrise, sunset Local True Solar Time (LTST) and daylight duration.
+   * sin(delta) = sin(obliquity) * sin(Ls)
+   * cos(H0) = -tan(phi) * tan(delta)
+   * LTST_rise = 12 - H0 / 15,  LTST_set = 12 + H0 / 15
+   * @param {number} latDeg - Point latitude in degrees (-90 to +90)
+   * @param {number} LsDeg - Solar Longitude in degrees (0 to 360)
+   * @param {number} [obliquityDeg=25.19] - Mars axial tilt in degrees
+   * @returns {{sunriseLTST: number, sunsetLTST: number, daylightHours: number, isPolarDay: boolean, isPolarNight: boolean}}
+   */
+  static computeMartianSunriseSunsetTimes(latDeg, LsDeg, obliquityDeg = 25.19) {
+    const phiRad = (latDeg * Math.PI) / 180.0;
+    const epsRad = (obliquityDeg * Math.PI) / 180.0;
+    const lsRad = (LsDeg * Math.PI) / 180.0;
+
+    const sinDelta = Math.sin(epsRad) * Math.sin(lsRad);
+    const deltaRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinDelta)));
+
+    const tanPhi = Math.tan(phiRad);
+    const tanDelta = Math.tan(deltaRad);
+    const val = -tanPhi * tanDelta;
+
+    // Check polar day / polar night
+    if (val <= -1.0) {
+      // Midnight Sun / 24-hour daylight
+      return {
+        sunriseLTST: 0.0,
+        sunsetLTST: 24.0,
+        daylightHours: 24.0,
+        isPolarDay: true,
+        isPolarNight: false
+      };
+    } else if (val >= 1.0) {
+      // Polar Night / 0-hour daylight
+      return {
+        sunriseLTST: 0.0,
+        sunsetLTST: 0.0,
+        daylightHours: 0.0,
+        isPolarDay: false,
+        isPolarNight: true
+      };
+    }
+
+    const H0Rad = Math.acos(val);
+    const H0Deg = (H0Rad * 180.0) / Math.PI;
+
+    const riseLTST = 12.0 - H0Deg / 15.0;
+    const setLTST = 12.0 + H0Deg / 15.0;
+    const daylight = (2.0 * H0Deg) / 15.0;
+
+    return {
+      sunriseLTST: parseFloat(riseLTST.toFixed(3)),
+      sunsetLTST: parseFloat(setLTST.toFixed(3)),
+      daylightHours: parseFloat(daylight.toFixed(3)),
+      isPolarDay: false,
+      isPolarNight: false
+    };
+  }
+
+  /**
+   * Calculate minimum solar zenith angle (maximum solar elevation) at Martian local noon (LTST = 12:00).
+   * Z_noon = | phi - delta |,  alpha_noon = 90 - Z_noon
+   * @param {number} latDeg - Point latitude in degrees
+   * @param {number} LsDeg - Solar Longitude in degrees
+   * @param {number} [obliquityDeg=25.19] - Mars axial tilt in degrees
+   * @returns {{noonZenithDeg: number, noonElevationDeg: number, isSubsolarPoint: boolean}}
+   */
+  static computeMartianNoonZenithAngle(latDeg, LsDeg, obliquityDeg = 25.19) {
+    const epsRad = (obliquityDeg * Math.PI) / 180.0;
+    const lsRad = (LsDeg * Math.PI) / 180.0;
+
+    const sinDelta = Math.sin(epsRad) * Math.sin(lsRad);
+    const deltaRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinDelta)));
+    const deltaDeg = (deltaRad * 180.0) / Math.PI;
+
+    const zNoon = Math.abs(latDeg - deltaDeg);
+    const elevNoon = 90.0 - zNoon;
+
+    return {
+      noonZenithDeg: parseFloat(zNoon.toFixed(3)),
+      noonElevationDeg: parseFloat(elevNoon.toFixed(3)),
+      isSubsolarPoint: zNoon < 0.1
+    };
+  }
 }
 
 

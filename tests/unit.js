@@ -6528,6 +6528,43 @@ describe('Orthographic Globe Projection & Inverse Transforms (geo)', () => {
     });
 });
 
+describe('Martian Sunrise, Sunset & Solar Noon Zenith Solvers (MarsTime)', () => {
+    it('should calculate Martian sunrise/sunset LTST, daylight duration and polar day/night', () => {
+        // At vernal equinox (Ls = 0°): delta = 0°
+        // At equator (lat = 0°): cos(H0) = 0 -> H0 = 90° -> sunrise = 6:00, sunset = 18:00, daylight = 12h
+        const eq = MarsTime.computeMartianSunriseSunsetTimes(0.0, 0.0);
+        expect(eq.sunriseLTST).to.equal(6.0);
+        expect(eq.sunsetLTST).to.equal(18.0);
+        expect(eq.daylightHours).to.equal(12.0);
+        expect(eq.isPolarDay).to.be.false;
+        expect(eq.isPolarNight).to.be.false;
+
+        // North polar summer solstice (Ls = 90°, delta = +25.19°): at North Pole (lat = +80°) -> Midnight Sun / Polar Day (24h daylight)
+        const northSummer = MarsTime.computeMartianSunriseSunsetTimes(80.0, 90.0);
+        expect(northSummer.isPolarDay).to.be.true;
+        expect(northSummer.daylightHours).to.equal(24.0);
+
+        // South polar winter (Ls = 90°): at South Pole (lat = -80°) -> Polar Night (0h daylight)
+        const southWinter = MarsTime.computeMartianSunriseSunsetTimes(-80.0, 90.0);
+        expect(southWinter.isPolarNight).to.be.true;
+        expect(southWinter.daylightHours).to.equal(0.0);
+    });
+
+    it('should compute solar noon zenith and elevation angles', () => {
+        // Subsolar point at equator during equinox (Ls = 0°, lat = 0°): Z_noon = 0°, alpha_noon = 90° (overhead)
+        const sub = MarsTime.computeMartianNoonZenithAngle(0.0, 0.0);
+        expect(sub.noonZenithDeg).to.equal(0.0);
+        expect(sub.noonElevationDeg).to.equal(90.0);
+        expect(sub.isSubsolarPoint).to.be.true;
+
+        // Gale Crater (lat = -4.6°) at Ls = 90° (delta = +25.19°):
+        // Z_noon = |-4.6 - 25.19| = 29.79° -> alpha_noon = 60.21°
+        const gale = MarsTime.computeMartianNoonZenithAngle(-4.6, 90.0);
+        expect(gale.noonZenithDeg).to.be.closeTo(29.79, 0.05);
+        expect(gale.noonElevationDeg).to.be.closeTo(60.21, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
