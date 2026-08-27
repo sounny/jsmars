@@ -1803,6 +1803,71 @@ export class KRCEngine {
       phaseLagRadians: parseFloat(lagRad.toFixed(3))
     };
   }
+
+  // --- Rock Fraction Thermal Mixing & Sloped KRC Direct Insolation ---
+
+  /**
+   * Calculate Christensen (1986) non-linear two-component apparent thermal inertia for rock/fines sub-pixel mixtures.
+   * I_apparent = [ (1 - f_rock) * I_fines^(3/4) + f_rock * I_rock^(3/4) ]^(4/3)
+   * @param {number} fineThermalInertiaTiu - Thermal inertia of fine regolith (tiu) (e.g. 50 - 300)
+   * @param {number} [rockThermalInertiaTiu=2200.0] - Thermal inertia of rocks/boulders (tiu) (e.g. 2000 - 2500)
+   * @param {number} [rockAbundanceFraction=0.10] - Areal rock fraction (0.0 to 1.0)
+   * @returns {{apparentThermalInertiaTiu: number, linearWeightedInertiaTiu: number, rockFractionPercent: number}}
+   */
+  static computeTwoComponentApparentThermalInertia(fineThermalInertiaTiu, rockThermalInertiaTiu = 2200.0, rockAbundanceFraction = 0.10) {
+    const If = Math.max(1.0, fineThermalInertiaTiu);
+    const Ir = Math.max(1.0, rockThermalInertiaTiu);
+    const fRock = Math.max(0.0, Math.min(1.0, rockAbundanceFraction));
+    const fFine = 1.0 - fRock;
+
+    // 3/4 power law mixing from Planck radiance integration (Christensen 1986 / Nowicki & Christensen 2007)
+    const term = fFine * Math.pow(If, 0.75) + fRock * Math.pow(Ir, 0.75);
+    const Iapp = Math.pow(term, 4.0 / 3.0);
+
+    const Ilin = fFine * If + fRock * Ir;
+
+    return {
+      apparentThermalInertiaTiu: parseFloat(Iapp.toFixed(1)),
+      linearWeightedInertiaTiu: parseFloat(Ilin.toFixed(1)),
+      rockFractionPercent: parseFloat((fRock * 100.0).toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate direct KRC surface solar insolation factoring in slope orientation, distance, and dust extinction.
+   * F_direct = (S_0 / r_sun^2) * cos(i_slope) * exp( -tau / cos(theta_z) )
+   * @param {number} solarZenithDeg - Solar zenith angle in degrees (0 - 90)
+   * @param {number} solarAzimuthDeg - Solar azimuth angle in degrees (0 - 360)
+   * @param {number} slopeDeg - Surface terrain slope in degrees
+   * @param {number} aspectDeg - Surface terrain aspect in degrees (0 - 360)
+   * @param {number} [heliocentricDistanceAU=1.524] - Mars heliocentric distance in AU
+   * @param {number} [opticalDepthTau=0.20] - Column dust optical depth tau
+   * @returns {{directInsolationW_M2: number, topOfAtmosphereFluxW_M2: number, cosSlopeIncidence: number}}
+   */
+  static computeSlopeCorrectedDirectInsolation(solarZenithDeg, solarAzimuthDeg, slopeDeg, aspectDeg, heliocentricDistanceAU = 1.524, opticalDepthTau = 0.20) {
+    const r = Math.max(0.5, heliocentricDistanceAU);
+    const tau = Math.max(0.0, opticalDepthTau);
+
+    const sToa = 1361.0 / (r * r);
+
+    const zRad = (Math.min(90.0, Math.max(0.0, solarZenithDeg)) * Math.PI) / 180.0;
+    const sRad = (Math.min(90.0, Math.max(0.0, slopeDeg)) * Math.PI) / 180.0;
+    const dAzRad = ((solarAzimuthDeg - aspectDeg) * Math.PI) / 180.0;
+
+    const cosZ = Math.cos(zRad);
+    const cosI = Math.max(0.0, cosZ * Math.cos(sRad) + Math.sin(zRad) * Math.sin(sRad) * Math.cos(dAzRad));
+
+    const airmass = 1.0 / Math.max(0.05, cosZ);
+    const transmission = Math.exp(-tau * airmass);
+
+    const flux = sToa * cosI * transmission;
+
+    return {
+      directInsolationW_M2: parseFloat(flux.toFixed(2)),
+      topOfAtmosphereFluxW_M2: parseFloat(sToa.toFixed(2)),
+      cosSlopeIncidence: parseFloat(cosI.toFixed(4))
+    };
+  }
 }
 
 

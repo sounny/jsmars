@@ -7538,6 +7538,37 @@ describe('True Anomaly & Keplerian Sol-of-Year (MarsTime)', () => {
     });
 });
 
+describe('KRC Rock Mixing & Sloped Direct Insolation (KRCEngine)', () => {
+    it('should calculate Christensen non-linear two-component apparent thermal inertia', () => {
+        // Regolith fines (I_fines = 150 tiu) with 15% rock abundance (I_rock = 2200 tiu):
+        // term = 0.85 * (150)^0.75 + 0.15 * (2200)^0.75 = 36.427 + 48.215 = 84.642
+        // I_apparent = (84.642)^(4/3) = 371.5 tiu
+        const mixed = KRCEngine.computeTwoComponentApparentThermalInertia(150.0, 2200.0, 0.15);
+        expect(mixed.apparentThermalInertiaTiu).to.be.closeTo(371.5, 1.0);
+        expect(mixed.rockFractionPercent).to.equal(15.0);
+
+        // Pure fine regolith (f_rock = 0):
+        const pureFines = KRCEngine.computeTwoComponentApparentThermalInertia(200.0, 2200.0, 0.0);
+        expect(pureFines.apparentThermalInertiaTiu).to.equal(200.0);
+    });
+
+    it('should calculate direct solar insolation on inclined terrain facets factoring in dust opacity', () => {
+        // South-facing slope (slope = 20°, aspect = 180°) under overhead noon sun (zenith = 20°, azimuth = 180°):
+        // r_sun = 1.524 AU -> S_toa = 1361 / (1.524)^2 = 585.98 W/m^2
+        // cos(i_slope) = 1.0 (normal to sun!)
+        // tau = 0.20, airmass = 1 / cos(20°) = 1.064 -> transmission = exp(-0.2128) = 0.8083
+        // flux = 585.98 * 1.0 * 0.8083 = 473.65 W/m^2
+        const noon = KRCEngine.computeSlopeCorrectedDirectInsolation(20.0, 180.0, 20.0, 180.0, 1.524, 0.20);
+        expect(noon.cosSlopeIncidence).to.be.closeTo(1.0, 0.001);
+        expect(noon.directInsolationW_M2).to.be.closeTo(473.65, 2.0);
+
+        // Facet facing away into complete shadow:
+        const shadow = KRCEngine.computeSlopeCorrectedDirectInsolation(45.0, 0.0, 45.0, 180.0, 1.524, 0.20);
+        expect(shadow.cosSlopeIncidence).to.equal(0.0);
+        expect(shadow.directInsolationW_M2).to.equal(0.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
