@@ -2021,6 +2021,75 @@ export class MarsTime {
       directFluxW_M2: parseFloat(flux.toFixed(2))
     };
   }
+
+  // --- True Anomaly & Keplerian Sol-of-Year Solvers ---
+
+  /**
+   * Calculate Martian true anomaly (nu), eccentric anomaly (E), and mean anomaly (M) from Solar Longitude (Ls).
+   * nu = (Ls - 251.0°) mod 360°
+   * tan(E/2) = sqrt((1-e)/(1+e)) * tan(nu/2)
+   * M = E - e * sin(E)
+   * @param {number} LsDeg - Solar Longitude in degrees (0 - 360)
+   * @returns {{trueAnomalyDeg: number, eccentricAnomalyDeg: number, meanAnomalyDeg: number}}
+   */
+  static computeTrueAnomalyAndMeanAnomalyFromLs(LsDeg) {
+    let ls = LsDeg % 360.0;
+    if (ls < 0) ls += 360.0;
+
+    const e = 0.0934; // Mars eccentricity
+    const lsPeri = 251.0;
+
+    let nuDeg = (ls - lsPeri) % 360.0;
+    if (nuDeg < 0) nuDeg += 360.0;
+
+    const nuRad = (nuDeg * Math.PI) / 180.0;
+    const factor = Math.sqrt((1.0 - e) / (1.0 + e));
+    const tanHalfNu = Math.tan(nuRad / 2.0);
+
+    let ERad = 2.0 * Math.atan(factor * tanHalfNu);
+    if (ERad < 0) ERad += 2.0 * Math.PI;
+
+    const MRad = ERad - e * Math.sin(ERad);
+
+    const EDeg = (ERad * 180.0) / Math.PI;
+    let MDeg = (MRad * 180.0) / Math.PI;
+    while (MDeg < 0) MDeg += 360.0;
+    while (MDeg >= 360.0) MDeg -= 360.0;
+
+    return {
+      trueAnomalyDeg: parseFloat(nuDeg.toFixed(3)),
+      eccentricAnomalyDeg: parseFloat(EDeg.toFixed(3)),
+      meanAnomalyDeg: parseFloat(MDeg.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate exact elapsed Martian sol-of-year (0 to 668.60 sols) since Northern Vernal Equinox (Ls = 0°).
+   * Uses Keplerian orbit time-of-flight based on mean anomaly difference from Ls = 0°.
+   * @param {number} LsDeg - Solar Longitude in degrees (0 - 360)
+   * @returns {{solOfYear: number, totalSolsInYear: number, yearProgressPercent: number}}
+   */
+  static estimateSolOfYearFromLs(LsDeg) {
+    const totalSols = 668.5991;
+
+    // Mean anomaly at Ls = 0° (vernal equinox):
+    // nu_eq = (0 - 251) = 109° -> M_eq = 98.41°
+    const mEq = MarsTime.computeTrueAnomalyAndMeanAnomalyFromLs(0.0).meanAnomalyDeg;
+    const mCur = MarsTime.computeTrueAnomalyAndMeanAnomalyFromLs(LsDeg).meanAnomalyDeg;
+
+    let dM = mCur - mEq;
+    while (dM < 0) dM += 360.0;
+    while (dM >= 360.0) dM -= 360.0;
+
+    const sol = (dM / 360.0) * totalSols;
+    const progress = (sol / totalSols) * 100.0;
+
+    return {
+      solOfYear: parseFloat(sol.toFixed(2)),
+      totalSolsInYear: totalSols,
+      yearProgressPercent: parseFloat(progress.toFixed(2))
+    };
+  }
 }
 
 

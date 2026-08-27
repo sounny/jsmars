@@ -7508,6 +7508,36 @@ describe('Ground Track Velocity & Interplanetary Hohmann Transfers (TrajectoryEn
     });
 });
 
+describe('True Anomaly & Keplerian Sol-of-Year (MarsTime)', () => {
+    it('should compute true and mean anomalies relative to Mars perihelion', () => {
+        // Mars at perihelion (Ls = 251.0°): nu = 0.0°, E = 0.0°, M = 0.0°
+        const peri = MarsTime.computeTrueAnomalyAndMeanAnomalyFromLs(251.0);
+        expect(peri.trueAnomalyDeg).to.equal(0.0);
+        expect(peri.eccentricAnomalyDeg).to.equal(0.0);
+        expect(peri.meanAnomalyDeg).to.equal(0.0);
+
+        // Mars at aphelion (Ls = 71.0°): nu = 180.0°, E = 180.0°, M = 180.0°
+        const aph = MarsTime.computeTrueAnomalyAndMeanAnomalyFromLs(71.0);
+        expect(aph.trueAnomalyDeg).to.equal(180.0);
+        expect(aph.eccentricAnomalyDeg).to.equal(180.0);
+        expect(aph.meanAnomalyDeg).to.equal(180.0);
+    });
+
+    it('should calculate elapsed Martian sols since vernal equinox factoring in orbital speed variation', () => {
+        // At vernal equinox (Ls = 0°): solOfYear = 0.0
+        const eq = MarsTime.estimateSolOfYearFromLs(0.0);
+        expect(eq.solOfYear).to.equal(0.0);
+        expect(eq.yearProgressPercent).to.equal(0.0);
+
+        // At autumn equinox (Ls = 180°):
+        // Because Mars moves slower near aphelion (northern spring/summer),
+        // northern spring + summer spans ~372 sols (> 55% of the year!)
+        const autumn = MarsTime.estimateSolOfYearFromLs(180.0);
+        expect(autumn.solOfYear).to.be.closeTo(371.9, 2.0);
+        expect(autumn.yearProgressPercent).to.be.closeTo(55.6, 0.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
