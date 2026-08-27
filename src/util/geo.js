@@ -1217,6 +1217,105 @@ export function computeMercatorScaleDistortionFactor(latDeg) {
   };
 }
 
+// --- Orthographic (True 3D Globe Perspective) Forward & Inverse Projections ---
+
+/**
+ * Calculate forward Orthographic (Globe View) projection coordinates (x, y) in km.
+ * x = R * cos(phi) * sin(lam - lam0)
+ * y = R * ( cos(phi0)*sin(phi) - sin(phi0)*cos(phi)*cos(lam - lam0) )
+ * @param {number} latDeg - Point latitude in degrees
+ * @param {number} lonDeg - Point longitude in degrees
+ * @param {number} [centerLatDeg=0] - Center latitude of projection in degrees
+ * @param {number} [centerLonDeg=0] - Center longitude in degrees
+ * @param {number} [radiusKm=3389.5] - Mean spherical radius in km
+ * @returns {{xKm: number, yKm: number, isVisible: boolean, cosAngularDistance: number}}
+ */
+export function computeOrthographicProjection(latDeg, lonDeg, centerLatDeg = 0, centerLonDeg = 0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi = (latDeg * Math.PI) / 180.0;
+  const phi0 = (centerLatDeg * Math.PI) / 180.0;
+
+  let dLon = lonDeg - centerLonDeg;
+  while (dLon > 180) dLon -= 360;
+  while (dLon < -180) dLon += 360;
+  const dLam = (dLon * Math.PI) / 180.0;
+
+  const sinPhi = Math.sin(phi);
+  const cosPhi = Math.cos(phi);
+  const sinPhi0 = Math.sin(phi0);
+  const cosPhi0 = Math.cos(phi0);
+  const cosDLam = Math.cos(dLam);
+  const sinDLam = Math.sin(dLam);
+
+  // Angular distance cos(c) from center
+  const cosC = sinPhi0 * sinPhi + cosPhi0 * cosPhi * cosDLam;
+  const isVisible = cosC >= -1e-6;
+
+  const x = R * cosPhi * sinDLam;
+  const y = R * (cosPhi0 * sinPhi - sinPhi0 * cosPhi * cosDLam);
+
+  return {
+    xKm: parseFloat(x.toFixed(3)),
+    yKm: parseFloat(y.toFixed(3)),
+    isVisible: isVisible,
+    cosAngularDistance: parseFloat(cosC.toFixed(4))
+  };
+}
+
+/**
+ * Calculate inverse Orthographic projection from planar (x, y) coordinates in km back to (lat, lon).
+ * @param {number} xKm - Projected X coordinate in km
+ * @param {number} yKm - Projected Y coordinate in km
+ * @param {number} [centerLatDeg=0] - Center latitude of projection in degrees
+ * @param {number} [centerLonDeg=0] - Center longitude in degrees
+ * @param {number} [radiusKm=3389.5] - Mean spherical radius in km
+ * @returns {{latDeg: number, lonDeg: number, isInsideGlobeDisk: boolean}}
+ */
+export function computeOrthographicInverse(xKm, yKm, centerLatDeg = 0, centerLonDeg = 0, radiusKm = 3389.5) {
+  const R = Math.max(1.0, radiusKm);
+  const phi0 = (centerLatDeg * Math.PI) / 180.0;
+
+  const rho = Math.sqrt(xKm * xKm + yKm * yKm);
+  if (rho > R) {
+    return {
+      latDeg: 0.0,
+      lonDeg: 0.0,
+      isInsideGlobeDisk: false
+    };
+  }
+
+  if (rho <= 1e-8) {
+    return {
+      latDeg: parseFloat(centerLatDeg.toFixed(4)),
+      lonDeg: parseFloat(centerLonDeg.toFixed(4)),
+      isInsideGlobeDisk: true
+    };
+  }
+
+  const c = Math.asin(Math.min(1.0, rho / R));
+  const sinC = Math.sin(c);
+  const cosC = Math.cos(c);
+  const sinPhi0 = Math.sin(phi0);
+  const cosPhi0 = Math.cos(phi0);
+
+  const sinPhi = cosC * sinPhi0 + (yKm * sinC * cosPhi0) / rho;
+  const phi = Math.asin(Math.max(-1.0, Math.min(1.0, sinPhi)));
+  const latDeg = (phi * 180.0) / Math.PI;
+
+  const num = xKm * sinC;
+  const denom = rho * cosPhi0 * cosC - yKm * sinPhi0 * sinC;
+  let dLamRad = Math.atan2(num, denom);
+  let lonDeg = centerLonDeg + (dLamRad * 180.0) / Math.PI;
+  while (lonDeg > 180) lonDeg -= 360;
+  while (lonDeg < -180) lonDeg += 360;
+
+  return {
+    latDeg: parseFloat(latDeg.toFixed(4)),
+    lonDeg: parseFloat(lonDeg.toFixed(4)),
+    isInsideGlobeDisk: true
+  };
+}
+
 
 
 

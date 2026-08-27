@@ -31,7 +31,7 @@ import { ShapeIO } from '../src/features/shapes/ShapeIO.js';
 import { PlacesManager } from '../src/features/places/PlacesManager.js';
 import { ExportTool } from '../src/features/export/ExportTool.js';
 import { URLStateEngine } from '../src/util/URLStateEngine.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor } from '../src/util/geo.js';
+import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse } from '../src/util/geo.js';
 
 const expect = chai.expect;
 
@@ -6491,6 +6491,40 @@ describe('3D Normal Slope/Aspect Inversion & Solar Incidence Cosine (ThreeDEngin
         expect(sun.cosIncidence).to.be.closeTo(0.8660, 0.001);
         expect(sun.incidenceAngleDeg).to.be.closeTo(30.0, 0.1);
         expect(sun.isIlluminated).to.be.true;
+    });
+});
+
+describe('Orthographic Globe Projection & Inverse Transforms (geo)', () => {
+    it('should calculate forward Orthographic projection and hemisphere clipping', () => {
+        // Center at (0°, 0°), point at (0°, 0°) -> (x = 0, y = 0, isVisible = true)
+        const center = computeOrthographicProjection(0.0, 0.0, 0.0, 0.0, 3389.5);
+        expect(center.xKm).to.equal(0);
+        expect(center.yKm).to.equal(0);
+        expect(center.isVisible).to.be.true;
+
+        // Point at (lat = 30°, lon = 45°):
+        // x = 3389.5 * cos(30°) * sin(45°) = 3389.5 * 0.866025 * 0.707106 = 2075.69 km
+        // y = 3389.5 * sin(30°) = 3389.5 * 0.5 = 1694.75 km
+        const fwd = computeOrthographicProjection(30.0, 45.0, 0.0, 0.0, 3389.5);
+        expect(fwd.xKm).to.be.closeTo(2075.69, 0.1);
+        expect(fwd.yKm).to.be.closeTo(1694.75, 0.1);
+        expect(fwd.isVisible).to.be.true;
+
+        // Back-side point (lon = 120° from center 0° -> cos(c) = cos(120°) = -0.5 < 0 -> hidden hemisphere)
+        const back = computeOrthographicProjection(0.0, 120.0, 0.0, 0.0, 3389.5);
+        expect(back.isVisible).to.be.false;
+    });
+
+    it('should compute inverse Orthographic projection back to geographic coordinates', () => {
+        // Invert (2075.69 km, 1694.75 km) with center at (0°, 0°) -> (30.0°, 45.0°)
+        const inv = computeOrthographicInverse(2075.69, 1694.75, 0.0, 0.0, 3389.5);
+        expect(inv.isInsideGlobeDisk).to.be.true;
+        expect(inv.latDeg).to.be.closeTo(30.0, 0.01);
+        expect(inv.lonDeg).to.be.closeTo(45.0, 0.01);
+
+        // Outside globe disk (rho = 4000 km > R = 3389.5 km)
+        const out = computeOrthographicInverse(3000.0, 3000.0, 0.0, 0.0, 3389.5);
+        expect(out.isInsideGlobeDisk).to.be.false;
     });
 });
 
