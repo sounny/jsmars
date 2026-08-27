@@ -1,5 +1,6 @@
 import { EVENTS } from '../../constants.js';
 import { jmarsState } from '../../jmars-state.js';
+import { haversineDistance, sphericalPolygonArea, BODIES } from '../../util/geo.js';
 
 /**
  * @module MeasureTool
@@ -220,11 +221,14 @@ export class MeasureTool {
      * @param {object} m - Measurement record.
      */
     updatePopup(m) {
+        const body = (jmarsState.get('body') || 'Mars');
+        const projType = m.type === 'Line' ? 'Geodesic / Equidistant Arc' : 'Authalic / Equal-Area';
         const content = `
             <div style="text-align:center">
                 <b>${m.name}</b><br>
-                ${m.type === 'Line' ? 'Distance' : 'Area'}: ${m.valueStr}<br>
-                Vertices: ${m.vertices}
+                <b>${m.type === 'Line' ? 'Distance' : 'Area'}:</b> ${m.valueStr}<br>
+                <div style="font-size:10px; color:#888; margin-top:3px;">Projection: ${projType} (${body})</div>
+                <div style="font-size:10px; color:#888;">Vertices: ${m.vertices}</div>
             </div>
         `;
         m.layer.bindPopup(content);
@@ -272,28 +276,33 @@ export class MeasureTool {
     }
 
     /**
-     * Calculate the total distance of a polyline, scaled to the active body.
+     * Calculate the total geodesic / equidistant distance of a polyline on the active body.
      * @param {L.Polyline} layer - The polyline layer.
      * @returns {number} Distance in meters on the active body.
      */
     calculateDistance(layer) {
-        let totalDistance = 0;
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        let totalKm = 0;
         const latlngs = layer.getLatLngs();
         for (let i = 0; i < latlngs.length - 1; i++) {
-            totalDistance += latlngs[i].distanceTo(latlngs[i + 1]);
+            totalKm += haversineDistance(latlngs[i].lat, latlngs[i].lng, latlngs[i + 1].lat, latlngs[i + 1].lng, body);
         }
-        return totalDistance * this.scaleFactor;
+        return totalKm * 1000.0;
     }
 
     /**
-     * Calculate the area of a polygon, scaled to the active body.
+     * Calculate the authalic / equal-area of a polygon on the active body (spherical excess).
      * @param {L.Polygon} layer - The polygon layer.
      * @returns {number} Area in square meters on the active body.
      */
     calculateArea(layer) {
-        const latlngs = layer.getLatLngs()[0];
-        const area = L.GeometryUtil.geodesicArea(latlngs);
-        return area * (this.scaleFactor * this.scaleFactor);
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        let latlngs = layer.getLatLngs();
+        if (Array.isArray(latlngs[0])) {
+            latlngs = latlngs[0];
+        }
+        const areaKm2 = sphericalPolygonArea(latlngs, body);
+        return areaKm2 * 1e6;
     }
 
     /**

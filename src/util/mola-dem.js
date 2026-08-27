@@ -102,34 +102,26 @@ async function getMolaContext() {
 async function sampleElevations(points) {
   const ctx = await getMolaContext();
   const { image, bbox, width, height, resX, resY, noData, origin } = ctx;
-  const [minLon, minLat, maxLon, maxLat] = bbox;
-  const originLon = origin?.[0] ?? minLon;
-  const originLat = origin?.[1] ?? maxLat;
-  const lonSpan = resX * width;
-  const latSpan = resY * height;
+  const [minX, minY, maxX, maxY] = bbox;
+  const originX = origin?.[0] ?? minX;
+  const originY = origin?.[1] ?? maxY;
 
-  /**
-   * Normalize a longitude value into the dataset's coordinate range.
-   * @param {number} lon - Input longitude
-   * @returns {number} Adjusted longitude within dataset bounds
-   */
-  const normalizeLon = (lon) => {
-    let adjusted = lon;
-    // Pull into the nearest 360-degree wrap relative to origin.
-    while (adjusted < originLon) adjusted += 360;
-    while (adjusted > originLon + lonSpan) adjusted -= 360;
-    // If still outside, clamp into the dataset span.
-    if (adjusted < minLon) adjusted = minLon;
-    if (adjusted > maxLon) adjusted = maxLon - resX * 0.5;
-    return adjusted;
-  };
+  // Mars sphere radius used for Equirectangular projection in meters
+  const R_MARS = 3396190.0;
 
   const coords = points.map((p) => {
-    const lonWrapped = normalizeLon(p.lng ?? p.lon);
-    const clampedLon = Math.min(originLon + lonSpan - resX * 0.5, Math.max(originLon, lonWrapped));
-    const clampedLat = Math.min(originLat, Math.max(originLat - latSpan, p.lat));
-    const x = Math.floor((clampedLon - originLon) / resX);
-    const y = Math.floor((originLat - clampedLat) / resY);
+    let lon = p.lng ?? p.lon ?? 0;
+    while (lon > 180) lon -= 360;
+    while (lon < -180) lon += 360;
+
+    const lat = Math.max(-88.0, Math.min(88.0, p.lat ?? 0));
+
+    // Convert (lat, lon) in degrees to Equirectangular projected meters
+    const xMeters = (lon * Math.PI / 180.0) * R_MARS;
+    const yMeters = (lat * Math.PI / 180.0) * R_MARS;
+
+    const x = Math.floor((xMeters - originX) / resX);
+    const y = Math.floor((originY - yMeters) / resY);
     return { x, y };
   });
 
@@ -145,10 +137,10 @@ async function sampleElevations(points) {
     return points.map(() => null);
   }
 
-  const xMin = Math.min(...valid.map((c) => c.x));
-  const xMax = Math.max(...valid.map((c) => c.x));
-  const yMin = Math.min(...valid.map((c) => c.y));
-  const yMax = Math.max(...valid.map((c) => c.y));
+  const xMin = Math.max(0, Math.min(...valid.map((c) => c.x)));
+  const xMax = Math.min(width - 1, Math.max(...valid.map((c) => c.x)));
+  const yMin = Math.max(0, Math.min(...valid.map((c) => c.y)));
+  const yMax = Math.min(height - 1, Math.max(...valid.map((c) => c.y)));
   const winWidth = xMax - xMin + 1;
   const winHeight = yMax - yMin + 1;
 
