@@ -2197,6 +2197,63 @@ export class CSFDEngine {
       chronologyFactorPhi: parseFloat(phi.toExponential(4))
     };
   }
+
+  // --- Crater Ejecta Blanket & Transient Excavation Solvers ---
+
+  /**
+   * Calculate continuous crater ejecta blanket thickness at radial distance r (McGetchin et al. 1973; Housen et al. 1983).
+   * t(r) = 0.14 * R_rim^0.74 * (r / R_rim)^(-3.0)
+   * @param {number} craterDiameterKm - Crater rim-to-rim diameter D in km
+   * @param {number} radialDistanceKm - Distance r from crater center in km (must be >= R_rim)
+   * @returns {{ejectaThicknessMeters: number, normalizedRadialDistanceR: number, isContinuousEjecta: boolean, rimRadiusKm: number}}
+   */
+  static computeCraterEjectaBlanketThickness(craterDiameterKm, radialDistanceKm) {
+    const D = Math.max(0.01, craterDiameterKm);
+    const rRim = D / 2.0;
+    const r = Math.max(rRim, radialDistanceKm);
+
+    const normR = r / rRim;
+    // McGetchin thickness in meters with R_rim in meters:
+    const rRimMeters = rRim * 1000.0;
+    const tMeters = 0.14 * Math.pow(rRimMeters, 0.74) * Math.pow(normR, -3.0);
+
+    const isContinuous = normR <= 2.3;
+
+    return {
+      ejectaThicknessMeters: parseFloat(tMeters.toFixed(2)),
+      normalizedRadialDistanceR: parseFloat(normR.toFixed(2)),
+      isContinuousEjecta: isContinuous,
+      rimRadiusKm: parseFloat(rRim.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate transient crater cavity diameter and excavated volume (Croft 1985; Melosh 1989).
+   * Simple (D < 7 km): D_tc = 0.84 * D
+   * Complex (D >= 7 km): D_tc = 1.34 * D^0.85
+   * V_exc = (pi / 24) * D_tc^3
+   * @param {number} finalDiameterKm - Final crater diameter D in km
+   * @returns {{transientDiameterKm: number, excavationVolumeKm3: number, excavationDepthKm: number}}
+   */
+  static computeCraterTransientCavityAndExcavationVolume(finalDiameterKm) {
+    const D = Math.max(0.01, finalDiameterKm);
+    let dTc = 0.0;
+
+    if (D < 7.0) {
+      dTc = 0.84 * D;
+    } else {
+      dTc = 1.34 * Math.pow(D, 0.85);
+    }
+
+    const dExc = dTc / 3.0; // Excavation depth ~ 1/3 of transient diameter
+    const vExc = (Math.PI / 24.0) * Math.pow(dTc, 3);
+
+    return {
+      transientDiameterKm: parseFloat(dTc.toFixed(3)),
+      excavationVolumeKm3: parseFloat(vExc.toFixed(2)),
+      excavationDepthKm: parseFloat(dExc.toFixed(3))
+    };
+  }
 }
 
 

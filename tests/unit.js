@@ -7937,6 +7937,40 @@ describe('Radar Clutter Simulation & Doppler Solvers (RadarSounderEngine)', () =
     });
 });
 
+describe('Crater Ejecta Blanket & Transient Cavity Excavation (CSFDEngine)', () => {
+    it('should calculate McGetchin/Housen continuous ejecta blanket thickness with radial distance', () => {
+        // Crater diameter D = 20 km (R_rim = 10 km = 10000 m):
+        // At rim (r = 10 km -> normR = 1.0):
+        // t = 0.14 * (10000)^0.74 * (1.0)^-3 = 0.14 * 912.01 = 127.68 meters
+        const rimEjecta = CSFDEngine.computeCraterEjectaBlanketThickness(20.0, 10.0);
+        expect(rimEjecta.ejectaThicknessMeters).to.be.closeTo(127.68, 1.0);
+        expect(rimEjecta.normalizedRadialDistanceR).to.equal(1.0);
+        expect(rimEjecta.isContinuousEjecta).to.be.true;
+
+        // At 2 crater radii (r = 20 km -> normR = 2.0):
+        // t = 127.68 * (2.0)^-3 = 127.68 / 8 = 15.96 meters
+        const distalEjecta = CSFDEngine.computeCraterEjectaBlanketThickness(20.0, 20.0);
+        expect(distalEjecta.ejectaThicknessMeters).to.be.closeTo(15.96, 0.5);
+        expect(distalEjecta.isContinuousEjecta).to.be.true;
+    });
+
+    it('should calculate transient crater cavity diameter and excavated volume', () => {
+        // Simple crater (D = 4.0 km):
+        // D_tc = 0.84 * 4.0 = 3.36 km
+        // V_exc = (pi / 24) * (3.36)^3 = 0.1309 * 37.933 = 4.97 km^3
+        const simpleCavity = CSFDEngine.computeCraterTransientCavityAndExcavationVolume(4.0);
+        expect(simpleCavity.transientDiameterKm).to.be.closeTo(3.36, 0.01);
+        expect(simpleCavity.excavationVolumeKm3).to.be.closeTo(4.97, 0.1);
+
+        // Complex crater (Gale Crater D = 154 km):
+        // D_tc = 1.34 * (154)^0.85 = 1.34 * 72.342 = 96.94 km
+        // V_exc = (pi / 24) * (96.94)^3 = 0.1309 * 910970 = 119246 km^3
+        const galeCavity = CSFDEngine.computeCraterTransientCavityAndExcavationVolume(154.0);
+        expect(galeCavity.transientDiameterKm).to.be.closeTo(96.94, 0.5);
+        expect(galeCavity.excavationVolumeKm3).to.be.greaterThan(100000.0);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
