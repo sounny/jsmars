@@ -1398,6 +1398,63 @@ export class ThreeDEngine {
       isIlluminated: clampedCos > 0
     };
   }
+
+  // --- Stereo Photogrammetry & Lambertian Radiance Solvers ---
+
+  /**
+   * Calculate stereo camera Base-to-Height ratio (B/H), convergence angle, and vertical elevation precision.
+   * B/H = | tan(theta1) - tan(theta2) |
+   * sigma_z = (H / B) * GSD * sigma_px
+   * @param {number} lookAngle1Deg - Look angle of image 1 in degrees (signed: negative for backward/left, positive for forward/right)
+   * @param {number} lookAngle2Deg - Look angle of image 2 in degrees
+   * @param {number} [gsdMeters=0.25] - Ground Sample Distance in meters (e.g. 0.25 m for HiRISE)
+   * @param {number} [subpixelPrecision=0.2] - Stereo matching subpixel precision in pixels (typically 0.2 px)
+   * @returns {{baseToHeightRatio: number, convergenceAngleDeg: number, heightPrecisionMeters: number, isGoodStereoGeometry: boolean}}
+   */
+  static computeStereoParallaxBaseToHeightRatio(lookAngle1Deg, lookAngle2Deg, gsdMeters = 0.25, subpixelPrecision = 0.2) {
+    const th1Rad = (lookAngle1Deg * Math.PI) / 180.0;
+    const th2Rad = (lookAngle2Deg * Math.PI) / 180.0;
+
+    const tan1 = Math.tan(th1Rad);
+    const tan2 = Math.tan(th2Rad);
+
+    const bh = Math.abs(tan1 - tan2);
+    const convAngle = Math.abs(lookAngle1Deg - lookAngle2Deg);
+
+    const gsd = Math.max(1e-4, gsdMeters);
+    const spx = Math.max(0.01, subpixelPrecision);
+
+    // Height precision sigma_z = (1 / (B/H)) * GSD * sigma_px
+    const sigmaZ = bh > 0.01 ? (1.0 / bh) * gsd * spx : 999.9;
+
+    return {
+      baseToHeightRatio: parseFloat(bh.toFixed(4)),
+      convergenceAngleDeg: parseFloat(convAngle.toFixed(2)),
+      heightPrecisionMeters: parseFloat(sigmaZ.toFixed(3)),
+      isGoodStereoGeometry: bh >= 0.2 && bh <= 1.2
+    };
+  }
+
+  /**
+   * Calculate standard Lambertian diffuse reflectance and ambient-corrected shading intensity (0 - 1).
+   * R = ambient + (1 - ambient) * albedo * max(0, cos i)
+   * @param {number} cosIncidence - Cosine of solar illumination incidence angle (cos i)
+   * @param {number} [albedo=0.25] - Planetary surface albedo (0 to 1)
+   * @param {number} [ambient=0.05] - Diffuse ambient sky background illumination
+   * @returns {{radianceFactor: number, isDirectlyIlluminated: boolean}}
+   */
+  static computeLambertianReflectanceAndShading(cosIncidence, albedo = 0.25, ambient = 0.05) {
+    const cosI = Math.max(0.0, Math.min(1.0, cosIncidence));
+    const A = Math.max(0.0, Math.min(1.0, albedo));
+    const amb = Math.max(0.0, Math.min(0.5, ambient));
+
+    const r = amb + (1.0 - amb) * A * cosI;
+
+    return {
+      radianceFactor: parseFloat(r.toFixed(4)),
+      isDirectlyIlluminated: cosIncidence > 0
+    };
+  }
 }
 
 

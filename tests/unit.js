@@ -6781,6 +6781,32 @@ describe('Gnomonic Central Perspective Projection & Inverse Solvers (geo)', () =
     });
 });
 
+describe('Stereo Photogrammetry B/H & Lambertian Radiance (ThreeDEngine)', () => {
+    it('should calculate stereo camera Base-to-Height ratio and vertical elevation precision', () => {
+        // HiRISE stereo pair: lookAngle1 = -10° (backward), lookAngle2 = +10° (forward), GSD = 0.25 m, subpixel = 0.2 px
+        // tan(-10°) = -0.1763, tan(10°) = +0.1763 -> B/H = |-0.1763 - 0.1763| = 0.3527
+        // convAngle = 20.0°
+        // sigma_z = (1 / 0.3527) * 0.25 * 0.2 = 2.8354 * 0.05 = 0.1418 m (14.2 cm precision!)
+        const stereo = ThreeDEngine.computeStereoParallaxBaseToHeightRatio(-10.0, 10.0, 0.25, 0.2);
+        expect(stereo.baseToHeightRatio).to.be.closeTo(0.3527, 0.001);
+        expect(stereo.convergenceAngleDeg).to.equal(20.0);
+        expect(stereo.heightPrecisionMeters).to.be.closeTo(0.142, 0.01);
+        expect(stereo.isGoodStereoGeometry).to.be.true;
+    });
+
+    it('should compute Lambertian diffuse radiance factor with ambient background', () => {
+        // Overhead illumination (cos i = 1.0), albedo = 0.25, ambient = 0.05
+        // R = 0.05 + 0.95 * 0.25 * 1.0 = 0.05 + 0.2375 = 0.2875
+        const sun = ThreeDEngine.computeLambertianReflectanceAndShading(1.0, 0.25, 0.05);
+        expect(sun.radianceFactor).to.equal(0.2875);
+        expect(sun.isDirectlyIlluminated).to.be.true;
+
+        // Shadowed / night side (cos i = 0): R = 0.05 (ambient diffuse only)
+        const dark = ThreeDEngine.computeLambertianReflectanceAndShading(0.0, 0.25, 0.05);
+        expect(dark.radianceFactor).to.equal(0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
