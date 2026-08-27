@@ -892,6 +892,86 @@ export class TrajectoryEngine {
       isFeasibleSunSync: isFeasible
     };
   }
+
+  // --- Ground Track Velocity & Interplanetary Hohmann Transfers ---
+
+  /**
+   * Calculate relative satellite ground track speed across the rotating planetary surface.
+   * v_ground = sqrt( v_inertial^2 + v_rot^2 - 2 * v_inertial * v_rot * cos(i) )
+   * @param {number} orbitalRadiusKm - Orbital radius r in km (planet radius + altitude)
+   * @param {number} inclinationDeg - Orbital inclination in degrees
+   * @param {number} [latitudeDeg=0.0] - Instantaneous satellite latitude in degrees
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{groundTrackSpeedKmS: number, inertialOrbitalSpeedKmS: number, planetarySurfaceSpeedKmS: number}}
+   */
+  static computeSatelliteGroundTrackVelocity(orbitalRadiusKm, inclinationDeg, latitudeDeg = 0.0, body = 'mars') {
+    const r = Math.max(100.0, orbitalRadiusKm);
+    const iRad = (inclinationDeg * Math.PI) / 180.0;
+    const latRad = (latitudeDeg * Math.PI) / 180.0;
+
+    let mu = 42828.37;
+    let R = 3389.5;
+    let TrotSec = 88775.244; // 1 Martian sol in seconds
+
+    if (body.toLowerCase() === 'earth') {
+      mu = 398600.4418;
+      R = 6378.137;
+      TrotSec = 86164.09; // 1 sidereal day
+    }
+
+    const vInertial = Math.sqrt(mu / r); // km/s
+    const omegaPlanet = (2.0 * Math.PI) / TrotSec; // rad/s
+    const vRot = omegaPlanet * R * Math.cos(latRad); // km/s at planetary surface
+
+    // Law of cosines for vector difference: v_ground = |v_inertial - v_rot|
+    const vGroundSq = vInertial * vInertial + vRot * vRot - 2.0 * vInertial * vRot * Math.cos(iRad);
+    const vGround = Math.sqrt(Math.max(0.0, vGroundSq));
+
+    return {
+      groundTrackSpeedKmS: parseFloat(vGround.toFixed(4)),
+      inertialOrbitalSpeedKmS: parseFloat(vInertial.toFixed(4)),
+      planetarySurfaceSpeedKmS: parseFloat(vRot.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate minimum-energy Hohmann transfer orbit delta-V and transit time between planetary orbits.
+   * Delta_v1 = sqrt(mu_sun/r1) * ( sqrt(2*r2 / (r1 + r2)) - 1 )
+   * Delta_v2 = sqrt(mu_sun/r2) * ( 1 - sqrt(2*r1 / (r1 + r2)) )
+   * @param {number} [r1AU=1.0] - Departure heliocentric orbital distance in AU (1.0 for Earth)
+   * @param {number} [r2AU=1.52368] - Arrival heliocentric orbital distance in AU (1.52368 for Mars)
+   * @returns {{departureDeltaVKmS: number, arrivalDeltaVKmS: number, totalDeltaVKmS: number, transitTimeDays: number, transferSemiMajorAxisAU: number}}
+   */
+  static computeHohmannInterplanetaryTransfer(r1AU = 1.0, r2AU = 1.52368) {
+    const AU_KM = 149597870.7;
+    const MU_SUN = 1.32712440018e11; // km^3 / s^2
+
+    const r1 = Math.max(0.1, r1AU) * AU_KM;
+    const r2 = Math.max(0.1, r2AU) * AU_KM;
+
+    const aTx = (r1 + r2) / 2.0;
+
+    const v1Circ = Math.sqrt(MU_SUN / r1);
+    const v2Circ = Math.sqrt(MU_SUN / r2);
+
+    const v1Tx = Math.sqrt(MU_SUN * (2.0 / r1 - 1.0 / aTx));
+    const v2Tx = Math.sqrt(MU_SUN * (2.0 / r2 - 1.0 / aTx));
+
+    const dv1 = Math.abs(v1Tx - v1Circ);
+    const dv2 = Math.abs(v2Circ - v2Tx);
+    const dvTotal = dv1 + dv2;
+
+    const transitSec = Math.PI * Math.sqrt(Math.pow(aTx, 3) / MU_SUN);
+    const transitDays = transitSec / 86400.0;
+
+    return {
+      departureDeltaVKmS: parseFloat(dv1.toFixed(3)),
+      arrivalDeltaVKmS: parseFloat(dv2.toFixed(3)),
+      totalDeltaVKmS: parseFloat(dvTotal.toFixed(3)),
+      transitTimeDays: parseFloat(transitDays.toFixed(1)),
+      transferSemiMajorAxisAU: parseFloat((aTx / AU_KM).toFixed(4))
+    };
+  }
 }
 
 

@@ -7481,6 +7481,33 @@ describe('Horn Slope Aspect & Sloped Solar Incidence (SamplingTool)', () => {
     });
 });
 
+describe('Ground Track Velocity & Interplanetary Hohmann Transfers (TrajectoryEngine)', () => {
+    it('should calculate relative satellite ground track speed across rotating planet', () => {
+        // Mars MRO mapping orbit: r = 3645 km, i = 92.8° (retrograde), equator (lat = 0°):
+        // v_inertial = sqrt(42828.37 / 3645) = 3.4278 km/s
+        // v_rot = (2*pi / 88775.244) * 3389.5 = 0.2400 km/s
+        // v_ground = sqrt( 3.4278^2 + 0.24^2 - 2(3.4278)(0.24)cos(92.8°) )
+        // cos(92.8°) = -0.0488 -> v_ground = sqrt( 11.75 + 0.0576 + 0.0803 ) = sqrt(11.888) = 3.4479 km/s
+        const mro = TrajectoryEngine.computeSatelliteGroundTrackVelocity(3645.0, 92.8, 0.0, 'mars');
+        expect(mro.inertialOrbitalSpeedKmS).to.be.closeTo(3.428, 0.01);
+        expect(mro.planetarySurfaceSpeedKmS).to.be.closeTo(0.240, 0.01);
+        expect(mro.groundTrackSpeedKmS).to.be.closeTo(3.448, 0.01);
+    });
+
+    it('should calculate interplanetary Earth-Mars Hohmann transfer Delta-V and transit time', () => {
+        // Earth (1.0 AU) to Mars (1.52368 AU):
+        // a_tx = (1 + 1.52368) / 2 = 1.26184 AU
+        // Transit time T_tx = pi * sqrt( (1.26184 * 149597870.7)^3 / 1.327e11 ) / 86400 = 258.9 Earth days (~8.5 months)
+        // Delta-V1 (Earth departure) ~ 2.945 km/s, Delta-V2 (Mars insertion) ~ 2.649 km/s -> Total Delta-V ~ 5.594 km/s
+        const hohmann = TrajectoryEngine.computeHohmannInterplanetaryTransfer(1.0, 1.52368);
+        expect(hohmann.transferSemiMajorAxisAU).to.be.closeTo(1.2618, 0.005);
+        expect(hohmann.transitTimeDays).to.be.closeTo(258.9, 1.0);
+        expect(hohmann.departureDeltaVKmS).to.be.closeTo(2.945, 0.05);
+        expect(hohmann.arrivalDeltaVKmS).to.be.closeTo(2.649, 0.05);
+        expect(hohmann.totalDeltaVKmS).to.be.closeTo(5.594, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
