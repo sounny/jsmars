@@ -1248,6 +1248,78 @@ export class ThreeDEngine {
       }
     };
   }
+
+  // --- 3D Camera Footprint, Parallax Relief & ENU Normal Vector Solvers ---
+
+  /**
+   * Calculate camera ground footprint dimensions (width, height, area) on tangent surface.
+   * W = 2 * h * tan( fov_h / 2 ),  H = 2 * h * tan( fov_v / 2 )
+   * @param {number} altitudeKm - Observer/spacecraft altitude above surface in km
+   * @param {number} fovHorizontalDeg - Horizontal field-of-view in degrees
+   * @param {number} [fovVerticalDeg=fovHorizontalDeg] - Vertical field-of-view in degrees
+   * @returns {{footprintWidthKm: number, footprintHeightKm: number, groundAreaKm2: number}}
+   */
+  static computeCameraGroundFootprint(altitudeKm, fovHorizontalDeg, fovVerticalDeg = fovHorizontalDeg) {
+    const h = Math.max(0.01, altitudeKm);
+    const fovHRad = (fovHorizontalDeg * Math.PI) / 180.0;
+    const fovVRad = (fovVerticalDeg * Math.PI) / 180.0;
+
+    const wKm = 2.0 * h * Math.tan(fovHRad / 2.0);
+    const hKm = 2.0 * h * Math.tan(fovVRad / 2.0);
+    const areaKm2 = wKm * hKm;
+
+    return {
+      footprintWidthKm: parseFloat(wKm.toFixed(3)),
+      footprintHeightKm: parseFloat(hKm.toFixed(3)),
+      groundAreaKm2: parseFloat(areaKm2.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate geometric parallax relief displacement Delta_r for elevated topographic peaks.
+   * Delta_r = h_relief * tan( theta_look )
+   * @param {number} featureElevationMeters - Peak or crater rim elevation above base plane in meters
+   * @param {number} lookAngleOffNadirDeg - Camera look angle off-nadir in degrees (0 to 60)
+   * @returns {{parallaxDisplacementMeters: number, displacementRatio: number}}
+   */
+  static computeParallaxReliefDisplacement(featureElevationMeters, lookAngleOffNadirDeg) {
+    const h = Math.max(0, featureElevationMeters);
+    const thetaRad = (Math.min(85.0, Math.max(0, lookAngleOffNadirDeg)) * Math.PI) / 180.0;
+
+    const tanTheta = Math.tan(thetaRad);
+    const dr = h * tanTheta;
+
+    return {
+      parallaxDisplacementMeters: parseFloat(dr.toFixed(2)),
+      displacementRatio: parseFloat(tanTheta.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate 3D unit surface normal vector in Topocentric East-North-Up (ENU) coordinates.
+   * n_east = -sin(s) * sin(a),  n_north = -sin(s) * cos(a),  n_up = cos(s)
+   * @param {number} slopeDeg - Surface slope in degrees (0 = horizontal, 90 = vertical cliff)
+   * @param {number} aspectDeg - Azimuth of downhill slope direction (0 = North, 90 = East, 180 = South, 270 = West)
+   * @returns {{nEast: number, nNorth: number, nUp: number, isFlat: boolean}}
+   */
+  static computeTerrainNormalUnitVector3D(slopeDeg, aspectDeg) {
+    const sRad = (slopeDeg * Math.PI) / 180.0;
+    const aRad = (aspectDeg * Math.PI) / 180.0;
+
+    const sinS = Math.sin(sRad);
+    const cosS = Math.cos(sRad);
+
+    const nEast = -sinS * Math.sin(aRad);
+    const nNorth = -sinS * Math.cos(aRad);
+    const nUp = cosS;
+
+    return {
+      nEast: parseFloat(nEast.toFixed(4)),
+      nNorth: parseFloat(nNorth.toFixed(4)),
+      nUp: parseFloat(nUp.toFixed(4)),
+      isFlat: slopeDeg < 0.1
+    };
+  }
 }
 
 

@@ -6200,6 +6200,35 @@ describe('Martian Speed of Sound, Sutherland Viscosity & Aerodynamic Mach (MCDEn
     });
 });
 
+describe('3D Camera Footprint, Parallax Relief & ENU Normal Vectors (ThreeDEngine)', () => {
+    it('should calculate 3D camera sensor ground footprint swath on tangent terrain', () => {
+        // Spacecraft camera at 400 km altitude, FOV = 30° horizontal, 20° vertical
+        // W = 2 * 400 * tan(15°) = 800 * 0.267949 = 214.36 km
+        // H = 2 * 400 * tan(10°) = 800 * 0.176327 = 141.06 km
+        // Area = 214.359 * 141.062 = 30237.9 km^2
+        const fp = ThreeDEngine.computeCameraGroundFootprint(400.0, 30.0, 20.0);
+        expect(fp.footprintWidthKm).to.be.closeTo(214.36, 0.1);
+        expect(fp.footprintHeightKm).to.be.closeTo(141.06, 0.1);
+        expect(fp.groundAreaKm2).to.be.closeTo(30237.9, 5.0);
+    });
+
+    it('should compute geometric parallax relief displacement and ENU terrain normal vectors', () => {
+        // Olympus Mons peak: h = 21,287 meters, off-nadir look angle = 30°
+        // Parallax = 21287 * tan(30°) = 21287 * 0.57735 = 12290.04 meters (12.29 km)
+        const parallax = ThreeDEngine.computeParallaxReliefDisplacement(21287, 30.0);
+        expect(parallax.parallaxDisplacementMeters).to.be.closeTo(12290.04, 0.5);
+        expect(parallax.displacementRatio).to.be.closeTo(0.5774, 0.001);
+
+        // East-facing slope: slope = 30°, aspect = 90° (East)
+        // n_east = -sin(30)*sin(90) = -0.5, n_north = -sin(30)*cos(90) = 0.0, n_up = cos(30) = 0.8660
+        const norm = ThreeDEngine.computeTerrainNormalUnitVector3D(30.0, 90.0);
+        expect(norm.nEast).to.equal(-0.5);
+        expect(norm.nNorth).to.equal(0.0);
+        expect(norm.nUp).to.be.closeTo(0.8660, 0.001);
+        expect(norm.isFlat).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
