@@ -8057,6 +8057,34 @@ describe('Hapke Regolith Photometry & Opposition Surge (ThreeDEngine)', () => {
     });
 });
 
+describe('CO2 Frost Point & Polar Condensation (KRCEngine)', () => {
+    it('should calculate CO2 condensation frost point temperature across surface pressures', () => {
+        // Average Martian surface datum (P = 6.1 mbar = 0.0061 bar):
+        // ln(0.0061) = -5.0994
+        // T_frost = -3148.0 / (-5.0994 - 23.102) = -3148.0 / -28.2014 = 148.63 K (-124.52 °C)
+        const datumFrost = KRCEngine.computeCO2CondensationFrostPoint(6.1);
+        expect(datumFrost.frostPointK).to.be.closeTo(148.63, 0.5);
+        expect(datumFrost.frostPointC).to.be.closeTo(-124.52, 0.5);
+        expect(datumFrost.isSummitVacuum).to.be.false;
+
+        // Olympus Mons summit low pressure (P = 0.7 mbar = 0.0007 bar):
+        // T_frost is colder (~135 K)
+        const summitFrost = KRCEngine.computeCO2CondensationFrostPoint(0.7);
+        expect(summitFrost.frostPointK).to.be.lessThan(datumFrost.frostPointK);
+        expect(summitFrost.isSummitVacuum).to.be.true;
+    });
+
+    it('should calculate polar dry ice mass and millimeter layer growth per Martian sol', () => {
+        // Polar night radiative cooling deficit F_net = 25.0 W/m^2:
+        // dm/dt = (25.0 / 5.9e5) * 88775.244 = 4.237e-5 * 88775.244 = 3.762 kg / (m^2 * sol)
+        // dz/dt = (3.762 / 1500) * 1000 = 2.508 mm / sol
+        const polarNight = KRCEngine.computePolarFrostCondensationRate(25.0, 5.9e5, 1500.0);
+        expect(polarNight.frostAccumulationKgPerM2PerSol).to.be.closeTo(3.762, 0.01);
+        expect(polarNight.frostGrowthMmPerSol).to.be.closeTo(2.508, 0.01);
+        expect(polarNight.isCondensing).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

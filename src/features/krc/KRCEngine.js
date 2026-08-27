@@ -1929,6 +1929,55 @@ export class KRCEngine {
       netEmittedRadiativeFluxW_M2: parseFloat(netRad.toFixed(2))
     };
   }
+
+  // --- CO2 Condensation Frost Point & Polar Cold Trap Solvers ---
+
+  /**
+   * Calculate CO2 saturation vapor condensation frost point temperature (Clausius-Clapeyron relation).
+   * T_frost = -3148.0 / ( ln(P_mbar / 1000.0) - 23.102 )
+   * @param {number} [surfacePressureMbar=6.1] - Ambient Martian atmospheric surface pressure in mbar
+   * @returns {{frostPointK: number, frostPointC: number, surfacePressureMbar: number, isSummitVacuum: boolean}}
+   */
+  static computeCO2CondensationFrostPoint(surfacePressureMbar = 6.1) {
+    const P = Math.max(0.01, surfacePressureMbar);
+    const pPa = P * 100.0; // convert mbar to Pascals (Pa)
+
+    // Clausius-Clapeyron for CO2 (Forget et al. 1998; Kieffer 2013): ln(P_Pa) = 27.60 - 3148.3 / T_frost
+    const tFrostK = 3148.3 / (27.60 - Math.log(pPa));
+    const tFrostC = tFrostK - 273.15;
+
+    return {
+      frostPointK: parseFloat(tFrostK.toFixed(2)),
+      frostPointC: parseFloat(tFrostC.toFixed(2)),
+      surfacePressureMbar: parseFloat(P.toFixed(2)),
+      isSummitVacuum: P < 1.0
+    };
+  }
+
+  /**
+   * Calculate polar dry ice (CO2 frost) mass condensation rate and daily layer thickness accumulation.
+   * dm/dt = F_net_deficit / L_sub * Sol_seconds
+   * dz/dt = (dm/dt) / rho_frost
+   * @param {number} netDeficitFluxWm2 - Net radiative cooling deficit in W/m^2 (e.g. 25.0 W/m^2 during polar night)
+   * @param {number} [latentHeatJouleKg=5.9e5] - Latent heat of sublimation L_sub in J/kg (5.9e5 J/kg for dry ice)
+   * @param {number} [frostDensityKgM3=1500.0] - Dry ice density in kg/m^3 (1500 kg/m^3 slab ice, 1000 kg/m^3 granular)
+   * @returns {{frostAccumulationKgPerM2PerSol: number, frostGrowthMmPerSol: number, isCondensing: boolean}}
+   */
+  static computePolarFrostCondensationRate(netDeficitFluxWm2, latentHeatJouleKg = 5.9e5, frostDensityKgM3 = 1500.0) {
+    const fNet = Math.max(0.0, netDeficitFluxWm2);
+    const lSub = Math.max(1e3, latentHeatJouleKg);
+    const rho = Math.max(100.0, frostDensityKgM3);
+
+    const solSec = 88775.244; // seconds per Martian sol
+    const massAccumKgSol = (fNet / lSub) * solSec;
+    const thicknessGrowthMmSol = (massAccumKgSol / rho) * 1000.0;
+
+    return {
+      frostAccumulationKgPerM2PerSol: parseFloat(massAccumKgSol.toFixed(3)),
+      frostGrowthMmPerSol: parseFloat(thicknessGrowthMmSol.toFixed(3)),
+      isCondensing: fNet > 0.0
+    };
+  }
 }
 
 
