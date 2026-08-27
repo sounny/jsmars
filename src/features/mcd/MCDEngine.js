@@ -1882,6 +1882,75 @@ export class MCDEngine {
       isDustStormSeason: isStormSeason
     };
   }
+
+  // --- Hydrostatic Pressure Profile & Acoustic Sound Speed Solvers ---
+
+  /**
+   * Calculate local hydrostatic pressure, mass density, and molecular number density at altitude z.
+   * H = (R_spec * T) / g
+   * P(z) = P_0 * exp( -z / H )
+   * rho(z) = P(z) / (R_spec * T)
+   * @param {number} altitudeMeters - Altitude above datum z in meters (can be negative in deep basins)
+   * @param {number} [surfacePressurePa=610.0] - Surface pressure P_0 in Pascals
+   * @param {number} [temperatureK=210.0] - Atmospheric temperature T in Kelvin
+   * @param {string} [body='mars'] - Planetary body ('mars' or 'earth')
+   * @returns {{pressurePa: number, pressureMbar: number, densityKgM3: number, scaleHeightMeters: number}}
+   */
+  static computeHydrostaticPressureProfile(altitudeMeters, surfacePressurePa = 610.0, temperatureK = 210.0, body = 'mars') {
+    let Rspec = 191.84; // J / (kg K) for Mars CO2 atmosphere (M = 43.34 g/mol)
+    let g = 3.72076; // m/s^2
+
+    if (body.toLowerCase() === 'earth') {
+      Rspec = 287.05; // J / (kg K) for Earth dry air (M = 28.97 g/mol)
+      g = 9.80665;
+    }
+
+    const T = Math.max(10.0, temperatureK);
+    const P0 = Math.max(0.0, surfacePressurePa);
+
+    const H = (Rspec * T) / g;
+    const P = P0 * Math.exp(-altitudeMeters / H);
+    const rho = P / (Rspec * T);
+
+    return {
+      pressurePa: parseFloat(P.toFixed(2)),
+      pressureMbar: parseFloat((P / 100.0).toFixed(3)),
+      densityKgM3: parseFloat(rho.toFixed(5)),
+      scaleHeightMeters: parseFloat(H.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate atmospheric acoustic sound speed and dynamic acoustic impedance in Martian CO2.
+   * c_s = sqrt( gamma * R_spec * T )
+   * Z = rho * c_s
+   * @param {number} [temperatureK=210.0] - Atmospheric temperature T in Kelvin
+   * @param {number} [densityKgM3=0.01514] - Mass density rho in kg/m^3
+   * @param {number} [adiabaticIndexGamma=1.289] - Heat capacity ratio (Cp/Cv = 1.289 for CO2)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{soundSpeedMps: number, soundSpeedKmh: number, acousticImpedancePaS_M: number}}
+   */
+  static computeAtmosphericThermalSoundSpeed(temperatureK = 210.0, densityKgM3 = 0.01514, adiabaticIndexGamma = 1.289, body = 'mars') {
+    let Rspec = 191.84; // J / (kg K)
+    let gamma = adiabaticIndexGamma;
+
+    if (body.toLowerCase() === 'earth') {
+      Rspec = 287.05;
+      gamma = 1.40;
+    }
+
+    const T = Math.max(10.0, temperatureK);
+    const rho = Math.max(1e-6, densityKgM3);
+
+    const cs = Math.sqrt(gamma * Rspec * T);
+    const Z = rho * cs;
+
+    return {
+      soundSpeedMps: parseFloat(cs.toFixed(2)),
+      soundSpeedKmh: parseFloat((cs * 3.6).toFixed(1)),
+      acousticImpedancePaS_M: parseFloat(Z.toFixed(4))
+    };
+  }
 }
 
 

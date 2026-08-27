@@ -7603,6 +7603,35 @@ describe('CRISM Pyroxene Mineralogy (LCPINDEX2 & HCPINDEX2) (BandMathEngine)', (
     });
 });
 
+describe('Hydrostatic Pressure Profile & Acoustic Sound Speed (MCDEngine)', () => {
+    it('should calculate Mars atmospheric scale height, pressure, and mass density at altitude', () => {
+        // Mars surface datum (z = 0 m, T = 210 K, P_0 = 610 Pa):
+        // H = (191.84 * 210) / 3.72076 = 10827.4 m (~10.83 km)
+        // P(0) = 610 Pa (6.10 mbar), rho = 610 / (191.84 * 210) = 0.01514 kg/m^3
+        const datum = MCDEngine.computeHydrostaticPressureProfile(0.0, 610.0, 210.0, 'mars');
+        expect(datum.scaleHeightMeters).to.be.closeTo(10827.4, 2.0);
+        expect(datum.pressurePa).to.equal(610.0);
+        expect(datum.pressureMbar).to.equal(6.10);
+        expect(datum.densityKgM3).to.be.closeTo(0.01514, 0.0001);
+
+        // Olympus Mons summit (z = 21287 m):
+        // P(21287) = 610 * exp(-21287 / 10827.4) = 610 * exp(-1.966) = 610 * 0.1400 = 85.4 Pa (0.854 mbar)
+        const summit = MCDEngine.computeHydrostaticPressureProfile(21287.0, 610.0, 210.0, 'mars');
+        expect(summit.pressurePa).to.be.closeTo(85.4, 1.0);
+        expect(summit.pressureMbar).to.be.closeTo(0.854, 0.01);
+    });
+
+    it('should calculate Martian acoustic sound speed and dynamic acoustic impedance', () => {
+        // Mars CO2 atmosphere at T = 210 K, gamma = 1.289:
+        // c_s = sqrt( 1.289 * 191.84 * 210 ) = sqrt( 51928.9 ) = 227.88 m/s (~820.4 km/h)
+        // Z = 0.01514 * 227.88 = 3.450 Pa*s/m
+        const sound = MCDEngine.computeAtmosphericThermalSoundSpeed(210.0, 0.01514, 1.289, 'mars');
+        expect(sound.soundSpeedMps).to.be.closeTo(227.88, 0.5);
+        expect(sound.soundSpeedKmh).to.be.closeTo(820.4, 2.0);
+        expect(sound.acousticImpedancePaS_M).to.be.closeTo(3.450, 0.05);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
