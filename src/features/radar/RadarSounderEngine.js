@@ -1700,6 +1700,64 @@ export class RadarSounderEngine {
       isDetectableEcho: isDet
     };
   }
+
+  // --- Complex Refractive Index & Sounding Vertical Range Resolution ---
+
+  /**
+   * Calculate complex refractive index (n + i*kappa) and electromagnetic 1/e penetration skin depth.
+   * eps'' = eps' * tan(delta)
+   * n = sqrt( ( eps' + sqrt(eps'^2 + eps''^2) ) / 2 )
+   * kappa = sqrt( ( -eps' + sqrt(eps'^2 + eps''^2) ) / 2 )
+   * delta_skin = c / ( 2 * pi * f * kappa )  (meters)
+   * @param {number} frequencyHz - Radar carrier frequency in Hz (e.g. 20 MHz for SHARAD, 4 MHz for MARSIS)
+   * @param {number} epsReal - Real relative dielectric permittivity (e.g. 3.15 for ice)
+   * @param {number} lossTangent - Dielectric loss tangent tan(delta) (e.g. 0.001 for cold pure ice)
+   * @returns {{refractiveIndexN: number, extinctionCoeffKappa: number, skinDepthMeters: number, phaseVelocityKmS: number}}
+   */
+  static computeComplexRefractiveIndexAndSkinDepth(frequencyHz, epsReal, lossTangent) {
+    const f = Math.max(1e3, frequencyHz);
+    const er = Math.max(1.0, epsReal);
+    const tanD = Math.max(1e-7, lossTangent);
+
+    const ei = er * tanD;
+    const hyp = Math.sqrt(er * er + ei * ei);
+
+    const n = Math.sqrt((er + hyp) / 2.0);
+    const kappa = Math.sqrt((-er + hyp) / 2.0);
+
+    const vPhase = (RadarSounderEngine.C / n) / 1000.0; // km/s
+    const skinDepth = kappa > 0 ? RadarSounderEngine.C / (2.0 * Math.PI * f * kappa) : 99999.0;
+
+    return {
+      refractiveIndexN: parseFloat(n.toFixed(5)),
+      extinctionCoeffKappa: parseFloat(kappa.toExponential(4)),
+      skinDepthMeters: parseFloat(skinDepth.toFixed(1)),
+      phaseVelocityKmS: parseFloat(vPhase.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate vertical sounding range resolution in free space and within a subsurface dielectric medium.
+   * delta_z_air = c / ( 2 * Bandwidth )
+   * delta_z_medium = c / ( 2 * Bandwidth * sqrt(eps_r) )
+   * @param {number} bandwidthHz - Radar chirp bandwidth in Hz (e.g. 10 MHz = 10e6 for SHARAD, 1 MHz for MARSIS)
+   * @param {number} [dielectricPermittivity=3.15] - Medium dielectric constant (3.15 for water ice, 5.5 for basalt)
+   * @returns {{verticalResolutionAirMeters: number, verticalResolutionMediumMeters: number, mediumWavelengthMeters: number}}
+   */
+  static computeSubsurfaceLayerVerticalResolution(bandwidthHz, dielectricPermittivity = 3.15) {
+    const B = Math.max(1e3, bandwidthHz);
+    const er = Math.max(1.0, dielectricPermittivity);
+    const n = Math.sqrt(er);
+
+    const resAir = RadarSounderEngine.C / (2.0 * B);
+    const resMed = resAir / n;
+
+    return {
+      verticalResolutionAirMeters: parseFloat(resAir.toFixed(2)),
+      verticalResolutionMediumMeters: parseFloat(resMed.toFixed(2)),
+      mediumWavelengthMeters: parseFloat((RadarSounderEngine.C / (20e6 * n)).toFixed(3)) // for 20 MHz reference
+    };
+  }
 }
 
 

@@ -7290,6 +7290,33 @@ describe('CSFD Relative (R) Plotting & Sqrt(2) Bins (CSFDEngine)', () => {
     });
 });
 
+describe('Complex Refractive Index & Sounding Vertical Resolution (RadarSounderEngine)', () => {
+    it('should calculate complex refractive index (n + i*kappa) and electromagnetic skin depth', () => {
+        // Cold pure Martian polar ice (eps' = 3.15, tan(delta) = 0.001 at f = 20 MHz):
+        // n = sqrt(3.15) = 1.77482, kappa = sqrt(3.15) * 0.001 / 2 = 0.00088741
+        // skin depth delta = 299792458 / (2 * pi * 20e6 * 0.00088741) = 299792458 / 111516.3 = 2688.3 meters
+        const ice = RadarSounderEngine.computeComplexRefractiveIndexAndSkinDepth(20e6, 3.15, 0.001);
+        expect(ice.refractiveIndexN).to.be.closeTo(1.7748, 0.001);
+        expect(ice.extinctionCoeffKappa).to.be.closeTo(0.0008874, 0.00005);
+        expect(ice.skinDepthMeters).to.be.closeTo(2688.3, 10.0);
+        expect(ice.phaseVelocityKmS).to.be.closeTo(168914.07, 100.0);
+    });
+
+    it('should calculate radar sounding vertical range resolution in air and dielectric media', () => {
+        // SHARAD sounder: Bandwidth = 10 MHz (10e6 Hz)
+        // Free-space resolution = c / (2 * 10e6) = 299792458 / 20e6 = 14.99 meters (~15 m)
+        // In water ice (eps_r = 3.15 -> sqrt(3.15) = 1.77482): resolution = 14.99 / 1.77482 = 8.45 meters!
+        const sharad = RadarSounderEngine.computeSubsurfaceLayerVerticalResolution(10e6, 3.15);
+        expect(sharad.verticalResolutionAirMeters).to.be.closeTo(14.99, 0.05);
+        expect(sharad.verticalResolutionMediumMeters).to.be.closeTo(8.45, 0.05);
+
+        // MARSIS sounder: Bandwidth = 1 MHz (1e6 Hz)
+        // In water ice: resolution = 149.9 / 1.77482 = 84.46 meters
+        const marsis = RadarSounderEngine.computeSubsurfaceLayerVerticalResolution(1e6, 3.15);
+        expect(marsis.verticalResolutionMediumMeters).to.be.closeTo(84.46, 0.5);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
