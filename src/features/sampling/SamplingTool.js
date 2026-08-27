@@ -451,5 +451,77 @@ export class SamplingTool {
             landscapePosition: pos
         };
     }
+
+    // --- Horn (1981) Slope Aspect & Sloped Solar Incidence Solvers ---
+
+    /**
+     * Calculate topographic slope magnitude (degrees) and compass aspect direction using Horn's 3x3 finite difference filter.
+     * @param {Array<Array<number>>} grid3x3 - 3x3 2D array of elevation values [[z00, z01, z02], [z10, z11, z12], [z20, z21, z22]]
+     * @param {number} [cellSizeMeters=463.0] - DEM cell resolution in meters (e.g. 463m for MOLA 128ppd)
+     * @returns {{slopeDeg: number, aspectDeg: number, cardinalDirection: string, slopePercent: number}}
+     */
+    static computeSlopeAndAspectHorn(grid3x3, cellSizeMeters = 463.0) {
+        if (!grid3x3 || grid3x3.length < 3 || grid3x3[0].length < 3) {
+            return { slopeDeg: 0, aspectDeg: 0, cardinalDirection: 'Flat', slopePercent: 0 };
+        }
+
+        const dx = Math.max(1.0, cellSizeMeters);
+        const dy = dx;
+
+        const [[z00, z01, z02], [z10, z11, z12], [z20, z21, z22]] = grid3x3;
+
+        // Horn (1981) weighted gradient filter (Row 0 = North, Row 2 = South)
+        const dzdx = ((z02 + 2.0 * z12 + z22) - (z00 + 2.0 * z10 + z20)) / (8.0 * dx);
+        const dzdy = ((z00 + 2.0 * z01 + z02) - (z20 + 2.0 * z21 + z22)) / (8.0 * dy);
+
+        const slopeRad = Math.atan(Math.sqrt(dzdx * dzdx + dzdy * dzdy));
+        const slopeDeg = (slopeRad * 180.0) / Math.PI;
+        const slopePct = Math.tan(slopeRad) * 100.0;
+
+        let aspectDeg = 0.0;
+        if (dzdx !== 0.0 || dzdy !== 0.0) {
+            let asp = 180.0 + (Math.atan2(dzdx, dzdy) * 180.0) / Math.PI;
+            while (asp < 0) asp += 360;
+            while (asp >= 360) asp -= 360;
+            aspectDeg = asp;
+        }
+
+        const cardinals = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        const cardIdx = Math.round(aspectDeg / 45.0) % 8;
+        const cardDir = slopeDeg < 0.5 ? 'Flat' : cardinals[cardIdx];
+
+        return {
+            slopeDeg: parseFloat(slopeDeg.toFixed(2)),
+            aspectDeg: parseFloat(aspectDeg.toFixed(2)),
+            cardinalDirection: cardDir,
+            slopePercent: parseFloat(slopePct.toFixed(2))
+        };
+    }
+
+    /**
+     * Calculate effective local solar incidence angle on a sloped terrain surface.
+     * cos(i_slope) = cos(theta_z) * cos(S) + sin(theta_z) * sin(S) * cos(A_sun - psi_aspect)
+     * @param {number} slopeDeg - Terrain slope magnitude in degrees
+     * @param {number} aspectDeg - Terrain slope aspect orientation in degrees (0 - 360)
+     * @param {number} solarZenithDeg - Solar zenith angle in degrees (0 - 90)
+     * @param {number} solarAzimuthDeg - Solar azimuth angle in degrees (0 - 360)
+     * @returns {{cosIncidence: number, localIncidenceDeg: number, isDirectlyIlluminated: boolean}}
+     */
+    static computeSlopeSolarIncidence(slopeDeg, aspectDeg, solarZenithDeg, solarAzimuthDeg) {
+        const sRad = (slopeDeg * Math.PI) / 180.0;
+        const zRad = (solarZenithDeg * Math.PI) / 180.0;
+        const dAzRad = ((solarAzimuthDeg - aspectDeg) * Math.PI) / 180.0;
+
+        const cosI = Math.cos(zRad) * Math.cos(sRad) + Math.sin(zRad) * Math.sin(sRad) * Math.cos(dAzRad);
+        const clampedCos = Math.max(-1.0, Math.min(1.0, cosI));
+        const incRad = Math.acos(clampedCos);
+        const incDeg = (incRad * 180.0) / Math.PI;
+
+        return {
+            cosIncidence: parseFloat(clampedCos.toFixed(4)),
+            localIncidenceDeg: parseFloat(incDeg.toFixed(2)),
+            isDirectlyIlluminated: clampedCos > 0.0
+        };
+    }
 }
 

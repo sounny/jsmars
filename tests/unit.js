@@ -7439,6 +7439,48 @@ describe('Hapke Photometric Bidirectional Reflectance (ThreeDEngine)', () => {
     });
 });
 
+describe('Horn Slope Aspect & Sloped Solar Incidence (SamplingTool)', () => {
+    it('should compute slope magnitude and compass aspect using Horn 3x3 filter', () => {
+        // Pure south-facing slope (elevation decreasing to the south / down in grid):
+        // Row 0 (North): 1000m, Row 1 (Center): 500m, Row 2 (South): 0m
+        const southSlopeGrid = [
+            [1000, 1000, 1000],
+            [500,  500,  500],
+            [0,    0,    0]
+        ];
+        // dz/dx = 0, dz/dy = (0 - 4000) / (8 * 463) = -4000 / 3704 = -1.0799
+        // slopeRad = atan(1.0799) = 47.20°, aspect = 180° (South facing)
+        const southRes = SamplingTool.computeSlopeAndAspectHorn(southSlopeGrid, 463.0);
+        expect(southRes.slopeDeg).to.be.closeTo(47.20, 0.5);
+        expect(southRes.cardinalDirection).to.equal('S');
+
+        // Flat horizontal plain:
+        const flatGrid = [
+            [200, 200, 200],
+            [200, 200, 200],
+            [200, 200, 200]
+        ];
+        const flatRes = SamplingTool.computeSlopeAndAspectHorn(flatGrid, 463.0);
+        expect(flatRes.slopeDeg).to.equal(0.0);
+        expect(flatRes.cardinalDirection).to.equal('Flat');
+    });
+
+    it('should compute effective solar incidence on sloped terrain facets', () => {
+        // South-facing slope (slope = 30°, aspect = 180°) with South sun at noon (zenith = 30°, azimuth = 180°):
+        // Direct normal illumination (i_slope = 30° - 30° = 0.0°, cos = 1.0)
+        const directNormal = SamplingTool.computeSlopeSolarIncidence(30.0, 180.0, 30.0, 180.0);
+        expect(directNormal.cosIncidence).to.be.closeTo(1.0, 0.0001);
+        expect(directNormal.localIncidenceDeg).to.equal(0.0);
+        expect(directNormal.isDirectlyIlluminated).to.be.true;
+
+        // North-facing slope facing away from low South sun in deep shadow (slope = 45°, aspect = 0°, zenith = 60°, azimuth = 180°):
+        // cos(i) = cos(60)*cos(45) + sin(60)*sin(45)*cos(180 - 0) = 0.5*0.7071 - 0.866*0.7071 = 0.3535 - 0.6124 = -0.2588 (self-shadowed!)
+        const shadow = SamplingTool.computeSlopeSolarIncidence(45.0, 0.0, 60.0, 180.0);
+        expect(shadow.cosIncidence).to.be.lessThan(0.0);
+        expect(shadow.isDirectlyIlluminated).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
