@@ -6355,6 +6355,31 @@ describe('CRISM Hydration & Fe/Mg Phyllosilicate Summary Parameters (BandMathEng
     });
 });
 
+describe('SAR Azimuth Resolution, Doppler Shift & PRF Bounds (RadarSounderEngine)', () => {
+    it('should calculate theoretical along-track SAR azimuth spatial resolution', () => {
+        // SHARAD antenna dipole length = 10 meters -> azimuth resolution = 10 / 2 = 5 meters
+        const sar = RadarSounderEngine.computeSARAzimuthResolution(10.0);
+        expect(sar.azimuthResolutionMeters).to.equal(5.0);
+        expect(sar.antennaLengthMeters).to.equal(10.0);
+    });
+
+    it('should compute radar Doppler frequency shift and PRF timing bounds', () => {
+        // Spacecraft orbiting at v = 3400 m/s, SHARAD 20 MHz (lambda = 14.9896 m)
+        // Along-track squint = 5°, cross-track = 0°
+        // f_d = (2 * 3400 / 14.9896) * sin(5°) = 453.647 * 0.087156 = 39.538 Hz
+        const dop = RadarSounderEngine.computeDopplerFrequencyShift(3400.0, 20e6, 5.0, 0.0);
+        expect(dop.dopplerShiftHz).to.be.closeTo(39.54, 0.1);
+        expect(dop.wavelengthMeters).to.be.closeTo(14.99, 0.05);
+
+        // PRF bounds for MRO SHARAD: v = 3400 m/s, L = 10 m, max range = 300 km
+        // PRF_min = 2 * 3400 / 10 = 680 Hz
+        // PRF_max = 299792458 / (2 * 300000) = 499.65 Hz (or higher for lower altitude sounding)
+        const prf = RadarSounderEngine.computeRadarPulseRepetitionFrequencyBounds(3400.0, 10.0, 300.0);
+        expect(prf.prfMinHz).to.equal(680.0);
+        expect(prf.prfMaxHz).to.be.closeTo(499.65, 0.1);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1523,6 +1523,72 @@ export class RadarSounderEngine {
       criticalAngleRad: parseFloat(thetaCRad.toFixed(5))
     };
   }
+
+  // --- Synthetic Aperture Radar (SAR) Doppler & PRF Timing Solvers ---
+
+  /**
+   * Calculate theoretical along-track SAR azimuth spatial resolution Delta_x_az = L_antenna / 2.
+   * @param {number} antennaLengthMeters - Physical antenna aperture length along-track in meters
+   * @returns {{azimuthResolutionMeters: number, antennaLengthMeters: number}}
+   */
+  static computeSARAzimuthResolution(antennaLengthMeters) {
+    const L = Math.max(0.1, antennaLengthMeters);
+    const res = L / 2.0;
+
+    return {
+      azimuthResolutionMeters: parseFloat(res.toFixed(3)),
+      antennaLengthMeters: parseFloat(L.toFixed(2))
+    };
+  }
+
+  /**
+   * Calculate radar Doppler frequency shift f_d for moving spacecraft sounder.
+   * f_d = (2 * v / lambda) * sin(theta_along) * cos(theta_cross)
+   * @param {number} velocityMS - Spacecraft ground speed in m/s
+   * @param {number} frequencyHz - Radar center frequency in Hz
+   * @param {number} [alongTrackAngleDeg=0] - Forward/backward squint angle along-track
+   * @param {number} [crossTrackAngleDeg=0] - Cross-track off-nadir angle
+   * @returns {{dopplerShiftHz: number, wavelengthMeters: number}}
+   */
+  static computeDopplerFrequencyShift(velocityMS, frequencyHz, alongTrackAngleDeg = 0, crossTrackAngleDeg = 0) {
+    const v = velocityMS;
+    const f = Math.max(1e3, frequencyHz);
+    const lambda = RadarSounderEngine.C / f;
+
+    const thAlongRad = (alongTrackAngleDeg * Math.PI) / 180.0;
+    const thCrossRad = (crossTrackAngleDeg * Math.PI) / 180.0;
+
+    const fd = ((2.0 * v) / lambda) * Math.sin(thAlongRad) * Math.cos(thCrossRad);
+
+    return {
+      dopplerShiftHz: parseFloat(fd.toFixed(3)),
+      wavelengthMeters: parseFloat(lambda.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate unambiguous radar pulse repetition frequency (PRF) lower and upper bounds.
+   * PRF_min = 2 * v / L_antenna (Doppler sampling)
+   * PRF_max = c / (2 * R_max) (Range unambiguous swath)
+   * @param {number} velocityMS - Spacecraft ground speed in m/s
+   * @param {number} antennaLengthMeters - Physical antenna length in meters
+   * @param {number} maxRangeKm - Maximum radar sounding range in km
+   * @returns {{prfMinHz: number, prfMaxHz: number, hasValidPRFWrap: boolean}}
+   */
+  static computeRadarPulseRepetitionFrequencyBounds(velocityMS, antennaLengthMeters, maxRangeKm) {
+    const v = Math.max(1.0, velocityMS);
+    const L = Math.max(0.1, antennaLengthMeters);
+    const rMax = Math.max(1.0, maxRangeKm * 1000.0);
+
+    const prfMin = (2.0 * v) / L;
+    const prfMax = RadarSounderEngine.C / (2.0 * rMax);
+
+    return {
+      prfMinHz: parseFloat(prfMin.toFixed(2)),
+      prfMaxHz: parseFloat(prfMax.toFixed(2)),
+      hasValidPRFWrap: prfMin <= prfMax
+    };
+  }
 }
 
 
