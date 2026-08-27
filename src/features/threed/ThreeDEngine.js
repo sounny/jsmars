@@ -1570,6 +1570,56 @@ export class ThreeDEngine {
       multipleScatteringPart: parseFloat(multiPart.toFixed(4))
     };
   }
+
+  // --- Lommel-Seeliger & Minnaert Regolith Photometric Solvers ---
+
+  /**
+   * Calculate Lommel-Seeliger photometric scattering factor for low-albedo particulate regolith.
+   * f_LS = mu_0 / (mu_0 + mu) = cos(i) / (cos(i) + cos(e))
+   * @param {number} solarIncidenceDeg - Solar incidence angle i in degrees (0 - 90)
+   * @param {number} emissionAngleDeg - Emission / viewing angle e in degrees (0 - 90)
+   * @returns {{lommelSeeligerFactor: number, cosIncidence: number, cosEmission: number}}
+   */
+  static computeLommelSeeligerPhotometry(solarIncidenceDeg, emissionAngleDeg) {
+    const iRad = (Math.min(90.0, Math.max(0.0, solarIncidenceDeg)) * Math.PI) / 180.0;
+    const eRad = (Math.min(90.0, Math.max(0.0, emissionAngleDeg)) * Math.PI) / 180.0;
+
+    const mu0 = Math.cos(iRad);
+    const mu = Math.cos(eRad);
+
+    const denom = mu0 + mu;
+    const fLS = denom > 0 ? mu0 / denom : 0.0;
+
+    return {
+      lommelSeeligerFactor: parseFloat(fLS.toFixed(4)),
+      cosIncidence: parseFloat(mu0.toFixed(4)),
+      cosEmission: parseFloat(mu.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate Minnaert planetary empirical limb-darkening / photometric factor.
+   * f_Minnaert = mu_0^k * mu^(k - 1)
+   * @param {number} solarIncidenceDeg - Solar incidence angle i in degrees
+   * @param {number} emissionAngleDeg - Emission angle e in degrees
+   * @param {number} [minnaertExponentK=0.65] - Minnaert limb parameter k (1.0 = Lambert, 0.5 = Lunar/Martian)
+   * @returns {{minnaertFactor: number, minnaertExponent: number}}
+   */
+  static computeMinnaertReflectanceFactor(solarIncidenceDeg, emissionAngleDeg, minnaertExponentK = 0.65) {
+    const iRad = (Math.min(89.99, Math.max(0.0, solarIncidenceDeg)) * Math.PI) / 180.0;
+    const eRad = (Math.min(89.99, Math.max(0.0, emissionAngleDeg)) * Math.PI) / 180.0;
+
+    const mu0 = Math.cos(iRad);
+    const mu = Math.cos(eRad);
+    const k = Math.max(0.01, minnaertExponentK);
+
+    const fMinnaert = Math.pow(mu0, k) * Math.pow(mu, k - 1.0);
+
+    return {
+      minnaertFactor: parseFloat(fMinnaert.toFixed(4)),
+      minnaertExponent: parseFloat(k.toFixed(3))
+    };
+  }
 }
 
 

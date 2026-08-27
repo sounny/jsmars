@@ -7719,6 +7719,36 @@ describe('Polar Stereographic Cartographic Projections (Geo)', () => {
     });
 });
 
+describe('Lommel-Seeliger & Minnaert Photometric Solvers (ThreeDEngine)', () => {
+    it('should calculate Lommel-Seeliger regolith scattering factor', () => {
+        // Direct normal illumination and nadir viewing (i = 0°, e = 0°):
+        // mu_0 = 1.0, mu = 1.0 -> f_LS = 1.0 / (1.0 + 1.0) = 0.5000
+        const nadir = ThreeDEngine.computeLommelSeeligerPhotometry(0.0, 0.0);
+        expect(nadir.lommelSeeligerFactor).to.equal(0.5000);
+        expect(nadir.cosIncidence).to.equal(1.0);
+        expect(nadir.cosEmission).to.equal(1.0);
+
+        // Slanted illumination (i = 60°, e = 30°):
+        // mu_0 = cos(60°) = 0.50, mu = cos(30°) = 0.8660
+        // f_LS = 0.50 / (0.50 + 0.8660) = 0.50 / 1.3660 = 0.3660
+        const slanted = ThreeDEngine.computeLommelSeeligerPhotometry(60.0, 30.0);
+        expect(slanted.lommelSeeligerFactor).to.be.closeTo(0.3660, 0.001);
+    });
+
+    it('should calculate Minnaert planetary empirical limb-darkening factor', () => {
+        // Pure Lambertian diffusion (k = 1.0):
+        // f_Minnaert = mu_0^1 * mu^0 = cos(i)
+        const lambert = ThreeDEngine.computeMinnaertReflectanceFactor(45.0, 30.0, 1.0);
+        expect(lambert.minnaertFactor).to.be.closeTo(Math.cos(Math.PI / 4.0), 0.001);
+
+        // Martian regolith limb parameter (k = 0.65):
+        // i = 30°, e = 60°: mu_0 = 0.8660, mu = 0.50
+        // f_Minnaert = (0.8660)^0.65 * (0.50)^(-0.35) = 0.9103 * 1.2746 = 1.1602
+        const mars = ThreeDEngine.computeMinnaertReflectanceFactor(30.0, 60.0, 0.65);
+        expect(mars.minnaertFactor).to.be.closeTo(1.1602, 0.005);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
