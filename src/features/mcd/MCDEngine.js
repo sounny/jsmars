@@ -2192,6 +2192,37 @@ export class MCDEngine {
       scaleHeightMeters: parseFloat(HMeters.toFixed(1))
     };
   }
+
+  /**
+   * Calculate atmospheric homopause (turbopause) altitude where molecular diffusion equals turbulent eddy mixing.
+   * D_mol(z) = D_0 * exp( z / H )
+   * z_homo = H * ln( K_z / ( D_0 * (T/T_0)^0.75 ) )
+   * Reference: Krasnopolsky (2002), Bougher et al. (2015) for MAVEN upper atmosphere aeronomy.
+   * @param {number} [eddyDiffusionCoefficientKz=3.0e4] - Upper atmospheric eddy diffusion coefficient K_z in m^2/s (1e3 to 1e5 m^2/s)
+   * @param {number} [scaleHeightKm=10.5] - Local barometric scale height H in km
+   * @param {number} [exosphericTempK=180.0] - Thermospheric/exospheric temperature in Kelvin
+   * @returns {{homopauseAltitudeKm: number, eddyDiffusionKzM2S: number, molecularDiffusionAtHomopauseM2S: number, isWellMixedBelow: boolean}}
+   */
+  static computeAtmosphericHomopauseAltitude(eddyDiffusionCoefficientKz = 3.0e4, scaleHeightKm = 10.5, exosphericTempK = 180.0) {
+    const Kz = Math.max(10.0, eddyDiffusionCoefficientKz);
+    const H = Math.max(1.0, scaleHeightKm);
+    const T = Math.max(50.0, exosphericTempK);
+
+    const D0 = 1.5e-5; // m^2/s at surface (1 bar / STP reference scaled to 6 mbar ~ 2.5e-3)
+    const T0 = 215.0;  // surface ref temp
+    const D0MarsSurface = 2.5e-3; // molecular diffusion at Mars surface (6.1 mbar)
+
+    const tempFactor = Math.pow(T / T0, 0.75);
+    const ratio = Kz / (D0MarsSurface * tempFactor);
+    const zHomoKm = H * Math.log(Math.max(1.01, ratio));
+
+    return {
+      homopauseAltitudeKm: parseFloat(zHomoKm.toFixed(1)),
+      eddyDiffusionKzM2S: parseFloat(Kz.toExponential(3)),
+      molecularDiffusionAtHomopauseM2S: parseFloat(Kz.toExponential(3)),
+      isWellMixedBelow: true // Species below z_homo are uniformly mixed
+    };
+  }
 }
 
 

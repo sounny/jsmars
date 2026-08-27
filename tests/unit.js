@@ -8572,6 +8572,55 @@ describe('Sun-Synchronous J2 Nodal Drift, Permafrost Ground Ice & Ferric Iron In
     });
 });
 
+describe('Spacecraft Eclipse Duration, Upper Atmosphere Homopause & Pyroxene Ternary System', () => {
+    it('should calculate orbital eclipse umbra duration and critical beta angle', () => {
+        // Low Mars Orbit (MRO at h = 250 km, a = 3646 km, beta = 0 deg):
+        // Period ~ 112 minutes, eclipse fraction ~ 38%, umbra duration ~ 43 minutes
+        const mroEclipse = TrajectoryEngine.computeOrbitalEclipseUmbraAndPenumbraDuration(250.0, 0.0, 'mars');
+        expect(mroEclipse.orbitPeriodMinutes).to.be.closeTo(112.0, 5.0);
+        expect(mroEclipse.umbraDurationMinutes).to.be.closeTo(43.0, 5.0);
+        expect(mroEclipse.eclipseFractionPct).to.be.closeTo(38.0, 5.0);
+        expect(mroEclipse.criticalBetaAngleDeg).to.be.closeTo(68.6, 2.0);
+        expect(mroEclipse.isInFullSunlight).to.be.false;
+
+        // High beta angle orbit (beta = 75 deg > beta_crit): continuous full sunlight
+        const fullSunOrbit = TrajectoryEngine.computeOrbitalEclipseUmbraAndPenumbraDuration(250.0, 75.0, 'mars');
+        expect(fullSunOrbit.isInFullSunlight).to.be.true;
+        expect(fullSunOrbit.umbraDurationMinutes).to.equal(0.0);
+        expect(fullSunOrbit.eclipseFractionPct).to.equal(0.0);
+    });
+
+    it('should calculate atmospheric homopause / turbopause altitude from eddy diffusion', () => {
+        // Mars mesosphere / thermosphere (Kz = 3e4 m^2/s, thermosphere cold scale height H = 7.5 km):
+        // Homopause / turbopause altitude ~ 123 km (Bougher et al. 2015 MAVEN)
+        const homopauseThermo = MCDEngine.computeAtmosphericHomopauseAltitude(3.0e4, 7.5, 140.0);
+        expect(homopauseThermo.homopauseAltitudeKm).to.be.closeTo(123.0, 5.0);
+        expect(homopauseThermo.isWellMixedBelow).to.be.true;
+
+        // Isothermal middle atmosphere (H = 10.5 km):
+        const homopauseIso = MCDEngine.computeAtmosphericHomopauseAltitude(3.0e4, 10.5, 180.0);
+        expect(homopauseIso.homopauseAltitudeKm).to.be.closeTo(172.6, 2.0);
+    });
+
+    it('should calculate Pyroxene Quadrilateral ternary coordinates and classify endmembers', () => {
+        // Diopside (Wo = 50 mol%, En = 45 mol%, Fs = 5 mol%):
+        const diopside = BandMathEngine.computePyroxeneTernaryCoordinates(50.0, 45.0, 5.0);
+        expect(diopside.wollastonitePct).to.equal(50.0);
+        expect(diopside.enstatitePct).to.equal(45.0);
+        expect(diopside.ferrosilitePct).to.equal(5.0);
+        expect(diopside.mgNumberPct).to.equal(90.0);
+        expect(diopside.ternaryX).to.be.closeTo(30.0, 1.0);
+        expect(diopside.ternaryY).to.be.closeTo(43.3, 1.0);
+        expect(diopside.mineralName).to.include('Diopside');
+        expect(diopside.pyroxeneFamily).to.include('Calc-Pyroxene');
+
+        // Enstatite Orthopyroxene (Wo = 2 mol%, En = 85 mol%, Fs = 13 mol%):
+        const enstatite = BandMathEngine.computePyroxeneTernaryCoordinates(2.0, 85.0, 13.0);
+        expect(enstatite.mineralName).to.include('Enstatite');
+        expect(enstatite.pyroxeneFamily).to.include('Orthopyroxene');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1135,6 +1135,72 @@ export class TrajectoryEngine {
       isSunSynchronous: isSunSync
     };
   }
+
+  /**
+   * Calculate orbital eclipse geometry, shadow entry/exit arc, and umbra duration per orbit.
+   * beta_crit = arcsin( R_planet / a )
+   * Delta_theta_umbra = 2 * arcsin( sqrt( R_p^2 - a^2 * sin^2(beta) ) / (a * cos(beta)) )
+   * t_umbra = ( Delta_theta_umbra / 2*pi ) * T_orbit
+   * Reference: Wertz & Larson (1999) SMAD, Vallado (2013).
+   * @param {number} orbitAltitudeKm - Orbital altitude h above mean surface in km (e.g. 250 km for MRO)
+   * @param {number} [betaAngleDeg=0.0] - Orbit beta angle (angle between orbit plane and sun vector, -90 to +90 deg)
+   * @param {string} [body='mars'] - Planetary body ('mars', 'moon', 'earth')
+   * @returns {{umbraDurationMinutes: number, orbitPeriodMinutes: number, eclipseFractionPct: number, criticalBetaAngleDeg: number, isInFullSunlight: boolean}}
+   */
+  static computeOrbitalEclipseUmbraAndPenumbraDuration(orbitAltitudeKm, betaAngleDeg = 0.0, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const isEarth = bKey === 'earth';
+    const isMoon = bKey === 'moon';
+
+    let mu = 42828.37;
+    let Rp = 3396.19;
+    if (isEarth) {
+      mu = 398600.4418;
+      Rp = 6378.137;
+    } else if (isMoon) {
+      mu = 4902.8;
+      Rp = 1737.4;
+    }
+
+    const h = Math.max(10.0, orbitAltitudeKm);
+    const a = Rp + h;
+    const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(a, 3.0) / mu);
+    const periodMin = periodSec / 60.0;
+
+    const betaRad = (Math.min(90.0, Math.max(-90.0, betaAngleDeg)) * Math.PI) / 180.0;
+    const sinBetaCrit = Rp / a;
+    const betaCritRad = Math.asin(Math.min(1.0, sinBetaCrit));
+    const betaCritDeg = (betaCritRad * 180.0) / Math.PI;
+
+    if (Math.abs(betaAngleDeg) >= betaCritDeg) {
+      return {
+        umbraDurationMinutes: 0.0,
+        orbitPeriodMinutes: parseFloat(periodMin.toFixed(2)),
+        eclipseFractionPct: 0.0,
+        criticalBetaAngleDeg: parseFloat(betaCritDeg.toFixed(2)),
+        isInFullSunlight: true
+      };
+    }
+
+    // Shadow arc angle
+    const cosBeta = Math.cos(betaRad);
+    const sinBeta = Math.sin(betaRad);
+    const num = Math.sqrt(Math.max(0.0, Rp * Rp - a * a * sinBeta * sinBeta));
+    const den = a * cosBeta;
+    const halfShadowArcRad = Math.asin(Math.min(1.0, num / den));
+    const totalShadowArcRad = 2.0 * halfShadowArcRad;
+
+    const eclipseFrac = totalShadowArcRad / (2.0 * Math.PI);
+    const umbraMin = periodMin * eclipseFrac;
+
+    return {
+      umbraDurationMinutes: parseFloat(umbraMin.toFixed(2)),
+      orbitPeriodMinutes: parseFloat(periodMin.toFixed(2)),
+      eclipseFractionPct: parseFloat((eclipseFrac * 100.0).toFixed(2)),
+      criticalBetaAngleDeg: parseFloat(betaCritDeg.toFixed(2)),
+      isInFullSunlight: false
+    };
+  }
 }
 
 

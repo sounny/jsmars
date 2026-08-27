@@ -2588,6 +2588,61 @@ export class BandMathEngine {
       isGoethiteJarosite: isGoethite
     };
   }
+
+  /**
+   * Calculate Pyroxene Quadrilateral ternary coordinates (Wo-En-Fs mol%) and IMA mineral classification.
+   * x = Fs_mol% + 0.5 * Wo_mol%
+   * y = (sqrt(3) / 2) * Wo_mol%
+   * Reference: Morimoto et al. (1988) IMA Pyroxene Nomenclature, Cloutis & Gaffey (1991).
+   * @param {number} wollastoniteMol - Wollastonite (Ca2Si2O6) component in mol%
+   * @param {number} enstatiteMol - Enstatite (Mg2Si2O6) component in mol%
+   * @param {number} ferrosiliteMol - Ferrosilite (Fe2Si2O6) component in mol%
+   * @returns {{wollastonitePct: number, enstatitePct: number, ferrosilitePct: number, mgNumberPct: number, ternaryX: number, ternaryY: number, mineralName: string, pyroxeneFamily: string}}
+   */
+  static computePyroxeneTernaryCoordinates(wollastoniteMol, enstatiteMol, ferrosiliteMol) {
+    const w = Math.max(0.0, wollastoniteMol);
+    const e = Math.max(0.0, enstatiteMol);
+    const f = Math.max(0.0, ferrosiliteMol);
+
+    const sum = Math.max(1e-4, w + e + f);
+    const woNorm = (w / sum) * 100.0;
+    const enNorm = (e / sum) * 100.0;
+    const fsNorm = (f / sum) * 100.0;
+
+    const mgNum = (enNorm + fsNorm > 1e-4) ? (enNorm / (enNorm + fsNorm)) * 100.0 : 50.0;
+
+    // Ternary projection coordinates:
+    const x = fsNorm + 0.5 * woNorm;
+    const y = (Math.sqrt(3.0) / 2.0) * woNorm;
+
+    let mineralName = 'Intermediate Pyroxene';
+    let family = 'Clinopyroxene (High-Ca)';
+
+    if (woNorm >= 45.0) {
+      mineralName = mgNum >= 50.0 ? 'Diopside (CaMgSi2O6)' : 'Hedenbergite (CaFeSi2O6)';
+      family = 'Calc-Pyroxene (Diopside-Hedenbergite Series)';
+    } else if (woNorm >= 20.0) {
+      mineralName = 'Augite ((Ca,Mg,Fe)2Si2O6)';
+      family = 'High-Calcium Clinopyroxene (Augite)';
+    } else if (woNorm >= 5.0) {
+      mineralName = 'Pigeonite (Low-Ca Monoclinic Pyroxene)';
+      family = 'Low-Calcium Clinopyroxene (Pigeonite)';
+    } else {
+      family = 'Orthopyroxene (Orthorhombic / Enstatite-Ferrosilite Series)';
+      mineralName = mgNum >= 50.0 ? 'Enstatite / Bronzite (Mg-rich OPX)' : 'Ferrosilite / Hypersthene (Fe-rich OPX)';
+    }
+
+    return {
+      wollastonitePct: parseFloat(woNorm.toFixed(2)),
+      enstatitePct: parseFloat(enNorm.toFixed(2)),
+      ferrosilitePct: parseFloat(fsNorm.toFixed(2)),
+      mgNumberPct: parseFloat(mgNum.toFixed(2)),
+      ternaryX: parseFloat(x.toFixed(2)),
+      ternaryY: parseFloat(y.toFixed(2)),
+      mineralName,
+      pyroxeneFamily: family
+    };
+  }
 }
 
 
