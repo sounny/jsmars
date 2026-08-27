@@ -490,6 +490,82 @@ export class TrajectoryEngine {
       orbitalPeriodMinutes: parseFloat(TorbitMin.toFixed(2))
     };
   }
+
+  // --- Vis-Viva Orbital Velocity, Escape Velocity & Flight Path Angle Solvers ---
+
+  /**
+   * Calculate orbital speed from Vis-Viva equation: v = sqrt( mu * (2/r - 1/a) ).
+   * @param {number} rKm - Current distance from planet center in km
+   * @param {number} aKm - Orbit semi-major axis in km (negative for hyperbolic, Infinity for parabolic)
+   * @param {string} [body='mars'] - Planetary body name
+   * @returns {{velocityKmS: number, velocityMS: number, isBoundOrbit: boolean}}
+   */
+  static computeVisVivaVelocity(rKm, aKm, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const r = Math.max(0.1, rKm);
+
+    let v2;
+    if (!Number.isFinite(aKm)) {
+      v2 = 2.0 * mu / r; // Parabolic trajectory
+    } else {
+      v2 = mu * (2.0 / r - 1.0 / aKm);
+    }
+    v2 = Math.max(0.0, v2);
+
+    const vKmS = Math.sqrt(v2);
+    const vMS = vKmS * 1000.0;
+
+    return {
+      velocityKmS: parseFloat(vKmS.toFixed(4)),
+      velocityMS: parseFloat(vMS.toFixed(1)),
+      isBoundOrbit: Number.isFinite(aKm) && aKm > 0
+    };
+  }
+
+  /**
+   * Calculate parabolic escape velocity v_esc = sqrt( 2 * mu / r ) from radial distance in km/s.
+   * @param {number} rKm - Distance from planet center in km
+   * @param {string} [body='mars'] - Planetary body name
+   * @returns {{escapeVelocityKmS: number, escapeVelocityMS: number}}
+   */
+  static computeEscapeVelocityFromRadialDistance(rKm, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const mu = TrajectoryEngine.MU_BODIES[bKey] || TrajectoryEngine.MU_BODIES.mars;
+    const r = Math.max(0.1, rKm);
+
+    const vEscKmS = Math.sqrt((2.0 * mu) / r);
+    const vEscMS = vEscKmS * 1000.0;
+
+    return {
+      escapeVelocityKmS: parseFloat(vEscKmS.toFixed(4)),
+      escapeVelocityMS: parseFloat(vEscMS.toFixed(1))
+    };
+  }
+
+  /**
+   * Calculate orbital flight path angle gamma_fpa (angle between velocity vector and local horizontal).
+   * tan(gamma_fpa) = ( e * sin(nu) ) / ( 1 + e * cos(nu) )
+   * @param {number} trueAnomalyDeg - True anomaly nu in degrees (0 to 360)
+   * @param {number} [eccentricity=0.0] - Orbit eccentricity e (0 for circular)
+   * @returns {{flightPathAngleDeg: number, flightPathAngleRad: number, isClimbing: boolean}}
+   */
+  static computeFlightPathAngle(trueAnomalyDeg, eccentricity = 0.0) {
+    const e = Math.max(0.0, eccentricity);
+    const nuRad = (trueAnomalyDeg * Math.PI) / 180.0;
+
+    const num = e * Math.sin(nuRad);
+    const denom = 1.0 + e * Math.cos(nuRad);
+
+    const gammaRad = Math.atan2(num, Math.max(1e-9, denom));
+    const gammaDeg = (gammaRad * 180.0) / Math.PI;
+
+    return {
+      flightPathAngleDeg: parseFloat(gammaDeg.toFixed(4)),
+      flightPathAngleRad: parseFloat(gammaRad.toFixed(5)),
+      isClimbing: gammaDeg > 0.0
+    };
+  }
 }
 
 

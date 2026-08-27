@@ -6022,6 +6022,36 @@ describe('Map Projections & Grid Convergence (Lambert Equal-Area & Polar Stereog
     });
 });
 
+describe('Orbital Vis-Viva Velocity, Escape Speed & Flight Path Angle (TrajectoryEngine)', () => {
+    it('should calculate orbital speed via Vis-Viva equation and parabolic escape velocity', () => {
+        // Low Mars circular orbit: r = 3680 km (alt ~ 290 km, MRO), a = 3680 km, mu = 42828.37 km^3/s^2
+        // v = sqrt(42828.37 * (2/3680 - 1/3680)) = sqrt(42828.37 / 3680) = sqrt(11.63814) = 3.4115 km/s
+        const vMro = TrajectoryEngine.computeVisVivaVelocity(3680.0, 3680.0, 'mars');
+        expect(vMro.velocityKmS).to.be.closeTo(3.4115, 0.005);
+        expect(vMro.velocityMS).to.be.closeTo(3411.5, 5.0);
+        expect(vMro.isBoundOrbit).to.be.true;
+
+        // Escape velocity from Mars surface (R = 3389.5 km):
+        // v_esc = sqrt(2 * 42828.37 / 3389.5) = sqrt(85656.74 / 3389.5) = sqrt(25.2712) = 5.027 km/s
+        const vEsc = TrajectoryEngine.computeEscapeVelocityFromRadialDistance(3389.5, 'mars');
+        expect(vEsc.escapeVelocityKmS).to.be.closeTo(5.027, 0.005);
+        expect(vEsc.escapeVelocityMS).to.be.closeTo(5027.0, 5.0);
+    });
+
+    it('should compute orbital flight path angle relative to local horizontal', () => {
+        // Circular orbit (e = 0): flight path angle is identically 0° everywhere
+        const fpaCirc = TrajectoryEngine.computeFlightPathAngle(45.0, 0.0);
+        expect(fpaCirc.flightPathAngleDeg).to.equal(0.0);
+        expect(fpaCirc.isClimbing).to.be.false;
+
+        // Elliptical orbit (e = 0.2) at true anomaly nu = 90°:
+        // tan(gamma) = (0.2 * sin(90)) / (1 + 0.2 * cos(90)) = 0.2 / 1.0 = 0.2 -> gamma = arctan(0.2) = 11.3099°
+        const fpaEll = TrajectoryEngine.computeFlightPathAngle(90.0, 0.2);
+        expect(fpaEll.flightPathAngleDeg).to.be.closeTo(11.3099, 0.001);
+        expect(fpaEll.isClimbing).to.be.true;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
