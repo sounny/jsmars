@@ -1846,6 +1846,86 @@ export class CSFDEngine {
       isRandomPoisson: rAgg >= 0.8 && rAgg <= 1.2
     };
   }
+
+  // --- Ivanov Production Function & Crater Excavation Volume Solvers ---
+
+  /**
+   * Standard 11th-order polynomial coefficients for Mars Crater Production Function (Ivanov / Hartmann-Neukum 2001) for 1 Ga.
+   * log10(N(>D)) = sum( a_j * (log10(D))^j )
+   */
+  static IVANOV_MARS_COEFFS_1GA = [
+    -3.0876, -1.9056, -0.6698, 0.4475, 0.1706, -0.1384,
+    -0.0384, 0.0242, 0.0039, -0.0022, -0.0001, 0.00008
+  ];
+
+  /**
+   * Calculate cumulative crater production function N(>D) at 1 Ga from Ivanov polynomial expansion.
+   * @param {number} diameterKm - Crater diameter D in km (e.g. 0.01 to 300 km)
+   * @returns {{nCumulativePerKm2_1Ga: number, log10N: number, log10D: number}}
+   */
+  static computeIvanovProductionFunctionCoefficients(diameterKm) {
+    const D = Math.max(0.001, diameterKm);
+    const logD = Math.log10(D);
+
+    let logN = 0.0;
+    const coeffs = CSFDEngine.IVANOV_MARS_COEFFS_1GA;
+    for (let j = 0; j < coeffs.length; j++) {
+      logN += coeffs[j] * Math.pow(logD, j);
+    }
+
+    const nCum = Math.pow(10, logN);
+
+    return {
+      nCumulativePerKm2_1Ga: parseFloat(nCum.toExponential(4)),
+      log10N: parseFloat(logN.toFixed(4)),
+      log10D: parseFloat(logD.toFixed(4))
+    };
+  }
+
+  /**
+   * Calculate differential crater size-frequency density dN/dD in km^-3.
+   * dN/dD = ( N(>D_min) - N(>D_max) ) / ( D_max - D_min )
+   * @param {number} nCumulativeMin - Cumulative density at D_min (km^-2)
+   * @param {number} nCumulativeMax - Cumulative density at D_max (km^-2)
+   * @param {number} dMinKm - Lower diameter boundary in km
+   * @param {number} dMaxKm - Upper diameter boundary in km
+   * @returns {{differentialDensityKm3: number, binWidthKm: number, countDifferenceKm2: number}}
+   */
+  static computeDifferentialCraterDensity(nCumulativeMin, nCumulativeMax, dMinKm, dMaxKm) {
+    const d1 = Math.max(1e-4, dMinKm);
+    const d2 = Math.max(d1 + 1e-4, dMaxKm);
+    const binWidth = d2 - d1;
+
+    const diffN = Math.max(0, nCumulativeMin - nCumulativeMax);
+    const dNdD = diffN / binWidth;
+
+    return {
+      differentialDensityKm3: parseFloat(dNdD.toExponential(4)),
+      binWidthKm: parseFloat(binWidth.toFixed(4)),
+      countDifferenceKm2: parseFloat(diffN.toExponential(4))
+    };
+  }
+
+  /**
+   * Calculate parabolic crater excavation volume in km^3.
+   * V = (pi / 8) * D^2 * d = (pi / 8) * gamma * D^3
+   * @param {number} diameterKm - Crater rim-to-rim diameter in km
+   * @param {number} [depthToDiameterRatio=0.2] - Depth-to-diameter ratio gamma (0.2 for simple craters, 0.1 for complex)
+   * @returns {{excavationVolumeKm3: number, depthKm: number, diameterKm: number}}
+   */
+  static computeImpactCraterExcavationVolume(diameterKm, depthToDiameterRatio = 0.2) {
+    const D = Math.max(0.001, diameterKm);
+    const gamma = Math.max(0.01, Math.min(0.5, depthToDiameterRatio));
+
+    const depth = gamma * D;
+    const volume = (Math.PI / 8.0) * D * D * depth;
+
+    return {
+      excavationVolumeKm3: parseFloat(volume.toFixed(4)),
+      depthKm: parseFloat(depth.toFixed(3)),
+      diameterKm: parseFloat(D.toFixed(3))
+    };
+  }
 }
 
 

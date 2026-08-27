@@ -6405,6 +6405,34 @@ describe('Diurnal Thermal Skin Depth & Regolith Heat Storage (KRCEngine)', () =>
     });
 });
 
+describe('Ivanov Crater Production Function & Excavation Volumes (CSFDEngine)', () => {
+    it('should calculate Ivanov 1 Ga cumulative production function N(>D)', () => {
+        // At D = 1 km: log10(D) = 0 -> log10(N) = a_0 = -3.0876 -> N(>1km) = 10^-3.0876 = 8.173e-4 km^-2 (0.817 craters / 1000 km^2)
+        const pf1 = CSFDEngine.computeIvanovProductionFunctionCoefficients(1.0);
+        expect(pf1.log10D).to.equal(0.0);
+        expect(pf1.log10N).to.be.closeTo(-3.0876, 0.001);
+        expect(pf1.nCumulativePerKm2_1Ga).to.be.closeTo(8.173e-4, 1e-6);
+
+        // At D = 10 km: log10(D) = 1.0
+        const pf10 = CSFDEngine.computeIvanovProductionFunctionCoefficients(10.0);
+        expect(pf10.log10D).to.equal(1.0);
+        expect(pf10.nCumulativePerKm2_1Ga).to.be.lessThan(pf1.nCumulativePerKm2_1Ga);
+    });
+
+    it('should compute differential crater density dN/dD and excavation volumes', () => {
+        // Bin [1 km, 2 km]: N(>1km) = 8.173e-4, N(>2km) = 2.0e-4 -> Delta_N = 6.173e-4 over Delta_D = 1 km -> dN/dD = 6.173e-4 km^-3
+        const diff = CSFDEngine.computeDifferentialCraterDensity(8.173e-4, 2.0e-4, 1.0, 2.0);
+        expect(diff.binWidthKm).to.equal(1.0);
+        expect(diff.differentialDensityKm3).to.be.closeTo(6.173e-4, 1e-6);
+
+        // Simple bowl-shaped crater: D = 5 km, gamma = 0.2 (depth d = 1.0 km)
+        // V = (pi / 8) * D^2 * d = (pi / 8) * 25 * 1.0 = 3.14159 * 3.125 = 9.8175 km^3
+        const vol = CSFDEngine.computeImpactCraterExcavationVolume(5.0, 0.2);
+        expect(vol.depthKm).to.equal(1.0);
+        expect(vol.excavationVolumeKm3).to.be.closeTo(9.8175, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
