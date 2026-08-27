@@ -6899,6 +6899,33 @@ describe('Martian Aerocentric Seasons & Subsolar Point Solvers (MarsTime)', () =
     });
 });
 
+describe('Planck Blackbody Spectral Radiance & Brightness Temperature (KRCEngine)', () => {
+    it('should calculate Planck spectral radiance and invert to Brightness Temperature', () => {
+        // Mars surface at T = 250 K observed at THEMIS band 9 (lambda = 12.57 µm):
+        // c1 = 1.19104e8, c2 = 14387.77
+        // exponent = 14387.77 / (12.57 * 250) = 14387.77 / 3142.5 = 4.5784
+        // exp(4.5784) - 1 = 97.348 - 1 = 96.348
+        // lam^5 = 12.57^5 = 313797.7
+        // B = 1.19104e8 / (313797.7 * 96.348) = 1.19104e8 / 30233800 = 3.9394 W / (m^2 sr µm)
+        const rad = KRCEngine.computePlanckSpectralRadiance(250.0, 12.57);
+        expect(rad.spectralRadianceW_M2SrUm).to.be.closeTo(3.9394, 0.05);
+
+        // Invert radiance back to brightness temperature
+        const tb = KRCEngine.computePlanckBrightnessTemperature(rad.spectralRadianceW_M2SrUm, 12.57);
+        expect(tb.brightnessTemperatureK).to.be.closeTo(250.0, 0.2);
+    });
+
+    it('should compute peak thermal emission wavelength using Wiens Displacement Law', () => {
+        // Mean Martian daytime temperature T = 220 K: lambda_max = 2897.77 / 220 = 13.172 µm
+        const wien220 = KRCEngine.computeWienPeakWavelength(220.0);
+        expect(wien220.peakWavelengthMicrons).to.be.closeTo(13.172, 0.01);
+
+        // Cold polar CO2 frost point T = 145 K: lambda_max = 2897.77 / 145 = 19.985 µm
+        const wien145 = KRCEngine.computeWienPeakWavelength(145.0);
+        expect(wien145.peakWavelengthMicrons).to.be.closeTo(19.985, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

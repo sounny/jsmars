@@ -1673,6 +1673,77 @@ export class KRCEngine {
       volumetricHeatCapacityJ_M3K: parseFloat(cVol.toFixed(1))
     };
   }
+
+  // --- Planck Blackbody Radiance & Thermal Emission Solvers ---
+
+  /**
+   * Calculate Planck blackbody spectral radiance B_lambda(T) in W / (m^2 sr µm).
+   * B_lambda = c1 / ( lambda^5 * ( exp( c2 / (lambda * T) ) - 1 ) )
+   * c1 = 2 * h * c^2 = 1.191042972e8 W µm^4 / (m^2 sr)
+   * c2 = h * c / k_B = 14387.77 µm K
+   * @param {number} temperatureK - Temperature in Kelvin
+   * @param {number} wavelengthMicrons - Spectral wavelength in microns (e.g. 12.0 µm for THEMIS night IR)
+   * @returns {{spectralRadianceW_M2SrUm: number, wavelengthMicrons: number, temperatureK: number}}
+   */
+  static computePlanckSpectralRadiance(temperatureK, wavelengthMicrons) {
+    const T = Math.max(1.0, temperatureK);
+    const lam = Math.max(0.1, wavelengthMicrons);
+
+    const c1 = 1.191042972e8; // W µm^4 / (m^2 sr)
+    const c2 = 14387.77; // µm K
+
+    const exponent = c2 / (lam * T);
+    if (exponent > 700) {
+      return { spectralRadianceW_M2SrUm: 0.0, wavelengthMicrons: lam, temperatureK: T };
+    }
+
+    const b = c1 / (Math.pow(lam, 5) * (Math.exp(exponent) - 1.0));
+
+    return {
+      spectralRadianceW_M2SrUm: parseFloat(b.toFixed(4)),
+      wavelengthMicrons: parseFloat(lam.toFixed(3)),
+      temperatureK: parseFloat(T.toFixed(2))
+    };
+  }
+
+  /**
+   * Invert Planck spectral radiance to calculate radiometric Brightness Temperature (T_b) in Kelvin.
+   * T_b = c2 / ( lambda * ln( 1 + c1 / (lambda^5 * B_lambda) ) )
+   * @param {number} radianceW_M2SrUm - Spectral radiance in W / (m^2 sr µm)
+   * @param {number} wavelengthMicrons - Spectral wavelength in microns
+   * @returns {{brightnessTemperatureK: number, wavelengthMicrons: number}}
+   */
+  static computePlanckBrightnessTemperature(radianceW_M2SrUm, wavelengthMicrons) {
+    const b = Math.max(1e-12, radianceW_M2SrUm);
+    const lam = Math.max(0.1, wavelengthMicrons);
+
+    const c1 = 1.191042972e8;
+    const c2 = 14387.77;
+
+    const denom = Math.log(1.0 + c1 / (Math.pow(lam, 5) * b));
+    const tb = c2 / (lam * denom);
+
+    return {
+      brightnessTemperatureK: parseFloat(tb.toFixed(2)),
+      wavelengthMicrons: parseFloat(lam.toFixed(3))
+    };
+  }
+
+  /**
+   * Calculate peak thermal emission wavelength via Wien's Displacement Law.
+   * lambda_max = 2897.77 / T (microns)
+   * @param {number} temperatureK - Temperature in Kelvin
+   * @returns {{peakWavelengthMicrons: number, temperatureK: number}}
+   */
+  static computeWienPeakWavelength(temperatureK) {
+    const T = Math.max(1.0, temperatureK);
+    const lamPeak = 2897.77 / T;
+
+    return {
+      peakWavelengthMicrons: parseFloat(lamPeak.toFixed(3)),
+      temperatureK: parseFloat(T.toFixed(2))
+    };
+  }
 }
 
 
