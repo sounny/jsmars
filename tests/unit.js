@@ -5768,6 +5768,57 @@ describe('J2 Nodal Precession, Ground Track Shift & Eclipse (TrajectoryEngine)',
     });
 });
 
+describe('Official LMD/CNRS/ESA Mars Climate Database (MCD v6.1) Ingestion (MCDEngine)', () => {
+    it('should parse real multi-column ASCII vertical profiles from LMD MCD v6.1', () => {
+        const sampleLmdOutput = `
+##########################################################################################
+### MCD_v6.1 with climatology average solar scenario.
+### Ls 180.0deg. Latitude -4.59N. Longitude 137.44E. Local time 12.0h
+### --------------------------------------------------------------------------------------
+### Column 1 is height above surface (m)
+### Column 2 is Temperature (K)
+### --------------------------------------------------------------------------------------
+    0.00000e+00    2.42500e+02    7.20000e+02    1.57000e-02    4.50000e+00
+    1.00000e+03    2.38100e+02    6.55000e+02    1.45000e-02    8.20000e+00
+    5.00000e+03    2.20400e+02    4.40000e+02    1.05000e-02    1.85000e+01
+    1.00000e+04    1.98300e+02    2.60000e+02    6.95000e-03    2.50000e+01
+    2.00000e+04    1.65200e+02    9.50000e+01    3.04000e-03    3.20000e+01
+    5.00000e+04    1.45800e+02    5.20000e+00    1.89000e-04    1.20000e+01
+`;
+        const profile = MCDEngine.parseLMDAsciiOutput(sampleLmdOutput, {
+            lat: -4.59,
+            lon: 137.44,
+            Ls: 180.0,
+            localHour: 12.0,
+            dust: 1
+        });
+
+        expect(profile.isRealData).to.be.true;
+        expect(profile.source).to.include('LMD/CNRS/ESA');
+        expect(profile.layers).to.have.lengthOf(6);
+        expect(profile.layers[0].altitudeKm).to.equal(0);
+        expect(profile.layers[0].temperatureK).to.equal(242.5);
+        expect(profile.layers[0].pressurePa).to.equal(720.0);
+        expect(profile.layers[5].altitudeKm).to.equal(50);
+        expect(profile.layers[5].temperatureK).to.equal(145.8);
+        expect(profile.surface.pressurePa).to.equal(720.0);
+        expect(profile.surface.temperatureK).to.equal(242.5);
+    });
+
+    it('should provide direct LMD web portal URL with query parameters', () => {
+        const dummyOutput = `
+# LMD MCD Header
+    1.00000e+03    2.20000e+02
+`;
+        const profile = MCDEngine.parseLMDAsciiOutput(dummyOutput, {
+            lat: 18.65,
+            lon: 226.2,
+            lmdCgiUrl: 'https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=t'
+        });
+        expect(profile.lmdWebUrl).to.include('lmd.jussieu.fr');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

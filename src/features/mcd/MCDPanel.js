@@ -27,6 +27,24 @@ export class MCDPanel {
   init() {
     this.container.innerHTML = `
       <div style="padding: 10px; font-size: 12px; color: #e2e8f0;">
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Model Engine & Data Source</label>
+          <select id="mcd-input-source" class="tool-select" style="width: 100%; box-sizing: border-box; font-size: 11px;">
+            <option value="lmd_live" selected>📡 LMD MCD v6.1 (Live GCM / Spacecraft-Calibrated)</option>
+            <option value="analytical">🧪 1D Analytical Physics Model</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Climatology Scenario</label>
+          <select id="mcd-input-scenario" class="tool-select" style="width: 100%; box-sizing: border-box; font-size: 11px;">
+            <option value="1" selected>Climatology (Average Solar / TES Climatology)</option>
+            <option value="2">Cold Scenario (Min Solar / Low Dust)</option>
+            <option value="3">Warm Scenario (Max Solar / High Dust)</option>
+            <option value="4">Global Dust Storm Scenario</option>
+          </select>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
           <div>
             <label style="font-size: 10px; color: #94a3b8; display: block;">Latitude (°)</label>
@@ -60,6 +78,7 @@ export class MCDPanel {
         </div>
 
         <div id="mcd-summary-card" style="display: none; background: #0f172a; border: 1px solid #1e293b; border-radius: 4px; padding: 6px 8px; margin-bottom: 10px; font-size: 10px;">
+          <div id="mcd-source-badge" style="font-size: 9px; color: #38bdf8; margin-bottom: 4px; font-weight: 600;">--</div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
             <div>Surface P: <b id="mcd-res-p" style="color: #38bdf8;">--</b></div>
             <div>Surface T: <b id="mcd-res-t" style="color: #f97316;">--</b></div>
@@ -72,10 +91,13 @@ export class MCDPanel {
 
         <div style="display: flex; gap: 6px;">
           <button id="mcd-export-csv-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export CSV</button>
+          <a id="mcd-portal-link" href="https://www-mars.lmd.jussieu.fr/mcd_python/" target="_blank" rel="noopener" class="tool-btn" style="flex: 1; font-size: 11px; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; background: #334155;">🔗 LMD Portal</a>
         </div>
       </div>
     `;
 
+    this.sourceInput = this.container.querySelector('#mcd-input-source');
+    this.scenarioInput = this.container.querySelector('#mcd-input-scenario');
     this.latInput = this.container.querySelector('#mcd-input-lat');
     this.lonInput = this.container.querySelector('#mcd-input-lon');
     this.lsInput = this.container.querySelector('#mcd-input-ls');
@@ -85,7 +107,9 @@ export class MCDPanel {
     this.pickBtn = this.container.querySelector('#mcd-pick-btn');
     this.runBtn = this.container.querySelector('#mcd-run-btn');
     this.exportCsvBtn = this.container.querySelector('#mcd-export-csv-btn');
+    this.portalLink = this.container.querySelector('#mcd-portal-link');
     this.summaryCard = this.container.querySelector('#mcd-summary-card');
+    this.sourceBadge = this.container.querySelector('#mcd-source-badge');
 
     this.chart = new MCDChart(this.container.querySelector('#mcd-chart-container'));
 
@@ -122,30 +146,70 @@ export class MCDPanel {
     this.exportCsvBtn.addEventListener('click', () => this.exportCSV());
   }
 
-  runProfile() {
+  async runProfile() {
     const lat = parseFloat(this.latInput.value) || 0;
     const lon = parseFloat(this.lonInput.value) || 0;
     const Ls = parseFloat(this.lsInput.value) || 0;
     const localHour = parseFloat(this.hourInput.value) || 12;
     const elevation = parseFloat(this.elevInput.value) || 0;
     const maxAltitudeKm = parseFloat(this.maxAltInput.value) || 50;
+    const source = this.sourceInput?.value || 'lmd_live';
+    const dust = parseInt(this.scenarioInput?.value || '1', 10);
 
-    const profile = MCDEngine.computeProfile({
-      lat,
-      lon,
-      Ls,
-      localHour,
-      elevation,
-      maxAltitudeKm
-    });
+    const prevBtnText = this.runBtn.innerText;
+    this.runBtn.disabled = true;
+    this.runBtn.innerText = source === 'lmd_live' ? 'Fetching LMD GCM...' : 'Calculating...';
+
+    let profile;
+    if (source === 'lmd_live') {
+      try {
+        profile = await MCDEngine.fetchLMDProfile({
+          lat,
+          lon,
+          Ls,
+          localHour,
+          dust,
+          maxAltitudeKm
+        });
+      } catch (err) {
+        console.warn('LMD MCD Live API fetch failed, falling back to analytical model:', err);
+        profile = MCDEngine.computeProfile({
+          lat,
+          lon,
+          Ls,
+          localHour,
+          elevation,
+          maxAltitudeKm
+        });
+        profile.source = '1D Analytical Physics Model (Offline Fallback)';
+      }
+    } else {
+      profile = MCDEngine.computeProfile({
+        lat,
+        lon,
+        Ls,
+        localHour,
+        elevation,
+        maxAltitudeKm
+      });
+      profile.source = '1D Analytical Physics Model';
+    }
+
+    this.runBtn.disabled = false;
+    this.runBtn.innerText = prevBtnText;
 
     this.lastProfile = profile;
 
     this.summaryCard.style.display = 'block';
+    this.sourceBadge.innerText = profile.source || 'LMD MCD v6.1 (CNRS/ESA)';
     this.container.querySelector('#mcd-res-p').innerText = `${profile.surface.pressurePa} Pa`;
     this.container.querySelector('#mcd-res-t').innerText = `${profile.surface.temperatureK} K`;
     this.container.querySelector('#mcd-res-h').innerText = `${profile.surface.scaleHeightKm} km`;
     this.container.querySelector('#mcd-res-rho').innerText = `${profile.surface.surfaceDensity} kg/m³`;
+
+    if (profile.lmdWebUrl && this.portalLink) {
+      this.portalLink.href = profile.lmdWebUrl;
+    }
 
     this.chart.setProfile(profile);
 
@@ -158,7 +222,7 @@ export class MCDPanel {
       return;
     }
 
-    let csv = 'Altitude_km,Temperature_K,Pressure_Pa,Density_kg_m3,WindSpeed_m_s,DustDensity\n';
+    let csv = `Altitude_km,Temperature_K,Pressure_Pa,Density_kg_m3,WindSpeed_m_s,DustDensity\n`;
     this.lastProfile.layers.forEach(l => {
       csv += `${l.altitudeKm},${l.temperatureK},${l.pressurePa},${l.densityKgM3},${l.windSpeedMs},${l.dustDensity}\n`;
     });
