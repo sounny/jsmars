@@ -7136,6 +7136,61 @@ export class BandMathEngine {
       environmentalDesiccationContext: context
     };
   }
+
+  /**
+   * Discriminate Trioctahedral Saponite vs Mixed-Layer Corrensite vs Metamorphic Chlorite from CRISM 1.40 um, 1.90 um, 2.31 um, and 2.35 um absorption bands.
+   * Reference: Ehlmann et al. (2011), Viviano-Beck et al. (2014) for Martian Trioctahedral Smectite & Chlorite.
+   * @param {number} [band1400WaterDepth=0.04] - BD1400 molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.06] - BD1900 molecular H2O fundamental combination depth (0.0 to 0.50)
+   * @param {number} [band2310FeMgOHDepth=0.05] - BD2310 Fe/Mg-OH octahedral vibration depth (0.0 to 0.40)
+   * @param {number} [band2350ChloriteDepth=0.01] - BD2350 diagnostic Chlorite combination band depth (0.0 to 0.40)
+   * @returns {{isClayDetected: boolean, metamorphicGradeClass: string, mineralSpecies: string, chemicalFormula: string, hydrothermalMetamorphicContext: string}}
+   */
+  static computeCRISMChloriteSmectiteMetamorphicIndices(band1400WaterDepth = 0.04, band1900WaterDepth = 0.06, band2310FeMgOHDepth = 0.05, band2350ChloriteDepth = 0.01) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2310 = Math.max(0.0, band2310FeMgOHDepth);
+    const d2350 = Math.max(0.0, band2350ChloriteDepth);
+
+    const isClay = (d2310 >= 0.025 || d2350 >= 0.025) && (d1400 >= 0.015 || d1900 >= 0.010 || d2350 >= 0.035);
+
+    let clayClass = 'Standard Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Trioctahedral Sheet Silicate Absorption';
+
+    if (isClay) {
+      if (d2350 >= 0.035 && d1900 < 0.020) {
+        clayClass = 'Greenschist Facies Chlorite (High-T Hydrothermal Alteration)';
+        species = 'Chlorite (Clinochlore / Chamosite)';
+        formula = '(Mg,Fe)5Al(Si3Al)O10(OH)8';
+        context = 'High-Temperature Hydrothermal Upwelling / Deep Metamorphic Crust Exposed by Impact Uplift (Nili Fossae / Jezero Central Peak)';
+      } else if (d2310 >= 0.030 && d2350 >= 0.025) {
+        clayClass = 'Mixed-Layer Corrensite (Chlorite-Smectite Intermediate)';
+        species = 'Corrensite';
+        formula = '1:1 Regular Interstratified Saponite-Chlorite';
+        context = 'Moderate-Temperature Burial Diagenetic / Hydrothermal Transition Zone';
+      } else if (d2310 >= 0.035 && d1900 >= 0.035) {
+        clayClass = 'Trioctahedral Fe/Mg Smectite (Saponite)';
+        species = 'Saponite';
+        formula = '(Ca/2,Na)0.33(Mg,Fe)3(Si,Al)4O10(OH)2 * 4H2O';
+        context = 'Low-Temperature Alkaline Aqueous Alteration of Basalt (Noachian Crust)';
+      } else {
+        clayClass = 'Mixed Trioctahedral Phyllosilicate Assemblage';
+        species = 'Fe/Mg Smectite-Chlorite Mix';
+        formula = '(Mg,Fe)-Phyllosilicates';
+        context = 'Partially Altered Basaltic Regolith';
+      }
+    }
+
+    return {
+      isClayDetected: isClay,
+      metamorphicGradeClass: clayClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrothermalMetamorphicContext: context
+    };
+  }
 }
 
 

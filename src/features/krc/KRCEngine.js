@@ -7629,6 +7629,63 @@ export class KRCEngine {
       hydrofractureContext: `Hydrofracture at ${zKm.toFixed(1)}km (${wMeanMm.toFixed(1)} mm Aperture, ${dPMPa.toFixed(0)} MPa Overpressure, ${qM3Day.toExponential(2)} m3/d Discharge)`
     };
   }
+
+  /**
+   * Calculate geothermal/hydrothermal conversion kinetics of trioctahedral smectite (saponite) to mixed-layer corrensite and chlorite in deep Martian crust.
+   * T_burial = T_surf + Gamma_geo * z
+   * k = A * exp( -E_a / ( R * T ) ) * ( [Mg2+] / 100 )
+   * f_chlorite = 1 - exp( -k * t )
+   * Reference: Beaufort et al. (2015), Ehlmann et al. (2011), Carter et al. (2013) for Trioctahedral Clay Metamorphism.
+   * @param {number} [burialDepthKm=6.0] - Crustal burial depth in km (1.0 to 15.0 km)
+   * @param {number} [geothermalGradientKPerKm=35.0] - Geothermal gradient in K/km (10 to 80 K/km)
+   * @param {number} [magnesiumActivityPpm=300.0] - Pore fluid Mg2+ activity in ppm (10 to 2000 ppm)
+   * @param {number} [heatingDurationMyr=5.0] - Thermal alteration duration in Myr (0.1 to 100 Myr)
+   * @returns {{burialTemperatureC: number, burialTemperatureK: number, chloriteFractionPercent: number, metamorphicGradeClass: string, expelledFluidWtPct: number, clayMetamorphismContext: string}}
+   */
+  static computeMartianSmectiteToChloriteMetamorphicKinetics(burialDepthKm = 6.0, geothermalGradientKPerKm = 35.0, magnesiumActivityPpm = 300.0, heatingDurationMyr = 5.0) {
+    const zKm = Math.max(0.5, burialDepthKm);
+    const gammaGeo = Math.max(5.0, geothermalGradientKPerKm);
+    const MgPpm = Math.max(5.0, magnesiumActivityPpm);
+    const tMyr = Math.max(0.01, heatingDurationMyr);
+
+    const TsurfK = 215.0;
+    const Rgas = 8.314;
+    const Ea = 9.5e4; // 95 kJ/mol
+    const A = 2.5e8; // 1/yr
+
+    // Burial temperature
+    const TburialK = TsurfK + (gammaGeo * zKm);
+    const TburialC = TburialK - 273.15;
+
+    // Reaction rate constant (1/yr)
+    const MgFactor = MgPpm / 100.0;
+    const kYr = A * Math.exp(-Ea / (Rgas * TburialK)) * MgFactor;
+
+    // Chlorite fraction
+    const tYr = tMyr * 1.0e6;
+    const exponent = Math.min(50.0, kYr * tYr);
+    const fChlorite = 1.0 - Math.exp(-exponent);
+    const chloritePct = fChlorite * 100.0;
+
+    // Expelled fluid (wt%)
+    const expelledFluid = fChlorite * 8.5;
+
+    let gradeClass = 'Trioctahedral Smectite (Diagenetically Immature Saponite)';
+    if (TburialC >= 200.0 || chloritePct >= 85.0) {
+      gradeClass = 'Greenschist Facies Chlorite (Clinochlore / Chamosite)';
+    } else if (TburialC >= 100.0 || chloritePct >= 30.0) {
+      gradeClass = 'Mixed-Layer Corrensite (50:50 Chlorite-Smectite Transition)';
+    }
+
+    return {
+      burialTemperatureC: parseFloat(TburialC.toFixed(1)),
+      burialTemperatureK: parseFloat(TburialK.toFixed(1)),
+      chloriteFractionPercent: parseFloat(chloritePct.toFixed(1)),
+      metamorphicGradeClass: gradeClass,
+      expelledFluidWtPct: parseFloat(expelledFluid.toFixed(2)),
+      clayMetamorphismContext: `Chlorite Metamorphism at ${zKm.toFixed(1)}km (${TburialC.toFixed(0)} C, ${chloritePct.toFixed(0)}% Chlorite, ${gradeClass})`
+    };
+  }
 }
 
 

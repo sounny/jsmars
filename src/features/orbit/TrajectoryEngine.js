@@ -7267,6 +7267,82 @@ export class TrajectoryEngine {
       biEllipticContext: `Mars-to-Venus Bi-Elliptic (${rbAU.toFixed(1)} AU Aphelion, ${tofsTotYrs.toFixed(1)} yr TOF, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
     };
   }
+
+  /**
+   * Calculate interplanetary Hohmann rendezvous transfer from Mars to main asteroid belt targets (1 Ceres / 4 Vesta).
+   * a_trans = ( r_mars + r_ast ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Delta_V_tot = Delta_V_TAI + Delta_V_AOI
+   * Reference: Russell & Raymond (2011), Rayman et al. (2006), Curtis (2013) for Asteroid Rendezvous Trajectories.
+   * @param {string} [targetAsteroid='Ceres'] - Target asteroid name ('Ceres' or 'Vesta')
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure altitude in km (150 to 1000 km)
+   * @param {number} [asteroidParkingAltitudeKm=200.0] - Asteroid capture altitude in km (50 to 1000 km)
+   * @returns {{targetBodyName: string, transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, asteroidArrivalExcessKmS: number, asteroidOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, asteroidTransferContext: string}}
+   */
+  static computeMarsToAsteroidMainBeltRendezvousTransfer(targetAsteroid = 'Ceres', marsParkingAltitudeKm = 300.0, asteroidParkingAltitudeKm = 200.0) {
+    const isVesta = targetAsteroid && targetAsteroid.toLowerCase().includes('vesta');
+    const targetName = isVesta ? '4 Vesta' : '1 Ceres';
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpAstKm = Math.max(50.0, asteroidParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    // Target properties
+    const rAstAU = isVesta ? 2.3618 : 2.7675;
+    const muAst = isVesta ? 17.28 : 62.63;
+    const rAstRadiusKm = isVesta ? 262.7 : 473.0;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rAstDistKm = rAstAU * AU_KM;
+
+    // Hohmann transfer geometry
+    const aTransKm = (rMarsDistKm + rAstDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rAstDistKm - rMarsDistKm) / (rAstDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTaiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Asteroid arrival
+    const vAstCircKmS = Math.sqrt(muSun / rAstDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rAstDistKm) - (1.0 / aTransKm)));
+    const vInfAstKmS = Math.abs(vAstCircKmS - vArrKmS);
+
+    const rParkAstKm = rAstRadiusKm + hpAstKm;
+    const vParkAstKmS = Math.sqrt(muAst / rParkAstKm);
+    const vHypAstKmS = Math.sqrt(Math.pow(vInfAstKmS, 2.0) + ((2.0 * muAst) / rParkAstKm));
+    const dvAoiKmS = vHypAstKmS - vParkAstKmS;
+
+    const dvTotKmS = dvTaiKmS + dvAoiKmS;
+
+    return {
+      targetBodyName: targetName,
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTaiKmS.toFixed(3)),
+      asteroidArrivalExcessKmS: parseFloat(vInfAstKmS.toFixed(3)),
+      asteroidOrbitInsertionDeltaVKmS: parseFloat(dvAoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      asteroidTransferContext: `Mars-to-${targetName} (${tofsDays.toFixed(0)} d Transfer, e=${eTrans.toFixed(2)}, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

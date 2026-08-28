@@ -12803,6 +12803,58 @@ describe('Mars-to-Venus Bi-Elliptic Transfer, Crustal Hydrofracture & Mg-Sulfate
     });
 });
 
+describe('Mars-to-Asteroid Belt Rendezvous, Chlorite Metamorphism & Trioctahedral Clays', () => {
+    it('should calculate interplanetary rendezvous transfer from Mars to main belt asteroid 1 Ceres', () => {
+        // Mars to Ceres (1.52 to 2.77 AU, 300 km Mars alt, 200 km Ceres alt):
+        const ceres = TrajectoryEngine.computeMarsToAsteroidMainBeltRendezvousTransfer('Ceres', 300.0, 200.0);
+        expect(ceres.targetBodyName).to.equal('1 Ceres');
+        expect(ceres.transferTimeDays).to.be.closeTo(574.0, 15.0); // ~574 d transfer
+        expect(ceres.transferTimeYears).to.be.closeTo(1.57, 0.05); // ~1.57 yr
+        expect(ceres.marsDepartureDeltaVKmS).to.be.closeTo(2.513, 0.2); // ~2.51 km/s TAI
+        expect(ceres.asteroidArrivalExcessKmS).to.be.closeTo(2.716, 0.2); // ~2.72 km/s v_inf
+        expect(ceres.asteroidOrbitInsertionDeltaVKmS).to.be.closeTo(2.445, 0.2); // ~2.45 km/s AOI
+        expect(ceres.totalMissionDeltaVKmS).to.be.closeTo(4.958, 0.4); // ~4.96 km/s total
+        expect(ceres.transferEccentricity).to.be.closeTo(0.2899, 0.02); // e ~ 0.29
+        expect(ceres.asteroidTransferContext).to.include('Mars-to-1 Ceres');
+    });
+
+    it('should calculate hydrothermal smectite-to-chlorite diagenetic metamorphism kinetics', () => {
+        // 6 km depth, 35 K/km gradient, 300 ppm Mg2+, 5 Myr duration:
+        const chlor = KRCEngine.computeMartianSmectiteToChloriteMetamorphicKinetics(6.0, 35.0, 300.0, 5.0);
+        expect(chlor.burialTemperatureK).to.equal(425.0);
+        expect(chlor.burialTemperatureC).to.be.closeTo(151.85, 0.2); // ~151.9 C burial temp
+        expect(chlor.chloriteFractionPercent).to.be.greaterThan(95.0); // High conversion
+        expect(chlor.expelledFluidWtPct).to.be.closeTo(8.5, 0.5); // ~8.5 wt% fluid expelled
+        expect(chlor.metamorphicGradeClass).to.include('Greenschist Facies Chlorite');
+        expect(chlor.clayMetamorphismContext).to.include('Chlorite Metamorphism');
+    });
+
+    it('should discriminate Trioctahedral Saponite vs Corrensite vs Chlorite in CRISM spectra', () => {
+        // Trioctahedral Saponite (Nili Fossae: BD1400 = 0.04, BD1900 = 0.06, BD2310 = 0.05, BD2350 = 0.01):
+        const saponite = BandMathEngine.computeCRISMChloriteSmectiteMetamorphicIndices(0.04, 0.06, 0.05, 0.01);
+        expect(saponite.isClayDetected).to.be.true;
+        expect(saponite.metamorphicGradeClass).to.include('Trioctahedral Fe/Mg Smectite (Saponite)');
+        expect(saponite.mineralSpecies).to.include('Saponite');
+        expect(saponite.hydrothermalMetamorphicContext).to.include('Low-Temperature Alkaline Aqueous Alteration');
+
+        // Mixed-Layer Corrensite (BD1400 = 0.03, BD1900 = 0.03, BD2310 = 0.04, BD2350 = 0.03):
+        const corrensite = BandMathEngine.computeCRISMChloriteSmectiteMetamorphicIndices(0.03, 0.03, 0.04, 0.03);
+        expect(corrensite.isClayDetected).to.be.true;
+        expect(corrensite.metamorphicGradeClass).to.include('Mixed-Layer Corrensite');
+        expect(corrensite.mineralSpecies).to.include('Corrensite');
+
+        // Metamorphic Chlorite (Jezero central peak uplift: BD1400 = 0.01, BD1900 = 0.01, BD2310 = 0.01, BD2350 = 0.05):
+        const chlorite = BandMathEngine.computeCRISMChloriteSmectiteMetamorphicIndices(0.01, 0.01, 0.01, 0.05);
+        expect(chlorite.isClayDetected).to.be.true;
+        expect(chlorite.metamorphicGradeClass).to.include('Greenschist Facies Chlorite');
+        expect(chlorite.mineralSpecies).to.include('Chlorite');
+
+        // Non-clay basalt:
+        const basalt = BandMathEngine.computeCRISMChloriteSmectiteMetamorphicIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isClayDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
