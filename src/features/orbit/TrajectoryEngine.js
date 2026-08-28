@@ -4904,6 +4904,49 @@ export class TrajectoryEngine {
       outerSystemMissionContext: `Mars-to-${destName} Interplanetary Transfer (TOF ${tofYears.toFixed(1)} Years, ${dvTiiKmS.toFixed(2)} km/s TII Delta-V)`
     };
   }
+
+  /**
+   * Calculate Mars-Sun Trojan co-orbital dynamics at Lagrange points L4 (leading +60 deg) and L5 (trailing -60 deg), Eureka family tadpole libration period, and annual stationkeeping Delta-V.
+   * omega_lib = n * sqrt( 27/4 * mu_mass )
+   * T_lib = 2 * pi / omega_lib
+   * Reference: Murray & Dermott (1999), Connors et al. (2005), Christou et al. (2020) for Mars Trojan asteroids (5261 Eureka).
+   * @param {string} [targetLagrangePoint='L5'] - Target Lagrange point ('L4' or 'L5')
+   * @param {number} [initialOffsetDistanceKm=50000.0] - Standoff displacement from triangular libration point in km (1000 to 500000 km)
+   * @param {number} [stationkeepingDurationYears=5.0] - Mission orbital duration in years (1 to 20 years)
+   * @returns {{lagrangePoint: string, orbitalMeanMotionRadS: number, massRatioParameter: number, tadpoleLibrationPeriodYears: number, annualStationkeepingDeltaVMSYear: number, totalMissionStationkeepingDeltaVMS: number, trojanAsteroidContext: string}}
+   */
+  static computeMartianTrojanLagrangePointL4L5Stationkeeping(targetLagrangePoint = 'L5', initialOffsetDistanceKm = 50000.0, stationkeepingDurationYears = 5.0) {
+    const isL4 = targetLagrangePoint.toUpperCase().includes('L4');
+    const pointName = isL4 ? 'L4 (Leading +60 deg)' : 'L5 (Trailing -60 deg, Eureka Family)';
+    const offsetKm = Math.max(100.0, initialOffsetDistanceKm);
+    const durationYrs = Math.max(0.5, stationkeepingDurationYears);
+
+    const rMarsKm = 2.279366e8;
+    const muSun = 1.32712440018e11;
+    const muMarsMass = 3.227e-7; // Mass ratio M_mars / (M_sun + M_mars)
+
+    // Orbital mean motion (rad/s)
+    const n = Math.sqrt(muSun / Math.pow(rMarsKm, 3.0));
+
+    // Tadpole libration frequency (rad/s)
+    const omegaLib = n * Math.sqrt(6.75 * muMarsMass);
+    const tLibSec = (2.0 * Math.PI) / omegaLib;
+    const tLibYears = tLibSec / 3.15576e7;
+
+    // Annual stationkeeping budget (m/s/year) to counteract planetary perturbations and SRP
+    const dvSkAnnualMS = 3.25 + (offsetKm / 50000.0) * 0.45;
+    const dvSkTotalMS = dvSkAnnualMS * durationYrs;
+
+    return {
+      lagrangePoint: pointName,
+      orbitalMeanMotionRadS: parseFloat(n.toExponential(4)),
+      massRatioParameter: parseFloat(muMarsMass.toExponential(4)),
+      tadpoleLibrationPeriodYears: parseFloat(tLibYears.toFixed(1)),
+      annualStationkeepingDeltaVMSYear: parseFloat(dvSkAnnualMS.toFixed(2)),
+      totalMissionStationkeepingDeltaVMS: parseFloat(dvSkTotalMS.toFixed(2)),
+      trojanAsteroidContext: `Sun-Mars ${pointName} Co-Orbital Station (~${tLibYears.toFixed(0)}-yr Tadpole Libration, ${dvSkAnnualMS.toFixed(1)} m/s/yr Stationkeeping)`
+    };
+  }
 }
 
 

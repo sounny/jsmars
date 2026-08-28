@@ -5444,6 +5444,63 @@ export class KRCEngine {
       dielectricReflectivityContext: context
     };
   }
+
+  /**
+   * Calculate Martian cryovolcanic brine-ice slush effusion discharge, Poiseuille conduit flow, and viscous cryolava dome emplacement dimensions.
+   * Q_eff = ( pi * R_vent^4 * Delta_P ) / ( 8 * mu_eff * L_conduit )
+   * R_dome(t) = 0.85 * ( ( g_mars * rho_fluid * Q_eff^3 ) / mu_eff )^(1/8) * t^(1/2)
+   * Reference: Fagents (2003), Kargel (2004), Brož et al. (2020) for Cerberus Fossae & Elysium Planitia cryomagmatism and mud volcanism.
+   * @param {number} [ventRadiusMeters=15.0] - Cryovolcanic fissure/vent radius in meters (2 to 100 m)
+   * @param {number} [conduitDepthMeters=2000.0] - Cryomagma source chamber depth in meters (500 to 10000 m)
+   * @param {number} [slurryViscosityPaS=100000.0] - Dynamic viscosity of brine-ice slush in Pa*s (100 to 1e7 Pa*s)
+   * @param {number} [eruptionDurationDays=30.0] - Continuous effusion duration in days (1 to 365 days)
+   * @returns {{ventRadiusMeters: number, effusionDischargeRateM3S: number, totalExtrudedVolumeKm3: number, domeSpreadingRadiusKm: number, meanDomeThicknessMeters: number, cryovolcanicGeomorphologyContext: string}}
+   */
+  static computeMartianCryovolcanicEffusionAndDomeEmplacement(ventRadiusMeters = 15.0, conduitDepthMeters = 2000.0, slurryViscosityPaS = 100000.0, eruptionDurationDays = 30.0) {
+    const Rvent = Math.max(1.0, ventRadiusMeters);
+    const Lconduit = Math.max(100.0, conduitDepthMeters);
+    const muEff = Math.max(1.0, slurryViscosityPaS);
+    const durDays = Math.max(0.1, eruptionDurationDays);
+
+    const gMars = 3.72076; // m/s^2
+    const rhoFluid = 1200.0; // kg/m^3
+    const deltaRho = 200.0; // Overpressure driving buoyancy density
+    const tSec = durDays * 86400.0;
+
+    // Chamber overpressure (Pa)
+    const deltaPPa = Math.max(1e4, deltaRho * gMars * Lconduit);
+
+    // Poiseuille conduit volumetric discharge (m^3/s)
+    const QeffM3S = (Math.PI * Math.pow(Rvent, 4.0) * deltaPPa) / (8.0 * muEff * Lconduit);
+
+    // Total extruded volume (m^3 and km^3)
+    const VtotalM3 = QeffM3S * tSec;
+    const VtotalKm3 = VtotalM3 / 1e9;
+
+    // Viscous dome spreading radius R_dome (m and km)
+    const factor = (gMars * rhoFluid * Math.pow(QeffM3S, 3.0)) / muEff;
+    const RdomeM = 0.85 * Math.pow(factor, 0.125) * Math.sqrt(tSec);
+    const RdomeKm = RdomeM / 1000.0;
+
+    // Mean dome thickness (m)
+    const HdomeM = VtotalM3 / (Math.PI * Math.pow(RdomeM, 2.0) / 2.0);
+
+    let context = 'Viscous Cryomagmatic Slush Dome / Muck Volcano (Cerberus Fossae Type)';
+    if (muEff < 1000.0) {
+      context = 'Low-Viscosity Effusive Cryolava Sheet Flow (High-Mobility Brine Flooding)';
+    } else if (HdomeM > 50.0) {
+      context = 'Steep Cryovolcanic Spine / Endogenous Slurry Extrusion';
+    }
+
+    return {
+      ventRadiusMeters: parseFloat(Rvent.toFixed(1)),
+      effusionDischargeRateM3S: parseFloat(QeffM3S.toFixed(1)),
+      totalExtrudedVolumeKm3: parseFloat(VtotalKm3.toFixed(4)),
+      domeSpreadingRadiusKm: parseFloat(RdomeKm.toFixed(2)),
+      meanDomeThicknessMeters: parseFloat(HdomeM.toFixed(1)),
+      cryovolcanicGeomorphologyContext: context
+    };
+  }
 }
 
 

@@ -5268,6 +5268,55 @@ export class BandMathEngine {
       petrologicContext: context
     };
   }
+
+  /**
+   * Discriminate Carbonate Cation Solid Solutions (Magnesite vs Dolomite vs Siderite vs Calcite) across the 2.30-2.35 um and 2.50-2.55 um vibrational overtones in CRISM spectra.
+   * Reference: Ehlmann et al. (2008), Morris et al. (2010), Viviano-Beck et al. (2014), Bultel et al. (2019) for Nili Fossae & Jezero crater rim carbonates.
+   * @param {number} band2300CenterUm - Wavelength of the 2.3 um carbonate overtone in um (2.28 to 2.36 um)
+   * @param {number} band2500CenterUm - Wavelength of the 2.5 um carbonate overtone in um (2.48 to 2.56 um)
+   * @param {number} [carbIndexDepth=0.06] - CARBDEX2 / MIN2295_2480 integrated carbonate band depth (0.0 to 1.0)
+   * @returns {{band2300CenterUm: number, band2500CenterUm: number, isCarbonatePresent: boolean, carbonateMineralSpecies: string, dominantCation: string, paleosequestrationContext: string}}
+   */
+  static computeCRISMFullCarbonateSolidSolutionIndices(band2300CenterUm, band2500CenterUm, carbIndexDepth = 0.06) {
+    const l2300 = Math.max(2.28, Math.min(2.36, band2300CenterUm));
+    const l2500 = Math.max(2.48, Math.min(2.56, band2500CenterUm));
+    const depth = Math.max(0.0, carbIndexDepth);
+
+    let isCarb = false;
+    let species = 'Silicate or Non-Carbonate Matrix';
+    let cation = 'None';
+    let context = 'Standard Basaltic Regolith';
+
+    if (depth >= 0.025) {
+      isCarb = true;
+      if (l2300 <= 2.305) {
+        species = 'Magnesite (Magnesium Carbonate MgCO3)';
+        cation = 'Mg2+ (Magnesium)';
+        context = 'Low-Temperature Hydrothermal Carbonation of Ultramafic Olivine/Serpentine (Nili Fossae Type)';
+      } else if (l2300 <= 2.325) {
+        species = 'Dolomite (Calcium-Magnesium Carbonate CaMg(CO3)2)';
+        cation = 'Ca2+ / Mg2+ (Divalent Calcium-Magnesium)';
+        context = 'Alkaline Lacustrine Carbonate Precipitation (Jezero Crater Paleolake Marginal Carbonate Units)';
+      } else if (l2300 <= 2.338) {
+        species = 'Siderite (Iron Carbonate FeCO3)';
+        cation = 'Fe2+ (Ferrous Iron)';
+        context = 'Anoxic Reducing Hydrothermal Precipitation / CO2 Sequestration (Columbia Hills Gusev Type)';
+      } else {
+        species = 'Calcite / Aragonite (Calcium Carbonate CaCO3)';
+        cation = 'Ca2+ (Calcium)';
+        context = 'Circum-Neutral Hydrothermal Vein Mineralization';
+      }
+    }
+
+    return {
+      band2300CenterUm: parseFloat(l2300.toFixed(3)),
+      band2500CenterUm: parseFloat(l2500.toFixed(3)),
+      isCarbonatePresent: isCarb,
+      carbonateMineralSpecies: species,
+      dominantCation: cation,
+      paleosequestrationContext: context
+    };
+  }
 }
 
 

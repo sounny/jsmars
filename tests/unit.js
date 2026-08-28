@@ -10967,6 +10967,53 @@ describe('Mars-to-Ice-Giant Transfers, Subglacial Lake Melting & Clinopyroxenes'
     });
 });
 
+describe('Mars Trojans L4/L5 Dynamics, Cryovolcanic Effusion & Carbonate Quaternary Solid Solutions', () => {
+    it('should calculate Mars-Sun Trojan L4/L5 tadpole libration period and stationkeeping Delta-V', () => {
+        // Eureka family L5 Trojan asteroid co-orbital station (50,000 km offset, 5 years):
+        const trojan = TrajectoryEngine.computeMartianTrojanLagrangePointL4L5Stationkeeping('L5', 50000.0, 5.0);
+        expect(trojan.lagrangePoint).to.include('L5');
+        expect(trojan.tadpoleLibrationPeriodYears).to.be.closeTo(1274.5, 50.0); // ~1275 years libration period
+        expect(trojan.annualStationkeepingDeltaVMSYear).to.be.closeTo(3.70, 0.5); // ~3.7 m/s/yr
+        expect(trojan.totalMissionStationkeepingDeltaVMS).to.be.closeTo(18.5, 3.0); // ~18.5 m/s total over 5 yrs
+        expect(trojan.trojanAsteroidContext).to.include('Co-Orbital Station');
+    });
+
+    it('should calculate Martian cryovolcanic brine-ice slush effusion rate, volume, and dome spreading', () => {
+        // Cerberus Fossae cryomagma fissure (15 m vent radius, 2000 m conduit, 1e5 Pa*s viscosity, 30 days):
+        const dome = KRCEngine.computeMartianCryovolcanicEffusionAndDomeEmplacement(15.0, 2000.0, 100000.0, 30.0);
+        expect(dome.ventRadiusMeters).to.equal(15.0);
+        expect(dome.effusionDischargeRateM3S).to.be.closeTo(147.9, 5.0); // ~148 m^3/s discharge
+        expect(dome.totalExtrudedVolumeKm3).to.be.closeTo(0.383, 0.05); // ~0.38 km^3
+        expect(dome.domeSpreadingRadiusKm).to.be.closeTo(6.06, 0.5); // ~6.1 km dome radius
+        expect(dome.meanDomeThicknessMeters).to.be.greaterThan(5.0); // > 5 m thick
+        expect(dome.cryovolcanicGeomorphologyContext).to.include('Viscous Cryomagmatic Slush Dome');
+    });
+
+    it('should discriminate Magnesite, Dolomite, Siderite, and Calcite in CRISM NIR spectra', () => {
+        // Magnesite (MgCO3) in Nili Fossae (2.300 um & 2.500 um):
+        const mag = BandMathEngine.computeCRISMFullCarbonateSolidSolutionIndices(2.300, 2.500, 0.08);
+        expect(mag.isCarbonatePresent).to.be.true;
+        expect(mag.carbonateMineralSpecies).to.include('Magnesite (Magnesium Carbonate');
+        expect(mag.dominantCation).to.include('Mg2+');
+        expect(mag.paleosequestrationContext).to.include('Carbonation of Ultramafic');
+
+        // Dolomite (CaMg(CO3)2) in Jezero crater paleolake margin (2.320 um & 2.520 um):
+        const dol = BandMathEngine.computeCRISMFullCarbonateSolidSolutionIndices(2.320, 2.520, 0.08);
+        expect(dol.isCarbonatePresent).to.be.true;
+        expect(dol.carbonateMineralSpecies).to.include('Dolomite (Calcium-Magnesium Carbonate');
+        expect(dol.paleosequestrationContext).to.include('Alkaline Lacustrine Carbonate Precipitation');
+
+        // Siderite (FeCO3) in Columbia Hills (2.335 um & 2.535 um):
+        const sid = BandMathEngine.computeCRISMFullCarbonateSolidSolutionIndices(2.335, 2.535, 0.08);
+        expect(sid.isCarbonatePresent).to.be.true;
+        expect(sid.carbonateMineralSpecies).to.include('Siderite (Iron Carbonate');
+
+        // Flat basalt:
+        const basalt = BandMathEngine.computeCRISMFullCarbonateSolidSolutionIndices(2.300, 2.500, 0.01);
+        expect(basalt.isCarbonatePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
