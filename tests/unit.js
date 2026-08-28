@@ -10431,6 +10431,48 @@ describe('Trans-Earth Injection Hohmann Return, Glacial Flow Creep & Olivine Fo-
     });
 });
 
+describe('LMO Atmospheric Drag Decay, Cryohydrate Stability & Trioctahedral Smectites', () => {
+    it('should calculate Low Mars Orbit atmospheric drag decay rate, daily altitude loss, and orbital lifetime', () => {
+        // 200 km LMO cubesat (ballistic coeff = 50 kg/m^2, moderate solar activity):
+        const decay = TrajectoryEngine.computeLowMarsOrbitAtmosphericDecayAndLifetime(200.0, 50.0, 'moderate', 'mars');
+        expect(decay.orbitAltitudeKm).to.equal(200.0);
+        expect(decay.atmosphericDensityKgM3).to.be.closeTo(1.28e-11, 0.5e-11); // ~1.28e-11 kg/m^3
+        expect(decay.orbitalPeriodMinutes).to.be.closeTo(108.8, 2.0); // ~109 min orbit
+        expect(decay.dailyAltitudeLossMeters).to.be.closeTo(274.0, 50.0); // ~274 m/day altitude loss
+        expect(decay.estimatedOrbitalLifetimeDays).to.be.closeTo(38.3, 10.0); // ~38 days lifetime
+        expect(decay.orbitalDecayRegime).to.include('Moderate Thermospheric Drag');
+    });
+
+    it('should calculate subsurface salt cryohydrate phase stability, eutectic melting depth, and brine viscosity', () => {
+        // Hydrohalite (NaCl*2H2O, T_surf = 215 K, Q_geo = 25 mW/m^2, k = 2.0 W/m*K):
+        const cryo = KRCEngine.computeSubsurfaceCryohydrateSaltFreezingDepressionAndBrineMobility('hydrohalite', 215.0, 25.0, 2.0);
+        expect(cryo.cryohydrateMineralogy).to.include('Hydrohalite');
+        expect(cryo.chemicalFormula).to.include('NaCl * 2H2O');
+        expect(cryo.eutecticMeltingTempK).to.equal(252.0);
+        expect(cryo.depthToLiquidBrineKm).to.be.closeTo(2.96, 0.1); // ~2.96 km melting horizon
+        expect(cryo.relativeBrineViscosityVsWater).to.equal(3.2);
+        expect(cryo.astrobiologicalPoreStability).to.include('Hypersaline Subglacial Liquefaction Horizon');
+    });
+
+    it('should discriminate Trioctahedral Smectite (Saponite) from Vermiculite and basalt in CRISM spectra', () => {
+        // Trioctahedral Saponite in Nili Fossae (sharp 2.31 um Mg-OH and 1.92 um H2O, absent 2.38 um doublet):
+        const saponite = BandMathEngine.computeCRISMTrioctahedralSmectiteVermiculiteIndices(0.24, 0.22, 0.22, 0.30, 0.30);
+        expect(saponite.isPhyllosilicatePresent).to.be.true;
+        expect(saponite.phyllosilicateClaySpecies).to.include('Trioctahedral Smectite (Saponite');
+        expect(saponite.alkalineAqueousSetting).to.include('Neutral-to-Alkaline');
+
+        // Trioctahedral Vermiculite / Hectorite (2.31 um and 2.38 um doublet):
+        const vermiculite = BandMathEngine.computeCRISMTrioctahedralSmectiteVermiculiteIndices(0.24, 0.22, 0.22, 0.22, 0.30);
+        expect(vermiculite.isPhyllosilicatePresent).to.be.true;
+        expect(vermiculite.phyllosilicateClaySpecies).to.include('Trioctahedral Vermiculite');
+        expect(vermiculite.alkalineAqueousSetting).to.include('Alkaline Hydrothermal');
+
+        // Basalt (no clay bands):
+        const basalt = BandMathEngine.computeCRISMTrioctahedralSmectiteVermiculiteIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isPhyllosilicatePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

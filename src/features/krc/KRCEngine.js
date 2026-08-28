@@ -4769,6 +4769,66 @@ export class KRCEngine {
       glacialDynamicRegime: regime
     };
   }
+
+  /**
+   * Calculate subsurface salt cryohydrate phase stability (hydrohalite, meridianiite, perchlorates), eutectic melting depth, and brine viscosity.
+   * z_brine = ( T_eut - T_surf ) / ( Q_geo / k_crust )
+   * Reference: Kargel (1991), Peterson & Wang (2006), Toner et al. (2014) for Martian permafrost cryohydrate phase equilibria.
+   * @param {string} [saltSpecies='hydrohalite'] - Cryohydrate mineral phase ('meridianiite', 'hydrohalite', 'sodium_perchlorate', 'calcium_perchlorate')
+   * @param {number} [meanSurfaceTempK=215.0] - Mean annual ground surface temperature in K (150 to 250 K)
+   * @param {number} [geothermalFluxMWM2=25.0] - Planetary geothermal heat flux in mW/m^2 (10 to 60 mW/m^2)
+   * @param {number} [crustalConductivityWMK=2.0] - Regolith/crust thermal conductivity in W/(m*K) (1.0 to 4.0 W/m*K)
+   * @returns {{cryohydrateMineralogy: string, chemicalFormula: string, eutecticMeltingTempK: number, eutecticMeltingTempC: number, depthToLiquidBrineKm: number, relativeBrineViscosityVsWater: number, astrobiologicalPoreStability: string}}
+   */
+  static computeSubsurfaceCryohydrateSaltFreezingDepressionAndBrineMobility(saltSpecies = 'hydrohalite', meanSurfaceTempK = 215.0, geothermalFluxMWM2 = 25.0, crustalConductivityWMK = 2.0) {
+    const Tsurf = Math.max(120.0, Math.min(270.0, meanSurfaceTempK));
+    const Qgeo = Math.max(5.0, geothermalFluxMWM2) / 1000.0; // W/m^2
+    const kCrust = Math.max(0.5, crustalConductivityWMK);
+
+    let Teutc = 252.0; // Hydrohalite NaCl*2H2O
+    let name = 'Hydrohalite (Sodium Chloride Dihydrate)';
+    let formula = 'NaCl * 2H2O';
+    let viscRatio = 3.2;
+
+    const sKey = saltSpecies.toLowerCase();
+    if (sKey.includes('meridiani') || sKey.includes('mgso4')) {
+      Teutc = 269.2;
+      name = 'Meridianiite (Magnesium Sulfate Undecahydrate)';
+      formula = 'MgSO4 * 11H2O';
+      viscRatio = 4.8;
+    } else if (sKey.includes('na_perchlorate') || sKey.includes('nacio4') || sKey.includes('sodium_perchlorate')) {
+      Teutc = 236.0;
+      name = 'Sodium Perchlorate Dihydrate';
+      formula = 'NaClO4 * 2H2O';
+      viscRatio = 2.6;
+    } else if (sKey.includes('ca_perchlorate') || sKey.includes('calcium_perchlorate')) {
+      Teutc = 221.0;
+      name = 'Calcium Perchlorate Tetrahydrate';
+      formula = 'Ca(ClO4)2 * 4H2O';
+      viscRatio = 5.6;
+    }
+
+    const dTdZ = Qgeo / kCrust; // K/m
+    const zBrineM = Math.max(0.0, (Teutc - Tsurf) / dTdZ);
+    const zBrineKm = zBrineM / 1000.0;
+
+    let habDesc = 'Deep Hypersaline Subglacial Liquefaction Horizon (Subsurface Astrobiological Refuge)';
+    if (zBrineKm < 1.0) {
+      habDesc = 'Shallow Cryopeg Horizon Accessible to In-Situ Subsurface Drilling';
+    } else if (zBrineKm > 5.0) {
+      habDesc = 'Deep Basement Aquifer / Thick Basal Permafrost Seal';
+    }
+
+    return {
+      cryohydrateMineralogy: name,
+      chemicalFormula: formula,
+      eutecticMeltingTempK: parseFloat(Teutc.toFixed(1)),
+      eutecticMeltingTempC: parseFloat((Teutc - 273.15).toFixed(2)),
+      depthToLiquidBrineKm: parseFloat(zBrineKm.toFixed(2)),
+      relativeBrineViscosityVsWater: parseFloat(viscRatio.toFixed(1)),
+      astrobiologicalPoreStability: habDesc
+    };
+  }
 }
 
 

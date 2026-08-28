@@ -4726,6 +4726,50 @@ export class BandMathEngine {
       petrologicalSettingContext: context
     };
   }
+
+  /**
+   * Discriminate Trioctahedral Smectite (Saponite) from Trioctahedral Vermiculite / Hectorite using CRISM 1.41 um, 1.92 um, 2.31 um (Mg-OH), and 2.38 um doublet bands.
+   * Reference: Bishop et al. (2008), Ehlmann et al. (2009), Viviano-Beck et al. (2014) for Mawrth Vallis & Nili Fossae alkaline smectite crust.
+   * @param {number} r1410 - Reflectance at 1.41 um structural OH overtone
+   * @param {number} r1920 - Reflectance at 1.92 um interlayer molecular H2O band
+   * @param {number} r2310 - Reflectance at 2.31 um fundamental Mg-OH combination band
+   * @param {number} r2380 - Reflectance at 2.38 um diagnostic vermiculite/hectorite shoulder
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1410: number, bd1920: number, bd2310: number, bd2380: number, isPhyllosilicatePresent: boolean, phyllosilicateClaySpecies: string, alkalineAqueousSetting: string}}
+   */
+  static computeCRISMTrioctahedralSmectiteVermiculiteIndices(r1410, r1920, r2310, r2380, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1410 = Math.max(0.0, 1.0 - (r1410 / cont));
+    const bd1920 = Math.max(0.0, 1.0 - (r1920 / cont));
+    const bd2310 = Math.max(0.0, 1.0 - (r2310 / cont));
+    const bd2380 = Math.max(0.0, 1.0 - (r2380 / cont));
+
+    let isClay = false;
+    let species = 'Unaltered Primary Igneous Silicate';
+    let setting = 'Standard Basaltic Regolith';
+
+    if (bd2310 >= 0.025 && bd1920 >= 0.020) {
+      isClay = true;
+      if (bd2380 >= 0.020) {
+        species = 'Trioctahedral Vermiculite / Hectorite (High Cation-Exchange Swelling Clay)';
+        setting = 'Alkaline Hydrothermal Alteration / Deep Basaltic Hydrothermal Circulation';
+      } else {
+        species = 'Trioctahedral Smectite (Saponite Mg3Si4O10(OH)2)';
+        setting = 'Neutral-to-Alkaline Lacustrine / Subsurface Hydrothermal Basalt Alteration';
+      }
+    }
+
+    return {
+      bd1410: parseFloat(bd1410.toFixed(4)),
+      bd1920: parseFloat(bd1920.toFixed(4)),
+      bd2310: parseFloat(bd2310.toFixed(4)),
+      bd2380: parseFloat(bd2380.toFixed(4)),
+      isPhyllosilicatePresent: isClay,
+      phyllosilicateClaySpecies: species,
+      alkalineAqueousSetting: setting
+    };
+  }
 }
 
 

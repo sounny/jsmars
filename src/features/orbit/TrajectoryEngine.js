@@ -4199,6 +4199,81 @@ export class TrajectoryEngine {
       returnTrajectoryContext: 'Optimal Coplanar Mars-to-Earth Hohmann Direct Return'
     };
   }
+
+  /**
+   * Calculate Low Mars Orbit (LMO) atmospheric drag orbital decay rate, daily altitude loss, and remaining satellite lifetime.
+   * rho(h) = rho0 * exp( - ( h - h0 ) / H_scale )
+   * Delta_a_orbit = - 2 * pi * ( rho(h) * a^2 ) / B
+   * t_life = ( H_scale * 1000 ) / | Delta_h_day |
+   * Reference: King-Hele (1987), Vallado (2013) for Mars thermospheric satellite drag and orbital lifetime.
+   * @param {number} [initialAltitudeKm=200.0] - Circular orbit altitude in km (120 to 500 km)
+   * @param {number} [ballisticCoefficientKgM2=50.0] - Spacecraft ballistic coefficient m / (Cd * A) in kg/m^2 (5 to 500 kg/m^2)
+   * @param {string} [solarActivityLevel='moderate'] - Mars atmospheric thermosphere solar state ('low', 'moderate', 'high_dust_storm')
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{orbitAltitudeKm: number, atmosphericDensityKgM3: number, orbitalPeriodMinutes: number, dailyAltitudeLossMeters: number, estimatedOrbitalLifetimeDays: number, orbitalDecayRegime: string}}
+   */
+  static computeLowMarsOrbitAtmosphericDecayAndLifetime(initialAltitudeKm = 200.0, ballisticCoefficientKgM2 = 50.0, solarActivityLevel = 'moderate', body = 'mars') {
+    const hKm = Math.max(100.0, Math.min(1000.0, initialAltitudeKm));
+    const B = Math.max(1.0, ballisticCoefficientKgM2);
+
+    let RpM = 3389500.0;
+    let mu = 4.282837e13; // m^3/s^2 (Mars)
+    let rho0 = 1.5e-9; // kg/m^3 at 150 km
+    let h0Km = 150.0;
+    let HscaleKm = 10.5;
+
+    const act = solarActivityLevel.toLowerCase();
+    if (act.includes('low')) {
+      HscaleKm = 8.5;
+      rho0 = 1.0e-9;
+    } else if (act.includes('high') || act.includes('dust')) {
+      HscaleKm = 13.0;
+      rho0 = 2.5e-9;
+    }
+
+    if (body.toLowerCase() === 'earth') {
+      RpM = 6378137.0;
+      mu = 3.986004418e14;
+      rho0 = 2.0e-9;
+      h0Km = 200.0;
+      HscaleKm = 35.0;
+    }
+
+    // Atmospheric density at altitude h
+    const rhoKgM3 = rho0 * Math.exp(-(hKm - h0Km) / HscaleKm);
+
+    // Orbital radius and circular speed
+    const aM = RpM + (hKm * 1000.0);
+    const vMS = Math.sqrt(mu / aM);
+
+    // Orbital period in seconds and minutes
+    const pSec = (2.0 * Math.PI * aM) / vMS;
+    const pMin = pSec / 60.0;
+    const orbitsPerDay = 86400.0 / pSec;
+
+    // Decay rate per orbit in meters
+    const deltaAOrbitM = 2.0 * Math.PI * (rhoKgM3 * Math.pow(aM, 2.0)) / B;
+    const deltaHDayM = deltaAOrbitM * orbitsPerDay;
+
+    // Estimated lifetime in days
+    const tLifeDays = Math.max(0.1, (HscaleKm * 1000.0) / Math.max(1e-4, deltaHDayM));
+
+    let regime = 'Moderate Thermospheric Drag / Multi-Month Decaying Orbit';
+    if (hKm < 150.0 || deltaHDayM > 1000.0) {
+      regime = 'Rapid Re-entry Corridor / Severe Atmospheric Deceleration (< 10 Days Remaining)';
+    } else if (tLifeDays > 365.0) {
+      regime = 'Long-Duration Stable Orbit (> 1 Year Operational Lifetime)';
+    }
+
+    return {
+      orbitAltitudeKm: parseFloat(hKm.toFixed(1)),
+      atmosphericDensityKgM3: parseFloat(rhoKgM3.toExponential(4)),
+      orbitalPeriodMinutes: parseFloat(pMin.toFixed(2)),
+      dailyAltitudeLossMeters: parseFloat(deltaHDayM.toFixed(1)),
+      estimatedOrbitalLifetimeDays: parseFloat(tLifeDays.toFixed(1)),
+      orbitalDecayRegime: regime
+    };
+  }
 }
 
 
