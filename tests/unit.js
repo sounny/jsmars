@@ -11158,6 +11158,55 @@ describe('Mars-Jupiter Interstellar Escape, Magma Chamber Cooling & Nanophase He
     });
 });
 
+describe('Mars Atmospheric Tether Dynamics, Cryopeg Hydrology & Kaolin Polymorph Inversion', () => {
+    it('should calculate Martian atmospheric tether gravity gradient tension, drag braking, and deorbit kick', () => {
+        // 50 km atmospheric tether dipping into 100 km thermosphere (500 kg probe, 2500 kg orbiter at 150 km periapsis):
+        const tether = TrajectoryEngine.computeMartianAtmosphericTetherMomentumExchange(50.0, 500.0, 2500.0, 150.0);
+        expect(tether.tetherLengthKm).to.equal(50.0);
+        expect(tether.probeDippingAltitudeKm).to.equal(100.0);
+        expect(tether.gravityGradientTensionN).to.be.closeTo(72.4, 5.0); // ~72 N tidal tension
+        expect(tether.peakAerodynamicDragN).to.be.greaterThan(1.0); // > 1 N aero drag
+        expect(tether.nonPropulsiveDeorbitDeltaVMS).to.be.closeTo(49.1, 5.0); // ~49 m/s non-propulsive release kick
+        expect(tether.tetherMechanicsContext).to.include('Atmospheric Tether');
+    });
+
+    it('should calculate sub-zero unfrozen cryopeg brine lens stability and confined artesian overpressure', () => {
+        // 250 m deep permafrost cryopeg lens (225 K permafrost, 30% perchlorate/chloride salts, 35% porosity):
+        const cryopeg = KRCEngine.computeMartianCryopegFreezingDepressionAndBrineHydrology(225.0, 30.0, 0.35, 250.0);
+        expect(cryopeg.permafrostTempK).to.equal(225.0);
+        expect(cryopeg.eutecticMeltingTempK).to.be.closeTo(214.65, 1.0); // ~215 K eutectic
+        expect(cryopeg.isLiquidBrineStableSubzero).to.be.true; // Liquid at -48 deg C!
+        expect(cryopeg.unfrozenWaterVolumeFrac).to.be.greaterThan(0.20);
+        expect(cryopeg.artesianSpringOverpressureKPa).to.be.closeTo(604.6, 30.0); // ~605 kPa artesian overpressure
+        expect(cryopeg.cryopegHydrologyContext).to.include('Unfrozen Sub-Zero Hypersaline Cryopeg Lens');
+    });
+
+    it('should discriminate Well-Crystallized Kaolinite from Halloysite and Hydrothermal Dickite in CRISM spectra', () => {
+        // Well-Crystallized Kaolinite (Al-OH doublet in Mawrth Vallis paleosols: BD2160 = 0.06, BD2208 = 0.08):
+        const kaolinite = BandMathEngine.computeCRISMKaolinGroupPolymorphIndices(0.06, 0.08, 0.005);
+        expect(kaolinite.isKaolinPresent).to.be.true;
+        expect(kaolinite.kaolinPolymorph).to.include('Well-Crystallized Kaolinite');
+        expect(kaolinite.structuralOrdering).to.include('High Structural Ordering');
+        expect(kaolinite.paleoweatheringContext).to.include('Top-Down Acidic Leaching');
+
+        // Halloysite (hydrated disordered tubular 1:1 clay: BD2160 = 0.01, BD2208 = 0.08, BD1900 = 0.06):
+        const halloysite = BandMathEngine.computeCRISMKaolinGroupPolymorphIndices(0.01, 0.08, 0.06);
+        expect(halloysite.isKaolinPresent).to.be.true;
+        expect(halloysite.kaolinPolymorph).to.include('Halloysite (Hydrated Tubular');
+        expect(halloysite.paleoweatheringContext).to.include('Subaqueous Glass Weathering');
+
+        // Dickite (High-T hydrothermal kaolin with dominant 2.16 um band: BD2160 = 0.12, BD2208 = 0.08):
+        const dickite = BandMathEngine.computeCRISMKaolinGroupPolymorphIndices(0.12, 0.08, 0.005);
+        expect(dickite.isKaolinPresent).to.be.true;
+        expect(dickite.kaolinPolymorph).to.include('Dickite / Nacrite');
+        expect(dickite.paleoweatheringContext).to.include('Deep Acid-Sulfate Hydrothermal Circulation');
+
+        // Flat basalt:
+        const basalt = BandMathEngine.computeCRISMKaolinGroupPolymorphIndices(0.01, 0.01, 0.005);
+        expect(basalt.isKaolinPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

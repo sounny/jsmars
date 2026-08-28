@@ -5470,6 +5470,61 @@ export class BandMathEngine {
       oxidationPaleoenvironmentContext: context
     };
   }
+
+  /**
+   * Discriminate Kaolin-Group Aluminosilicate Polymorphs (Well-Crystallized Kaolinite vs Tubular Halloysite vs Hydrothermal Dickite) from CRISM NIR Al-OH doublet parameters.
+   * Reference: Bishop et al. (2008), McKeown et al. (2009), Ehlmann & Edwards (2014), Viviano-Beck et al. (2014) for Mawrth Vallis & Nili Fossae paleosols.
+   * @param {number} [band2160Depth=0.06] - BD2160 / Al-OH doublet shoulder band depth (0.0 to 0.40)
+   * @param {number} [band2208Depth=0.08] - BD2210 / main Al-OH fundamental absorption depth (0.0 to 0.50)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 molecular H2O band depth (0.0 to 0.40)
+   * @returns {{isKaolinPresent: boolean, kaolinPolymorph: string, mineralSpecies: string, structuralOrdering: string, paleoweatheringContext: string}}
+   */
+  static computeCRISMKaolinGroupPolymorphIndices(band2160Depth = 0.06, band2208Depth = 0.08, band1900WaterDepth = 0.01) {
+    const d2160 = Math.max(0.0, band2160Depth);
+    const d2208 = Math.max(0.0, band2208Depth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+
+    let isKaolin = false;
+    let polymorph = 'Non-Kaolin Matrix';
+    let species = 'Basaltic Regolith';
+    let order = 'Unaltered Matrix';
+    let context = 'Standard Unaltered Bedrock';
+
+    if (d2208 >= 0.025) {
+      isKaolin = true;
+      const ratio = d2160 / d2208;
+
+      if (ratio >= 0.50 && ratio <= 1.15) {
+        polymorph = 'Well-Crystallized Kaolinite (Al2Si2O5(OH)4)';
+        species = 'Kaolinite (Ordered 1:1 Aluminosilicate)';
+        order = 'High Structural Ordering (Sharp 2.16/2.21 um Doublet)';
+        context = 'Intense Top-Down Acidic Leaching / Tropical-Style Pedogenic Paleosol (Mawrth Vallis Upper Clay Horizon)';
+      } else if (ratio > 1.15) {
+        polymorph = 'Dickite / Nacrite (High-T Hydrothermal Kaolin)';
+        species = 'Dickite (Polytypic 1:1 Aluminosilicate)';
+        order = 'High-Temperature Crystalline Polymorph';
+        context = 'Deep Acid-Sulfate Hydrothermal Circulation / Fumarolic Metasomatism (> 150 deg C)';
+      } else if (d1900 >= 0.035 || ratio < 0.35) {
+        polymorph = 'Halloysite (Hydrated Tubular 1:1 Layer Silicate)';
+        species = 'Halloysite (Al2Si2O5(OH)4 * 2H2O)';
+        order = 'Hydrated Disordered Interlayer Structure';
+        context = 'Subaqueous Glass Weathering / Low-Temperature Youthful Hydrothermal Alteration';
+      } else {
+        polymorph = 'Poorly Crystallized Kaolinite';
+        species = 'Disordered Kaolinite';
+        order = 'Moderate Disordered Stacking';
+        context = 'Moderate In-Situ Aqueous Weathering Horizon';
+      }
+    }
+
+    return {
+      isKaolinPresent: isKaolin,
+      kaolinPolymorph: polymorph,
+      mineralSpecies: species,
+      structuralOrdering: order,
+      paleoweatheringContext: context
+    };
+  }
 }
 
 

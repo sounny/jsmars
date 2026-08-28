@@ -5674,6 +5674,60 @@ export class KRCEngine {
       plutonicMetamorphicContext: `Plutonic Magma Chamber (${Vkm3.toFixed(0)} km^3, ~${tSolidKyr.toFixed(0)} kyr Solidification, ${degassedGt.toFixed(1)} Gt Volatile Outgassing)`
     };
   }
+
+  /**
+   * Calculate Martian sub-zero unfrozen cryopeg brine lens stability, multi-electrolyte freezing point depression, and confined artesian spring overpressure.
+   * T_eutectic = 273.15 - 1.95 * S_salt_pct
+   * Delta_P_artesian = ( rho_overburden - rho_brine ) * g_mars * z_depth
+   * Reference: Gilichinsky et al. (2005), Marion et al. (2010), Heinz et al. (2016) for Permafrost Cryopegs & RSL Hypersaline Aquifers.
+   * @param {number} [permafrostTempK=225.0] - Ambient permafrost bedrock temperature in K (170 to 270 K)
+   * @param {number} [brineSalinityPct=30.0] - Magnesium/Calcium perchlorate and chloride salt mass percentage (5 to 45%)
+   * @param {number} [regolithPorosityFrac=0.35] - Volumetric sediment pore fraction (0.10 to 0.60)
+   * @param {number} [aquiferDepthMeters=250.0] - Confined cryopeg depth below surface in meters (20 to 2000 m)
+   * @returns {{permafrostTempK: number, eutecticMeltingTempK: number, isLiquidBrineStableSubzero: boolean, unfrozenWaterVolumeFrac: number, artesianSpringOverpressureKPa: number, cryopegHydrologyContext: string}}
+   */
+  static computeMartianCryopegFreezingDepressionAndBrineHydrology(permafrostTempK = 225.0, brineSalinityPct = 30.0, regolithPorosityFrac = 0.35, aquiferDepthMeters = 250.0) {
+    const Tperma = Math.max(150.0, Math.min(273.0, permafrostTempK));
+    const saltPct = Math.max(1.0, Math.min(50.0, brineSalinityPct));
+    const phi = Math.max(0.05, Math.min(0.65, regolithPorosityFrac));
+    const zDepthM = Math.max(10.0, aquiferDepthMeters);
+
+    const gMars = 3.72076; // m/s^2
+    const rhoOverburden = 1900.0; // kg/m^3 frozen regolith
+    const rhoBrine = 1250.0; // kg/m^3 dense perchlorate brine
+
+    // Eutectic freezing depression (K)
+    const TeutecticK = 273.15 - (saltPct * 1.95);
+    const isLiquid = Tperma >= TeutecticK;
+
+    // Unfrozen water fraction
+    let thetaU = 0.0;
+    if (isLiquid) {
+      const tempRatio = Math.max(0.1, (273.15 - TeutecticK) / Math.max(1.0, 273.15 - Tperma));
+      thetaU = Math.min(phi, phi * Math.pow(tempRatio, 0.65));
+    }
+
+    // Artesian confinement overpressure (kPa)
+    const deltaRho = Math.max(100.0, rhoOverburden - rhoBrine);
+    const deltaPPa = deltaRho * gMars * zDepthM;
+    const deltaPKPa = deltaPPa / 1000.0;
+
+    let context = 'Completely Frozen Solid Cryo-Aquitard (Impermeable Ice-Cemented Permafrost)';
+    if (isLiquid) {
+      context = 'Unfrozen Sub-Zero Hypersaline Cryopeg Lens (Confined Pressurized Aquifer & RSL Seepage Source)';
+    } else if (Tperma >= TeutecticK - 10.0) {
+      context = 'Metastable Supercooled Interfacial Water Films along Mineral Grains';
+    }
+
+    return {
+      permafrostTempK: parseFloat(Tperma.toFixed(1)),
+      eutecticMeltingTempK: parseFloat(TeutecticK.toFixed(1)),
+      isLiquidBrineStableSubzero: isLiquid,
+      unfrozenWaterVolumeFrac: parseFloat(thetaU.toFixed(3)),
+      artesianSpringOverpressureKPa: parseFloat(deltaPKPa.toFixed(1)),
+      cryopegHydrologyContext: context
+    };
+  }
 }
 
 

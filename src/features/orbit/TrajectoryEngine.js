@@ -5143,6 +5143,68 @@ export class TrajectoryEngine {
       interstellarMissionContext: `Mars-Jupiter Interstellar Escape (${vHelioPostKmS.toFixed(1)} km/s Helio Speed, ${auYearRate.toFixed(2)} AU/yr Solar System Escape)`
     };
   }
+
+  /**
+   * Calculate Martian atmospheric tether momentum exchange, tidal gravity-gradient tension, upper atmospheric drag braking, and non-propulsive probe deorbit.
+   * T_tide = 3 * mu_mars * m_probe * L_tether / r_p^3
+   * F_drag = 0.5 * rho_atm * v_p^2 * C_D * A_probe
+   * Delta_V_deorbit = ( v_p / r_p ) * L_tether
+   * Reference: Moravec (1977), Bekey (2003), Cartmell & McKenzie (2008) for Space Tether Dynamics & Mars Aerocapture Tethers.
+   * @param {number} [tetherLengthKm=50.0] - High-strength carbon nanotube / Kevlar tether length in km (5 to 100 km)
+   * @param {number} [tetherTipProbeMassKg=500.0] - Atmospheric entry sub-probe mass in kg (50 to 2000 kg)
+   * @param {number} [mothershipMassKg=2500.0] - Main orbiter bus mass in kg (500 to 10000 kg)
+   * @param {number} [orbiterPeriapsisAltitudeKm=150.0] - Mothership orbit periapsis altitude in km (120 to 300 km)
+   * @returns {{tetherLengthKm: number, probeDippingAltitudeKm: number, gravityGradientTensionN: number, peakAerodynamicDragN: number, passAerobrakingDeltaVMS: number, nonPropulsiveDeorbitDeltaVMS: number, tetherMechanicsContext: string}}
+   */
+  static computeMartianAtmosphericTetherMomentumExchange(tetherLengthKm = 50.0, tetherTipProbeMassKg = 500.0, mothershipMassKg = 2500.0, orbiterPeriapsisAltitudeKm = 150.0) {
+    const LtetherKm = Math.max(1.0, tetherLengthKm);
+    const mProbe = Math.max(10.0, tetherTipProbeMassKg);
+    const mShip = Math.max(100.0, mothershipMassKg);
+    const hpKm = Math.max(110.0, orbiterPeriapsisAltitudeKm);
+
+    const muMars = 42828.37 * 1e9; // m^3/s^2
+    const rMarsM = 3389.5 * 1000.0;
+    const rpM = rMarsM + (hpKm * 1000.0);
+    const LtetherM = LtetherKm * 1000.0;
+
+    // Atmospheric dip altitude of the probe tip
+    const hTipKm = Math.max(50.0, hpKm - LtetherKm);
+
+    // Gravity-gradient tidal tension (N)
+    const TtideN = (3.0 * muMars * mProbe * LtetherM) / Math.pow(rpM, 3.0);
+
+    // Periapsis orbital speed (m/s)
+    const vpMS = Math.sqrt(muMars / rpM);
+
+    // Atmospheric density at tip altitude (scale height ~11.1 km)
+    const rho0 = 0.020; // kg/m^3 surface density
+    const rhoAtm = rho0 * Math.exp(- (hTipKm * 1000.0) / 11100.0);
+
+    // Aerodynamic drag force on probe (N) with Area = 2.0 m^2, Cd = 2.2
+    const Aprobe = 2.0;
+    const Cd = 2.2;
+    const qDynPa = 0.5 * rhoAtm * Math.pow(vpMS, 2.0);
+    const FdragN = qDynPa * Cd * Aprobe;
+
+    // Aerobraking Delta-V per pass on combined system (m/s) with 450s atmospheric dip duration
+    const mTotal = mProbe + mShip;
+    const tPassSec = 450.0;
+    const dvAeroPassMS = (FdragN * tPassSec) / mTotal;
+
+    // Non-propulsive deorbit kick delivered to probe upon nadir release (m/s)
+    const omegaOrb = vpMS / rpM;
+    const dvDeorbitMS = omegaOrb * LtetherM;
+
+    return {
+      tetherLengthKm: parseFloat(LtetherKm.toFixed(1)),
+      probeDippingAltitudeKm: parseFloat(hTipKm.toFixed(1)),
+      gravityGradientTensionN: parseFloat(TtideN.toFixed(2)),
+      peakAerodynamicDragN: parseFloat(FdragN.toFixed(2)),
+      passAerobrakingDeltaVMS: parseFloat(dvAeroPassMS.toFixed(3)),
+      nonPropulsiveDeorbitDeltaVMS: parseFloat(dvDeorbitMS.toFixed(2)),
+      tetherMechanicsContext: `Atmospheric Tether (${LtetherKm.toFixed(0)} km Tether, ${hTipKm.toFixed(0)} km Dip, ${dvDeorbitMS.toFixed(1)} m/s Non-Propulsive Release Kick)`
+    };
+  }
 }
 
 
