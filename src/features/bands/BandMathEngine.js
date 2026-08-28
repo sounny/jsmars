@@ -5083,6 +5083,55 @@ export class BandMathEngine {
       aqueousWeatheringRegime: regime
     };
   }
+
+  /**
+   * Discriminate Mg-Al Spinel (tetrahedral Fe2+ 2.0 um without 1.0 um band), Chromite (FeCr2O4), and Magnetite in CRISM spectra.
+   * Reference: Sunshine et al. (2008), Dhingra et al. (2011), Viviano-Beck et al. (2014) for impact basin central peaks & ultramafic cumulates.
+   * @param {number} r680 - Reflectance at 0.68 um (VIS charge transfer edge)
+   * @param {number} r1000 - Reflectance at 1.00 um (Pyroxene/Olivine crystal field)
+   * @param {number} r2000 - Reflectance at 2.00 um (Spinel Fe2+ tetrahedral absorption)
+   * @param {number} [continuumLevel=0.25] - Background continuum reflectance
+   * @returns {{bd680: number, bd1000: number, bd2000: number, isSpinelPresent: boolean, spinelMineralSpecies: string, mantlePetrogeneticContext: string}}
+   */
+  static computeCRISMSpinelChromiteMagnetiteIndices(r680, r1000, r2000, continuumLevel = 0.25) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd680 = Math.max(0.0, 1.0 - (r680 / cont));
+    const bd1000 = Math.max(0.0, 1.0 - (r1000 / cont));
+    const bd2000 = Math.max(0.0, 1.0 - (r2000 / cont));
+
+    let isSpin = false;
+    let species = 'Pyroxene, Olivine, or Non-Spinel Matrix';
+    let context = 'Standard Basaltic Crust';
+
+    if (bd2000 >= 0.035) {
+      if (bd1000 < 0.020) {
+        isSpin = true;
+        species = 'Mg-Al Spinel (Magnesio-Aluminous Spinel MgAl2O4)';
+        context = 'Impact Basin Peak Ring Excavation of Ancient Upper Mantle Pyroxenite / Peridotite';
+      } else if (bd680 >= 0.030) {
+        isSpin = true;
+        species = 'Chromite (Chromium Spinel FeCr2O4)';
+        context = 'Ultramafic Podiform Stratiform Cumulate Layer / Primitive Mantle Xenolith';
+      } else {
+        species = 'Pyroxene-Spinel Intimate Mixture';
+        context = 'Differentiated Crustal Intrusive Body';
+      }
+    } else if (cont < 0.10 && bd1000 < 0.020) {
+      isSpin = true;
+      species = 'Magnetite / Titanomagnetite (Opaque Fe3O4 Oxide)';
+      context = 'High-Temperature Hydrothermal Magnetite Skarn / Magnetic Anomalous Basement';
+    }
+
+    return {
+      bd680: parseFloat(bd680.toFixed(4)),
+      bd1000: parseFloat(bd1000.toFixed(4)),
+      bd2000: parseFloat(bd2000.toFixed(4)),
+      isSpinelPresent: isSpin,
+      spinelMineralSpecies: species,
+      mantlePetrogeneticContext: context
+    };
+  }
 }
 
 

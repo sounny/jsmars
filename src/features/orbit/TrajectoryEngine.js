@@ -4669,6 +4669,48 @@ export class TrajectoryEngine {
       aerobrakingMissionContext: `Multi-Pass Mars Aerobraking Campaign (${totalPasses} Drag Passes in ~${durationMonths.toFixed(1)} Months)`
     };
   }
+
+  /**
+   * Calculate Mars-Venus interplanetary gravity assist trajectory, hyperbolic turn angle, heliocentric energy pumping, and slingshot Delta-V.
+   * sin( delta / 2 ) = 1 / ( 1 + ( rp * v_inf^2 ) / mu_venus )
+   * Delta_v_hel = 2 * v_inf * sin( delta / 2 )
+   * Reference: Broucke (1988), Labunsky et al. (1998), Curtis (2013) for inner planet gravity assist tour architectures.
+   * @param {number} [venusFlybyAltitudeKm=300.0] - Venus closest approach flyby altitude in km (200 to 10000 km)
+   * @param {number} [approachVInfKmS=5.50] - Venus approach hyperbolic excess speed in km/s (2.0 to 12.0 km/s)
+   * @returns {{venusFlybyAltitudeKm: number, venusPeriapsisSpeedKmS: number, hyperbolicTurnAngleDeg: number, heliocentricDeltaVBoostKmS: number, timeOfFlightToVenusDays: number, gravityAssistMissionContext: string}}
+   */
+  static computeMarsVenusGravityAssistTrajectory(venusFlybyAltitudeKm = 300.0, approachVInfKmS = 5.50) {
+    const hpKm = Math.max(150.0, venusFlybyAltitudeKm);
+    const vInf = Math.max(1.0, approachVInfKmS);
+
+    const rVenusKm = 6051.8;
+    const muVenus = 324859.0; // km^3/s^2
+
+    // Periapsis radius and speed at Venus
+    const rpKm = rVenusKm + hpKm;
+    const vPeriKmS = Math.sqrt(Math.pow(vInf, 2.0) + (2.0 * muVenus) / rpKm);
+
+    // Hyperbolic turn angle delta: sin(delta/2) = 1 / ( 1 + rp*vInf^2 / mu )
+    const denom = 1.0 + (rpKm * Math.pow(vInf, 2.0)) / muVenus;
+    const sinHalfDelta = 1.0 / denom;
+    const halfDeltaRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinHalfDelta)));
+    const deltaDeg = 2.0 * halfDeltaRad * (180.0 / Math.PI);
+
+    // Heliocentric velocity boost Delta-V
+    const dvHelKmS = 2.0 * vInf * sinHalfDelta;
+
+    // Time of flight Mars to Venus (~217 days for Hohmann inward)
+    const tofDays = 217.4;
+
+    return {
+      venusFlybyAltitudeKm: parseFloat(hpKm.toFixed(1)),
+      venusPeriapsisSpeedKmS: parseFloat(vPeriKmS.toFixed(3)),
+      hyperbolicTurnAngleDeg: parseFloat(deltaDeg.toFixed(2)),
+      heliocentricDeltaVBoostKmS: parseFloat(dvHelKmS.toFixed(3)),
+      timeOfFlightToVenusDays: parseFloat(tofDays.toFixed(1)),
+      gravityAssistMissionContext: `Venus Gravity Assist Slingshot (${deltaDeg.toFixed(1)} deg Turn Angle, +${dvHelKmS.toFixed(2)} km/s Heliocentric Boost)`
+    };
+  }
 }
 
 

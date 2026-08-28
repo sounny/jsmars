@@ -10792,6 +10792,46 @@ describe('Mars Aerobraking Campaigns, Valley Runoff Hydraulics & Fe/Mg Smectites
     });
 });
 
+describe('Mars-Venus Gravity Assists, Ocean Tsunami Megafloods & Spinel Mineralogy', () => {
+    it('should calculate Mars-to-Venus gravity assist turn angle, heliocentric boost, and flight time', () => {
+        // Venus flyby at 300 km altitude (v_inf = 5.50 km/s):
+        const flyby = TrajectoryEngine.computeMarsVenusGravityAssistTrajectory(300.0, 5.50);
+        expect(flyby.venusFlybyAltitudeKm).to.equal(300.0);
+        expect(flyby.venusPeriapsisSpeedKmS).to.be.closeTo(11.512, 0.1); // ~11.5 km/s periapsis speed
+        expect(flyby.hyperbolicTurnAngleDeg).to.be.closeTo(77.86, 2.0); // ~77.9 deg turn angle
+        expect(flyby.heliocentricDeltaVBoostKmS).to.be.closeTo(6.912, 0.1); // ~6.91 km/s heliocentric boost
+        expect(flyby.timeOfFlightToVenusDays).to.equal(217.4); // ~217 days
+        expect(flyby.gravityAssistMissionContext).to.include('Venus Gravity Assist Slingshot');
+    });
+
+    it('should calculate ancient Martian Northern Ocean tsunami wave speed, shoaling height, and coastal runup', () => {
+        // Oceanus Borealis impact tsunami (H0 = 300 m, ocean depth = 1500 m, dist = 800 km, slope = 0.005):
+        const tsu = KRCEngine.computeAncientMartianOceanTsunamiPropagationAndRunup(300.0, 1500.0, 800.0, 0.005);
+        expect(tsu.openOceanWaveSpeedKmH).to.be.closeTo(268.9, 5.0); // ~269 km/h wave speed
+        expect(tsu.coastalShoalingWaveHeightMeters).to.be.closeTo(136.9, 5.0); // ~137 m shoaling wave height
+        expect(tsu.maxInlandRunupElevationMeters).to.be.closeTo(252.4, 10.0); // ~252 m runup elevation
+        expect(tsu.inlandInundationDistanceKm).to.be.closeTo(50.5, 5.0); // ~50 km inland inundation
+        expect(tsu.tsunamiGeomorphologyContext).to.include('Catastrophic Megatsunami Inundation');
+    });
+
+    it('should discriminate Mg-Al Spinel from Chromite and Magnetite in CRISM spectra', () => {
+        // Pure Mg-Al Spinel (MgAl2O4) with 2.0 um band and NO 1.0 um band:
+        const spinel = BandMathEngine.computeCRISMSpinelChromiteMagnetiteIndices(0.25, 0.25, 0.22, 0.25);
+        expect(spinel.isSpinelPresent).to.be.true;
+        expect(spinel.spinelMineralSpecies).to.include('Mg-Al Spinel (Magnesio-Aluminous Spinel');
+        expect(spinel.mantlePetrogeneticContext).to.include('Impact Basin Peak Ring Excavation');
+
+        // Chromite (FeCr2O4) with 2.0 um band and 0.68 um absorption edge:
+        const chromite = BandMathEngine.computeCRISMSpinelChromiteMagnetiteIndices(0.20, 0.24, 0.22, 0.25);
+        expect(chromite.isSpinelPresent).to.be.true;
+        expect(chromite.spinelMineralSpecies).to.include('Chromite (Chromium Spinel');
+
+        // Flat basalt:
+        const basalt = BandMathEngine.computeCRISMSpinelChromiteMagnetiteIndices(0.25, 0.25, 0.25, 0.25);
+        expect(basalt.isSpinelPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

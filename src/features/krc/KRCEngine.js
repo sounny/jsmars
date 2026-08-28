@@ -5224,6 +5224,61 @@ export class KRCEngine {
       paleohydrologyFluvialContext: regime
     };
   }
+
+  /**
+   * Calculate ancient Martian Northern Ocean impact-generated tsunami wave speed, shoaling amplification, and inland coastal runup inundation.
+   * c_wave = sqrt( g_mars * d_ocean )
+   * H_coast = H_deep * ( d_deep / d_shelf )^(1/4)
+   * R_runup = 1.05 * H_coast^0.9 * S_coast^(-0.2)
+   * Reference: Costard et al. (2017), Rodriguez et al. (2019), Williams et al. (2024) for Oceanus Borealis & Deuteronilus paleoshoreline megatsunamis.
+   * @param {number} [initialWaveHeightMeters=300.0] - Initial bolide impact cavity collapse wave amplitude in meters (50 to 1000 m)
+   * @param {number} [oceanDepthMeters=1500.0] - Mean depth of Northern Ocean in meters (200 to 4000 m)
+   * @param {number} [distanceToCoastKm=800.0] - Propagation distance from impact center to coastline in km (50 to 3000 km)
+   * @param {number} [coastalTopographicSlope=0.005] - Regional coastal lowland slope (0.0005 to 0.05)
+   * @returns {{openOceanWaveSpeedKmH: number, openOceanWaveSpeedMS: number, coastalShoalingWaveHeightMeters: number, maxInlandRunupElevationMeters: number, inlandInundationDistanceKm: number, tsunamiGeomorphologyContext: string}}
+   */
+  static computeAncientMartianOceanTsunamiPropagationAndRunup(initialWaveHeightMeters = 300.0, oceanDepthMeters = 1500.0, distanceToCoastKm = 800.0, coastalTopographicSlope = 0.005) {
+    const H0 = Math.max(10.0, initialWaveHeightMeters);
+    const dOcean = Math.max(50.0, oceanDepthMeters);
+    const distKm = Math.max(10.0, distanceToCoastKm);
+    const Sslope = Math.max(0.0001, Math.min(0.10, coastalTopographicSlope));
+
+    const gMars = 3.72076; // m/s^2
+    const r0Km = 50.0;
+
+    // Deep ocean wave speed (m/s and km/h)
+    const cWaveMS = Math.sqrt(gMars * dOcean);
+    const cWaveKmH = cWaveMS * 3.6;
+
+    // Geometric spreading and dissipation
+    const alphaDiss = 0.0001; // 1/km
+    const spreadFactor = Math.sqrt(r0Km / distKm);
+    const dissFactor = Math.exp(-alphaDiss * Math.max(0.0, distKm - r0Km));
+    const HdeepM = H0 * spreadFactor * dissFactor;
+
+    // Green's law coastal shoaling (shelf depth = 100 m)
+    const dShelf = 100.0;
+    const shoalingFactor = Math.pow(dOcean / dShelf, 0.25);
+    const HcoastM = HdeepM * shoalingFactor;
+
+    // Maximum inland runup elevation and inundation distance
+    const RrunupM = 1.05 * Math.pow(HcoastM, 0.9) * Math.pow(Sslope, -0.2);
+    const XinundationKm = (RrunupM / Sslope) / 1000.0;
+
+    let context = 'Catastrophic Megatsunami Inundation (Deposition of Widespread Lobate Boulder Fields)';
+    if (RrunupM < 50.0) {
+      context = 'Moderate Coastal Surge Event (Localized Shoreline Scour)';
+    }
+
+    return {
+      openOceanWaveSpeedKmH: parseFloat(cWaveKmH.toFixed(1)),
+      openOceanWaveSpeedMS: parseFloat(cWaveMS.toFixed(2)),
+      coastalShoalingWaveHeightMeters: parseFloat(HcoastM.toFixed(1)),
+      maxInlandRunupElevationMeters: parseFloat(RrunupM.toFixed(1)),
+      inlandInundationDistanceKm: parseFloat(XinundationKm.toFixed(1)),
+      tsunamiGeomorphologyContext: context
+    };
+  }
 }
 
 
