@@ -6994,6 +6994,74 @@ export class TrajectoryEngine {
       radialSteeringContext: `Radial Low-Thrust (${gravRatioPct.toFixed(1)}% Gravity Offset, ${dotOmegaDegYr.toFixed(1)} deg/yr Precession, ${propKg.toFixed(1)} kg Xe)`
     };
   }
+
+  /**
+   * Calculate direct high-energy Hohmann plunge transfer from Mars to innermost planet Mercury, including departure and orbit insertion burns.
+   * a_trans = ( r_mars + r_merc ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Delta_V_tot = Delta_V_TMI + Delta_V_MOI
+   * Reference: Curtis (2013), Larson & Wertz (1999) for Direct Interplanetary Hohmann Transfers.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [mercuryParkingAltitudeKm=200.0] - Mercury arrival orbit altitude in km (100 to 2000 km)
+   * @returns {{transferTimeDays: number, marsDepartureDeltaVKmS: number, mercuryArrivalExcessKmS: number, mercuryOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, directTransferContext: string}}
+   */
+  static computeMarsToMercuryDirectPlungeTransfer(marsParkingAltitudeKm = 300.0, mercuryParkingAltitudeKm = 200.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpMercKm = Math.max(100.0, mercuryParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muMerc = 22032.09;
+    const rMercKm = 2439.7;
+
+    const rMarsAU = 1.52368;
+    const rMercAU = 0.38710;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rMercDistKm = rMercAU * AU_KM;
+
+    // Hohmann transfer geometry
+    const aTransKm = (rMarsDistKm + rMercDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rMarsDistKm - rMercDistKm) / (rMarsDistKm + rMercDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vMarsCircKmS - vDepKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTmiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Mercury arrival
+    const vMercCircKmS = Math.sqrt(muSun / rMercDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rMercDistKm) - (1.0 / aTransKm)));
+    const vInfMercKmS = Math.abs(vArrKmS - vMercCircKmS);
+
+    const rParkMercKm = rMercKm + hpMercKm;
+    const vParkMercKmS = Math.sqrt(muMerc / rParkMercKm);
+    const vHypMercKmS = Math.sqrt(Math.pow(vInfMercKmS, 2.0) + ((2.0 * muMerc) / rParkMercKm));
+    const dvMoiKmS = vHypMercKmS - vParkMercKmS;
+
+    const dvTotKmS = dvTmiKmS + dvMoiKmS;
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      marsDepartureDeltaVKmS: parseFloat(dvTmiKmS.toFixed(3)),
+      mercuryArrivalExcessKmS: parseFloat(vInfMercKmS.toFixed(3)),
+      mercuryOrbitInsertionDeltaVKmS: parseFloat(dvMoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      directTransferContext: `Mars-to-Mercury Direct (${tofsDays.toFixed(0)} d Transfer, e=${eTrans.toFixed(2)}, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

@@ -7386,6 +7386,78 @@ export class KRCEngine {
       silicaSinterContext: `Silica Sintering at ${TfluidC.toFixed(0)} C (${phiPct.toFixed(1)}% Porosity, TIU=${TIU.toFixed(0)}, ${stageClass})`
     };
   }
+
+  /**
+   * Calculate geothermal hydrothermal serpentinization reaction kinetics, abiotic molecular hydrogen (H2) generation, and Fischer-Tropsch-Type (FTT) methane (CH4) outgassing flux.
+   * T_crust = T_surf + Gamma_geo * z
+   * eta_T = exp( - ( T - T_opt )^2 / ( 2 * sigma_T^2 ) )
+   * M_H2 = M_ol_reacted * yield_H2_per_kg
+   * M_CH4 = 0.15 * ( 16 / 8 ) * M_H2
+   * Reference: Martin & Fyfe (1970), McCollom & Seewald (2007), Oze & Sharma (2005), Klein et al. (2013) for Martian Abiotic Methane Generation.
+   * @param {number} [crustalDepthKm=5.0] - Serpentinizing aquifer depth in km (1.0 to 15.0 km)
+   * @param {number} [geothermalGradientKPerKm=50.0] - Local geothermal gradient in K/km (10 to 80 K/km)
+   * @param {number} [olivineMassFraction=0.60] - Ultramafic rock olivine fraction (0.10 to 0.95)
+   * @param {number} [rockVolumeM3=1.0e6] - Reaction reservoir rock volume in m^3 (1e3 to 1e9 m^3)
+   * @param {number} [hydrothermalDurationYr=5000.0] - Hydrothermal circulation duration in yr (100 to 100000 yr)
+   * @returns {{crustalTemperatureC: number, reactedOlivineTons: number, hydrogenProducedTons: number, methaneProducedTons: number, reactionEfficiencyPercent: number, serpentinizationRegimeClass: string, serpentinizationContext: string}}
+   */
+  static computeMartianSerpentinizationHydrogenMethaneProduction(crustalDepthKm = 5.0, geothermalGradientKPerKm = 50.0, olivineMassFraction = 0.60, rockVolumeM3 = 1.0e6, hydrothermalDurationYr = 5000.0) {
+    const zKm = Math.max(0.5, crustalDepthKm);
+    const gammaGeo = Math.max(5.0, geothermalGradientKPerKm);
+    const wOl = Math.max(0.05, Math.min(1.0, olivineMassFraction));
+    const VrockM3 = Math.max(10.0, rockVolumeM3);
+    const tYr = Math.max(1.0, hydrothermalDurationYr);
+
+    const TsurfK = 215.0; // Surface mean
+    const rhoRock = 3000.0; // kg/m^3
+    const TcrustK = TsurfK + (gammaGeo * zKm);
+    const TcrustC = TcrustK - 273.15;
+
+    // Thermal kinetic efficiency (peak at 275 C = 548.15 K, sigma = 60 K)
+    const ToptK = 548.15;
+    const sigmaT = 60.0;
+    const deltaT = TcrustK - ToptK;
+    const etaT = Math.exp(-Math.pow(deltaT, 2.0) / (2.0 * Math.pow(sigmaT, 2.0)));
+
+    // Reaction rate constant (1/yr)
+    const kPeak = 5.0e-4; // 1/yr at optimal T
+    const kEff = kPeak * etaT;
+
+    // Hydration fraction
+    const fRxn = 1.0 - Math.exp(-kEff * tYr);
+
+    // Reacted olivine mass (tons)
+    const MolTotKg = VrockM3 * rhoRock * wOl;
+    const MolRxnKg = MolTotKg * fRxn;
+    const MolRxnTons = MolRxnKg / 1000.0;
+
+    // Hydrogen production: ~0.7056 g H2 per kg olivine (Fo85Fa15)
+    const H2YieldKgPerKg = 0.7056e-3;
+    const MH2Kg = MolRxnKg * H2YieldKgPerKg;
+    const MH2Tons = MH2Kg / 1000.0;
+
+    // FTT Methane conversion (~15% catalytic reduction)
+    const etaFTT = 0.15;
+    const MCH4Kg = (16.042 / (4.0 * 2.016)) * etaFTT * MH2Kg;
+    const MCH4Tons = MCH4Kg / 1000.0;
+
+    let regimeClass = 'Active Hydrothermal Serpentinization Zone (High Abiotic H2 + CH4 Generation)';
+    if (TcrustC < 100.0) {
+      regimeClass = 'Kinetically Sluggish Low-Temperature Serpentinization';
+    } else if (TcrustC > 400.0) {
+      regimeClass = 'Super-Critical Dehydrated Mantle (Above Serpentine Stability Limit)';
+    }
+
+    return {
+      crustalTemperatureC: parseFloat(TcrustC.toFixed(1)),
+      reactedOlivineTons: parseFloat(MolRxnTons.toFixed(1)),
+      hydrogenProducedTons: parseFloat(MH2Tons.toFixed(2)),
+      methaneProducedTons: parseFloat(MCH4Tons.toFixed(2)),
+      reactionEfficiencyPercent: parseFloat((fRxn * 100.0).toFixed(1)),
+      serpentinizationRegimeClass: regimeClass,
+      serpentinizationContext: `Serpentinization at ${zKm.toFixed(1)}km (${TcrustC.toFixed(0)} C, ${MH2Tons.toFixed(1)} t H2, ${MCH4Tons.toFixed(1)} t CH4 Abiotic Outgassing, ${regimeClass})`
+    };
+  }
 }
 
 

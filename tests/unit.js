@@ -12615,6 +12615,53 @@ describe('Radial Low-Thrust Dynamics, Silica Sintering & Chloride Evaporite Inve
     });
 });
 
+describe('Mars-to-Mercury Hohmann Plunge, Serpentinization H2/CH4 & Oxychlorines', () => {
+    it('should calculate direct high-energy Hohmann transfer from Mars to innermost planet Mercury', () => {
+        // Mars to Mercury transfer (300 km Mars altitude, 200 km Mercury altitude):
+        const direct = TrajectoryEngine.computeMarsToMercuryDirectPlungeTransfer(300.0, 200.0);
+        expect(direct.transferTimeDays).to.be.closeTo(170.4, 10.0); // ~170.4 d transfer
+        expect(direct.marsDepartureDeltaVKmS).to.be.closeTo(6.600, 0.3); // ~6.60 km/s TMI
+        expect(direct.mercuryArrivalExcessKmS).to.be.closeTo(12.584, 0.5); // ~12.58 km/s v_inf
+        expect(direct.mercuryOrbitInsertionDeltaVKmS).to.be.closeTo(10.342, 0.5); // ~10.34 km/s MOI
+        expect(direct.totalMissionDeltaVKmS).to.be.closeTo(16.942, 0.8); // ~16.94 km/s total Delta-V
+        expect(direct.transferEccentricity).to.be.closeTo(0.5948, 0.05); // e ~ 0.595
+        expect(direct.transferSemiMajorAxisAU).to.be.closeTo(0.955, 0.05); // a ~ 0.955 AU
+        expect(direct.directTransferContext).to.include('Mars-to-Mercury Direct');
+    });
+
+    it('should calculate hydrothermal serpentinization reaction kinetics and abiotic H2 + CH4 generation', () => {
+        // 5 km depth, 50 K/km gradient, 60% olivine, 1e6 m^3 volume, 5000 yr:
+        const serp = KRCEngine.computeMartianSerpentinizationHydrogenMethaneProduction(5.0, 50.0, 0.60, 1.0e6, 5000.0);
+        expect(serp.crustalTemperatureC).to.be.closeTo(191.85, 0.2); // ~191.9 C crustal temp
+        expect(serp.reactedOlivineTons).to.be.closeTo(1108600.0, 50000.0); // ~1.11M tons reacted
+        expect(serp.hydrogenProducedTons).to.be.closeTo(782.2, 50.0); // ~782 t H2
+        expect(serp.methaneProducedTons).to.be.closeTo(233.4, 20.0); // ~233 t CH4
+        expect(serp.reactionEfficiencyPercent).to.be.closeTo(61.6, 5.0); // ~61.6% conversion
+        expect(serp.serpentinizationRegimeClass).to.include('Active Hydrothermal Serpentinization');
+        expect(serp.serpentinizationContext).to.include('Serpentinization');
+    });
+
+    it('should discriminate Hydrated Magnesium/Calcium Perchlorates vs Chlorates in CRISM spectra', () => {
+        // Hydrated Magnesium Perchlorate (RSL active slope: BD1430 = 0.06, BD1900 = 0.08, BD2130 = 0.05, BD2400 = 0.005):
+        const perchlorate = BandMathEngine.computeCRISMOxychlorineSaltIndices(0.06, 0.08, 0.05, 0.005);
+        expect(perchlorate.isOxychlorineDetected).to.be.true;
+        expect(perchlorate.oxychlorineClass).to.include('Hydrated Magnesium/Calcium Perchlorate');
+        expect(perchlorate.mineralSpecies).to.include('Magnesium Perchlorate Hexahydrate');
+        expect(perchlorate.chemicalFormula).to.include('Mg(ClO4)2 * 6H2O');
+        expect(perchlorate.rslAstrobiologyContext).to.include('Deliquescing Cryogenic Oxychlorine Salt');
+
+        // Chlorate Salt (BD1430 = 0.01, BD1900 = 0.02, BD2130 = 0.005, BD2400 = 0.04):
+        const chlorate = BandMathEngine.computeCRISMOxychlorineSaltIndices(0.01, 0.02, 0.005, 0.04);
+        expect(chlorate.isOxychlorineDetected).to.be.true;
+        expect(chlorate.oxychlorineClass).to.include('Chlorate Salt Deposit');
+        expect(chlorate.chemicalFormula).to.include('NaClO3');
+
+        // Non-oxychlorine basalt:
+        const basalt = BandMathEngine.computeCRISMOxychlorineSaltIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isOxychlorineDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

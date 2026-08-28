@@ -6930,6 +6930,55 @@ export class BandMathEngine {
       halitePlayaContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrated Magnesium/Calcium Perchlorates vs Chlorate Salts from CRISM 1.43 um, 1.90 um, 2.13 um, and 2.40 um absorption bands in modern RSL and polar soils.
+   * Reference: Ojha et al. (2015), Hanley et al. (2015), Viviano-Beck et al. (2014) for Martian Oxychlorines & Recurring Slope Lineae.
+   * @param {number} [band1430HydrationDepth=0.06] - BD1430 perchlorate hydrate band depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.08] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band2130PerchlorateDepth=0.05] - BD2130 diagnostic ClO4- overtone depth (0.0 to 0.40)
+   * @param {number} [band2400ChlorateDepth=0.01] - BD2400 diagnostic ClO3- chlorate vibration depth (0.0 to 0.40)
+   * @returns {{isOxychlorineDetected: boolean, oxychlorineClass: string, mineralSpecies: string, chemicalFormula: string, rslAstrobiologyContext: string}}
+   */
+  static computeCRISMOxychlorineSaltIndices(band1430HydrationDepth = 0.06, band1900WaterDepth = 0.08, band2130PerchlorateDepth = 0.05, band2400ChlorateDepth = 0.01) {
+    const d1430 = Math.max(0.0, band1430HydrationDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2130 = Math.max(0.0, band2130PerchlorateDepth);
+    const d2400 = Math.max(0.0, band2400ChlorateDepth);
+
+    const isPerchlorate = d2130 >= 0.030 && d1900 >= 0.035;
+    const isChlorate = d2400 >= 0.025;
+
+    let oxyClass = 'Non-Oxychlorine Regolith';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Oxychlorine Absorption';
+
+    if (isPerchlorate && isChlorate) {
+      oxyClass = 'Mixed Perchlorate-Chlorate Oxychlorine Assemblage';
+      species = 'Mg(ClO4)2 + NaClO3 Hydrates';
+      formula = 'Mg(ClO4)2 * 6H2O + NaClO3';
+      context = 'Deliquescent Oxychlorine Brine Slurry with Ultra-Low Eutectic Freezing Point (RSL Active Wall)';
+    } else if (isPerchlorate) {
+      oxyClass = 'Hydrated Magnesium/Calcium Perchlorate (RSL Brine Candidate)';
+      species = 'Magnesium Perchlorate Hexahydrate';
+      formula = 'Mg(ClO4)2 * 6H2O / Ca(ClO4)2 * 4H2O';
+      context = 'Deliquescing Cryogenic Oxychlorine Salt Supporting Modern Transient Liquid Brines (Hale / Palikir RSL Slopes)';
+    } else if (isChlorate) {
+      oxyClass = 'Chlorate Salt Deposit (Photochemical Oxidation Phase)';
+      species = 'Sodium / Magnesium Chlorate';
+      formula = 'NaClO3 / Mg(ClO3)2';
+      context = 'Photochemical Atmospheric-Regolith Oxidation Residue in Arid Martian Regolith';
+    }
+
+    return {
+      isOxychlorineDetected: isPerchlorate || isChlorate,
+      oxychlorineClass: oxyClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      rslAstrobiologyContext: context
+    };
+  }
 }
 
 

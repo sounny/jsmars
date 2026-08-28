@@ -498,3 +498,17 @@ TEST FAILURE: Unit test suite failed (2 failures):
 - should calculate continuous radial low-thrust propulsion perturbation, effective gravity, and apsidal shift
 ?: AssertionError: expected 14.99 to be close to 28.19 +/- 2
     at n.<anonymous> (unit.js:12580:58)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 22:15:50 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate direct high-energy Hohmann transfer from Mars to innermost planet Mercury
+?: AssertionError: expected 6.6 to be close to 5.113 +/- 0.3
+    at n.<anonymous> (unit.js:12623:53)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 22:16:05 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate direct high-energy Hohmann transfer from Mars to innermost planet Mercury
+?: AssertionError: expected 12.584 to be close to 13.914 +/- 0.5
+    at n.<anonymous> (unit.js:12624:54)
