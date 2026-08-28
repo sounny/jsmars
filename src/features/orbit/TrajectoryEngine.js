@@ -1827,6 +1827,116 @@ export class TrajectoryEngine {
       surfaceGravityMS2: parseFloat(gSurfMS2.toExponential(3))
     };
   }
+
+  /**
+   * Universal variable Stumpff function C(z).
+   * @param {number} z
+   * @returns {number}
+   */
+  static _stumpffC(z) {
+    if (z > 0.0) {
+      return (1.0 - Math.cos(Math.sqrt(z))) / z;
+    } else if (z < 0.0) {
+      return (Math.cosh(Math.sqrt(-z)) - 1.0) / (-z);
+    }
+    return 0.5;
+  }
+
+  /**
+   * Universal variable Stumpff function S(z).
+   * @param {number} z
+   * @returns {number}
+   */
+  static _stumpffS(z) {
+    if (z > 0.0) {
+      const sqrtZ = Math.sqrt(z);
+      return (sqrtZ - Math.sin(sqrtZ)) / (sqrtZ * sqrtZ * sqrtZ);
+    } else if (z < 0.0) {
+      const sqrtNegZ = Math.sqrt(-z);
+      return (Math.sinh(sqrtNegZ) - sqrtNegZ) / (sqrtNegZ * sqrtNegZ * sqrtNegZ);
+    }
+    return 1.0 / 6.0;
+  }
+
+  /**
+   * Solve Lambert's boundary value orbital transfer problem for initial and arrival velocity vectors.
+   * Reference: Bate, Mueller, White (1971), Battin (1999), Vallado (2013) for orbital rendezvous & interplanetary transfers.
+   * @param {[number, number, number]} r1VectorKm - Initial position vector [x, y, z] in km
+   * @param {[number, number, number]} r2VectorKm - Target arrival position vector [x, y, z] in km
+   * @param {number} timeOfFlightSec - Time of flight Delta_t in seconds
+   * @param {string} [centralBody='mars'] - Central gravitational body ('mars', 'earth', 'sun')
+   * @returns {{v1VectorKmS: [number, number, number], v2VectorKmS: [number, number, number], departureSpeedKmS: number, arrivalSpeedKmS: number, transferSemiMajorAxisKm: number, transferAngleDeg: number}}
+   */
+  static computeLambertOrbitalTransferVelocityVectors(r1VectorKm, r2VectorKm, timeOfFlightSec, centralBody = 'mars') {
+    const cBody = centralBody.toLowerCase();
+    let mu = 42828.37; // Mars km^3/s^2
+    if (cBody === 'earth') mu = 398600.4418;
+    else if (cBody === 'sun') mu = 1.32712440018e11;
+
+    const r1 = Math.sqrt(r1VectorKm[0] ** 2 + r1VectorKm[1] ** 2 + r1VectorKm[2] ** 2);
+    const r2 = Math.sqrt(r2VectorKm[0] ** 2 + r2VectorKm[1] ** 2 + r2VectorKm[2] ** 2);
+    const dt = Math.max(1.0, timeOfFlightSec);
+
+    // Cross product to check transfer angle
+    const crossZ = r1VectorKm[0] * r2VectorKm[1] - r1VectorKm[1] * r2VectorKm[0];
+    const dot = r1VectorKm[0] * r2VectorKm[0] + r1VectorKm[1] * r2VectorKm[1] + r1VectorKm[2] * r2VectorKm[2];
+    const cosDeltaNu = Math.max(-1.0, Math.min(1.0, dot / (r1 * r2)));
+    let deltaNu = Math.acos(cosDeltaNu);
+    if (crossZ < 0.0) deltaNu = 2.0 * Math.PI - deltaNu;
+
+    const A = Math.sin(deltaNu) * Math.sqrt((r1 * r2) / Math.max(1e-6, 1.0 - cosDeltaNu));
+
+    // Newton-Raphson iteration for universal variable z
+    let z = 0.0;
+    for (let iter = 0; iter < 35; iter++) {
+      const Cz = TrajectoryEngine._stumpffC(z);
+      const Sz = TrajectoryEngine._stumpffS(z);
+      const y = r1 + r2 + A * ((z * Sz - 1.0) / Math.max(1e-6, Math.sqrt(Cz)));
+      if (y <= 0.0) {
+        z += 0.1;
+        continue;
+      }
+      const tof = (Math.pow(y / Cz, 1.5) * Sz + A * Math.sqrt(y)) / Math.sqrt(mu);
+      const diff = tof - dt;
+      if (Math.abs(diff) < 1e-4) break;
+
+      // Derivative d(tof)/dz
+      const dToF = (Math.pow(y / Cz, 1.5) * (1.0 / (2.0 * z) * (Cz - 1.5 * Sz / Cz) + 0.75 * (Sz * Sz) / Cz) + (A / 8.0) * (3.0 * Sz * Math.sqrt(y) / Cz + A / Math.sqrt(y))) / Math.sqrt(mu);
+      z = z - diff / (dToF || 1.0);
+    }
+
+    const Cz = TrajectoryEngine._stumpffC(z);
+    const y = Math.max(1e-3, r1 + r2 + A * ((z * TrajectoryEngine._stumpffS(z) - 1.0) / Math.max(1e-6, Math.sqrt(Cz))));
+    const f = 1.0 - y / r1;
+    const g = A * Math.sqrt(y / mu);
+    const gDot = 1.0 - y / r2;
+
+    const v1 = [
+      (r2VectorKm[0] - f * r1VectorKm[0]) / g,
+      (r2VectorKm[1] - f * r1VectorKm[1]) / g,
+      (r2VectorKm[2] - f * r1VectorKm[2]) / g
+    ];
+
+    const v2 = [
+      (gDot * r2VectorKm[0] - r1VectorKm[0]) / g,
+      (gDot * r2VectorKm[1] - r1VectorKm[1]) / g,
+      (gDot * r2VectorKm[2] - r1VectorKm[2]) / g
+    ];
+
+    const speed1 = Math.sqrt(v1[0] ** 2 + v1[1] ** 2 + v1[2] ** 2);
+    const speed2 = Math.sqrt(v2[0] ** 2 + v2[1] ** 2 + v2[2] ** 2);
+    const energy = (speed1 ** 2) / 2.0 - mu / r1;
+    const aTransfer = -mu / (2.0 * energy);
+
+    return {
+      v1VectorKmS: [parseFloat(v1[0].toFixed(3)), parseFloat(v1[1].toFixed(3)), parseFloat(v1[2].toFixed(3))],
+      v2VectorKmS: [parseFloat(v2[0].toFixed(3)), parseFloat(v2[1].toFixed(3)), parseFloat(v2[2].toFixed(3))],
+      departureSpeedKmS: parseFloat(speed1.toFixed(3)),
+      arrivalSpeedKmS: parseFloat(speed2.toFixed(3)),
+      transferSemiMajorAxisKm: parseFloat(aTransfer.toFixed(1)),
+      transferAngleDeg: parseFloat((deltaNu * 180.0 / Math.PI).toFixed(2))
+    };
+  }
 }
 
 

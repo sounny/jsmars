@@ -2591,6 +2591,78 @@ export class KRCEngine {
       radarRegime: regime
     };
   }
+
+  /**
+   * Calculate perchlorate/chlorate salt deliquescence relative humidity, eutectic freezing limit, and liquid brine stability.
+   * DRH(T) = DRH_0 - k_T * (T - T_eutectic)
+   * Reference: Hecht et al. (2009), Gough et al. (2011), Toner et al. (2014), Rivera-Valentín et al. (2020) for Phoenix & RSL brines.
+   * @param {number} surfaceTempK - Regolith surface temperature in Kelvin (180 to 290 K)
+   * @param {number} relativeHumidityPct - Near-surface atmospheric relative humidity % (0 to 100)
+   * @param {string} [saltType='Mg(ClO4)2'] - Oxychlorine salt ('Mg(ClO4)2', 'Ca(ClO4)2', 'NaClO4', 'Mg(ClO3)2')
+   * @returns {{isLiquidBrineStable: boolean, isDeliquescenceActive: boolean, eutecticTemperatureK: number, deliquescenceRHPct: number, waterActivity: number, brinePhaseState: string, planetaryProtectionHabitability: boolean}}
+   */
+  static computePerchlorateDeliquescenceAndLiquidBrineStability(surfaceTempK, relativeHumidityPct, saltType = 'Mg(ClO4)2') {
+    const T = Math.max(100.0, Math.min(350.0, surfaceTempK));
+    const rh = Math.min(100.0, Math.max(0.0, relativeHumidityPct));
+    const sType = saltType.toLowerCase();
+
+    let tEutectic = 206.0; // Mg(ClO4)2: 206 K (-67 C)
+    let drh0 = 45.0;
+    let kSlope = 0.12;
+    let saltName = 'Magnesium Perchlorate Mg(ClO4)2';
+
+    if (sType.includes('ca')) {
+      tEutectic = 198.0; // Ca(ClO4)2: 198 K (-75 C)
+      drh0 = 38.0;
+      kSlope = 0.10;
+      saltName = 'Calcium Perchlorate Ca(ClO4)2';
+    } else if (sType.includes('na')) {
+      tEutectic = 239.0; // NaClO4: 239 K (-34 C)
+      drh0 = 52.0;
+      kSlope = 0.15;
+      saltName = 'Sodium Perchlorate NaClO4';
+    } else if (sType.includes('clo3')) {
+      tEutectic = 204.0; // Mg(ClO3)2: 204 K (-69 C)
+      drh0 = 40.0;
+      kSlope = 0.11;
+      saltName = 'Magnesium Chlorate Mg(ClO3)2';
+    }
+
+    // Deliquescence relative humidity threshold at temperature T
+    const drh = Math.max(15.0, Math.min(95.0, drh0 - kSlope * (T - tEutectic)));
+
+    // Deliquescence occurs if RH >= DRH
+    const isDeliquescing = rh >= drh;
+
+    // Thermodynamic liquid brine stability
+    const isAboveEutectic = T >= tEutectic;
+    const isLiquid = isAboveEutectic && isDeliquescing;
+
+    // Water activity a_w ~ RH / 100
+    const aw = Math.min(1.0, Math.max(0.0, rh / 100.0));
+
+    // NASA Special Region habitability criteria: T >= 255 K and a_w >= 0.60
+    const isHabitable = T >= 255.0 && aw >= 0.60 && isLiquid;
+
+    let phase = 'Dry Solid Crystalline Salt (RH < DRH)';
+    if (isLiquid) {
+      phase = `Transient Liquid Aqueous ${saltName} Brine Solution`;
+    } else if (isDeliquescing && !isAboveEutectic) {
+      phase = 'Metastable Supercooled Hydrated Perchlorate Slush';
+    } else if (isAboveEutectic && !isDeliquescing) {
+      phase = 'Warm Dry Desiccated Regolith';
+    }
+
+    return {
+      isLiquidBrineStable: isLiquid,
+      isDeliquescenceActive: isDeliquescing,
+      eutecticTemperatureK: parseFloat(tEutectic.toFixed(1)),
+      deliquescenceRHPct: parseFloat(drh.toFixed(1)),
+      waterActivity: parseFloat(aw.toFixed(3)),
+      brinePhaseState: phase,
+      planetaryProtectionHabitability: isHabitable
+    };
+  }
 }
 
 

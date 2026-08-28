@@ -3158,6 +3158,56 @@ export class BandMathEngine {
       hydrothermalContext: context
     };
   }
+
+  /**
+   * Discriminate crystalline Hematite (alpha-Fe2O3), Goethite (alpha-FeOOH), Nanophase Ferric Oxide (npOx), and Magnetite (Fe3O4) from CRISM VNIR spectra.
+   * BD860 = 1.0 - ( 2 * R_860 ) / ( R_770 + R_950 )
+   * BD920 = 1.0 - ( 2 * R_910 ) / ( R_770 + R_980 )
+   * Reference: Morris et al. (2000), Christensen et al. (2000), Viviano-Beck et al. (2014) for Meridiani Planum & dust mineralogy.
+   * @param {number} r530 - Reflectance at 530 nm ferric absorption edge
+   * @param {number} r770 - Reflectance at 770 nm shoulder continuum
+   * @param {number} r860 - Reflectance at 860 nm hematite band center
+   * @param {number} r910 - Reflectance at 910 nm goethite band center
+   * @param {number} r950 - Reflectance at 950 nm continuum
+   * @returns {{bd860: number, bd920: number, bd530: number, ironOxidePhase: string, isCrystallineHematite: boolean, isHydratedGoethite: boolean, geologicalSignificance: string}}
+   */
+  static computeCRISMIronOxideSpeciationIndices(r530, r770, r860, r910, r950) {
+    const cont860 = (r770 + r950) / 2.0;
+    const bd860 = Math.max(0.0, 1.0 - (r860 / Math.max(1e-4, cont860)));
+
+    const cont920 = (r770 + r950) / 2.0;
+    const bd920 = Math.max(0.0, 1.0 - (r910 / Math.max(1e-4, cont920)));
+
+    const bd530 = Math.max(0.0, 1.0 - (r530 / Math.max(1e-4, r770)));
+
+    let phase = 'Unaltered Primary Igneous Silicate / Magnetite (Low Reflectance)';
+    let isHem = false;
+    let isGoe = false;
+    let sig = 'Dry Basaltic Surface';
+
+    if (bd860 >= 0.025 && bd860 > bd920) {
+      phase = 'Crystalline Hematite (alpha-Fe2O3 - Meridiani Blueberry Type)';
+      isHem = true;
+      sig = 'Neutral-to-Acidic Aqueous Precipitation / Groundwater Diagenesis';
+    } else if (bd920 >= 0.025 && bd920 >= bd860) {
+      phase = 'Hydrated Goethite (alpha-FeOOH - Acidic Ferric Oxyhydroxide)';
+      isGoe = true;
+      sig = 'Cold Acidic Aqueous Weathering Under Moderate Water Availability';
+    } else if (bd530 >= 0.15 && bd860 < 0.020) {
+      phase = 'Nanophase Ferric Oxide (npOx / Amorphous Dust Coating)';
+      sig = 'Atmospheric Dust Fallout & UV Photochemical Surface Oxidation';
+    }
+
+    return {
+      bd860: parseFloat(bd860.toFixed(4)),
+      bd920: parseFloat(bd920.toFixed(4)),
+      bd530: parseFloat(bd530.toFixed(4)),
+      ironOxidePhase: phase,
+      isCrystallineHematite: isHem,
+      isHydratedGoethite: isGoe,
+      geologicalSignificance: sig
+    };
+  }
 }
 
 

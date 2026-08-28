@@ -9102,6 +9102,52 @@ describe('Phobos/Deimos Rendezvous, Subsurface Radar Attenuation & Opaline Silic
     });
 });
 
+describe('Lambert Transfer Solver, Perchlorate Brine Deliquescence & Iron Oxide Speciation', () => {
+    it('should solve boundary-value Lambert orbital transfer velocities with universal variables', () => {
+        // Mars orbit transfer (e.g. from r1 = [4000, 0, 0] km to r2 = [0, 4500, 0] km in 3600 seconds):
+        const lambert = TrajectoryEngine.computeLambertOrbitalTransferVelocityVectors([4000.0, 0.0, 0.0], [0.0, 4500.0, 0.0], 3600.0, 'mars');
+        expect(lambert.departureSpeedKmS).to.be.greaterThan(2.0);
+        expect(lambert.arrivalSpeedKmS).to.be.greaterThan(2.0);
+        expect(lambert.transferAngleDeg).to.be.closeTo(90.0, 0.1); // 90 degree transfer
+        expect(lambert.v1VectorKmS[1]).to.be.greaterThan(0.0); // positive prograde velocity
+    });
+
+    it('should calculate perchlorate salt deliquescence RH and liquid brine stability for Phoenix & RSL', () => {
+        // Mg(ClO4)2 in warm humid morning (T = 215 K, RH = 50%): above eutectic (206 K) and RH > DRH (~44%) -> Liquid Brine!
+        const mgBrine = KRCEngine.computePerchlorateDeliquescenceAndLiquidBrineStability(215.0, 50.0, 'Mg(ClO4)2');
+        expect(mgBrine.isLiquidBrineStable).to.be.true;
+        expect(mgBrine.isDeliquescenceActive).to.be.true;
+        expect(mgBrine.eutecticTemperatureK).to.equal(206.0);
+        expect(mgBrine.deliquescenceRHPct).to.be.closeTo(43.9, 1.0);
+        expect(mgBrine.brinePhaseState).to.include('Transient Liquid Aqueous');
+
+        // Dry afternoon (T = 240 K, RH = 10%): below DRH -> Dry Solid
+        const drySalt = KRCEngine.computePerchlorateDeliquescenceAndLiquidBrineStability(240.0, 10.0, 'Mg(ClO4)2');
+        expect(drySalt.isLiquidBrineStable).to.be.false;
+        expect(drySalt.brinePhaseState).to.include('Warm Dry Desiccated');
+    });
+
+    it('should discriminate crystalline Hematite from Goethite and dust in CRISM VNIR spectra', () => {
+        // Crystalline Grey Hematite (Meridiani Blueberry type): deep 860 nm minimum (r = 0.23 vs continuum (0.28+0.29)/2 = 0.285 -> BD860 = 0.193)
+        const hematite = BandMathEngine.computeCRISMIronOxideSpeciationIndices(0.18, 0.28, 0.23, 0.27, 0.29);
+        expect(hematite.isCrystallineHematite).to.be.true;
+        expect(hematite.isHydratedGoethite).to.be.false;
+        expect(hematite.ironOxidePhase).to.include('Hematite');
+        expect(hematite.geologicalSignificance).to.include('Groundwater Diagenesis');
+
+        // Hydrated Goethite: deep 910 nm absorption (BD920 > BD860)
+        const goethite = BandMathEngine.computeCRISMIronOxideSpeciationIndices(0.18, 0.28, 0.27, 0.22, 0.29);
+        expect(goethite.isCrystallineHematite).to.be.false;
+        expect(goethite.isHydratedGoethite).to.be.true;
+        expect(goethite.ironOxidePhase).to.include('Goethite');
+
+        // Nanophase Ferric Dust (npOx): steep visible slope (BD530 > 0.15) and weak NIR bands
+        const dust = BandMathEngine.computeCRISMIronOxideSpeciationIndices(0.15, 0.30, 0.295, 0.298, 0.30);
+        expect(dust.isCrystallineHematite).to.be.false;
+        expect(dust.ironOxidePhase).to.include('Nanophase Ferric Oxide');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
