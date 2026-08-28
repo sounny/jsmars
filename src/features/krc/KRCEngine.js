@@ -3902,6 +3902,96 @@ export class KRCEngine {
       regolithPoreVentilationRegime: regime
     };
   }
+
+  /**
+   * Calculate transient liquid brine flow metastability, evaporative boiling flux, Stefan freezing front kinetics, and liquid survival lifetime.
+   * E_evap = 0.17 * ( ( P_sat - P_atm ) / P_atm ) * rho_atm * v_wind
+   * t_freeze = ( rho_brine * L_f * z^2 ) / ( 2 * k_ice * ( T_eut - T_ambient ) )
+   * Reference: Ingersoll (1970), Sears & Chittenden (2005), Chevrier et al. (2007, 2009), Toner & Catling (2016) for Martian RSL and gullies.
+   * @param {number} [surfaceTempK=230.0] - Surface/regolith temperature in K (180 to 280 K)
+   * @param {number} [ambientPressurePa=610.0] - Atmospheric ambient pressure in Pa
+   * @param {number} [brineLayerThicknessCm=1.0] - Brine flow or pore layer thickness in cm (0.1 to 20 cm)
+   * @param {string} [brineSaltType='mg_perchlorate'] - Brine electrolyte: 'mg_perchlorate', 'ca_perchlorate', 'cacl2', 'nacl', or 'mgso4'
+   * @param {number} [windSpeedMS=5.0] - Surface wind speed in m/s
+   * @returns {{eutecticTempK: number, isLiquidThermodynamicallyStable: boolean, evaporativeBoilingFluxKgM2S: number, freezingLifetimeHours: number, evaporationLifetimeHours: number, liquidPersistenceLifetimeHours: number, rslBrineSurvivalRegime: string}}
+   */
+  static computeTransientBrineMetastabilityAndFreezingLifetime(surfaceTempK = 230.0, ambientPressurePa = 610.0, brineLayerThicknessCm = 1.0, brineSaltType = 'mg_perchlorate', windSpeedMS = 5.0) {
+    const T = Math.max(150.0, Math.min(300.0, surfaceTempK));
+    const Patm = Math.max(100.0, ambientPressurePa);
+    const zM = Math.max(0.001, brineLayerThicknessCm * 0.01);
+    const vWind = Math.max(0.1, windSpeedMS);
+
+    // Eutectic temperatures for Martian brines
+    let Teut = 206.0; // Mg(ClO4)2
+    let rhoBrine = 1350.0; // kg/m^3
+    const type = (brineSaltType || 'mg_perchlorate').toLowerCase();
+
+    if (type.includes('ca_perchlorate')) {
+      Teut = 198.0;
+      rhoBrine = 1400.0;
+    } else if (type.includes('cacl2')) {
+      Teut = 223.0;
+      rhoBrine = 1300.0;
+    } else if (type.includes('nacl')) {
+      Teut = 252.0;
+      rhoBrine = 1200.0;
+    } else if (type.includes('mgso4')) {
+      Teut = 269.0;
+      rhoBrine = 1250.0;
+    }
+
+    const isLiquid = T >= Teut;
+
+    // Saturation vapor pressure of water over brine (Raoult's law factor ~0.65)
+    const pSatPurePa = 611.65 * Math.exp(-(51058.0 / 8.314462) * ((1.0 / T) - (1.0 / 273.16)));
+    const pSatBrinePa = pSatPurePa * 0.65;
+
+    // Evaporative / boiling mass flux E_evap (kg/(m^2*s))
+    const rhoAtm = (Patm * 0.044) / (8.314462 * T);
+    let eFluxKgM2S = 1e-7;
+    if (pSatBrinePa > Patm) {
+      // Rapid boiling regime
+      eFluxKgM2S = 0.17 * ((pSatBrinePa - Patm) / Patm) * rhoAtm * vWind;
+    } else {
+      // Sub-boiling diffusion & wind-driven evaporation
+      eFluxKgM2S = 0.05 * (pSatBrinePa / Patm) * rhoAtm * vWind;
+    }
+    eFluxKgM2S = Math.max(1e-8, Math.min(0.01, eFluxKgM2S));
+
+    // Evaporation lifetime t_evap = ( rhoBrine * z ) / E_evap (seconds)
+    const tEvapSec = (rhoBrine * zM) / eFluxKgM2S;
+    const tEvapHours = tEvapSec / 3600.0;
+
+    // Stefan freezing front kinetics (if T < Teut or thermal quenching)
+    const Lf = 3.34e5; // J/kg
+    const kIce = 2.2; // W/(m*K)
+    let tFreezeHours = 99999.0; // indefinitely liquid if T >= Teut
+
+    if (T < Teut) {
+      const deltaT = Math.max(0.5, Teut - T);
+      const tFreezeSec = (rhoBrine * Lf * Math.pow(zM, 2.0)) / (2.0 * kIce * deltaT);
+      tFreezeHours = tFreezeSec / 3600.0;
+    }
+
+    const tLiquidHours = isLiquid ? tEvapHours : Math.min(tEvapHours, tFreezeHours);
+
+    let regime = 'Metastable Liquid Brine Flow Active (Perchlorate Low Eutectic)';
+    if (!isLiquid) {
+      regime = 'Cryogenic Freezing Lock (Sub-Eutectic Solidified Salt Crust)';
+    } else if (tEvapHours < 2.0) {
+      regime = 'Violent Evaporative Boiling & Effervescence (Desiccation in < 2 Hours)';
+    }
+
+    return {
+      eutecticTempK: parseFloat(Teut.toFixed(1)),
+      isLiquidThermodynamicallyStable: isLiquid,
+      evaporativeBoilingFluxKgM2S: parseFloat(eFluxKgM2S.toExponential(4)),
+      freezingLifetimeHours: parseFloat(tFreezeHours.toFixed(2)),
+      evaporationLifetimeHours: parseFloat(tEvapHours.toFixed(2)),
+      liquidPersistenceLifetimeHours: parseFloat(tLiquidHours.toFixed(2)),
+      rslBrineSurvivalRegime: regime
+    };
+  }
 }
 
 

@@ -3310,6 +3310,78 @@ export class TrajectoryEngine {
       structuralLoadRegime: regime
     };
   }
+
+  /**
+   * Calculate Disk-Gap-Band (DGB) supersonic parachute deployment corridor feasibility, inflation shock opening load, and terminal descent speed.
+   * F_opening = C_x * q_deploy * ( pi * D^2 / 4 )
+   * v_terminal = sqrt( ( 2 * m * g ) / ( rho * C_d * S_0 ) )
+   * Reference: Cruz et al. (2003), Witkowski et al. (2004), Steltzner et al. (2006), Sengupta et al. (2009) for Viking, MER, MSL, and Perseverance EDL.
+   * @param {number} [currentMachNumber=1.85] - Deployment Mach number (1.2 to 2.5)
+   * @param {number} [dynamicPressurePa=550.0] - Dynamic pressure at mortar firing in Pa (200 to 1200 Pa)
+   * @param {number} [spacecraftMassKg=1950.0] - Suspended entry mass in kg (100 to 5000 kg)
+   * @param {number} [chuteDiameterMeters=21.5] - Nominal parachute canopy diameter D0 in meters (5 to 35 m)
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{openingShockForceKN: number, openingDecelerationGs: number, parachuteCanopyAreaM2: number, terminalDescentSpeedMS: number, terminalDescentSpeedKmH: number, parachuteDeploymentStatus: string}}
+   */
+  static computeSupersonicParachuteDeploymentCorridor(currentMachNumber = 1.85, dynamicPressurePa = 550.0, spacecraftMassKg = 1950.0, chuteDiameterMeters = 21.5, body = 'mars') {
+    const M = Math.max(0.5, currentMachNumber);
+    const qPa = Math.max(50.0, dynamicPressurePa);
+    const massKg = Math.max(10.0, spacecraftMassKg);
+    const D0 = Math.max(1.0, chuteDiameterMeters);
+
+    const isEarth = body.toLowerCase() === 'earth';
+    const isVenus = body.toLowerCase() === 'venus';
+
+    let gPlanet = 3.72076; // m/s^2 (Mars)
+    let rhoLow = 0.015; // kg/m^3 (Mars low altitude)
+
+    if (isEarth) {
+      gPlanet = 9.80665;
+      rhoLow = 1.0;
+    } else if (isVenus) {
+      gPlanet = 8.87;
+      rhoLow = 15.0;
+    }
+
+    // Parachute nominal area S0 = pi * D0^2 / 4 (m^2)
+    const S0 = (Math.PI * Math.pow(D0, 2.0)) / 4.0;
+
+    // Dynamic opening shock factor Cx (~1.55 for DGB parachutes)
+    const Cx = 1.55;
+    const fOpeningN = Cx * qPa * S0;
+    const fOpeningKN = fOpeningN / 1000.0;
+
+    // Opening deceleration Gs = F_opening / ( mass * g0 )
+    const g0 = 9.80665;
+    const aOpeningMS2 = fOpeningN / massKg;
+    const gOpening = aOpeningMS2 / g0;
+
+    // Subsonic terminal descent velocity v_terminal = sqrt( 2 * m * g / ( rho * Cd * S0 ) )
+    const CdChute = 0.60;
+    const vTerminalMS = Math.sqrt((2.0 * massKg * gPlanet) / Math.max(1e-6, rhoLow * CdChute * S0));
+    const vTerminalKmH = vTerminalMS * 3.6;
+
+    // Deployment corridor validation (1.4 <= M <= 2.2, 300 <= q <= 850 Pa)
+    let status = 'Nominal Supersonic DGB Parachute Deployment Envelope';
+    if (M < 1.4) {
+      status = 'Late Subsonic Mortar Trigger (Low Altitude Risk / Terrain Clearance Hazard)';
+    } else if (M > 2.25) {
+      status = 'High-Mach Deployment Violation (Severe Canopy Asymmetric Inflation & Area Oscillations)';
+    } else if (qPa > 850.0) {
+      status = 'High Dynamic Pressure Violation (Extreme Line Tension & Canopy Structural Rupture Risk)';
+    } else if (qPa < 300.0) {
+      status = 'Low Dynamic Pressure Deployment (Squidding / Delayed Canopy Inflation)';
+    }
+
+    return {
+      openingShockForceKN: parseFloat(fOpeningKN.toFixed(2)),
+      openingDecelerationGs: parseFloat(gOpening.toFixed(2)),
+      parachuteCanopyAreaM2: parseFloat(S0.toFixed(2)),
+      terminalDescentSpeedMS: parseFloat(vTerminalMS.toFixed(2)),
+      terminalDescentSpeedKmH: parseFloat(vTerminalKmH.toFixed(2)),
+      parachuteDeploymentStatus: status
+    };
+  }
 }
 
 

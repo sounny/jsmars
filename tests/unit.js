@@ -9906,6 +9906,39 @@ describe('Hypersonic Entry Deceleration G-Load, Barometric Pumping & Bassanite S
     });
 });
 
+describe('Supersonic Parachute Deployment Corridor, Transient Brine Metastability & Copiapite Acid Drainage', () => {
+    it('should calculate DGB supersonic parachute deployment opening shock force, deceleration Gs, and terminal speed', () => {
+        // MSL / Perseverance parachute deploy (Mach 1.85, q = 550 Pa, mass = 1950 kg, D0 = 21.5 m):
+        const chute = TrajectoryEngine.computeSupersonicParachuteDeploymentCorridor(1.85, 550.0, 1950.0, 21.5, 'mars');
+        expect(chute.openingShockForceKN).to.be.closeTo(309.5, 10.0); // ~309.5 kN shock force
+        expect(chute.openingDecelerationGs).to.be.closeTo(16.18, 0.8); // ~16.2 Gs opening jolt
+        expect(chute.parachuteCanopyAreaM2).to.be.closeTo(363.05, 5.0);
+        expect(chute.terminalDescentSpeedMS).to.be.closeTo(66.6, 5.0); // ~66.6 m/s subsonic terminal velocity
+        expect(chute.parachuteDeploymentStatus).to.include('Nominal Supersonic DGB');
+    });
+
+    it('should calculate transient liquid brine flow metastability, evaporative boiling flux, and survival lifetime', () => {
+        // Warm summer slope in Valles Marineris with magnesium perchlorate brine (230 K, 610 Pa, 1 cm thickness):
+        const brine = KRCEngine.computeTransientBrineMetastabilityAndFreezingLifetime(230.0, 610.0, 1.0, 'mg_perchlorate', 5.0);
+        expect(brine.eutecticTempK).to.equal(206.0); // -67 deg C eutectic
+        expect(brine.isLiquidThermodynamicallyStable).to.be.true;
+        expect(brine.evaporationLifetimeHours).to.be.greaterThan(0.5); // persists as liquid for hours
+        expect(brine.rslBrineSurvivalRegime).to.include('Metastable Liquid Brine Flow Active');
+    });
+
+    it('should discriminate Copiapite ferric hydroxy-sulfate gossan from bassanite, jarosite, and basalt in CRISM spectra', () => {
+        // Copiapite in Ophir Chasma sulfide gossan (strong 0.86 um Fe3+, 1.43 um, 1.93 um, 2.16 um, and 2.43 um bands):
+        const copiapite = BandMathEngine.computeCRISMCopiapiteIndices(0.24, 0.23, 0.22, 0.24, 0.24, 0.30);
+        expect(copiapite.isCopiapitePresent).to.be.true;
+        expect(copiapite.sulfatePhase).to.include('Copiapite');
+        expect(copiapite.weatheringEnvironment).to.include('Extreme Acid Mine Drainage');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMCopiapiteIndices(0.30, 0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isCopiapitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

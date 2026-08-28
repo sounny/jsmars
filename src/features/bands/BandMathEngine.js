@@ -4141,6 +4141,48 @@ export class BandMathEngine {
       diageneticEnvironment: env
     };
   }
+
+  /**
+   * Detect extreme acid-drainage Copiapite ferric hydroxy-sulfate from CRISM 0.86 um Fe3+, 1.43 um, 1.93 um H2O, 2.16 um, and 2.43 um sulfate bands.
+   * Reference: Bishop et al. (2009), Lane et al. (2015), Sowe et al. (2015) for Ophir Chasma and Melas Chasma sulfide gossan alteration (pH < 1).
+   * @param {number} r860 - Reflectance at 0.86 um Fe3+ electronic absorption minimum
+   * @param {number} r1430 - Reflectance at 1.43 um OH/H2O overtone
+   * @param {number} r1930 - Reflectance at 1.93 um primary H2O molecular combination
+   * @param {number} r2160 - Reflectance at 2.16 um sulfate vibration band
+   * @param {number} r2430 - Reflectance at 2.43 um secondary sulfate combination band
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd860: number, bd1430: number, bd1930: number, bd2160: number, bd2430: number, isCopiapitePresent: boolean, sulfatePhase: string, weatheringEnvironment: string}}
+   */
+  static computeCRISMCopiapiteIndices(r860, r1430, r1930, r2160, r2430 = 0.30, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd860 = Math.max(0.0, 1.0 - (r860 / cont));
+    const bd1430 = Math.max(0.0, 1.0 - (r1430 / cont));
+    const bd1930 = Math.max(0.0, 1.0 - (r1930 / cont));
+    const bd2160 = Math.max(0.0, 1.0 - (r2160 / cont));
+    const bd2430 = Math.max(0.0, 1.0 - (r2430 / cont));
+
+    let phase = 'Unaltered Primary Igneous Crust';
+    let isCopiapite = false;
+    let env = 'Standard Circum-Neutral Setting';
+
+    if (bd1930 >= 0.025 && bd860 >= 0.020 && bd2160 >= 0.015 && bd2430 >= 0.015) {
+      isCopiapite = true;
+      phase = 'Copiapite (Fe2+Fe3+4(SO4)6(OH)2 * 20H2O) / Hydrated Ferric Sulfate';
+      env = 'Extreme Acid Mine Drainage Gossan Alteration / Sulfide Oxidation in Valles Marineris Interior Layered Deposits (pH < 1)';
+    }
+
+    return {
+      bd860: parseFloat(bd860.toFixed(4)),
+      bd1430: parseFloat(bd1430.toFixed(4)),
+      bd1930: parseFloat(bd1930.toFixed(4)),
+      bd2160: parseFloat(bd2160.toFixed(4)),
+      bd2430: parseFloat(bd2430.toFixed(4)),
+      isCopiapitePresent: isCopiapite,
+      sulfatePhase: phase,
+      weatheringEnvironment: env
+    };
+  }
 }
 
 
