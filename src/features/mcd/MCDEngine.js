@@ -2223,6 +2223,51 @@ export class MCDEngine {
       isWellMixedBelow: true // Species below z_homo are uniformly mixed
     };
   }
+
+  /**
+   * Calculate atmospheric gravity wave amplitude growth with altitude and mesospheric wave breaking saturation.
+   * u'(z) = u'_0 * exp( z / (2 * H) )
+   * Delta_rho / rho = ( N * u'(z) ) / g
+   * Reference: Forget et al. (1999), Spiga et al. (2012), Creasey et al. (2006) for MCD gravity wave drag.
+   * @param {number} altitudeKm - Atmospheric altitude z in km (0 to 120 km)
+   * @param {number} [surfaceWaveAmplitudeMS=1.5] - Initial near-surface orographic gravity wave amplitude in m/s
+   * @param {number} [scaleHeightKm=10.0] - Atmospheric barometric scale height in km
+   * @param {number} [buoyancyFrequencyN=0.010] - Brunt-Väisälä buoyancy frequency N in s^-1
+   * @returns {{windPerturbationMS: number, fractionalDensityPerturbationPct: number, isWaveSaturatedBreaking: boolean, waveDragRegime: string}}
+   */
+  static computeAtmosphericGravityWavePerturbation(altitudeKm, surfaceWaveAmplitudeMS = 1.5, scaleHeightKm = 10.0, buoyancyFrequencyN = 0.010) {
+    const z = Math.max(0.0, Math.min(140.0, altitudeKm));
+    const u0 = Math.max(0.1, surfaceWaveAmplitudeMS);
+    const H = Math.max(2.0, scaleHeightKm);
+    const N = Math.max(1e-4, buoyancyFrequencyN);
+    const g = 3.72; // m/s^2
+
+    // Exponential wave amplitude growth: u'(z) = u0 * exp( z / 2H )
+    const rawUPrime = u0 * Math.exp(z / (2.0 * H));
+
+    // Saturation threshold: u'_sat = g / N ~ 3.72 / 0.01 = 372 m/s, practically breaking occurs when u' >= 35 m/s
+    const breakingThresholdMS = 40.0;
+    const isSaturated = rawUPrime >= breakingThresholdMS;
+    const uPrime = isSaturated ? breakingThresholdMS : rawUPrime;
+
+    // Fractional density perturbation Delta_rho / rho = (N * u') / g
+    const fracDensity = (N * uPrime) / g;
+    const fracDensityPct = fracDensity * 100.0;
+
+    let regime = 'Linear Non-Breaking Propagation (Middle Atmosphere)';
+    if (isSaturated) {
+      regime = 'Saturated Wave Breaking & Momentum Deposition (Mesospheric Jet Drag)';
+    } else if (z < 20.0) {
+      regime = 'Orographic Mountain Wave Generation (Boundary Layer)';
+    }
+
+    return {
+      windPerturbationMS: parseFloat(uPrime.toFixed(2)),
+      fractionalDensityPerturbationPct: parseFloat(fracDensityPct.toFixed(2)),
+      isWaveSaturatedBreaking: isSaturated,
+      waveDragRegime: regime
+    };
+  }
 }
 
 

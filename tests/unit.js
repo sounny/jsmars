@@ -8769,6 +8769,49 @@ describe('Kepler Orbit Solver, Frost Condensation Thermodynamics & Pyroxene Band
     });
 });
 
+describe('Aerobraking Aerodynamics, Mesospheric Gravity Waves & Clinopyroxene Subtypes', () => {
+    it('should calculate spacecraft aerobraking deceleration, density, and heating safety corridor', () => {
+        // MRO aerobraking pass at periapsis z_p = 105 km, v = 4.5 km/s:
+        const mroPass = TrajectoryEngine.computeAerobrakingDragDecelerationAndDensity(105.0, 4.50, 1500.0, 20.0, 2.10);
+        expect(mroPass.atmosphericDensityKgM3).to.be.greaterThan(1e-8);
+        expect(mroPass.atmosphericDensityKgM3).to.be.lessThan(1e-6);
+        expect(mroPass.dragDecelerationMS2).to.be.greaterThan(0.01);
+        expect(mroPass.heatFluxWPerCm2).to.be.lessThan(0.35); // Below MRO solar array thermal limit
+        expect(mroPass.isWithinSafetyCorridor).to.be.true;
+
+        // Severe low periapsis pass at 70 km (excessive heat and drag):
+        const lowPass = TrajectoryEngine.computeAerobrakingDragDecelerationAndDensity(70.0, 4.80, 1500.0, 20.0, 2.10);
+        expect(lowPass.isWithinSafetyCorridor).to.be.false;
+    });
+
+    it('should calculate atmospheric gravity wave exponential amplitude growth and mesospheric breaking', () => {
+        // Lower atmosphere propagation (z = 20 km): non-breaking linear wave
+        const lowWave = MCDEngine.computeAtmosphericGravityWavePerturbation(20.0, 1.5, 10.0, 0.010);
+        expect(lowWave.windPerturbationMS).to.be.closeTo(4.08, 0.2);
+        expect(lowWave.fractionalDensityPerturbationPct).to.be.lessThan(5.0);
+        expect(lowWave.isWaveSaturatedBreaking).to.be.false;
+
+        // Upper mesosphere breaking level (z = 80 km): saturated breaking (u' capped at 40 m/s)
+        const breakWave = MCDEngine.computeAtmosphericGravityWavePerturbation(80.0, 1.5, 10.0, 0.010);
+        expect(breakWave.isWaveSaturatedBreaking).to.be.true;
+        expect(breakWave.windPerturbationMS).to.equal(40.0);
+        expect(breakWave.waveDragRegime).to.include('Saturated Wave Breaking');
+    });
+
+    it('should classify high-calcium clinopyroxene petrological subtypes and environments', () => {
+        // Pure Diopside (Wo = 48%, En = 47%, Fs = 5%, Mg# = 90.4%):
+        const diopside = BandMathEngine.computeClinopyroxeneSubtypeClassification(48.0, 47.0, 5.0);
+        expect(diopside.subtype).to.include('Diopside');
+        expect(diopside.isCalcPyroxene).to.be.true;
+        expect(diopside.petrologicEnvironment).to.include('Ultramafic Cumulate');
+
+        // Augite (Wo = 35%, En = 45%, Fs = 20%, Mg# = 69.2%):
+        const augite = BandMathEngine.computeClinopyroxeneSubtypeClassification(35.0, 45.0, 20.0);
+        expect(augite.subtype).to.include('Augite');
+        expect(augite.petrologicEnvironment).to.include('Martian Basaltic Lava Flow');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

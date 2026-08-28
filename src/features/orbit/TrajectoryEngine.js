@@ -1380,6 +1380,54 @@ export class TrajectoryEngine {
       apoapsisAltitudeKm: parseFloat((raKm - Rp).toFixed(2))
     };
   }
+
+  /**
+   * Calculate atmospheric aerobraking corridor deceleration, dynamic pressure, and free-molecular heating rate.
+   * a_drag = ( 1 / (2 * m) ) * rho * v^2 * C_D * A
+   * q_heat = ( 1 / 2 ) * rho * v^3 * C_H
+   * Reference: Tolson et al. (2005) for MGS, Zurek & Smrekar (2007) for MRO aerobraking operations.
+   * @param {number} periapsisAltitudeKm - Periapsis altitude z_p in km (e.g. 100 km to 135 km)
+   * @param {number} [velocityKmS=4.50] - Periapsis orbital speed in km/s (typically 4.2 to 4.8 km/s)
+   * @param {number} [spacecraftMassKg=1500.0] - Spacecraft dry + propellant mass in kg
+   * @param {number} [dragAreaM2=20.0] - Effective projected frontal cross-sectional area with solar panels in m^2
+   * @param {number} [dragCoefficientCd=2.10] - Hypersonic drag coefficient (typically 2.0 to 2.2)
+   * @returns {{atmosphericDensityKgM3: number, dragDecelerationMS2: number, dynamicPressurePa: number, heatFluxWPerCm2: number, isWithinSafetyCorridor: boolean}}
+   */
+  static computeAerobrakingDragDecelerationAndDensity(periapsisAltitudeKm, velocityKmS = 4.50, spacecraftMassKg = 1500.0, dragAreaM2 = 20.0, dragCoefficientCd = 2.10) {
+    const z = Math.max(50.0, Math.min(250.0, periapsisAltitudeKm));
+    const vMS = Math.max(100.0, velocityKmS * 1000.0);
+    const m = Math.max(10.0, spacecraftMassKg);
+    const A = Math.max(0.1, dragAreaM2);
+    const Cd = Math.max(0.5, dragCoefficientCd);
+
+    // Standard Mars upper atmosphere density profile (100 km ref: 1.5e-7 kg/m^3, H = 8.0 km)
+    const rhoRef = 1.5e-7; // kg/m^3 at 100 km
+    const H = 8.0; // km
+    const rho = rhoRef * Math.exp(-(z - 100.0) / H);
+
+    // Dynamic pressure q = 0.5 * rho * v^2 (Pa)
+    const qDyn = 0.5 * rho * vMS * vMS;
+
+    // Drag force F = q * Cd * A
+    const FDrag = qDyn * Cd * A;
+    const aDrag = FDrag / m; // m/s^2
+
+    // Heat flux q_heat = 0.5 * rho * v^3 * C_H (W/m^2) with Stanton number C_H ~ 0.08
+    const CH = 0.08;
+    const qHeatWM2 = 0.5 * rho * Math.pow(vMS, 3.0) * CH;
+    const qHeatWCm2 = qHeatWM2 * 1e-4; // W/cm^2
+
+    // Safety limits for MRO/Odyssey: heat flux < 0.35 W/cm^2, a_drag < 0.35 m/s^2
+    const isSafe = qHeatWCm2 <= 0.35 && aDrag <= 0.35;
+
+    return {
+      atmosphericDensityKgM3: parseFloat(rho.toExponential(4)),
+      dragDecelerationMS2: parseFloat(aDrag.toFixed(4)),
+      dynamicPressurePa: parseFloat(qDyn.toFixed(3)),
+      heatFluxWPerCm2: parseFloat(qHeatWCm2.toFixed(4)),
+      isWithinSafetyCorridor: isSafe
+    };
+  }
 }
 
 

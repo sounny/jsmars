@@ -2779,6 +2779,66 @@ export class BandMathEngine {
       isHighCalciumPyroxene: isHighCa
     };
   }
+
+  /**
+   * Calculate high-precision Clinopyroxene Quadrilateral sub-classification (Diopside, Endiopside, Augite, Ferroaugite, Hedenbergite).
+   * Reference: Morimoto (1988) IMA, Deer, Howie & Zussman (1992).
+   * @param {number} wollastonitePct - Wollastonite mol% (0 to 50%)
+   * @param {number} enstatitePct - Enstatite mol% (0 to 100%)
+   * @param {number} ferrosilitePct - Ferrosilite mol% (0 to 100%)
+   * @returns {{subtype: string, mgNumberPct: number, isCalcPyroxene: boolean, petrologicEnvironment: string}}
+   */
+  static computeClinopyroxeneSubtypeClassification(wollastonitePct, enstatitePct, ferrosilitePct) {
+    const w = Math.min(50.0, Math.max(0.0, wollastonitePct));
+    const e = Math.max(0.0, enstatitePct);
+    const f = Math.max(0.0, ferrosilitePct);
+
+    const sum = Math.max(1e-4, w + e + f);
+    const wo = (w / sum) * 100.0;
+    const en = (e / sum) * 100.0;
+    const fs = (f / sum) * 100.0;
+
+    const mgNum = (en + fs > 1e-4) ? (en / (en + fs)) * 100.0 : 50.0;
+
+    let subtype = 'Clinopyroxene (Augite)';
+    let petrology = 'Basaltic Volcanic / Subvolcanic Flow';
+    let isCalc = true;
+
+    if (wo >= 45.0) {
+      if (mgNum >= 90.0) {
+        subtype = 'Diopside (Pure Endmember CaMgSi2O6)';
+        petrology = 'Mantle Peridotite / Skarn / Ultramafic Cumulate';
+      } else if (mgNum >= 50.0) {
+        subtype = 'Endiopside (Magnesian Diopside-Augite)';
+        petrology = 'Layered Gabbroic Intrusion / Plutonic Cumulate';
+      } else {
+        subtype = 'Hedenbergite (Iron-Rich CaFeSi2O6)';
+        petrology = 'Highly Differentiated Iron-Rich Syenite / Skarn';
+      }
+    } else if (wo >= 20.0) {
+      if (wo < 30.0) {
+        subtype = 'Subcalcic Augite (Rapidly Quenched CPX)';
+        petrology = 'Quenched Tholeiitic Basalt / Meteoritic Eucrite';
+      } else if (mgNum >= 50.0) {
+        subtype = 'Augite (Standard Igneous High-Ca CPX)';
+        petrology = 'Typical Martian Basaltic Lava Flow (Shergottite / Gusev)';
+      } else {
+        subtype = 'Ferroaugite (Evolved High-Fe CPX)';
+        petrology = 'Fractionated Ferrobasalt / Differentiated Lava Lake';
+      }
+    } else {
+      subtype = 'Low-Calcium Pyroxene (Pigeonite / Orthopyroxene)';
+      petrology = 'Subsolidus Inversion / Magmatic Norite';
+      isCalc = false;
+    }
+
+    return {
+      subtype,
+      mgNumberPct: parseFloat(mgNum.toFixed(1)),
+      isCalcPyroxene: isCalc,
+      petrologicEnvironment: petrology
+    };
+  }
 }
 
 
