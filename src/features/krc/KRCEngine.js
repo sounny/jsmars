@@ -5059,6 +5059,62 @@ export class KRCEngine {
       megaregolithThermalContext: regime
     };
   }
+
+  /**
+   * Calculate volcanic lava tube basalt roof thermal insulation, cavity microclimate stability, and radiation shielding.
+   * Delta_T_cavity = Delta_T_surf * exp( - h_roof / delta_skin )
+   * T_cavity = T_annual + ( Q_geo / k_roof ) * h_roof
+   * Reference: Cushing et al. (2007), Titus et al. (2021), Williams et al. (2024) for Arsia Mons & Elysium lava tube thermal shelters.
+   * @param {number} [roofThicknessMeters=15.0] - Basalt cave roof thickness in meters (1.0 to 100.0 m)
+   * @param {number} [surfaceDiurnalAmplitudeK=100.0] - Surface diurnal temperature swing in K (40 to 140 K)
+   * @param {number} [meanAnnualSurfaceTempK=218.0] - Mean annual ground surface temperature in K (150 to 250 K)
+   * @returns {{roofThicknessMeters: number, cavityMeanTempK: number, cavityMeanTempC: number, diurnalCavityFluctuationK: number, annualCavityFluctuationK: number, radiationShieldingPercent: number, cavernHabitatShelterContext: string}}
+   */
+  static computeVolcanicLavaTubeThermalInsulationAndShelter(roofThicknessMeters = 15.0, surfaceDiurnalAmplitudeK = 100.0, meanAnnualSurfaceTempK = 218.0) {
+    const hRoofM = Math.max(0.5, Math.min(200.0, roofThicknessMeters));
+    const dtSurfDiurnal = Math.max(10.0, surfaceDiurnalAmplitudeK);
+    const Tann = Math.max(120.0, Math.min(270.0, meanAnnualSurfaceTempK));
+
+    const kRoof = 1.8; // W/(m*K) solid basalt
+    const rhoRoof = 2800.0; // kg/m^3
+    const cp = 850.0; // J/(kg*K)
+    const kappa = kRoof / (rhoRoof * cp); // m^2/s
+
+    // Diurnal skin depth (88775.2 s sol) and Annual skin depth (5.9355e7 s)
+    const deltaDiurnalM = Math.sqrt((kappa * 88775.2) / Math.PI);
+    const deltaAnnualM = Math.sqrt((kappa * 5.9355e7) / Math.PI);
+
+    // Cavity thermal fluctuations
+    const dtCavityDiurnal = dtSurfDiurnal * Math.exp(-hRoofM / deltaDiurnalM);
+    const dtSurfAnnual = dtSurfDiurnal * 0.30;
+    const dtCavityAnnual = dtSurfAnnual * Math.exp(-hRoofM / deltaAnnualM);
+
+    // Geothermal offset at roof base
+    const Qgeo = 0.025; // W/m^2
+    const TcavityK = Tann + (Qgeo / kRoof) * hRoofM;
+    const TcavityC = TcavityK - 273.15;
+
+    // Mass overburden shielding (g/cm^2)
+    const massThicknessGCm2 = (rhoRoof * hRoofM) / 10.0;
+    const radShieldPct = Math.min(99.99, 100.0 * (1.0 - Math.exp(-massThicknessGCm2 / 150.0)));
+
+    let context = 'Ideal Subterranean Human Base Habitat & Biomarker Cold Trap Shelter';
+    if (hRoofM < 2.0) {
+      context = 'Thin Roof Skylight Zone (Partial Radiation & Moderate Thermal Fluctuations)';
+    } else if (hRoofM > 30.0) {
+      context = 'Deep Pyromajor Cavity / Complete Thermal & Cosmic Ray Isolation';
+    }
+
+    return {
+      roofThicknessMeters: parseFloat(hRoofM.toFixed(1)),
+      cavityMeanTempK: parseFloat(TcavityK.toFixed(2)),
+      cavityMeanTempC: parseFloat(TcavityC.toFixed(2)),
+      diurnalCavityFluctuationK: parseFloat(dtCavityDiurnal.toFixed(4)),
+      annualCavityFluctuationK: parseFloat(dtCavityAnnual.toFixed(2)),
+      radiationShieldingPercent: parseFloat(radShieldPct.toFixed(2)),
+      cavernHabitatShelterContext: context
+    };
+  }
 }
 
 

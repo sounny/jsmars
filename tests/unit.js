@@ -10662,6 +10662,48 @@ describe('Mars Free Return Cyclers, Megaregolith Compaction & Zeolites vs Opal',
     });
 });
 
+describe('Mars-Jupiter Hohmann Transfers, Lava Tube Shelters & Pyroxene Band Area Ratios', () => {
+    it('should calculate Mars-to-Jupiter Interplanetary Hohmann Transfer and Asteroid Belt crossing', () => {
+        // Mars parking orbit 400 km:
+        const jup = TrajectoryEngine.computeMarsJupiterInterplanetaryHohmannTransfer(400.0);
+        expect(jup.transferSemiMajorAxisAU).to.be.closeTo(3.3640, 0.01); // ~3.364 AU semi-major axis
+        expect(jup.timeOfFlightDays).to.be.closeTo(1126.8, 5.0); // ~1127 days (~3.09 years) TOF
+        expect(jup.marsDepartureVInfKmS).to.be.closeTo(5.881, 0.1); // ~5.88 km/s Mars excess
+        expect(jup.transJupiterInjectionDeltaVKmS).to.be.closeTo(4.200, 0.1); // ~4.20 km/s TJI burn from LMO
+        expect(jup.jupiterArrivalVInfKmS).to.be.closeTo(4.269, 0.1); // ~4.27 km/s arrival excess
+        expect(jup.asteroidBeltTransitContext).to.include('Main Belt Asteroid Crossing');
+    });
+
+    it('should calculate volcanic lava tube roof thermal attenuation, cavern microclimate, and radiation shielding', () => {
+        // Arsia Mons volcanic cave with 15 m basalt roof (surface diurnal swing = 100 K, mean annual T = 218 K):
+        const cave = KRCEngine.computeVolcanicLavaTubeThermalInsulationAndShelter(15.0, 100.0, 218.0);
+        expect(cave.roofThicknessMeters).to.equal(15.0);
+        expect(cave.cavityMeanTempK).to.be.closeTo(218.21, 1.0); // ~218.2 K (-54.9 C) stable ambient
+        expect(cave.diurnalCavityFluctuationK).to.be.lessThan(0.001); // Diurnal fluctuation damped to 0.00 K
+        expect(cave.annualCavityFluctuationK).to.be.closeTo(0.56, 0.2); // Annual seasonal fluctuation damped to ~0.56 K
+        expect(cave.radiationShieldingPercent).to.be.greaterThan(99.0); // > 99% cosmic ray & solar proton shielding
+        expect(cave.cavernHabitatShelterContext).to.include('Subterranean Human Base Habitat');
+    });
+
+    it('should calculate Pyroxene Band Area Ratio (BAR) and estimate Olivine vs Pyroxene modal fractions', () => {
+        // Orthopyroxene (OPX) in ancient Noachian crust (Band 1 area = 0.10, Band 2 area = 0.22 -> BAR = 2.2):
+        const opx = BandMathEngine.computeCRISMPyroxeneBandAreaRatioIndices(0.10, 0.22, 0.98);
+        expect(opx.bandAreaRatio).to.equal(2.2);
+        expect(opx.dominantPyroxeneStructuralType).to.include('Orthopyroxene (Enstatite');
+        expect(opx.maficPetrogeneticContext).to.include('Ancient Noachian Primitive Low-Calcium Crust');
+
+        // Clinopyroxene (CPX) in Gale crater basaltic sands (Band 1 area = 0.15, Band 2 area = 0.18 -> BAR = 1.2):
+        const cpx = BandMathEngine.computeCRISMPyroxeneBandAreaRatioIndices(0.15, 0.18, 1.03);
+        expect(cpx.bandAreaRatio).to.equal(1.2);
+        expect(cpx.dominantPyroxeneStructuralType).to.include('Clinopyroxene (Augite');
+        expect(cpx.estimatedOlivineModalFraction).to.be.closeTo(0.508, 0.05); // ~51% olivine fraction
+
+        // Olivine-dominated picrite (Band 1 area = 0.25, Band 2 area = 0.08, Band 1 center = 1.05 um -> BAR = 0.32):
+        const oli = BandMathEngine.computeCRISMPyroxeneBandAreaRatioIndices(0.25, 0.08, 1.05);
+        expect(oli.dominantPyroxeneStructuralType).to.include('Olivine-Dominated Mafic Assemblage');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

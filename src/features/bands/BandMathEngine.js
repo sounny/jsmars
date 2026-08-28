@@ -4952,6 +4952,45 @@ export class BandMathEngine {
       diageneticAqueousSetting: setting
     };
   }
+
+  /**
+   * Calculate Pyroxene Band Area Ratio (BAR = Band 2 Area / Band 1 Area) and derive Orthopyroxene vs Clinopyroxene vs Olivine modal fractions.
+   * BAR = Area(Band 2) / Area(Band 1)
+   * f_ol = 1.0 - 0.41 * BAR
+   * Reference: Gaffey et al. (1993), Cloutis et al. (2004), Viviano-Beck et al. (2014) for Gale crater & Jezero delta mafic sands.
+   * @param {number} band1IntegratedArea - Integrated absorption band area of Band 1 (0.9 to 1.2 um) in um
+   * @param {number} band2IntegratedArea - Integrated absorption band area of Band 2 (1.8 to 2.5 um) in um
+   * @param {number} [band1CenterUm=1.02] - Wavelength of Band 1 center in um
+   * @returns {{bandAreaRatio: number, dominantPyroxeneStructuralType: string, estimatedOlivineModalFraction: number, estimatedPyroxeneModalFraction: number, maficPetrogeneticContext: string}}
+   */
+  static computeCRISMPyroxeneBandAreaRatioIndices(band1IntegratedArea, band2IntegratedArea, band1CenterUm = 1.02) {
+    const a1 = Math.max(1e-4, band1IntegratedArea);
+    const a2 = Math.max(0.0, band2IntegratedArea);
+    const l1 = Math.max(0.85, Math.min(1.25, band1CenterUm));
+
+    const bar = a2 / a1;
+    const fol = Math.max(0.0, Math.min(1.0, 1.0 - (0.41 * bar)));
+    const fpyx = 1.0 - fol;
+
+    let struct = 'Clinopyroxene (Augite / Subcalcic Augite)';
+    let context = 'Evolved Basalt / Gabbroic Cumulate';
+
+    if (bar >= 1.80) {
+      struct = 'Orthopyroxene (Enstatite / Hypersthene / Bronzite)';
+      context = 'Ancient Noachian Primitive Low-Calcium Crust (ALH84001 Analogue)';
+    } else if (bar < 0.60 && l1 >= 1.04) {
+      struct = 'Olivine-Dominated Mafic Assemblage (Dunite / Picritic Basalt)';
+      context = 'Mantle-Derived Ultramafic Volcanism / Impact Basin Melt Sheet';
+    }
+
+    return {
+      bandAreaRatio: parseFloat(bar.toFixed(3)),
+      dominantPyroxeneStructuralType: struct,
+      estimatedOlivineModalFraction: parseFloat(fol.toFixed(3)),
+      estimatedPyroxeneModalFraction: parseFloat(fpyx.toFixed(3)),
+      maficPetrogeneticContext: context
+    };
+  }
 }
 
 

@@ -4482,6 +4482,65 @@ export class TrajectoryEngine {
       freeReturnTrajectoryContext: 'Unpowered Ballistic Mars-to-Earth Free Return Flyby (Inspiration Mars Architecture)'
     };
   }
+
+  /**
+   * Calculate Mars-to-Jupiter Interplanetary Hohmann Transfer trajectory, Trans-Jupiter Injection Delta-V, time of flight, and Asteroid Belt crossing.
+   * a_t = ( r_Mars + r_Jupiter ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Delta_V_TJI = sqrt( v_inf_M^2 + 2*mu_M / r_park ) - v_circ
+   * Reference: Bate, Mueller & White (1971), Curtis (2013) for outer planet exploration and Main Belt Asteroid corridor transit.
+   * @param {number} [marsParkingAltitudeKm=400.0] - Mars parking orbit altitude in km
+   * @param {number} [jupiterArrivalPerijoveAltitudeKm=500000.0] - Jupiter arrival perijove altitude in km
+   * @returns {{transferSemiMajorAxisAU: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureVInfKmS: number, transJupiterInjectionDeltaVKmS: number, jupiterArrivalVInfKmS: number, asteroidBeltTransitContext: string}}
+   */
+  static computeMarsJupiterInterplanetaryHohmannTransfer(marsParkingAltitudeKm = 400.0, jupiterArrivalPerijoveAltitudeKm = 500000.0) {
+    const hpKm = Math.max(50.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11; // km^3/s^2
+    const muMars = 42828.37; // km^3/s^2
+    const rMarsPlanetKm = 3389.5;
+
+    const rMarsKm = 1.52368 * AU_KM;
+    const rJupKm = 5.20440 * AU_KM;
+
+    // Mars and Jupiter circular speeds
+    const vMarsHel = Math.sqrt(muSun / rMarsKm);
+    const vJupHel = Math.sqrt(muSun / rJupKm);
+
+    // Hohmann transfer semi-major axis
+    const atKm = (rMarsKm + rJupKm) / 2.0;
+    const atAU = atKm / AU_KM;
+
+    // Time of flight
+    const tofSec = Math.PI * Math.sqrt(Math.pow(atKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYears = tofDays / 365.25;
+
+    // Perihelion speed at Mars departure
+    const vpHel = Math.sqrt(muSun * ((2.0 / rMarsKm) - (1.0 / atKm)));
+    const vInfMars = Math.abs(vpHel - vMarsHel);
+
+    // Trans-Jupiter Injection burn from LMO
+    const rParkKm = rMarsPlanetKm + hpKm;
+    const vParkCirc = Math.sqrt(muMars / rParkKm);
+    const vParkHyp = Math.sqrt(Math.pow(vInfMars, 2.0) + (2.0 * muMars) / rParkKm);
+    const dvTji = vParkHyp - vParkCirc;
+
+    // Aphelion speed at Jupiter arrival
+    const vaHel = Math.sqrt(muSun * ((2.0 / rJupKm) - (1.0 / atKm)));
+    const vInfJup = Math.abs(vJupHel - vaHel);
+
+    return {
+      transferSemiMajorAxisAU: parseFloat(atAU.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYears.toFixed(2)),
+      marsDepartureVInfKmS: parseFloat(vInfMars.toFixed(3)),
+      transJupiterInjectionDeltaVKmS: parseFloat(dvTji.toFixed(3)),
+      jupiterArrivalVInfKmS: parseFloat(vInfJup.toFixed(3)),
+      asteroidBeltTransitContext: 'Main Belt Asteroid Crossing (Ceres 2.77 AU, Vesta 2.36 AU) & Outer Gas Giant Transfer'
+    };
+  }
 }
 
 
