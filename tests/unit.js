@@ -10177,6 +10177,50 @@ describe('Mars Orbit Insertion, Paleo-Cryosphere Evolution & Epidote Facies', ()
     });
 });
 
+describe('Orbital Plane Change Maneuver, Subsurface Cryopeg & Opaline Silica Inversion', () => {
+    it('should calculate pure and combined plane change Delta-V, propellant savings, and thrust angle', () => {
+        // Combined orbital plane change (v1 = 3.5 km/s, delta_i = 30 deg, v2 = 4.2 km/s):
+        const plane = TrajectoryEngine.computeOrbitalPlaneChangeDeltaVAndCombinedManeuver(3.50, 30.0, 4.20);
+        expect(plane.purePlaneChangeDeltaVKmS).to.be.closeTo(1.812, 0.05); // ~1.81 km/s pure inclination turn
+        expect(plane.combinedManeuverDeltaVKmS).to.be.closeTo(2.104, 0.05); // ~2.10 km/s combined vector turn
+        expect(plane.separateManeuverDeltaVKmS).to.be.closeTo(2.512, 0.05); // ~2.51 km/s separate burns
+        expect(plane.deltaVSavingsKmS).to.be.closeTo(0.408, 0.05); // ~408 m/s saved
+        expect(plane.propellantSavingsPercent).to.be.closeTo(16.2, 1.0); // ~16.2% savings
+        expect(plane.optimalThrustAngleDeg).to.be.closeTo(86.26, 1.0); // ~86.3 deg thrust pitch
+        expect(plane.maneuverEfficiencyContext).to.include('High-Efficiency Combined Burn');
+    });
+
+    it('should calculate subsurface cryopeg hypersaline brine freezing point depression and stability column', () => {
+        // South Pole Planum Australe (T_surf = 195 K, Q_geo = 25 mW/m^2, k_crust = 2.0 W/(m*K), Mg(ClO4)2 brine):
+        const cryopeg = KRCEngine.computeCryopegSubsurfaceFreezingPointDepressionAndBrinePoreVolume('mg_perchlorate', 195.0, 25.0, 2.0, 0.20);
+        expect(cryopeg.saltComposition).to.include('Magnesium Perchlorate');
+        expect(cryopeg.eutecticFreezingTempK).to.equal(206.0); // 206 K eutectic
+        expect(cryopeg.eutecticFreezingTempC).to.be.closeTo(-67.15, 0.1);
+        expect(cryopeg.waterActivityAw).to.equal(0.50);
+        expect(cryopeg.cryopegTopDepthKm).to.be.closeTo(0.88, 0.05); // ~880 m depth to liquid cryopeg
+        expect(cryopeg.cryopegBaseDepthKm).to.be.closeTo(6.25, 0.1); // ~6.25 km base
+        expect(cryopeg.cryopegColumnThicknessKm).to.be.closeTo(5.37, 0.1); // ~5.37 km thick permafrost brine column
+        expect(cryopeg.astrobiologicalHabitabilityAssessment).to.include('Extreme Hypersaline');
+    });
+
+    it('should discriminate Opaline hydrated silica from crystalline Quartz and basalt in CRISM spectra', () => {
+        // Opaline silica in Gusev Home Plate (strong 1.40 um Si-OH, 1.90 um H2O, 2.21 um Si-OH):
+        const opal = BandMathEngine.computeCRISMOpalineSilicaCrystallineQuartzIndices(0.24, 0.22, 0.22, 0.30);
+        expect(opal.isSilicaPhasePresent).to.be.true;
+        expect(opal.silicaMineralogy).to.include('Hydrated Opaline Silica');
+        expect(opal.hydrothermalGenesisContext).to.include('Hot Spring Sinter');
+
+        // Quartz/Chalcedony (weak 1.90 um water):
+        const quartz = BandMathEngine.computeCRISMOpalineSilicaCrystallineQuartzIndices(0.30, 0.298, 0.22, 0.30);
+        expect(quartz.isSilicaPhasePresent).to.be.true;
+        expect(quartz.silicaMineralogy).to.include('Microcrystalline Quartz');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMOpalineSilicaCrystallineQuartzIndices(0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isSilicaPhasePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

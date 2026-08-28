@@ -4460,6 +4460,48 @@ export class BandMathEngine {
       metamorphicFaciesContext: context
     };
   }
+
+  /**
+   * Discriminate hydrated amorphous Opaline Silica (Opal-A/CT) from crystalline Quartz/Chalcedony using CRISM 1.40 um (Si-OH), 1.90 um (H2O), and 2.21 um (Si-OH).
+   * Reference: Milliken et al. (2008), Rice et al. (2013), Sun & Milliken (2015) for hydrothermal silica in Gusev Home Plate and Noctis Labyrinthus.
+   * @param {number} r1400 - Reflectance at 1.40 um Si-OH / H2O overtone band
+   * @param {number} r1900 - Reflectance at 1.90 um structural/molecular H2O band
+   * @param {number} r2210 - Reflectance at 2.21 um Si-OH fundamental combination minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1400: number, bd1900: number, bd2210: number, isSilicaPhasePresent: boolean, silicaMineralogy: string, hydrothermalGenesisContext: string}}
+   */
+  static computeCRISMOpalineSilicaCrystallineQuartzIndices(r1400, r1900, r2210, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1400 = Math.max(0.0, 1.0 - (r1400 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1900 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+
+    let species = 'Unaltered Primary Igneous Silicate';
+    let isSilica = false;
+    let context = 'Standard Crustal Setting';
+
+    if (bd2210 >= 0.025) {
+      if (bd1900 >= 0.025 && bd1400 >= 0.020) {
+        isSilica = true;
+        species = 'Hydrated Opaline Silica (SiO2 * nH2O / Opal-A / Opal-CT)';
+        context = 'Hydrothermal Hot Spring Sinter / Acid-Sulfate Fumarolic Leaching (High Biosignature Preservation Potential)';
+      } else if (bd1900 < 0.015) {
+        isSilica = true;
+        species = 'Microcrystalline Quartz / Chalcedony (SiO2)';
+        context = 'Diagenetic Dehydration of Amorphous Silica / Metamorphic Quartz Veins';
+      }
+    }
+
+    return {
+      bd1400: parseFloat(bd1400.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      isSilicaPhasePresent: isSilica,
+      silicaMineralogy: species,
+      hydrothermalGenesisContext: context
+    };
+  }
 }
 
 

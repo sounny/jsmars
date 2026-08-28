@@ -4362,6 +4362,84 @@ export class KRCEngine {
       hydrologicDischargePotential: discharge
     };
   }
+
+  /**
+   * Calculate subsurface cryopeg hypersaline brine freezing point depression, liquid permafrost column thickness, and water activity.
+   * z_top = ( T_eutectic - T_surf ) / ( dT / dz )
+   * z_base = ( T_pure_ice - T_surf ) / ( dT / dz )
+   * Reference: Fairén et al. (2009), Chevrier et al. (2020), Orosei et al. (2018) for South Pole basal perchlorate/chloride cryopegs.
+   * @param {string} [saltType='mg_perchlorate'] - Salt chemistry ('mg_perchlorate', 'na_perchlorate', 'cacl2', 'nacl', 'mgso4')
+   * @param {number} [meanSurfaceTempK=195.0] - Mean annual ground surface temperature in K (150 to 240 K; 195 K = South Polar Planum Australe)
+   * @param {number} [geothermalHeatFluxMWm2=25.0] - Regional crustal geothermal heat flux in mW/m^2
+   * @param {number} [crustalThermalConductivityWMK=2.0] - Thermal conductivity in W/(m*K)
+   * @param {number} [porosityFraction=0.20] - Subsurface regolith porosity fraction (0.05 to 0.40)
+   * @returns {{saltComposition: string, eutecticFreezingTempK: number, eutecticFreezingTempC: number, waterActivityAw: number, cryopegTopDepthKm: number, cryopegBaseDepthKm: number, cryopegColumnThicknessKm: number, astrobiologicalHabitabilityAssessment: string}}
+   */
+  static computeCryopegSubsurfaceFreezingPointDepressionAndBrinePoreVolume(saltType = 'mg_perchlorate', meanSurfaceTempK = 195.0, geothermalHeatFluxMWm2 = 25.0, crustalThermalConductivityWMK = 2.0, porosityFraction = 0.20) {
+    const Tsurf = Math.max(120.0, Math.min(270.0, meanSurfaceTempK));
+    const QgeoW = Math.max(5.0, geothermalHeatFluxMWm2) * 1e-3;
+    const kCrust = Math.max(0.5, crustalThermalConductivityWMK);
+    const phi = Math.max(0.02, Math.min(0.50, porosityFraction));
+
+    const sKey = saltType.toLowerCase();
+    let Teutc = 206.0; // Mg(ClO4)2 eutectic (K)
+    let saltName = 'Magnesium Perchlorate (Mg(ClO4)2)';
+    let aw = 0.50; // water activity
+
+    if (sKey.includes('na_per') || sKey.includes('sodium_per')) {
+      Teutc = 239.0;
+      saltName = 'Sodium Perchlorate (NaClO4)';
+      aw = 0.65;
+    } else if (sKey.includes('cacl2') || sKey.includes('calcium')) {
+      Teutc = 221.0;
+      saltName = 'Calcium Chloride (CaCl2)';
+      aw = 0.55;
+    } else if (sKey.includes('nacl') || sKey.includes('halite')) {
+      Teutc = 252.0;
+      saltName = 'Sodium Chloride / Halite (NaCl)';
+      aw = 0.75;
+    } else if (sKey.includes('mgso4') || sKey.includes('sulfate') || sKey.includes('epsom')) {
+      Teutc = 269.0;
+      saltName = 'Magnesium Sulfate / Epsomite (MgSO4)';
+      aw = 0.85;
+    }
+
+    const dTDzKPerM = QgeoW / kCrust;
+    const dTDzKPerKm = dTDzKPerM * 1000.0;
+
+    // Top of cryopeg liquid horizon
+    let zTopM = 0.0;
+    if (Tsurf < Teutc) {
+      zTopM = (Teutc - Tsurf) / dTDzKPerM;
+    }
+    const zTopKm = zTopM / 1000.0;
+
+    // Base of permafrost / transition to fresh liquid water at 273.15 K
+    const zBaseM = Math.max(zTopM + 10.0, (273.15 - Tsurf) / dTDzKPerM);
+    const zBaseKm = zBaseM / 1000.0;
+
+    const columnThicknessKm = zBaseKm - zTopKm;
+
+    let habitability = 'Extreme Hypersaline Subsurface Cryo-Habitability (Active Liquid Permafrost Horizon)';
+    if (columnThicknessKm > 4.0 && aw < 0.60) {
+      habitability = 'Extreme Hypersaline Subsurface Cryopeg Aquifer (Planum Australe Analogue / Chaotropic Water Activity a_w < 0.60)';
+    } else if (aw < 0.60) {
+      habitability = 'Extreme Hypersaline Permafrost Brine (Sub-Thermodynamic Water Activity a_w < 0.60)';
+    } else if (columnThicknessKm > 4.0) {
+      habitability = 'Extensive Deep Cryopeg System (South Polar Planum Australe Radar Analogue)';
+    }
+
+    return {
+      saltComposition: saltName,
+      eutecticFreezingTempK: parseFloat(Teutc.toFixed(1)),
+      eutecticFreezingTempC: parseFloat((Teutc - 273.15).toFixed(2)),
+      waterActivityAw: parseFloat(aw.toFixed(2)),
+      cryopegTopDepthKm: parseFloat(zTopKm.toFixed(2)),
+      cryopegBaseDepthKm: parseFloat(zBaseKm.toFixed(2)),
+      cryopegColumnThicknessKm: parseFloat(columnThicknessKm.toFixed(2)),
+      astrobiologicalHabitabilityAssessment: habitability
+    };
+  }
 }
 
 

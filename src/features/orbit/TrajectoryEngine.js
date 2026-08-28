@@ -3782,6 +3782,59 @@ export class TrajectoryEngine {
       insertionBurnRegime: regime
     };
   }
+
+  /**
+   * Calculate orbital plane change impulse Delta-V, combined speed-inclination vector maneuver, propellant savings, and optimal thrust angle.
+   * Delta_V_plane = 2 * v1 * sin( delta_i / 2 )
+   * Delta_V_comb = sqrt( v1^2 + v2^2 - 2*v1*v2*cos( delta_i ) )
+   * Reference: Curtis (2013), Vallado (2013), Chobotov (2002) for orbital mechanics and cross-track inclination trim burns.
+   * @param {number} [vInitialKmS=3.50] - Initial orbital speed in km/s (0.5 to 12.0 km/s)
+   * @param {number} [inclinationChangeDeg=30.0] - Desired inclination/plane change angle in degrees (0 to 180 deg)
+   * @param {number} [vFinalKmS=4.20] - Final target orbital speed in km/s (0.5 to 12.0 km/s)
+   * @returns {{purePlaneChangeDeltaVKmS: number, combinedManeuverDeltaVKmS: number, separateManeuverDeltaVKmS: number, deltaVSavingsKmS: number, propellantSavingsPercent: number, optimalThrustAngleDeg: number, maneuverEfficiencyContext: string}}
+   */
+  static computeOrbitalPlaneChangeDeltaVAndCombinedManeuver(vInitialKmS = 3.50, inclinationChangeDeg = 30.0, vFinalKmS = 4.20) {
+    const v1 = Math.max(0.1, vInitialKmS);
+    const v2 = Math.max(0.1, vFinalKmS);
+    const deltaIRad = Math.abs(inclinationChangeDeg) * (Math.PI / 180.0);
+
+    // Pure plane change at initial speed
+    const dvPlane = 2.0 * v1 * Math.sin(deltaIRad / 2.0);
+
+    // Combined vector maneuver (law of cosines)
+    const dvComb = Math.sqrt(Math.max(0.0, Math.pow(v1, 2.0) + Math.pow(v2, 2.0) - 2.0 * v1 * v2 * Math.cos(deltaIRad)));
+
+    // Separate maneuvers (plane change then speed adjustment)
+    const dvSep = dvPlane + Math.abs(v2 - v1);
+
+    // Savings
+    const dvSavings = Math.max(0.0, dvSep - dvComb);
+    const savingsPct = dvSep > 0 ? (dvSavings / dvSep) * 100.0 : 0.0;
+
+    // Optimal thrust angle alpha relative to initial velocity vector
+    const num = v2 * Math.sin(deltaIRad);
+    const den = v2 * Math.cos(deltaIRad) - v1;
+    let alphaRad = Math.atan2(num, den);
+    if (alphaRad < 0) alphaRad += 2.0 * Math.PI;
+    const alphaDeg = alphaRad * (180.0 / Math.PI);
+
+    let context = 'Standard Inclination & Speed Vector Trim Maneuver';
+    if (deltaIRad > Math.PI / 3.0) {
+      context = 'High-Deflection Plane Change (Extremely High Delta-V Cost - Best Performed at Apoapsis)';
+    } else if (savingsPct > 15.0) {
+      context = 'High-Efficiency Combined Burn (Substantial Propellant Mass Savings vs Separate Burns)';
+    }
+
+    return {
+      purePlaneChangeDeltaVKmS: parseFloat(dvPlane.toFixed(3)),
+      combinedManeuverDeltaVKmS: parseFloat(dvComb.toFixed(3)),
+      separateManeuverDeltaVKmS: parseFloat(dvSep.toFixed(3)),
+      deltaVSavingsKmS: parseFloat(dvSavings.toFixed(3)),
+      propellantSavingsPercent: parseFloat(savingsPct.toFixed(1)),
+      optimalThrustAngleDeg: parseFloat(alphaDeg.toFixed(2)),
+      maneuverEfficiencyContext: context
+    };
+  }
 }
 
 
