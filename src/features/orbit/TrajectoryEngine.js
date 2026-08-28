@@ -6162,6 +6162,75 @@ export class TrajectoryEngine {
       cyclerContext: `Mars-Jupiter Cycler (${periodYrs.toFixed(1)} yr Period, ${transitYrs.toFixed(1)} yr One-Way Transit, ${dvTciKmS.toFixed(2)} km/s TCI, e=${ecc.toFixed(2)})`
     };
   }
+
+  /**
+   * Calculate Mars-to-Mercury inward interplanetary transfer trajectory, Trans-Mercury Injection (TMI), and Mercury Orbit Insertion (MOI) Delta-V.
+   * a_t = ( r_mars + r_mercury ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Reference: Bate et al. (1971), Curtis (2013) for Inward Interplanetary Trajectories.
+   * @param {number} [mercuryParkingAltitudeKm=300.0] - Mercury parking orbit altitude in km (100 to 2000 km)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{timeOfFlightDays: number, timeOfFlightYears: number, transMercuryInjectionDeltaVKmS: number, mercuryArrivalExcessSpeedKmS: number, mercuryOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, mercuryTransferContext: string}}
+   */
+  static computeMarsToMercuryTransferTrajectory(mercuryParkingAltitudeKm = 300.0, marsParkingAltitudeKm = 300.0) {
+    const hpMercKm = Math.max(100.0, mercuryParkingAltitudeKm);
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const muMerc = 22032.0;
+    const rMarsKm = 3389.5;
+    const rMercKm = 2439.7;
+
+    const rMarsAU = 1.52368;
+    const rMercAU = 0.38710;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rMercDistKm = rMercAU * AU_KM;
+
+    // Transfer ellipse
+    const aTransferAU = (rMarsAU + rMercAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight (days & years)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = Math.abs(vMarsKmS - vApoTransferKmS);
+
+    // Trans-Mercury Injection Delta-V
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkMarsKm));
+    const dvTmiKmS = vTransDepHypKmS - vParkMarsKmS;
+
+    // Speeds at Mercury arrival
+    const vMercCircKmS = Math.sqrt(muSun / rMercDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rMercDistKm) - (1.0 / aTransferKm)));
+    const vInfArrMercKmS = Math.abs(vPeriTransferKmS - vMercCircKmS);
+
+    // Mercury Orbit Insertion Delta-V
+    const rParkMercKm = rMercKm + hpMercKm;
+    const vParkMercKmS = Math.sqrt(muMerc / rParkMercKm);
+    const vTransArrHypKmS = Math.sqrt(Math.pow(vInfArrMercKmS, 2.0) + (2.0 * muMerc / rParkMercKm));
+    const dvMoiKmS = vTransArrHypKmS - vParkMercKmS;
+
+    const dvTotKmS = dvTmiKmS + dvMoiKmS;
+
+    return {
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      transMercuryInjectionDeltaVKmS: parseFloat(dvTmiKmS.toFixed(3)),
+      mercuryArrivalExcessSpeedKmS: parseFloat(vInfArrMercKmS.toFixed(3)),
+      mercuryOrbitInsertionDeltaVKmS: parseFloat(dvMoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      mercuryTransferContext: `Mars to Mercury Inward Transfer (${tofDays.toFixed(0)} d TOF, ${dvTmiKmS.toFixed(2)} km/s TMI, ${dvMoiKmS.toFixed(2)} km/s MOI, ${dvTotKmS.toFixed(2)} km/s Total)`
+    };
+  }
 }
 
 

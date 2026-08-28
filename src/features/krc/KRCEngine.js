@@ -6663,6 +6663,62 @@ export class KRCEngine {
       lakeEvaporiteContext: `Acidic Paleolake Evaporite (${tDryYrs.toFixed(0)} yr Desiccation, ${hBedCm.toFixed(1)} cm Bed, pH ${pH0.toFixed(1)} -> ${finalPH.toFixed(1)}, ${prepStage})`
     };
   }
+
+  /**
+   * Calculate subsurface hydrothermal reservoir fluid temperature using quartz, chalcedony, and amorphous silica geothermometry equations.
+   * T_quartz = 1309 / ( 5.19 - log10( C_ppm ) ) - 273.15
+   * T_chalcedony = 1032 / ( 4.69 - log10( C_ppm ) ) - 273.15
+   * T_opal = 731 / ( 4.52 - log10( C_ppm ) ) - 273.15
+   * Reference: Fournier & Potter (1982), Verma (2000), Ruff et al. (2011) for Home Plate Hydrothermal Reservoirs.
+   * @param {number} [dissolvedSilicaPpm=300.0] - Fluid dissolved silica concentration in ppm (10.0 to 1200.0 ppm)
+   * @param {string} [silicaPolymorph='Quartz'] - Mineral polymorph ('Quartz', 'Chalcedony', 'Amorphous Silica / Opal')
+   * @returns {{dissolvedSilicaPpm: number, silicaPolymorph: string, estimatedReservoirTempC: number, hydrothermalEnthalpyKjKg: number, reservoirRegime: string, geothermometerContext: string}}
+   */
+  static computeMartianSilicaGeothermometerFluidTemperature(dissolvedSilicaPpm = 300.0, silicaPolymorph = 'Quartz') {
+    const Cppm = Math.max(5.0, Math.min(1500.0, dissolvedSilicaPpm));
+    const poly = silicaPolymorph.toLowerCase();
+    const logC = Math.log10(Cppm);
+
+    let tempC = 0.0;
+    let polyName = 'Quartz';
+
+    if (poly.includes('chalcedon')) {
+      polyName = 'Chalcedony';
+      const denom = 4.69 - logC;
+      tempC = denom > 0.1 ? (1032.0 / denom) - 273.15 : 250.0;
+    } else if (poly.includes('opal') || poly.includes('amorph')) {
+      polyName = 'Amorphous Silica (Opal-A)';
+      const denom = 4.52 - logC;
+      tempC = denom > 0.1 ? (731.0 / denom) - 273.15 : 150.0;
+    } else {
+      polyName = 'Quartz (Conductive No-Steam)';
+      const denom = 5.19 - logC;
+      tempC = denom > 0.1 ? (1309.0 / denom) - 273.15 : 300.0;
+    }
+
+    tempC = Math.max(0.0, Math.min(450.0, tempC));
+
+    // Liquid water enthalpy approximation (kJ/kg: h ~= 4.184 * T_C)
+    const enthalpyKjKg = 4.184 * tempC;
+
+    let regime = 'Low-Temperature Hydrothermal Spring';
+    if (tempC >= 220.0) {
+      regime = 'High-Enthalpy Deep Magmatic-Hydrothermal Reservoir';
+    } else if (tempC >= 150.0) {
+      regime = 'Intermediate-Temperature Convective Hydrothermal System';
+    } else if (tempC >= 80.0) {
+      regime = 'Sub-Boiling Thermal Spring / Geyser Pool';
+    }
+
+    return {
+      dissolvedSilicaPpm: parseFloat(Cppm.toFixed(1)),
+      silicaPolymorph: polyName,
+      estimatedReservoirTempC: parseFloat(tempC.toFixed(1)),
+      hydrothermalEnthalpyKjKg: parseFloat(enthalpyKjKg.toFixed(1)),
+      reservoirRegime: regime,
+      geothermometerContext: `Silica Geothermometer (${polyName}: ${tempC.toFixed(0)} C / ${enthalpyKjKg.toFixed(0)} kJ/kg at ${Cppm.toFixed(0)} ppm SiO2 - ${regime})`
+    };
+  }
 }
 
 

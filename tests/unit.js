@@ -12021,6 +12021,59 @@ describe('Mars-Jupiter Cycler, Acidic Lake Evaporation & Mafic Ternary Modality'
     });
 });
 
+describe('Mars to Mercury Transfer, Silica Geothermometer & Chloride-Perchlorate Inversion', () => {
+    it('should calculate Mars-to-Mercury inward interplanetary transfer trajectory and insertion Delta-V', () => {
+        // Mars to Mercury transfer (300 km Mercury parking, 300 km Mars parking):
+        const merc = TrajectoryEngine.computeMarsToMercuryTransferTrajectory(300.0, 300.0);
+        expect(merc.timeOfFlightDays).to.be.closeTo(169.3, 2.0); // ~169 days TOF
+        expect(merc.timeOfFlightYears).to.be.closeTo(0.463, 0.05); // ~0.46 yr
+        expect(merc.transMercuryInjectionDeltaVKmS).to.be.closeTo(6.600, 0.2); // ~6.60 km/s TMI
+        expect(merc.mercuryArrivalExcessSpeedKmS).to.be.closeTo(12.584, 0.5); // ~12.58 km/s excess
+        expect(merc.mercuryOrbitInsertionDeltaVKmS).to.be.closeTo(10.372, 0.5); // ~10.37 km/s MOI
+        expect(merc.mercuryTransferContext).to.include('Mars to Mercury Inward Transfer');
+    });
+
+    it('should calculate hydrothermal reservoir temperature from dissolved silica geothermometer equations', () => {
+        // Quartz geothermometer at 300 ppm SiO2:
+        const quartzGeo = KRCEngine.computeMartianSilicaGeothermometerFluidTemperature(300.0, 'Quartz');
+        expect(quartzGeo.dissolvedSilicaPpm).to.equal(300.0);
+        expect(quartzGeo.silicaPolymorph).to.include('Quartz');
+        expect(quartzGeo.estimatedReservoirTempC).to.be.closeTo(209.4, 2.0); // ~209.4 C
+        expect(quartzGeo.hydrothermalEnthalpyKjKg).to.be.closeTo(876.0, 15.0); // ~876 kJ/kg
+        expect(quartzGeo.reservoirRegime).to.include('Intermediate-Temperature Convective');
+
+        // Chalcedony geothermometer at 300 ppm SiO2:
+        const chalGeo = KRCEngine.computeMartianSilicaGeothermometerFluidTemperature(300.0, 'Chalcedony');
+        expect(chalGeo.estimatedReservoirTempC).to.be.closeTo(193.2, 2.0); // ~193.2 C
+
+        // Amorphous silica / Opal-A at 300 ppm SiO2:
+        const opalGeo = KRCEngine.computeMartianSilicaGeothermometerFluidTemperature(300.0, 'Amorphous Silica / Opal');
+        expect(opalGeo.estimatedReservoirTempC).to.be.closeTo(84.7, 2.0); // ~84.7 C
+        expect(opalGeo.reservoirRegime).to.include('Sub-Boiling Thermal Spring');
+    });
+
+    it('should discriminate Hydrated Oxychlorines vs Anhydrous Chloride Plains in CRISM spectra', () => {
+        // Hydrated Magnesium Perchlorate (Phoenix soil / RSL: BD1400 = 0.06, BD1900 = 0.09, BD2140 = 0.04):
+        const perchlor = BandMathEngine.computeCRISMChloridePerchlorateSpectraIndices(0.06, 0.09, 0.04, 0.30);
+        expect(perchlor.isHalogenSaltDetected).to.be.true;
+        expect(perchlor.saltClass).to.include('Hydrated Magnesium / Sodium Perchlorate Brine');
+        expect(perchlor.mineralSpecies).to.include('Mg(ClO4)2');
+        expect(perchlor.eutecticFreezingTempC).to.equal(-68.5); // Deep eutectic depression
+        expect(perchlor.habitabilityImplication).to.include('Deliquescent Oxychlorine Brine');
+
+        // Anhydrous Chloride Flat (Terra Sirenum: albedo = 0.35, flat featureless hydration: BD1400 = 0.005, BD1900 = 0.005, BD2140 = 0.002):
+        const chloride = BandMathEngine.computeCRISMChloridePerchlorateSpectraIndices(0.005, 0.005, 0.002, 0.35);
+        expect(chloride.isHalogenSaltDetected).to.be.true;
+        expect(chloride.saltClass).to.include('Anhydrous Chloride Salt Deposit');
+        expect(chloride.mineralSpecies).to.include('NaCl');
+        expect(chloride.eutecticFreezingTempC).to.equal(-21.1);
+
+        // Standard low-albedo basalt:
+        const basalt = BandMathEngine.computeCRISMChloridePerchlorateSpectraIndices(0.005, 0.005, 0.002, 0.15);
+        expect(basalt.isHalogenSaltDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

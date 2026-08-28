@@ -432,3 +432,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate Mars-to-Jupiter Interplanetary Cycler orbit resonance, TCI Delta-V, and encounter excesses
 ?: AssertionError: expected 5.883 to be close to 6.44 +/- 0.3
     at n.<anonymous> (unit.js:11986:51)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 19:15:51 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Mercury inward interplanetary transfer trajectory and insertion Delta-V
+?: AssertionError: expected 6.6 to be close to 3.91 +/- 0.3
+    at n.<anonymous> (unit.js:12030:59)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 19:16:11 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Mercury inward interplanetary transfer trajectory and insertion Delta-V
+?: AssertionError: expected 12.584 to be close to 25.411 +/- 1
+    at n.<anonymous> (unit.js:12031:57)

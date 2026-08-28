@@ -6328,6 +6328,56 @@ export class BandMathEngine {
       petrologicContext: `${lithology} (Ol: ${fol.toFixed(0)}%, LCP: ${flcp.toFixed(0)}%, HCP: ${fhcp.toFixed(0)}% - ${context})`
     };
   }
+
+  /**
+   * Discriminate Hydrated Oxychlorines (Mg/Ca/Na Perchlorate and Chlorate) vs Anhydrous Chlorides (NaCl/KCl Halite Plains) from CRISM 1.4 um, 1.9 um, 2.14 um oxychlorine absorptions and continuum slope.
+   * Reference: Osterloo et al. (2008), Ojha et al. (2015), Hanley et al. (2014), Viviano-Beck et al. (2014) for Martian Halogen Salts.
+   * @param {number} [band1400WaterDepth=0.06] - BD1400 molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.09] - BD1900 molecular H2O fundamental depth (0.0 to 0.50)
+   * @param {number} [band2140PerchlorateDepth=0.04] - BD2140 characteristic perchlorate/chlorate combination band depth (0.0 to 0.30)
+   * @param {number} [continuumAlbedo=0.32] - Mean NIR continuum reflectance / albedo (0.05 to 0.60)
+   * @returns {{isHalogenSaltDetected: boolean, saltClass: string, mineralSpecies: string, eutecticFreezingTempC: number, habitabilityImplication: string}}
+   */
+  static computeCRISMChloridePerchlorateSpectraIndices(band1400WaterDepth = 0.06, band1900WaterDepth = 0.09, band2140PerchlorateDepth = 0.04, continuumAlbedo = 0.32) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2140 = Math.max(0.0, band2140PerchlorateDepth);
+    const alb = Math.max(0.01, continuumAlbedo);
+
+    let isSalt = false;
+    let saltCls = 'Non-Halogen Silicate Regolith';
+    let species = 'Basalt / Dust';
+    let eutecticC = 0.0;
+    let habit = 'Standard Dry Regolith';
+
+    if (d2140 >= 0.025 && d1900 >= 0.035) {
+      isSalt = true;
+      saltCls = 'Hydrated Magnesium / Sodium Perchlorate Brine';
+      species = 'Mg(ClO4)2 * 6H2O / NaClO4 * H2O';
+      eutecticC = -68.5; // Magnesium perchlorate eutectic
+      habit = 'Deliquescent Oxychlorine Brine (Deep Eutectic Depressed Liquid Candidate in Modern RSL / Phoenix Soils)';
+    } else if (d2140 >= 0.020 && d1900 < 0.030) {
+      isSalt = true;
+      saltCls = 'Anhydrous / Partially Hydrated Chlorate Salt';
+      species = 'Mg(ClO3)2 / NaClO3';
+      eutecticC = -39.0;
+      habit = 'Photochemically Produced Chlorate Salt Crust';
+    } else if (alb >= 0.28 && d1400 < 0.015 && d1900 < 0.015 && d2140 < 0.012) {
+      isSalt = true;
+      saltCls = 'Anhydrous Chloride Salt Deposit (Halite / Sylvite Plains)';
+      species = 'NaCl / KCl';
+      eutecticC = -21.1; // Sodium chloride eutectic
+      habit = 'Ancient Noachian/Hesperian Playa Lake Evaporite (Terra Sirenum Chloride Deposits)';
+    }
+
+    return {
+      isHalogenSaltDetected: isSalt,
+      saltClass: saltCls,
+      mineralSpecies: species,
+      eutecticFreezingTempC: parseFloat(eutecticC.toFixed(1)),
+      habitabilityImplication: habit
+    };
+  }
 }
 
 
