@@ -5572,6 +5572,65 @@ export class TrajectoryEngine {
       outerTransferContext: `Mars to Saturn Transfer (${tofYrs.toFixed(1)} yr TOF, ${dvTsiKmS.toFixed(2)} km/s TSI, ${vInfArrSatKmS.toFixed(2)} km/s Saturn Arrival Excess)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Ice Giant (Uranus / Neptune) outer solar system transfer trajectory, Trans-Ice-Giant Injection, and arrival excess.
+   * a_t = ( r_mars + r_ice_giant ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Reference: Bate et al. (1971), Curtis (2013) for Ice Giant Interplanetary Exploration.
+   * @param {string} [targetPlanetName='Uranus'] - Target Ice Giant ('Uranus' or 'Neptune')
+   * @param {number} [targetSemiMajorAxisAU=19.191] - Target planet orbital distance in AU (15.0 to 35.0 AU)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{targetPlanet: string, targetDistanceAU: number, timeOfFlightDays: number, timeOfFlightYears: number, transIceGiantInjectionDeltaVKmS: number, iceGiantHyperbolicExcessKmS: number, iceGiantTransferContext: string}}
+   */
+  static computeMarsToIceGiantTransferTrajectory(targetPlanetName = 'Uranus', targetSemiMajorAxisAU = 19.191, marsParkingAltitudeKm = 300.0) {
+    const rTargAU = Math.max(15.0, Math.min(35.0, targetSemiMajorAxisAU));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rTargDistKm = rTargAU * AU_KM;
+
+    // Transfer ellipse
+    const aTransferAU = (rMarsAU + rTargAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight (days & years)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = Math.abs(vPeriTransferKmS - vMarsKmS);
+
+    // Trans-Ice-Giant Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTigiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Speeds at target arrival
+    const vTargCircKmS = Math.sqrt(muSun / rTargDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rTargDistKm) - (1.0 / aTransferKm)));
+    const vInfArrKmS = Math.abs(vTargCircKmS - vApoTransferKmS);
+
+    return {
+      targetPlanet: targetPlanetName,
+      targetDistanceAU: parseFloat(rTargAU.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      transIceGiantInjectionDeltaVKmS: parseFloat(dvTigiKmS.toFixed(3)),
+      iceGiantHyperbolicExcessKmS: parseFloat(vInfArrKmS.toFixed(3)),
+      iceGiantTransferContext: `Mars to ${targetPlanetName} Transfer (${tofYrs.toFixed(1)} yr TOF, ${dvTigiKmS.toFixed(2)} km/s Injection, ${vInfArrKmS.toFixed(2)} km/s Arrival Excess)`
+    };
+  }
 }
 
 

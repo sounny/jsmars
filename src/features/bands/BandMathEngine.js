@@ -5816,6 +5816,53 @@ export class BandMathEngine {
       prebioticAstrobiologicalContext: context
     };
   }
+
+  /**
+   * Discriminate Amorphous Hydrated Silica (Opal-A / Geothermal Sinter) from Aluminum Phyllosilicates (Montmorillonite) via CRISM Si-OH broad shoulder and H2O combinations.
+   * Reference: Smith et al. (2013), Milliken et al. (2008), Rice et al. (2013), Viviano-Beck et al. (2014) for Gale Crater, Jezero delta, and Home Plate silica.
+   * @param {number} [band2210SiOHDepth=0.07] - BD2210 Si-OH / Al-OH band depth (0.0 to 0.40)
+   * @param {number} [band2260ShoulderDepth=0.05] - BD2260 diagnostic opaline silica shoulder depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.09] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band1400OHDepth=0.06] - BD1400 structural OH vibration depth (0.0 to 0.40)
+   * @returns {{isSilicaDetected: boolean, silicaPhase: string, mineralSpecies: string, opalineShoulderRatio: number, depositionalEnvironmentContext: string}}
+   */
+  static computeCRISMHydratedSilicaOpalineIndices(band2210SiOHDepth = 0.07, band2260ShoulderDepth = 0.05, band1900WaterDepth = 0.09, band1400OHDepth = 0.06) {
+    const d2210 = Math.max(0.0, band2210SiOHDepth);
+    const d2260 = Math.max(0.0, band2260ShoulderDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d1400 = Math.max(0.0, band1400OHDepth);
+
+    const shoulderRatio = d2210 > 0.005 ? d2260 / d2210 : 0.0;
+    let isSil = false;
+    let phase = 'Non-Silica Silicate Matrix';
+    let species = 'Basalt';
+    let context = 'Standard Unaltered Silicate Crust';
+
+    if (d2210 >= 0.025 && d1900 >= 0.035) {
+      isSil = true;
+      if (shoulderRatio >= 0.55 && d2260 >= 0.025) {
+        phase = 'Amorphous Hydrated Silica (Opal-A / Opal-CT)';
+        species = 'Hydrated Opaline Silica (SiO2 * nH2O)';
+        context = 'Low-Temperature Acid Leaching / Geothermal Fumarolic Sinter Precipitation (Home Plate / Gale Crater Type)';
+      } else if (shoulderRatio < 0.40) {
+        phase = 'Aluminum Phyllosilicate (Smectite / Montmorillonite)';
+        species = 'Al-Smectite / Montmorillonite';
+        context = 'Neutral-to-Alkaline Pedogenic Weathering / Lacustrine Authigenic Clay Formation';
+      } else {
+        phase = 'Poorly Crystalline Siliceous Sinter / Mixed Clay-Silica';
+        species = 'Siliceous Clay Complex';
+        context = 'Evolving Diagenetic Hydrated Silicate Bed';
+      }
+    }
+
+    return {
+      isSilicaDetected: isSil,
+      silicaPhase: phase,
+      mineralSpecies: species,
+      opalineShoulderRatio: parseFloat(shoulderRatio.toFixed(2)),
+      depositionalEnvironmentContext: context
+    };
+  }
 }
 
 

@@ -11504,6 +11504,62 @@ describe('Mars-to-Saturn Transfer, Magma Ocean Degassing & Playa Evaporite Inver
     });
 });
 
+describe('Mars-to-Ice Giant Transfer, Core Dynamo Convection & Hydrated Silica Inversion', () => {
+    it('should calculate Mars-to-Ice Giant (Uranus / Neptune) outer solar system transfer and Delta-V', () => {
+        // Mars to Uranus transfer (19.191 AU, 300 km Mars parking orbit):
+        const uranus = TrajectoryEngine.computeMarsToIceGiantTransferTrajectory('Uranus', 19.191, 300.0);
+        expect(uranus.targetPlanet).to.equal('Uranus');
+        expect(uranus.targetDistanceAU).to.equal(19.191);
+        expect(uranus.timeOfFlightDays).to.be.closeTo(6092.0, 100.0); // ~6092 days TOF
+        expect(uranus.timeOfFlightYears).to.be.closeTo(16.68, 0.5); // ~16.7 years
+        expect(uranus.transIceGiantInjectionDeltaVKmS).to.be.closeTo(6.552, 0.4); // ~6.55 km/s injection
+        expect(uranus.iceGiantHyperbolicExcessKmS).to.be.closeTo(4.191, 0.3); // ~4.19 km/s arrival excess
+        expect(uranus.iceGiantTransferContext).to.include('Mars to Uranus Transfer');
+
+        // Mars to Neptune transfer (30.07 AU):
+        const neptune = TrajectoryEngine.computeMarsToIceGiantTransferTrajectory('Neptune', 30.07, 300.0);
+        expect(neptune.targetPlanet).to.equal('Neptune');
+        expect(neptune.timeOfFlightYears).to.be.closeTo(31.39, 1.0); // ~31.4 years
+    });
+
+    it('should calculate primordial core thermal convection, adiabatic heat flux, and geodynamo surface field', () => {
+        // Active early core dynamo (1830 km core, 35 mW/m^2 CMB heat flux, 2000 K CMB temp):
+        const dynamo = KRCEngine.computeMartianCoreDynamoAndThermalConvection(1830.0, 35.0, 2000.0);
+        expect(dynamo.adiabaticCoreHeatFluxMWm2).to.be.closeTo(10.87, 1.0); // ~10.9 mW/m^2 adiabat
+        expect(dynamo.isThermalDynamoActive).to.be.true; // Superadiabatic convection active
+        expect(dynamo.convectiveHeatFluxMWm2).to.be.closeTo(24.13, 1.0); // ~24.1 mW/m^2 superadiabatic
+        expect(dynamo.coreMagneticFieldMicroTesla).to.be.closeTo(828.0, 50.0); // ~828 uT core field
+        expect(dynamo.surfaceDipoleFieldMicroTesla).to.be.closeTo(130.3, 15.0); // ~130 uT surface dipole
+        expect(dynamo.coreDynamoContext).to.include('Active Core Geodynamo');
+
+        // Extinct dynamo when mantle cools below core adiabat (8 mW/m^2 CMB flux):
+        const extinct = KRCEngine.computeMartianCoreDynamoAndThermalConvection(1830.0, 8.0, 2000.0);
+        expect(extinct.isThermalDynamoActive).to.be.false;
+        expect(extinct.surfaceDipoleFieldMicroTesla).to.equal(0.0);
+        expect(extinct.coreDynamoContext).to.include('Extinct Geodynamo');
+    });
+
+    it('should discriminate Amorphous Hydrated Silica (Opal-A) from Al-Phyllosilicates in CRISM spectra', () => {
+        // Hydrated Opal-A (broad Si-OH band at 2.21 um with 2.26 um shoulder at Home Plate / Gale: BD2210 = 0.08, BD2260 = 0.05, BD1900 = 0.10):
+        const opala = BandMathEngine.computeCRISMHydratedSilicaOpalineIndices(0.08, 0.05, 0.10, 0.07);
+        expect(opala.isSilicaDetected).to.be.true;
+        expect(opala.silicaPhase).to.include('Amorphous Hydrated Silica (Opal-A / Opal-CT)');
+        expect(opala.mineralSpecies).to.include('Hydrated Opaline Silica');
+        expect(opala.opalineShoulderRatio).to.be.closeTo(0.62, 0.05); // ratio ~0.62 >= 0.55
+        expect(opala.depositionalEnvironmentContext).to.include('Geothermal Fumarolic Sinter Precipitation');
+
+        // Aluminum Smectite clay (sharp 2.21 um Al-OH band with weak 2.26 um shoulder: BD2210 = 0.08, BD2260 = 0.02, BD1900 = 0.08):
+        const clay = BandMathEngine.computeCRISMHydratedSilicaOpalineIndices(0.08, 0.02, 0.08, 0.05);
+        expect(clay.isSilicaDetected).to.be.true;
+        expect(clay.silicaPhase).to.include('Aluminum Phyllosilicate (Smectite / Montmorillonite)');
+        expect(clay.depositionalEnvironmentContext).to.include('Pedogenic Weathering / Lacustrine Authigenic Clay');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMHydratedSilicaOpalineIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSilicaDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

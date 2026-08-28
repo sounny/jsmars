@@ -6078,6 +6078,75 @@ export class KRCEngine {
       primordialClimateContext: `Magma Ocean Degassing (${pTotBar.toFixed(0)} bar Atmosphere, ${dGELM.toFixed(0)} m GEL Ocean, ~${tCondMyr.toFixed(2)} Myr Solidification)`
     };
   }
+
+  /**
+   * Calculate primordial Martian core thermal convection, adiabatic core heat flux limit, convective buoyancy flux, and dynamo magnetic surface field strength.
+   * q_ad = k_core * ( alpha_T * g_cmb * T_cmb ) / c_p
+   * F_B = ( alpha_T * g_cmb / ( rho_core * c_p ) ) * ( q_cmb - q_ad )
+   * B_surf = B_core * ( R_core / R_M )^3
+   * Reference: Stevenson (2001), Nimmo & Stevenson (2000), Connerney et al. (2004), Mittelholz et al. (2020) for Ancient Martian Core Dynamo.
+   * @param {number} [coreRadiusKm=1830.0] - Metallic core radius in km (1500 to 2000 km, InSight SEIS)
+   * @param {number} [coreMantleBoundaryHeatFluxMWm2=35.0] - Heat flow across CMB in mW/m^2 (5 to 100 mW/m^2)
+   * @param {number} [coreTemperatureK=2000.0] - Core-mantle boundary temperature in K (1700 to 2400 K)
+   * @returns {{adiabaticCoreHeatFluxMWm2: number, isThermalDynamoActive: boolean, convectiveHeatFluxMWm2: number, coreMagneticFieldMicroTesla: number, surfaceDipoleFieldMicroTesla: number, coreDynamoContext: string}}
+   */
+  static computeMartianCoreDynamoAndThermalConvection(coreRadiusKm = 1830.0, coreMantleBoundaryHeatFluxMWm2 = 35.0, coreTemperatureK = 2000.0) {
+    const RcoreKm = Math.max(1000.0, Math.min(2500.0, coreRadiusKm));
+    const qCmbMW = Math.max(1.0, coreMantleBoundaryHeatFluxMWm2);
+    const TcmbK = Math.max(1500.0, coreTemperatureK);
+
+    const RM = 3389.5; // km
+    const RcoreM = RcoreKm * 1000.0;
+    const G = 6.6743e-11;
+    const rhoCore = 6500.0; // kg/m^3
+    const kCore = 35.0; // W/(m*K)
+    const alphaT = 3.5e-5; // K^-1
+    const cp = 750.0; // J/(kg*K)
+    const mu0 = 4.0 * Math.PI * 1e-7;
+
+    // Gravity at CMB
+    const gCmb = (4.0 / 3.0) * Math.PI * G * rhoCore * RcoreM;
+
+    // Core adiabatic temperature gradient & heat flux (mW/m^2)
+    const dTdRAd = (alphaT * gCmb * TcmbK) / cp;
+    const qAdW = kCore * dTdRAd;
+    const qAdMW = qAdW * 1000.0;
+
+    // Superadiabatic convective excess
+    const isDynamo = qCmbMW > qAdMW;
+    const qConvMW = Math.max(0.0, qCmbMW - qAdMW);
+    const qConvW = qConvMW / 1000.0;
+
+    let BcoreUT = 0.0;
+    let BsurfUT = 0.0;
+
+    if (isDynamo) {
+      // Convective buoyancy flux (m^2/s^3)
+      const FB = ((alphaT * gCmb) / (rhoCore * cp)) * qConvW;
+
+      // Christensen-Aubert dynamo scaling (Tesla)
+      const BcoreT = 0.9 * Math.sqrt(mu0 * rhoCore) * Math.pow(FB * RcoreM, 1.0 / 3.0);
+      BcoreUT = BcoreT * 1e6;
+
+      // Dipole field at Martian surface (microTesla)
+      const geoFactor = Math.pow(RcoreKm / RM, 3.0);
+      BsurfUT = BcoreUT * geoFactor;
+    }
+
+    let context = 'Extinct Geodynamo (CMB Heat Flux Below Adiabat, Subcritical Convection)';
+    if (isDynamo) {
+      context = `Active Core Geodynamo (${BsurfUT.toFixed(0)} uT Surface Dipole Field, Strong Crustal Magnetization Regime)`;
+    }
+
+    return {
+      adiabaticCoreHeatFluxMWm2: parseFloat(qAdMW.toFixed(2)),
+      isThermalDynamoActive: isDynamo,
+      convectiveHeatFluxMWm2: parseFloat(qConvMW.toFixed(2)),
+      coreMagneticFieldMicroTesla: parseFloat(BcoreUT.toFixed(1)),
+      surfaceDipoleFieldMicroTesla: parseFloat(BsurfUT.toFixed(1)),
+      coreDynamoContext: context
+    };
+  }
 }
 
 
