@@ -10527,6 +10527,56 @@ describe('Phobos/Deimos Moon Rendezvous, Paleoshoreline Flexure & Pigeonite Pyro
     });
 });
 
+describe('Sun-Synchronous Mapping Orbits, Hydrothermal Convection & Carbonate Group Cations', () => {
+    it('should calculate Mars Sun-Synchronous Orbit inclination, nodal precession, and repeat track spacing', () => {
+        // 300 km MRO-like mapping orbit (187 orbits in 14 sols):
+        const sso = TrajectoryEngine.computeMartianSunSynchronousAndRepeatGroundTrackOrbit(300.0, 187, 14);
+        expect(sso.orbitAltitudeKm).to.equal(300.0);
+        expect(sso.sunSyncInclinationDeg).to.be.closeTo(92.97, 0.5); // ~93.0 deg retrograde polar inclination
+        expect(sso.nodalPrecessionRateDegDay).to.be.closeTo(0.52403, 0.001); // ~0.524 deg/day matching Mars heliocentric motion
+        expect(sso.orbitalPeriodMinutes).to.be.closeTo(113.48, 2.0); // ~113.5 min
+        expect(sso.dailyOrbitsCount).to.be.closeTo(13.04, 0.2); // ~13.0 orbits/sol
+        expect(sso.equatorialInterTrackSpacingKm).to.be.closeTo(113.88, 5.0); // ~113.9 km swath spacing
+        expect(sso.mappingOrbitDesignContext).to.include('Mars Sun-Synchronous Frozen Mapping Orbit');
+    });
+
+    it('should calculate subsurface hydrothermal Rayleigh-Darcy convection, upwelling Darcy flux, and lifespan', () => {
+        // Jezero/Gusev post-impact hydrothermal system (H = 3 km, deltaT = 400 C, kp = 1e-13 m^2):
+        const hydro = KRCEngine.computeSubsurfaceHydrothermalConvectionAndBoilingPlume(3.0, 400.0, 1.0e-13);
+        expect(hydro.rayleighDarcyNumber).to.be.closeTo(4050.6, 50.0); // Ra ~4051 > Ra_crit
+        expect(hydro.isConvectionActive).to.be.true;
+        expect(hydro.nusseltNumber).to.be.closeTo(39.23, 2.0); // Nu ~39.2
+        expect(hydro.upwellingDarcySpeedMmDay).to.be.closeTo(77.16, 10.0); // ~77 mm/day Darcy flux
+        expect(hydro.hydrothermalLifespanYears).to.be.closeTo(1821, 100); // ~1,821 years convective cooling lifetime
+        expect(hydro.hydrothermalAstrobiologyContext).to.include('Vigorous Hydrothermal Upwelling Plume');
+    });
+
+    it('should discriminate Magnesite from Siderite and Calcite cations in CRISM carbonate spectra', () => {
+        // Magnesite (MgCO3) in Nili Fossae (Band 1 = 2.310 um, Band 2 = 2.510 um):
+        const magnesite = BandMathEngine.computeCRISMCarbonateCationCompositionIndices(2.310, 2.510, 0.08);
+        expect(magnesite.isCarbonatePresent).to.be.true;
+        expect(magnesite.carbonateMineralSpecies).to.include('Magnesite (Magnesium Carbonate');
+        expect(magnesite.dominantDivalentCation).to.include('Mg2+');
+        expect(magnesite.carbonationPaleoenvironment).to.include('Ultramafic Olivine Carbonation');
+
+        // Siderite (FeCO3) in reducing paleolakes (Band 1 = 2.335 um, Band 2 = 2.530 um):
+        const siderite = BandMathEngine.computeCRISMCarbonateCationCompositionIndices(2.335, 2.530, 0.08);
+        expect(siderite.isCarbonatePresent).to.be.true;
+        expect(siderite.carbonateMineralSpecies).to.include('Siderite');
+        expect(siderite.dominantDivalentCation).to.include('Fe2+');
+
+        // Calcite (CaCO3) in epithermal veins (Band 1 = 2.345 um, Band 2 = 2.545 um):
+        const calcite = BandMathEngine.computeCRISMCarbonateCationCompositionIndices(2.345, 2.545, 0.08);
+        expect(calcite.isCarbonatePresent).to.be.true;
+        expect(calcite.carbonateMineralSpecies).to.include('Calcite');
+        expect(calcite.dominantDivalentCation).to.include('Ca2+');
+
+        // Flat spectrum:
+        const basalt = BandMathEngine.computeCRISMCarbonateCationCompositionIndices(2.310, 2.510, 0.01);
+        expect(basalt.isCarbonatePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

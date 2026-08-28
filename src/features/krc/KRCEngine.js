@@ -4887,6 +4887,72 @@ export class KRCEngine {
       paleoshorelineDeformationContext: context
     };
   }
+
+  /**
+   * Calculate subsurface hydrothermal Rayleigh-Darcy convection, upwelling plume Darcy flux, Nusselt number, and thermal lifetime.
+   * Ra = ( rho_f^2 * c_f * g * alpha_T * k_p * Delta_T * H ) / ( mu_f * k_m )
+   * q_z = ( k_p * rho_f * g * alpha_T * Delta_T ) / mu_f
+   * Reference: Elder (1967), Turcotte & Schubert (2002), Abramov & Kring (2005) for Jezero / Gusev impact hydrothermal circulation.
+   * @param {number} [intrusionDepthKm=3.0] - Depth of magmatic/impact heat source in km (0.5 to 10.0 km)
+   * @param {number} [temperatureDifferentialC=400.0] - Temperature excess above ambient in deg C (50 to 900 C)
+   * @param {number} [permeabilityM2=1.0e-13] - Crustal fractured rock permeability in m^2 (1e-16 to 1e-11 m^2)
+   * @returns {{rayleighDarcyNumber: number, isConvectionActive: boolean, nusseltNumber: number, upwellingDarcySpeedMmDay: number, annualUpwellingFluidFluxMYr: number, hydrothermalLifespanYears: number, hydrothermalAstrobiologyContext: string}}
+   */
+  static computeSubsurfaceHydrothermalConvectionAndBoilingPlume(intrusionDepthKm = 3.0, temperatureDifferentialC = 400.0, permeabilityM2 = 1.0e-13) {
+    const HKm = Math.max(0.2, Math.min(20.0, intrusionDepthKm));
+    const HM = HKm * 1000.0;
+    const deltaT = Math.max(10.0, Math.min(1200.0, temperatureDifferentialC));
+    const kp = Math.max(1.0e-18, Math.min(1.0e-9, permeabilityM2));
+
+    const gMars = 3.72076; // m/s^2
+    const rhoFluid = 900.0; // kg/m^3
+    const cFluid = 4200.0; // J/(kg*K)
+    const alphaT = 1.0e-3; // 1/K
+    const muFluid = 1.5e-4; // Pa*s
+    const kMatrix = 2.5; // W/(m*K)
+    const rhoRock = 2800.0; // kg/m^3
+    const cRock = 900.0; // J/(kg*K)
+
+    // Rayleigh-Darcy Number
+    const numerator = Math.pow(rhoFluid, 2.0) * cFluid * gMars * alphaT * kp * deltaT * HM;
+    const denominator = muFluid * kMatrix;
+    const Ra = numerator / denominator;
+    const RaCrit = 4.0 * Math.pow(Math.PI, 2.0); // ~39.48
+
+    const isConv = Ra >= RaCrit;
+
+    // Upwelling Darcy flux q_z (m/s, mm/day, m/year)
+    const qzMS = (kp * rhoFluid * gMars * alphaT * deltaT) / muFluid;
+    const qzMmDay = qzMS * 86400.0 * 1000.0;
+    const qzMYr = qzMS * 3.15576e7;
+
+    // Nusselt number (effective convective vs conductive heat transfer ratio)
+    let Nu = 1.0;
+    if (isConv) {
+      Nu = 1.0 + (0.05 * Math.pow(Ra, 0.8));
+    }
+
+    // Hydrothermal circulation lifespan (years)
+    const tauSec = (Math.pow(HM, 2.0) * rhoRock * cRock) / (4.0 * kMatrix * Nu);
+    const tauYears = tauSec / 3.15576e7;
+
+    let habitability = 'Vigorous Hydrothermal Upwelling Plume (Sustains Astrobiological Hot Spring Sinters & Hydrothermal Veins)';
+    if (!isConv) {
+      habitability = 'Sub-Critical Conduction-Dominated Thermal Halo (Minimal Fluid Circulation)';
+    } else if (tauYears > 100000.0) {
+      habitability = 'Long-Lived Post-Impact Hydrothermal System (> 100 kyr Habitability Window)';
+    }
+
+    return {
+      rayleighDarcyNumber: parseFloat(Ra.toFixed(1)),
+      isConvectionActive: isConv,
+      nusseltNumber: parseFloat(Nu.toFixed(2)),
+      upwellingDarcySpeedMmDay: parseFloat(qzMmDay.toFixed(2)),
+      annualUpwellingFluidFluxMYr: parseFloat(qzMYr.toFixed(1)),
+      hydrothermalLifespanYears: parseFloat(tauYears.toFixed(0)),
+      hydrothermalAstrobiologyContext: habitability
+    };
+  }
 }
 
 

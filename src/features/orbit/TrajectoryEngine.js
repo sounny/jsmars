@@ -4327,8 +4327,6 @@ export class TrajectoryEngine {
     const tofSec = Math.PI * Math.sqrt(Math.pow(atKm, 3.0) / muMars);
     const tofHours = tofSec / 3600.0;
 
-    let context = 'Low-Energy Martian Moon Rendezvous & Proximity Orbit Insertion (MMX / Sample Return Analogue)';
-
     return {
       targetMoon: name,
       moonSemiMajorAxisKm: parseFloat(aMoonKm.toFixed(1)),
@@ -4339,6 +4337,59 @@ export class TrajectoryEngine {
       transferTimeOfFlightHours: parseFloat(tofHours.toFixed(3)),
       qsoProximityInsertionDeltaVMPS: parseFloat(qsoDvMPS.toFixed(1)),
       rendezvousMissionContext: context
+    };
+  }
+
+  /**
+   * Calculate Mars Sun-Synchronous Orbit (SSO) required inclination, nodal precession rate, and repeat ground track swath spacing.
+   * dot_Omega = - (3/2) * J2 * (Rp / a)^2 * n * cos(i) == dot_lambda_sun
+   * Delta_lambda_eq = ( 2 * pi * Rp ) / N_orbits
+   * Reference: Vallado (2013), Curtis (2013) for MRO & Mars Odyssey sun-synchronous mapping orbit design.
+   * @param {number} [orbitAltitudeKm=300.0] - Circular mapping orbit altitude in km (150 to 800 km)
+   * @param {number} [repeatOrbitsCount=187] - Number of integer orbits before repeat ground track closure
+   * @param {number} [repeatDaysCount=14] - Number of Martian sols for ground track repeat cycle
+   * @returns {{orbitAltitudeKm: number, sunSyncInclinationDeg: number, nodalPrecessionRateDegDay: number, orbitalPeriodMinutes: number, dailyOrbitsCount: number, equatorialInterTrackSpacingKm: number, mappingOrbitDesignContext: string}}
+   */
+  static computeMartianSunSynchronousAndRepeatGroundTrackOrbit(orbitAltitudeKm = 300.0, repeatOrbitsCount = 187, repeatDaysCount = 14) {
+    const hKm = Math.max(100.0, Math.min(1500.0, orbitAltitudeKm));
+    const Np = Math.max(1, repeatOrbitsCount);
+    const Nd = Math.max(1, repeatDaysCount);
+
+    const RpKm = 3389.5;
+    const muMars = 42828.37; // km^3/s^2
+    const J2 = 0.00196045; // Mars J2 harmonic
+
+    // Sun-synchronous nodal precession rate for Mars (360 deg / 686.98 sols)
+    const dotOmegaSSODegDay = 360.0 / 686.98; // ~0.52403 deg/day
+    const dotOmegaSSORadS = (dotOmegaSSODegDay * (Math.PI / 180.0)) / 86400.0;
+
+    // Semi-major axis and mean motion
+    const aKm = RpKm + hKm;
+    const nRadS = Math.sqrt(muMars / Math.pow(aKm, 3.0));
+
+    // Nodal precession equation: dot_Omega = -1.5 * J2 * (Rp/a)^2 * n * cos(i)
+    // cos(i) = - dot_Omega_SSO / ( 1.5 * J2 * (Rp/a)^2 * n )
+    const j2Factor = 1.5 * J2 * Math.pow(RpKm / aKm, 2.0) * nRadS;
+    const cosInc = -dotOmegaSSORadS / j2Factor;
+    const incRad = Math.acos(Math.max(-1.0, Math.min(1.0, cosInc)));
+    const incDeg = incRad * (180.0 / Math.PI);
+
+    // Orbital period in seconds and minutes
+    const pSec = (2.0 * Math.PI) / nRadS;
+    const pMin = pSec / 60.0;
+    const orbitsPerSol = (88775.244) / pSec; // 88775.244 s per Mars sol
+
+    // Equatorial ground track swath spacing
+    const deltaLambdaEqKm = (2.0 * Math.PI * RpKm) / Np;
+
+    return {
+      orbitAltitudeKm: parseFloat(hKm.toFixed(1)),
+      sunSyncInclinationDeg: parseFloat(incDeg.toFixed(2)),
+      nodalPrecessionRateDegDay: parseFloat(dotOmegaSSODegDay.toFixed(5)),
+      orbitalPeriodMinutes: parseFloat(pMin.toFixed(2)),
+      dailyOrbitsCount: parseFloat(orbitsPerSol.toFixed(2)),
+      equatorialInterTrackSpacingKm: parseFloat(deltaLambdaEqKm.toFixed(2)),
+      mappingOrbitDesignContext: `Mars Sun-Synchronous Frozen Mapping Orbit (${incDeg.toFixed(1)} deg Inclination, ${Np}/${Nd} Sol Repeat Pattern)`
     };
   }
 }

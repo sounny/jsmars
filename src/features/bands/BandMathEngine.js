@@ -4815,6 +4815,51 @@ export class BandMathEngine {
       basalticPetrogenesisContext: context
     };
   }
+
+  /**
+   * Discriminate Carbonate cation composition (Magnesite MgCO3 vs Siderite FeCO3 vs Calcite CaCO3) using CRISM 2.30-2.35 um (nu1+2nu3) and 2.50-2.55 um (nu1+nu3) vibrational combination bands.
+   * Reference: Gaffey (1987), Ehlmann et al. (2008), Viviano-Beck et al. (2014) for Nili Fossae & Jezero Crater ultramafic carbonation.
+   * @param {number} band1CenterUm - Wavelength of primary nu1+2nu3 carbonate band in um (2.25 to 2.40 um)
+   * @param {number} band2CenterUm - Wavelength of secondary nu1+nu3 carbonate band in um (2.45 to 2.60 um)
+   * @param {number} [carbonateIndexDepth=0.08] - Integrated carbonate absorption depth parameter (0.0 to 1.0)
+   * @returns {{band1CenterUm: number, band2CenterUm: number, isCarbonatePresent: boolean, carbonateMineralSpecies: string, dominantDivalentCation: string, carbonationPaleoenvironment: string}}
+   */
+  static computeCRISMCarbonateCationCompositionIndices(band1CenterUm, band2CenterUm, carbonateIndexDepth = 0.08) {
+    const l1 = Math.max(2.20, Math.min(2.42, band1CenterUm));
+    const l2 = Math.max(2.44, Math.min(2.62, band2CenterUm));
+    const depth = Math.max(0.0, carbonateIndexDepth);
+
+    let isCarb = false;
+    let name = 'Non-Carbonate Primary Crust / Silicate Matrix';
+    let cation = 'None';
+    let setting = 'Standard Igneous Regolith';
+
+    if (depth >= 0.025) {
+      isCarb = true;
+      if (l1 <= 2.318 && l2 <= 2.518) {
+        name = 'Magnesite (Magnesium Carbonate MgCO3)';
+        cation = 'Mg2+ (Magnesium)';
+        setting = 'Ultramafic Olivine Carbonation & Serpentinization (Nili Fossae / Jezero Rim)';
+      } else if (l1 >= 2.338 && l2 >= 2.538) {
+        name = 'Calcite (Calcium Carbonate CaCO3)';
+        cation = 'Ca2+ (Calcium)';
+        setting = 'Alkaline Epithermal Hot Springs / Hydrothermal Vein Carbonation';
+      } else {
+        name = 'Siderite / Ankerite (Iron-Rich Carbonate FeCO3)';
+        cation = 'Fe2+ (Ferrous Iron)';
+        setting = 'Reducing Anoxic Paleolake / Neutral-to-Alkaline Subsurface Groundwater Fluid';
+      }
+    }
+
+    return {
+      band1CenterUm: parseFloat(l1.toFixed(3)),
+      band2CenterUm: parseFloat(l2.toFixed(3)),
+      isCarbonatePresent: isCarb,
+      carbonateMineralSpecies: name,
+      dominantDivalentCation: cation,
+      carbonationPaleoenvironment: setting
+    };
+  }
 }
 
 
