@@ -5268,6 +5268,57 @@ export class TrajectoryEngine {
       tpsAblationContext: `${label} TPS (${qPeakKW.toFixed(0)} kW/m^2 Peak Flux, ${deltaSMm.toFixed(1)} mm Ablation Recession, ${deltaCharMm.toFixed(1)} mm Char)`
     };
   }
+
+  /**
+   * Calculate Martian upper atmospheric internal gravity wave (IGW) buoyancy frequency, along-track density perturbations, and spacecraft aerobraking drag oscillations.
+   * N_BV = sqrt( ( g / T ) * ( dT/dz + Gamma_d ) )
+   * tau_BV = 2 * pi / N_BV
+   * T_encounter = lambda_x / v_orb
+   * Reference: Creasey et al. (2006), Forbes et al. (2006), Yiğit et al. (2015), Terada et al. (2017) for MAVEN / MRO / TGO Thermospheric Gravity Waves.
+   * @param {number} [baseAltitudeKm=140.0] - Thermospheric passage altitude in km (110 to 220 km)
+   * @param {number} [horizontalWavelengthKm=250.0] - Gravity wave horizontal wavelength in km (50 to 1000 km)
+   * @param {number} [waveAmplitudePct=25.0] - Relative density wave amplitude percentage (5 to 60%)
+   * @param {number} [orbiterSpeedKmS=4.20] - Spacecraft orbital horizontal velocity in km/s (3.0 to 5.0 km/s)
+   * @returns {{baseAltitudeKm: number, ambientDensityKgM3: number, bruntVaisalaFrequencyMradS: number, buoyancyPeriodMinutes: number, alongTrackEncounterPeriodSec: number, peakDensityPerturbationPct: number, gravityWaveAerobrakingContext: string}}
+   */
+  static computeMartianUpperAtmosphericGravityWavesAndDensityPerturbations(baseAltitudeKm = 140.0, horizontalWavelengthKm = 250.0, waveAmplitudePct = 25.0, orbiterSpeedKmS = 4.20) {
+    const zKm = Math.max(90.0, Math.min(300.0, baseAltitudeKm));
+    const lambdaX = Math.max(10.0, horizontalWavelengthKm);
+    const ampPct = Math.max(1.0, Math.min(90.0, waveAmplitudePct));
+    const vOrbKmS = Math.max(1.0, orbiterSpeedKmS);
+
+    const gMars = 3.72076;
+    const cpCO2 = 830.0;
+    const gammaD = gMars / cpCO2; // ~0.00448 K/m
+
+    // Ambient thermospheric temperature & lapse rate at altitude
+    const Tatm = 160.0; // K
+    const dIdZ = 0.0012; // K/m positive lapse rate in thermosphere
+
+    // Brunt-Vaisala buoyancy frequency (rad/s and mrad/s)
+    const NbvRadS = Math.sqrt((gMars / Tatm) * (dIdZ + gammaD));
+    const NbvMradS = NbvRadS * 1000.0;
+
+    // Buoyancy period (minutes)
+    const tauBvMin = (2.0 * Math.PI / NbvRadS) / 60.0;
+
+    // Background atmospheric density (kg/m^3)
+    const rho0 = 0.020;
+    const rhoBase = rho0 * Math.exp(- (zKm * 1000.0) / 11100.0);
+
+    // Apparent along-track encounter oscillation period (seconds)
+    const tEncSec = lambdaX / vOrbKmS;
+
+    return {
+      baseAltitudeKm: parseFloat(zKm.toFixed(1)),
+      ambientDensityKgM3: parseFloat(rhoBase.toExponential(3)),
+      bruntVaisalaFrequencyMradS: parseFloat(NbvMradS.toFixed(2)),
+      buoyancyPeriodMinutes: parseFloat(tauBvMin.toFixed(2)),
+      alongTrackEncounterPeriodSec: parseFloat(tEncSec.toFixed(1)),
+      peakDensityPerturbationPct: parseFloat(ampPct.toFixed(1)),
+      gravityWaveAerobrakingContext: `Thermospheric Gravity Wave (${ampPct.toFixed(0)}% Density Wave at ${zKm.toFixed(0)} km, ${tEncSec.toFixed(1)}s Spacecraft Drag Oscillation)`
+    };
+  }
 }
 
 

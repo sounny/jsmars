@@ -5776,6 +5776,64 @@ export class KRCEngine {
       acidWeatheringContext: context
     };
   }
+
+  /**
+   * Calculate hydrothermal silica sinter maturation kinetics (Opal-A -> Opal-CT -> Quartz), diagenetic ostwald ripening, and porosity densification.
+   * k_mat = A_0 * exp( -E_a / ( R * T ) ) * ( 1 + 1.2 * [Salinity] )
+   * alpha_CT = 1 - exp( -k_mat * t )
+   * alpha_Qtz = 1 - exp( - ( k_mat / 4.5 ) * t )
+   * Reference: Herdianita et al. (2000), Lynne et al. (2007), Rodgers et al. (2004), Ruff et al. (2011) for Home Plate Gusev & Nili Fossae sinter beds.
+   * @param {number} [initialPorosityFrac=0.55] - Fresh porous opal-A sinter porosity (0.20 to 0.80)
+   * @param {number} [hydrothermalTempK=340.0] - Geothermal fluid temperature in K (275 to 450 K)
+   * @param {number} [poreFluidSalinityMolar=0.5] - Brine salinity concentration in Molar (0.0 to 3.0 M)
+   * @param {number} [exposureDurationYears=50000.0] - Thermal hydrothermal duration in years (100 to 2000000 yrs)
+   * @returns {{dominantSilicaPhase: string, opalAWeightPct: number, opalCTWeightPct: number, microcrystallineQuartzWeightPct: number, evolvedPorosityFrac: number, sinterDiagenesisContext: string}}
+   */
+  static computeMartianSilicaSinteringKineticsAndQuartzMaturation(initialPorosityFrac = 0.55, hydrothermalTempK = 340.0, poreFluidSalinityMolar = 0.5, exposureDurationYears = 50000.0) {
+    const phi0 = Math.max(0.1, Math.min(0.85, initialPorosityFrac));
+    const T = Math.max(270.0, Math.min(500.0, hydrothermalTempK));
+    const saltM = Math.max(0.0, Math.min(5.0, poreFluidSalinityMolar));
+    const tYrs = Math.max(10.0, exposureDurationYears);
+
+    const Ea = 68000.0; // J/mol activation energy
+    const R = 8.314;
+    const A0 = 1.25e5; // yr^-1
+
+    // Maturation rate constant (yr^-1)
+    const kMat = A0 * Math.exp(- Ea / (R * T)) * (1.0 + (1.2 * saltM));
+
+    // Conversion fractions
+    const alphaCT = 1.0 - Math.exp(- kMat * tYrs);
+    const alphaQtz = 1.0 - Math.exp(- (kMat / 4.5) * tYrs);
+
+    // Phase weight percentages
+    const qtzPct = Math.min(100.0, alphaQtz * 100.0);
+    const ctPct = Math.max(0.0, Math.min(100.0 - qtzPct, (alphaCT - alphaQtz) * 100.0));
+    const opalAPct = Math.max(0.0, 100.0 - ctPct - qtzPct);
+
+    // Porosity evolution
+    const phiEvol = phi0 * Math.exp(- 0.25 * kMat * tYrs);
+
+    let dominant = 'Amorphous Opal-A (Fresh Exhalative Sinter)';
+    let context = 'Fresh Primary Hydrothermal Sinter / Columnar Spicules (Home Plate Type)';
+
+    if (qtzPct >= 50.0) {
+      dominant = 'Microcrystalline / Crystalline Quartz';
+      context = 'Fully Matured Ancient Sinter / Hydrothermal Quartzite (Extensive Post-Depositional Diagenesis)';
+    } else if (ctPct >= 40.0 || (ctPct + qtzPct) >= 50.0) {
+      dominant = 'Paracrystalline Opal-CT';
+      context = 'Diagenetically Matured Disordered Sinter / Lepispheres (Noctis Labyrinthus Type)';
+    }
+
+    return {
+      dominantSilicaPhase: dominant,
+      opalAWeightPct: parseFloat(opalAPct.toFixed(1)),
+      opalCTWeightPct: parseFloat(ctPct.toFixed(1)),
+      microcrystallineQuartzWeightPct: parseFloat(qtzPct.toFixed(1)),
+      evolvedPorosityFrac: parseFloat(phiEvol.toFixed(3)),
+      sinterDiagenesisContext: context
+    };
+  }
 }
 
 

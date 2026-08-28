@@ -11248,6 +11248,59 @@ describe('Mars Aerobraking TPS Pyrolysis, Acid Fog Leaching & Chloride Salt Inve
     });
 });
 
+describe('Mars Gravity Waves, Silica Sinter Diagenesis & Serpentine Polymorph Inversion', () => {
+    it('should calculate Martian upper atmospheric gravity wave buoyancy frequency and density oscillations', () => {
+        // Thermospheric gravity wave (140 km altitude, 250 km wavelength, 25% amplitude, 4.2 km/s orbital speed):
+        const wave = TrajectoryEngine.computeMartianUpperAtmosphericGravityWavesAndDensityPerturbations(140.0, 250.0, 25.0, 4.20);
+        expect(wave.baseAltitudeKm).to.equal(140.0);
+        expect(wave.bruntVaisalaFrequencyMradS).to.be.closeTo(11.49, 1.0); // ~11.5 mrad/s
+        expect(wave.buoyancyPeriodMinutes).to.be.closeTo(9.11, 1.0); // ~9.1 min buoyancy period
+        expect(wave.alongTrackEncounterPeriodSec).to.be.closeTo(59.5, 2.0); // ~60s drag cycle
+        expect(wave.peakDensityPerturbationPct).to.equal(25.0);
+        expect(wave.gravityWaveAerobrakingContext).to.include('Thermospheric Gravity Wave');
+    });
+
+    it('should calculate hydrothermal silica sinter maturation kinetics (Opal-A -> Opal-CT -> Quartz)', () => {
+        // Hydrothermal sinter bed at 340 K for 50,000 years with 0.5 M saline pore fluid:
+        const sinter = KRCEngine.computeMartianSilicaSinteringKineticsAndQuartzMaturation(0.55, 340.0, 0.5, 50000.0);
+        expect(sinter.dominantSilicaPhase).to.include('Amorphous Opal-A');
+        expect(sinter.opalAWeightPct).to.be.closeTo(69.9, 2.0); // ~70% residual Opal-A
+        expect(sinter.opalCTWeightPct).to.be.closeTo(22.5, 2.0); // ~22.5% converted Opal-CT
+        expect(sinter.microcrystallineQuartzWeightPct).to.be.closeTo(7.7, 2.0); // ~8% Quartz
+        expect(sinter.evolvedPorosityFrac).to.be.closeTo(0.503, 0.05); // densified from 0.55 to ~0.50
+        expect(sinter.sinterDiagenesisContext).to.include('Fresh Primary Hydrothermal Sinter');
+
+        // High-temperature ancient hydrothermal quartz sinter (420 K, 200,000 years):
+        const ancient = KRCEngine.computeMartianSilicaSinteringKineticsAndQuartzMaturation(0.55, 420.0, 1.0, 200000.0);
+        expect(ancient.dominantSilicaPhase).to.include('Microcrystalline / Crystalline Quartz');
+        expect(ancient.microcrystallineQuartzWeightPct).to.be.greaterThan(50.0);
+    });
+
+    it('should discriminate Low-T Serpentine (Lizardite) from Antigorite and Talc in CRISM spectra', () => {
+        // Low-T Serpentine (Lizardite with 2.12 um shoulder and 2.32 um Mg-OH in Nili Fossae):
+        const lizardite = BandMathEngine.computeCRISMSerpentinePolymorphIndices(0.05, 0.03, 0.08, 0.005);
+        expect(lizardite.isSerpentinePresent).to.be.true;
+        expect(lizardite.serpentinePhase).to.include('Low-Temperature Serpentine (Lizardite');
+        expect(lizardite.serpentinizationTemperature).to.include('Low-Temperature (< 250 deg C');
+        expect(lizardite.astrobiologicalContext).to.include('Copious H2 and Abiotic CH4');
+
+        // Hydrothermal Talc (sharp 2.31 um and 2.46 um doublet):
+        const talc = BandMathEngine.computeCRISMSerpentinePolymorphIndices(0.05, 0.005, 0.08, 0.04);
+        expect(talc.isSerpentinePresent).to.be.true;
+        expect(talc.serpentinePhase).to.include('Talc (Mg3Si4O10(OH)2)');
+        expect(talc.serpentinizationTemperature).to.include('Moderate to High Temperature');
+
+        // High-T Antigorite (no 2.12 um shoulder):
+        const antigorite = BandMathEngine.computeCRISMSerpentinePolymorphIndices(0.05, 0.005, 0.08, 0.005);
+        expect(antigorite.isSerpentinePresent).to.be.true;
+        expect(antigorite.serpentinePhase).to.include('High-Temperature Serpentine (Antigorite)');
+
+        // Flat basalt:
+        const basalt = BandMathEngine.computeCRISMSerpentinePolymorphIndices(0.005, 0.005, 0.01, 0.005);
+        expect(basalt.isSerpentinePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

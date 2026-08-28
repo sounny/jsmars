@@ -5573,6 +5573,56 @@ export class BandMathEngine {
       evaporiticPaleoenvironmentContext: context
     };
   }
+
+  /**
+   * Discriminate Low-Temperature Serpentine (Lizardite/Chrysotile) from High-Temperature Antigorite and Hydrothermal Talc using CRISM NIR Mg-OH parameters.
+   * Reference: Ehlmann et al. (2009, 2010), Viviano et al. (2013), Viviano-Beck et al. (2014) for Nili Fossae & Claritas Fossae serpentinized ultramafics.
+   * @param {number} [band1390Depth=0.05] - BD1390 / sharp OH overtone band depth (0.0 to 0.40)
+   * @param {number} [band2120Depth=0.03] - BD2120 / characteristic low-T serpentine shoulder depth (0.0 to 0.30)
+   * @param {number} [band2320Depth=0.08] - BD2320 / primary Mg-OH fundamental absorption depth (0.0 to 0.50)
+   * @param {number} [band2460Depth=0.01] - BD2460 / talc diagnostic secondary doublet depth (0.0 to 0.30)
+   * @returns {{isSerpentinePresent: boolean, serpentinePhase: string, mineralSpecies: string, serpentinizationTemperature: string, astrobiologicalContext: string}}
+   */
+  static computeCRISMSerpentinePolymorphIndices(band1390Depth = 0.05, band2120Depth = 0.03, band2320Depth = 0.08, band2460Depth = 0.01) {
+    const d1390 = Math.max(0.0, band1390Depth);
+    const d2120 = Math.max(0.0, band2120Depth);
+    const d2320 = Math.max(0.0, band2320Depth);
+    const d2460 = Math.max(0.0, band2460Depth);
+
+    let isSerp = false;
+    let phase = 'Non-Serpentinized Basalt';
+    let species = 'Basaltic Regolith';
+    let tempClass = 'Unaltered Magmatic';
+    let context = 'Standard Unaltered Bedrock';
+
+    if (d2320 >= 0.030 && d1390 >= 0.020) {
+      isSerp = true;
+      if (d2460 >= 0.030) {
+        phase = 'Talc (Mg3Si4O10(OH)2)';
+        species = 'Hydrothermal Talc / Carbonated Metasomatite';
+        tempClass = 'Moderate to High Temperature (250 - 400 deg C)';
+        context = 'High-Silica Hydrothermal Metasomatism of Ultramafic Protolith (Talc-Carbonate Alteration)';
+      } else if (d2120 >= 0.020) {
+        phase = 'Low-Temperature Serpentine (Lizardite / Chrysotile)';
+        species = 'Lizardite (Mg3Si2O5(OH)4)';
+        tempClass = 'Low-Temperature (< 250 deg C, Retrograde Serpentinization)';
+        context = 'Low-T Olivine Hydration Generating Copious H2 and Abiotic CH4 / High Astrobiological Energy Yield';
+      } else {
+        phase = 'High-Temperature Serpentine (Antigorite)';
+        species = 'Antigorite (High-T Serpentine Polymorph)';
+        tempClass = 'High-Temperature (350 - 550 deg C, Prograde Metamorphism)';
+        context = 'Deep Crustal Ductile Shear Zone Metasomatism';
+      }
+    }
+
+    return {
+      isSerpentinePresent: isSerp,
+      serpentinePhase: phase,
+      mineralSpecies: species,
+      serpentinizationTemperature: tempClass,
+      astrobiologicalContext: context
+    };
+  }
 }
 
 
