@@ -4132,6 +4132,73 @@ export class TrajectoryEngine {
       aerocaptureRegime: regime
     };
   }
+
+  /**
+   * Calculate Trans-Earth Injection (TEI) Delta-V from Mars parking orbit, interplanetary Hohmann return trajectory, and Earth atmospheric entry speed.
+   * v_p = sqrt( v_inf_M^2 + 2*mu_M / r_park )
+   * Delta_V_TEI = v_p - sqrt( mu_M / r_park )
+   * v_entry_E = sqrt( v_inf_E^2 + 2*mu_E / ( R_E + 120 km ) )
+   * Reference: Bate, Mueller & White (1971), Curtis (2013) for Mars Sample Return & Crewed Return trajectories.
+   * @param {number} [parkingOrbitAltitudeKm=400.0] - Mars parking orbit altitude in km
+   * @param {number} [earthAtmosphereInterfaceKm=120.0] - Earth atmospheric entry interface in km
+   * @returns {{transferSemiMajorAxisAU: number, timeOfFlightDays: number, marsDepartureVInfKmS: number, marsDepartureC3Km2S2: number, transEarthInjectionDeltaVKmS: number, earthArrivalVInfKmS: number, earthAtmosphericReentrySpeedKmS: number, returnTrajectoryContext: string}}
+   */
+  static computeTransEarthInjectionDeltaVAndReturnTrajectory(parkingOrbitAltitudeKm = 400.0, earthAtmosphereInterfaceKm = 120.0) {
+    const hpKm = Math.max(50.0, parkingOrbitAltitudeKm);
+    const hEntryKm = Math.max(50.0, earthAtmosphereInterfaceKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11; // km^3/s^2
+    const muMars = 42828.37; // km^3/s^2
+    const muEarth = 398600.4418; // km^3/s^2
+
+    const rMarsKm = 1.52368 * AU_KM;
+    const rEarthKm = 1.00000 * AU_KM;
+    const rMarsPlanetKm = 3389.5;
+    const rEarthPlanetKm = 6378.137;
+
+    // Mars and Earth circular heliocentric speeds
+    const vMarsHel = Math.sqrt(muSun / rMarsKm);
+    const vEarthHel = Math.sqrt(muSun / rEarthKm);
+
+    // Hohmann transfer ellipse semi-major axis
+    const atKm = (rMarsKm + rEarthKm) / 2.0;
+    const atAU = atKm / AU_KM;
+
+    // Time of Flight (seconds and days)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(atKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+
+    // Aphelion speed at Mars departure
+    const vaHel = Math.sqrt(muSun * ((2.0 / rMarsKm) - (1.0 / atKm)));
+    const vInfMars = Math.abs(vMarsHel - vaHel);
+    const c3Mars = Math.pow(vInfMars, 2.0);
+
+    // Mars TEI burn from circular parking orbit
+    const rParkKm = rMarsPlanetKm + hpKm;
+    const vParkCirc = Math.sqrt(muMars / rParkKm);
+    const vParkHyp = Math.sqrt(Math.pow(vInfMars, 2.0) + (2.0 * muMars) / rParkKm);
+    const deltaVTeiKmS = vParkHyp - vParkCirc;
+
+    // Perihelion speed at Earth arrival
+    const vpHel = Math.sqrt(muSun * ((2.0 / rEarthKm) - (1.0 / atKm)));
+    const vInfEarth = Math.abs(vpHel - vEarthHel);
+
+    // Earth atmospheric entry speed at 120 km interface
+    const rEntryEarthKm = rEarthPlanetKm + hEntryKm;
+    const vEntryEarthKmS = Math.sqrt(Math.pow(vInfEarth, 2.0) + (2.0 * muEarth) / rEntryEarthKm);
+
+    return {
+      transferSemiMajorAxisAU: parseFloat(atAU.toFixed(5)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      marsDepartureVInfKmS: parseFloat(vInfMars.toFixed(3)),
+      marsDepartureC3Km2S2: parseFloat(c3Mars.toFixed(2)),
+      transEarthInjectionDeltaVKmS: parseFloat(deltaVTeiKmS.toFixed(3)),
+      earthArrivalVInfKmS: parseFloat(vInfEarth.toFixed(3)),
+      earthAtmosphericReentrySpeedKmS: parseFloat(vEntryEarthKmS.toFixed(2)),
+      returnTrajectoryContext: 'Optimal Coplanar Mars-to-Earth Hohmann Direct Return'
+    };
+  }
 }
 
 

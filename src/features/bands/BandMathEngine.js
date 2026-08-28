@@ -4681,6 +4681,51 @@ export class BandMathEngine {
       diageneticMaturationSetting: setting
     };
   }
+
+  /**
+   * Discriminate Magnesium-rich Forsteritic Olivine (Fo70-Fo90) from Iron-rich Fayalitic Olivine (Fo10-Fo35) using CRISM 1.05 um composite absorption band minimum and OLINDEX depth.
+   * Reference: King & Ridley (1987), Mustard et al. (2005), Koeppen & Hamilton (2008), Ody et al. (2013) for Nili Fossae olivine megaregolith.
+   * @param {number} bandCenterUm - Wavelength of composite Fe2+ (M1/M2) absorption trough in um (0.95 to 1.15 um)
+   * @param {number} [olindexDepth=0.08] - CRISM OLINDEX3 integrated absorption depth (0.0 to 1.0)
+   * @returns {{bandCenterUm: number, isOlivinePresent: boolean, estimatedForsteriteMolePct: number, olivineSolidSolutionPhase: string, petrologicalSettingContext: string}}
+   */
+  static computeCRISMOlivineForsteriteFayaliteIndices(bandCenterUm, olindexDepth = 0.08) {
+    const l0 = Math.max(0.90, Math.min(1.20, bandCenterUm));
+    const depth = Math.max(0.0, olindexDepth);
+
+    let isOlivine = false;
+    let foPct = 50.0;
+    let mineral = 'Unaltered Primary Igneous Silicate';
+    let context = 'Standard Basaltic Composition';
+
+    if (depth >= 0.025) {
+      isOlivine = true;
+
+      // Linear empirical mapping: 1.035 um -> Fo90, 1.090 um -> Fo10
+      // Fo = 90 - ( (l0 - 1.035) / (1.090 - 1.035) ) * 80
+      const fraction = (l0 - 1.035) / (1.090 - 1.035);
+      foPct = Math.max(0.0, Math.min(100.0, 90.0 - (fraction * 80.0)));
+
+      if (foPct >= 65.0) {
+        mineral = `Forsterite-Rich Magnesian Olivine (Fo${foPct.toFixed(0)}Fa${(100.0 - foPct).toFixed(0)})`;
+        context = 'Primitive Upper Mantle Melting / Picritic Basaltic Volcanism (Nili Fossae / Isidis Rim)';
+      } else if (foPct <= 35.0) {
+        mineral = `Fayalite-Rich Ferrous Olivine (Fo${foPct.toFixed(0)}Fa${(100.0 - foPct).toFixed(0)})`;
+        context = 'Evolved Fractional Crystallization / Highly Differentiated Fe-Rich Lava Flows';
+      } else {
+        mineral = `Intermediate Solid Solution Olivine (Fo${foPct.toFixed(0)}Fa${(100.0 - foPct).toFixed(0)})`;
+        context = 'Typical Martian Basaltic Phenocrysts';
+      }
+    }
+
+    return {
+      bandCenterUm: parseFloat(l0.toFixed(3)),
+      isOlivinePresent: isOlivine,
+      estimatedForsteriteMolePct: parseFloat(foPct.toFixed(1)),
+      olivineSolidSolutionPhase: mineral,
+      petrologicalSettingContext: context
+    };
+  }
 }
 
 

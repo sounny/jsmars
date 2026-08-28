@@ -4705,6 +4705,70 @@ export class KRCEngine {
       lacustrineWaveRegime: regime
     };
   }
+
+  /**
+   * Calculate ancient Martian glacial flow velocity, Glen's law internal deformation creep, basal shear stress, and ice discharge flux.
+   * tau_b = rho * g * H * sin( alpha )
+   * u_def = ( 2 * A(T) / (n + 1) ) * tau_b^n * H
+   * Reference: Nye (1952), Paterson (1994), Fastook et al. (2008), Head et al. (2010) for LDA / CCF glacial dynamics.
+   * @param {number} [iceThicknessMeters=400.0] - Glacial ice sheet thickness in meters (50 to 3000 m)
+   * @param {number} [surfaceSlopeDeg=3.0] - Surface topographic slope in degrees (0.1 to 30 deg)
+   * @param {number} [meanIceTempK=230.0] - Mean ice column temperature in K (170 to 273 K)
+   * @param {boolean} [isBasalSlidingActive=false] - Whether basal wet melting lubricant is present
+   * @returns {{basalShearStressKPa: number, glenFlowRateFactorS1Pa3: number, internalDeformationSpeedMmYr: number, basalSlidingSpeedMmYr: number, surfaceFlowSpeedMmYr: number, annualIceFluxM2Yr: number, glacialDynamicRegime: string}}
+   */
+  static computeAncientMartianGlacialFlowVelocityAndBasalShearStress(iceThicknessMeters = 400.0, surfaceSlopeDeg = 3.0, meanIceTempK = 230.0, isBasalSlidingActive = false) {
+    const H = Math.max(10.0, iceThicknessMeters);
+    const slopeDeg = Math.max(0.05, Math.min(45.0, surfaceSlopeDeg));
+    const alphaRad = slopeDeg * (Math.PI / 180.0);
+    const T = Math.max(150.0, Math.min(273.15, meanIceTempK));
+
+    const rhoIce = 920.0; // kg/m^3
+    const gMars = 3.72076; // m/s^2
+
+    // Basal driving shear stress (Pa & kPa)
+    const tauBPa = rhoIce * gMars * H * Math.sin(alphaRad);
+    const tauBKPa = tauBPa / 1000.0;
+
+    // Glen's flow law parameter A(T) = A0 * exp( -Q / ( R * T ) )
+    const A0 = 3.985e-13; // s^-1 Pa^-3
+    const Q = 6.0e4; // J/mol activation energy
+    const R_GAS = 8.314;
+    const AT = A0 * Math.exp(-Q / (R_GAS * T));
+
+    // Internal deformation velocity u_def (m/s and mm/year)
+    const n = 3.0;
+    const uDefMS = (2.0 * AT / (n + 1.0)) * Math.pow(tauBPa, n) * H;
+    const SECS_PER_YEAR = 3.15576e7;
+    const uDefMmYr = uDefMS * SECS_PER_YEAR * 1000.0;
+
+    // Basal sliding velocity
+    let uSlideMmYr = 0.0;
+    if (isBasalSlidingActive) {
+      uSlideMmYr = Math.max(10.0, uDefMmYr * 2.5);
+    }
+
+    const uTotalMmYr = uDefMmYr + uSlideMmYr;
+    const uMeanMYr = ((4.0 / 5.0) * (uDefMmYr / 1000.0)) + (uSlideMmYr / 1000.0);
+    const QiceM2Yr = uMeanMYr * H;
+
+    let regime = 'Cold-Based Polythermal Glacial Creep (Slow Internal Deformation)';
+    if (isBasalSlidingActive) {
+      regime = 'Warm-Based Fast Glacial Surge with Subglacial Meltwater Sliding';
+    } else if (uTotalMmYr > 50.0) {
+      regime = 'Active High-Obliquity Mountain Valley Glacial Flow';
+    }
+
+    return {
+      basalShearStressKPa: parseFloat(tauBKPa.toFixed(2)),
+      glenFlowRateFactorS1Pa3: parseFloat(AT.toExponential(4)),
+      internalDeformationSpeedMmYr: parseFloat(uDefMmYr.toFixed(2)),
+      basalSlidingSpeedMmYr: parseFloat(uSlideMmYr.toFixed(2)),
+      surfaceFlowSpeedMmYr: parseFloat(uTotalMmYr.toFixed(2)),
+      annualIceFluxM2Yr: parseFloat(QiceM2Yr.toFixed(2)),
+      glacialDynamicRegime: regime
+    };
+  }
 }
 
 

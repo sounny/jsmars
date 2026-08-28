@@ -10387,6 +10387,50 @@ describe('Mars Aerocapture Entry Dynamics, Paleolake Wave Energy & Opal-A/CT Mat
     });
 });
 
+describe('Trans-Earth Injection Hohmann Return, Glacial Flow Creep & Olivine Fo-Fa Composition', () => {
+    it('should calculate Trans-Earth Injection Delta-V, Hohmann return trajectory, and Earth entry speed', () => {
+        // Mars 400 km parking orbit to Earth atmospheric entry:
+        const tei = TrajectoryEngine.computeTransEarthInjectionDeltaVAndReturnTrajectory(400.0, 120.0);
+        expect(tei.transferSemiMajorAxisAU).to.be.closeTo(1.26184, 0.005); // ~1.262 AU
+        expect(tei.timeOfFlightDays).to.be.closeTo(258.9, 2.0); // ~259 days return TOF
+        expect(tei.marsDepartureVInfKmS).to.be.closeTo(2.648, 0.05); // ~2.65 km/s Mars hyperbolic excess
+        expect(tei.transEarthInjectionDeltaVKmS).to.be.closeTo(2.080, 0.05); // ~2.08 km/s TEI burn
+        expect(tei.earthArrivalVInfKmS).to.be.closeTo(2.946, 0.05); // ~2.95 km/s Earth arrival excess
+        expect(tei.earthAtmosphericReentrySpeedKmS).to.be.closeTo(11.46, 0.1); // ~11.46 km/s direct Earth re-entry speed
+        expect(tei.returnTrajectoryContext).to.include('Mars-to-Earth Hohmann Direct Return');
+    });
+
+    it('should calculate ancient Martian glacial flow velocity, Glen law creep, and basal shear stress', () => {
+        // Deuteronilus Mensae LDA (thickness = 400 m, slope = 3.0 deg, T = 230 K):
+        const glacier = KRCEngine.computeAncientMartianGlacialFlowVelocityAndBasalShearStress(400.0, 3.0, 230.0, false);
+        expect(glacier.basalShearStressKPa).to.be.closeTo(71.68, 2.0); // ~71.7 kPa driving shear stress
+        expect(glacier.internalDeformationSpeedMmYr).to.be.closeTo(21.5, 5.0); // ~21.5 mm/year internal creep
+        expect(glacier.surfaceFlowSpeedMmYr).to.be.closeTo(21.5, 5.0);
+        expect(glacier.annualIceFluxM2Yr).to.be.greaterThan(5.0);
+        expect(glacier.glacialDynamicRegime).to.include('Cold-Based Polythermal Glacial Creep');
+    });
+
+    it('should discriminate Forsterite-rich Olivine from Fayalite-rich Olivine and basalt in CRISM spectra', () => {
+        // Forsterite-rich olivine in Nili Fossae (Fo80: composite trough centered at 1.040 um):
+        const forsterite = BandMathEngine.computeCRISMOlivineForsteriteFayaliteIndices(1.040, 0.08);
+        expect(forsterite.isOlivinePresent).to.be.true;
+        expect(forsterite.estimatedForsteriteMolePct).to.be.closeTo(82.7, 5.0); // ~Fo83
+        expect(forsterite.olivineSolidSolutionPhase).to.include('Forsterite-Rich Magnesian Olivine');
+        expect(forsterite.petrologicalSettingContext).to.include('Primitive Upper Mantle Melting');
+
+        // Fayalite-rich olivine in differentiated caldera lavas (Fo25: trough shifted to 1.080 um):
+        const fayalite = BandMathEngine.computeCRISMOlivineForsteriteFayaliteIndices(1.080, 0.08);
+        expect(fayalite.isOlivinePresent).to.be.true;
+        expect(fayalite.estimatedForsteriteMolePct).to.be.closeTo(24.5, 5.0); // ~Fo25
+        expect(fayalite.olivineSolidSolutionPhase).to.include('Fayalite-Rich Ferrous Olivine');
+        expect(fayalite.petrologicalSettingContext).to.include('Evolved Fractional Crystallization');
+
+        // Flat spectrum:
+        const basalt = BandMathEngine.computeCRISMOlivineForsteriteFayaliteIndices(1.050, 0.01);
+        expect(basalt.isOlivinePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
