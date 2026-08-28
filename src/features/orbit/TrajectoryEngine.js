@@ -1547,6 +1547,65 @@ export class TrajectoryEngine {
       atmosphericDensityAtPeriapsisKgM3: parseFloat(rhoP.toExponential(4))
     };
   }
+
+  /**
+   * Calculate hypersonic atmospheric entry peak deceleration, g-load, peak altitude, and stagnation heating rate (Allen-Eggers formulation).
+   * a_peak = ( v_E^2 * sin(gamma_E) ) / ( 2 * e * H )
+   * v_peak = v_E / sqrt(e) ~ 0.6065 * v_E
+   * Reference: Allen & Eggers (1958), Chapman (1958), Braun & Manning (2007) for Mars EDL trajectory design.
+   * @param {number} entryVelocityKmS - Hypersonic atmospheric entry interface speed v_E in km/s (e.g. 5.7 km/s for MSL/Perseverance, 11.2 km/s for Apollo)
+   * @param {number} flightPathAngleDeg - Entry flight path angle gamma_E in degrees relative to local horizon (e.g. -12.5 deg)
+   * @param {number} [ballisticCoefficientKgM2=120.0] - Ballistic coefficient beta = m / (Cd * A) in kg/m^2
+   * @param {number} [noseRadiusMeters=1.15] - Aeroshell spherical nose radius R_N in meters
+   * @param {string} [body='mars'] - Planetary body ('mars', 'earth')
+   * @returns {{peakDecelerationMS2: number, peakGLoad: number, velocityAtPeakDecelKmS: number, peakDecelerationAltitudeKm: number, peakStagnationHeatFluxWPerCm2: number, atmosphericDensityAtPeakKgM3: number}}
+   */
+  static computeAtmosphericEntryPeakDecelerationAndStagnationPoint(entryVelocityKmS, flightPathAngleDeg, ballisticCoefficientKgM2 = 120.0, noseRadiusMeters = 1.15, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const isEarth = bKey === 'earth';
+
+    const vEMS = Math.max(100.0, entryVelocityKmS * 1000.0);
+    const gammaRad = Math.abs(flightPathAngleDeg) * (Math.PI / 180.0);
+    const sinGamma = Math.max(0.01, Math.sin(gammaRad));
+    const beta = Math.max(10.0, ballisticCoefficientKgM2);
+    const Rn = Math.max(0.1, noseRadiusMeters);
+
+    const H = isEarth ? 7200.0 : 11100.0;     // scale height in meters
+    const rho0 = isEarth ? 1.225 : 0.020;     // surface density in kg/m^3
+    const g0 = 9.80665;                       // Earth standard gravity for g-load
+
+    // Peak deceleration magnitude a_peak = (vE^2 * sin(gamma)) / (2 * e * H)
+    const eConst = Math.E; // ~2.71828
+    const aPeak = (vEMS * vEMS * sinGamma) / (2.0 * eConst * H);
+    const gPeak = aPeak / g0;
+
+    // Velocity at peak deceleration v_peak = vE / sqrt(e)
+    const vPeakMS = vEMS / Math.sqrt(eConst);
+    const vPeakKmS = vPeakMS / 1000.0;
+
+    // Atmospheric density at peak deceleration rho_peak = (2 * beta * sin(gamma)) / H
+    const rhoPeak = (2.0 * beta * sinGamma) / H;
+
+    // Peak altitude h_peak = H * ln(rho0 / rhoPeak)
+    let hPeakM = H * Math.log(Math.max(1.01, rho0 / rhoPeak));
+    if (hPeakM < 0.0) hPeakM = 0.0;
+    const hPeakKm = hPeakM / 1000.0;
+
+    // Stagnation point convective heat flux (Sutton-Graves formulation)
+    // q_stag = k_SG * sqrt(rho_peak / Rn) * v_peak^3 (in W/m^2 -> / 10000 for W/cm^2)
+    const kSG = isEarth ? 1.74e-4 : 1.89e-4; // Mars CO2 atmosphere coefficient
+    const qStagWM2 = kSG * Math.sqrt(rhoPeak / Rn) * Math.pow(vPeakMS, 3.0);
+    const qStagWCm2 = qStagWM2 * 1e-4; // W/cm^2 (~50 W/cm^2 peak heating for MSL)
+
+    return {
+      peakDecelerationMS2: parseFloat(aPeak.toFixed(2)),
+      peakGLoad: parseFloat(gPeak.toFixed(2)),
+      velocityAtPeakDecelKmS: parseFloat(vPeakKmS.toFixed(3)),
+      peakDecelerationAltitudeKm: parseFloat(hPeakKm.toFixed(2)),
+      peakStagnationHeatFluxWPerCm2: parseFloat(qStagWCm2.toFixed(2)),
+      atmosphericDensityAtPeakKgM3: parseFloat(rhoPeak.toExponential(4))
+    };
+  }
 }
 
 

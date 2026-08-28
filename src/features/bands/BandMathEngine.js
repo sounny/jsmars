@@ -2919,6 +2919,47 @@ export class BandMathEngine {
       isPrimitiveParentMelt: isPrimitive
     };
   }
+
+  /**
+   * Calculate CRISM 1.3 um Plagioclase Feldspar absorption index BD1300 and detect ancient primordial anorthosite crust.
+   * BD1300 = 1.0 - ( 2 * R_1300 ) / ( R_1080 + R_1750 )
+   * Reference: Carter et al. (2013), Skok et al. (2010), Cheek et al. (2013) for Martian feldspar-rich crust.
+   * @param {number} r1080 - Calibrated I/F reflectance at 1.08 um continuum
+   * @param {number} r1300 - Calibrated I/F reflectance at 1.30 um plagioclase Fe2+ minimum
+   * @param {number} r1750 - Calibrated I/F reflectance at 1.75 um continuum
+   * @param {number} [anorthiteFractionPct=85.0] - Calcic plagioclase Anorthite mol% (0 to 100)
+   * @returns {{bd1300: number, anorthitePct: number, plagioclaseType: string, isAnorthositeCrustOutcrop: boolean}}
+   */
+  static computeCRISMPlagioclaseAnorthositeIndices(r1080, r1300, r1750, anorthiteFractionPct = 85.0) {
+    const r1 = Math.max(1e-4, r1080);
+    const rMin = Math.max(1e-4, r1300);
+    const r2 = Math.max(1e-4, r1750);
+    const an = Math.min(100.0, Math.max(0.0, anorthiteFractionPct));
+
+    const continuum = (r1 + r2) / 2.0;
+    const bd1300 = 1.0 - (rMin / continuum);
+
+    let pType = 'Labradorite / Andesine (Intermediate Volcanic Plagioclase)';
+    let isAnorthosite = false;
+
+    if (an >= 90.0) {
+      pType = 'Anorthite (Pure Calcic Endmember - Primordial Primary Crust)';
+      isAnorthosite = bd1300 >= 0.012;
+    } else if (an >= 70.0) {
+      pType = 'Bytownite (Calcic Plagioclase - Ancient Crater Central Peaks)';
+      isAnorthosite = bd1300 >= 0.015;
+    } else if (an >= 50.0) {
+      pType = 'Labradorite (Basaltic / Gabbroic Phenocrysts)';
+      isAnorthosite = false;
+    }
+
+    return {
+      bd1300: parseFloat(bd1300.toFixed(4)),
+      anorthitePct: parseFloat(an.toFixed(1)),
+      plagioclaseType: pType,
+      isAnorthositeCrustOutcrop: isAnorthosite
+    };
+  }
 }
 
 

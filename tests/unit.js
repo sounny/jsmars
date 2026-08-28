@@ -8888,6 +8888,48 @@ describe('King-Hele Orbital Decay, Multi-Harmonic Thermal Skin Depths & Pyroxene
     });
 });
 
+describe('Allen-Eggers Hypersonic EDL, Polarimetric Radar & CRISM Anorthosite Crust', () => {
+    it('should calculate hypersonic atmospheric entry peak deceleration, g-load, and stagnation heating', () => {
+        // Mars MSL / Perseverance entry (v_E = 5.7 km/s, gamma_E = -12.5 deg, beta = 120 kg/m^2, R_N = 1.15 m):
+        const mslEntry = TrajectoryEngine.computeAtmosphericEntryPeakDecelerationAndStagnationPoint(5.7, -12.5, 120.0, 1.15, 'mars');
+        expect(mslEntry.peakDecelerationMS2).to.be.closeTo(116.5, 5.0);
+        expect(mslEntry.peakGLoad).to.be.closeTo(11.88, 1.0); // ~11.9 g peak load
+        expect(mslEntry.velocityAtPeakDecelKmS).to.be.closeTo(3.457, 0.05); // ~0.6065 * 5.7 km/s
+        expect(mslEntry.peakDecelerationAltitudeKm).to.be.closeTo(16.12, 1.0);
+        expect(mslEntry.peakStagnationHeatFluxWPerCm2).to.be.closeTo(49.82, 1.0);
+    });
+
+    it('should calculate radar polarimetric backscatter ratio (CPR/DPR) and volume scattering mechanism', () => {
+        // Extreme volume scattering / water ice sheet / blocky ejecta (sigma_co = -8 dB, sigma_cross = -7 dB -> PR = 1.25):
+        const iceBackscatter = RadarSounderEngine.computePolarimetricRadarBackscatterRatio(-8.0, -7.0, 30.0);
+        expect(iceBackscatter.polarizationRatio).to.be.greaterThan(1.0);
+        expect(iceBackscatter.volumeScatteringFractionPct).to.be.greaterThan(80.0);
+        expect(iceBackscatter.isIceOrBlockyEjectaCandidate).to.be.true;
+        expect(iceBackscatter.scatteringRegime).to.include('Extreme Volume Scattering');
+
+        // Smooth surface specular reflection (sigma_co = -5 dB, sigma_cross = -25 dB -> PR = 0.01):
+        const smoothPlains = RadarSounderEngine.computePolarimetricRadarBackscatterRatio(-5.0, -25.0, 0.0);
+        expect(smoothPlains.polarizationRatio).to.be.lessThan(0.05);
+        expect(smoothPlains.isIceOrBlockyEjectaCandidate).to.be.false;
+        expect(smoothPlains.surfaceScatteringFractionPct).to.be.greaterThan(90.0);
+    });
+
+    it('should calculate CRISM 1.3 um Plagioclase Feldspar index BD1300 and detect ancient primordial anorthosite', () => {
+        // Primordial Calcic Anorthosite (R_1080 = 0.25, R_1300 = 0.235, R_1750 = 0.26, An = 95%):
+        // continuum = (0.25 + 0.26)/2 = 0.255 -> BD1300 = 1 - 0.235 / 0.255 = 0.0784
+        const anorthosite = BandMathEngine.computeCRISMPlagioclaseAnorthositeIndices(0.25, 0.235, 0.26, 95.0);
+        expect(anorthosite.bd1300).to.be.closeTo(0.0784, 0.005);
+        expect(anorthosite.isAnorthositeCrustOutcrop).to.be.true;
+        expect(anorthosite.plagioclaseType).to.include('Anorthite');
+
+        // Basaltic Labradorite without 1.3 um absorption (BD1300 ~ 0, An = 55%):
+        const labradorite = BandMathEngine.computeCRISMPlagioclaseAnorthositeIndices(0.20, 0.20, 0.20, 55.0);
+        expect(labradorite.bd1300).to.equal(0.0);
+        expect(labradorite.isAnorthositeCrustOutcrop).to.be.false;
+        expect(labradorite.plagioclaseType).to.include('Labradorite');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

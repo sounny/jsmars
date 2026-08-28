@@ -1987,6 +1987,51 @@ export class RadarSounderEngine {
       interfaceType: ifaceType
     };
   }
+
+  /**
+   * Calculate radar polarimetric backscatter ratio (CPR/DPR), volume scattering fraction, and physical scattering mechanism.
+   * PR = sigma0_cross / sigma0_co
+   * f_vol = ( 2 * PR ) / ( 1 + PR )
+   * Reference: Campbell et al. (2008, 2014), Carter et al. (2009) for SHARAD / Mini-RF radar polarimetry.
+   * @param {number} coPolarizedSigma0DB - Co-polarized radar backscatter coefficient sigma^0 in dB (e.g. -15 to +5 dB)
+   * @param {number} crossPolarizedSigma0DB - Cross-polarized radar backscatter coefficient sigma^0 in dB (e.g. -25 to -5 dB)
+   * @param {number} [incidenceAngleDeg=0.0] - Radar beam incidence angle in degrees
+   * @returns {{polarizationRatio: number, polarizationRatioDB: number, volumeScatteringFractionPct: number, surfaceScatteringFractionPct: number, scatteringRegime: string, isIceOrBlockyEjectaCandidate: boolean}}
+   */
+  static computePolarimetricRadarBackscatterRatio(coPolarizedSigma0DB, crossPolarizedSigma0DB, incidenceAngleDeg = 0.0) {
+    const sigCoDB = coPolarizedSigma0DB;
+    const sigCrossDB = crossPolarizedSigma0DB;
+
+    const sigCoLin = Math.pow(10.0, sigCoDB / 10.0);
+    const sigCrossLin = Math.pow(10.0, sigCrossDB / 10.0);
+
+    const pr = sigCrossLin / Math.max(1e-6, sigCoLin);
+    const prDB = sigCrossDB - sigCoDB;
+
+    // Volume vs surface scattering decomposition
+    const fVol = Math.min(1.0, Math.max(0.0, (2.0 * pr) / (1.0 + pr)));
+    const fSurf = 1.0 - fVol;
+
+    let regime = 'Smooth Surface Specular Reflection (Low Roughness Regolith / Plains)';
+    let isCandidate = false;
+
+    if (pr >= 0.85) {
+      regime = 'Extreme Volume Scattering / Coherent Backscatter (Pure Water Ice Sheet or Blocky Crater Ejecta)';
+      isCandidate = true;
+    } else if (pr >= 0.35) {
+      regime = 'Moderate Surface Roughness & Multiple Scattering (Rough Lava Flow / Rocky Terrain)';
+      isCandidate = false;
+    }
+
+    return {
+      polarizationRatio: parseFloat(pr.toFixed(3)),
+      polarizationRatioDB: parseFloat(prDB.toFixed(2)),
+      volumeScatteringFractionPct: parseFloat((fVol * 100.0).toFixed(1)),
+      surfaceScatteringFractionPct: parseFloat((fSurf * 100.0).toFixed(1)),
+      scatteringRegime: regime,
+      isIceOrBlockyEjectaCandidate: isCandidate
+    };
+  }
 }
 
 
