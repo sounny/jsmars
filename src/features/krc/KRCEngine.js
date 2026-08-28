@@ -7158,6 +7158,60 @@ export class KRCEngine {
       hydrothermalPlumeContext: `Deep Hydrothermal Plume from ${zKm.toFixed(1)}km (${TdeepC.toFixed(0)} C Aquifer, ${TspringC.toFixed(1)} C Exit Spring, ${QdayM3.toFixed(0)} m3/d Discharge, ${springClass})`
     };
   }
+
+  /**
+   * Calculate primordial Martian Magma Ocean (MMO) solidification timescale, cumulate density stratification, and Rayleigh-Taylor mantle overturn dynamics.
+   * t_solid = rho_magma * ( L_cryst + C_p * Delta_T ) * H_mo / F_cool
+   * tau_overturn = 4 * pi * eta_mantle / ( Delta_rho * g * lambda )
+   * Reference: Elkins-Tanton et al. (2005), Scheinberg et al. (2014), Breuer et al. (2010) for Early Mars Magma Ocean Solidification.
+   * @param {number} [magmaOceanDepthKm=1500.0] - Initial basal magma ocean depth in km (500 to 2000 km)
+   * @param {number} [surfaceCoolingHeatFluxWM2=100.0] - Radiative/atmospheric cooling flux in W/m^2 (20 to 1000 W/m^2)
+   * @param {number} [mantleOverturnDensityContrastKgM3=200.0] - Density inversion contrast in kg/m^3 (50 to 500 kg/m^3)
+   * @param {number} [mantleDynamicViscosityPaS=1.0e20] - Hot cumulate mantle viscosity in Pa*s (1e18 to 1e22 Pa*s)
+   * @returns {{solidificationTimescaleMyr: number, mantleOverturnTimescaleKyr: number, totalCrystallizedVolumeKm3: number, cumulateStratigraphyClass: string, coreDynamoInitiationContext: string}}
+   */
+  static computeMartianMagmaOceanCrystallizationAndOverturn(magmaOceanDepthKm = 1500.0, surfaceCoolingHeatFluxWM2 = 100.0, mantleOverturnDensityContrastKgM3 = 200.0, mantleDynamicViscosityPaS = 1.0e20) {
+    const HmoKm = Math.max(100.0, magmaOceanDepthKm);
+    const HmoM = HmoKm * 1000.0;
+    const FcoolWM2 = Math.max(1.0, surfaceCoolingHeatFluxWM2);
+    const deltaRho = Math.max(10.0, mantleOverturnDensityContrastKgM3);
+    const etaMantle = Math.max(1e17, mantleDynamicViscosityPaS);
+
+    const rhoMagma = 3400.0; // kg/m^3
+    const Lcryst = 4.0e5; // J/kg
+    const Cp = 1200.0; // J/(kg*K)
+    const deltaT = 400.0; // K
+    const gMars = 3.72; // m/s^2
+    const rMarsM = 3389.5e3;
+
+    // Solidification timescale (Myr)
+    const Qvol = rhoMagma * (Lcryst + (Cp * deltaT)); // J/m^3
+    const tSolidSec = (Qvol * HmoM) / FcoolWM2;
+    const tSolidMyr = tSolidSec / (3.15576e7 * 1.0e6);
+
+    // Total crystallized volume (km^3)
+    const rBottomM = rMarsM - HmoM;
+    const VmoM3 = (4.0 / 3.0) * Math.PI * (Math.pow(rMarsM, 3.0) - Math.pow(Math.max(0.0, rBottomM), 3.0));
+    const VmoKm3 = VmoM3 / 1.0e9;
+
+    // Rayleigh-Taylor overturn timescale (kyr)
+    const lambdaM = HmoM;
+    const tauOverturnSec = (4.0 * Math.PI * etaMantle) / (deltaRho * gMars * lambdaM);
+    const tauOverturnKyr = tauOverturnSec / (3.15576e7 * 1000.0);
+
+    let stratClass = 'Layered Cumulate Mantle (Basal Dunite -> Pyroxenite -> Dense Ilmenite Crustal Lid)';
+    if (HmoKm >= 1800.0) {
+      stratClass = 'Whole-Mantle Deep Magma Ocean Cumulate Column with Majorite Garnet Base';
+    }
+
+    return {
+      solidificationTimescaleMyr: parseFloat(tSolidMyr.toFixed(2)),
+      mantleOverturnTimescaleKyr: parseFloat(tauOverturnKyr.toFixed(1)),
+      totalCrystallizedVolumeKm3: parseFloat(VmoKm3.toFixed(1)),
+      cumulateStratigraphyClass: stratClass,
+      coreDynamoInitiationContext: `MMO Crystallization (${tSolidMyr.toFixed(1)} Myr Solidification, ${tauOverturnKyr.toFixed(0)} kyr Overturn, launched Early Martian Dynamo)`
+    };
+  }
 }
 
 

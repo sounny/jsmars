@@ -6732,6 +6732,55 @@ export class BandMathEngine {
       prebioticAstrobiologyContext: context
     };
   }
+
+  /**
+   * Discriminate Igneous Apatite/Merrillite vs Aqueous Hydrated Vivianite Iron Phosphate from CRISM 1.05 um, 1.90 um, 2.18 um, and 2.22 um absorptions.
+   * Reference: Adcock et al. (2013), Filiberto et al. (2016), Viviano-Beck et al. (2014) for Martian Phosphate Geochemistry.
+   * @param {number} [band2180PhosphateDepth=0.04] - BD2180 diagnostic apatite P-O-H vibrational overtone depth (0.0 to 0.30)
+   * @param {number} [band2220HydroxylDepth=0.04] - BD2220 structural OH overtone depth (0.0 to 0.30)
+   * @param {number} [band1050VivianiteDepth=0.01] - BD1050 Fe2+ electronic transition depth in vivianite (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @returns {{isPhosphateDetected: boolean, phosphateClass: string, mineralSpecies: string, chemicalFormula: string, petrogeneticVolatileContext: string}}
+   */
+  static computeCRISMPhosphateMineralIndices(band2180PhosphateDepth = 0.04, band2220HydroxylDepth = 0.04, band1050VivianiteDepth = 0.01, band1900WaterDepth = 0.01) {
+    const d2180 = Math.max(0.0, band2180PhosphateDepth);
+    const d2220 = Math.max(0.0, band2220HydroxylDepth);
+    const d1050 = Math.max(0.0, band1050VivianiteDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+
+    const isApatite = d2180 >= 0.025 && d2220 >= 0.025 && d1900 < 0.035;
+    const isVivianite = d1050 >= 0.035 && d1900 >= 0.040 && d2180 >= 0.020;
+
+    let phosClass = 'Non-Phosphate Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Phosphate Absorption';
+
+    if (isVivianite) {
+      phosClass = 'Hydrated Ferrous Phosphate (Vivianite)';
+      species = 'Vivianite';
+      formula = 'Fe3(PO4)2 * 8H2O';
+      context = 'Reducing Aqueous Lacustrine Mudstone / Diagenetic Phosphate Precipitation (Gale Crater / Yellowknife Bay)';
+    } else if (isApatite) {
+      phosClass = 'Igneous Magmatic Apatite (Fluorapatite / Chlorapatite / Hydroxyapatite)';
+      species = 'Apatite';
+      formula = 'Ca5(PO4)3(F,Cl,OH)';
+      context = 'Magmatic Accessory Phase / Primary Halogen & Volatile Carrier in Shergottite / Nakhlite Parent Melts';
+    } else if (d2180 >= 0.025) {
+      phosClass = 'Anhydrous Calcium Phosphate (Merrillite Type)';
+      species = 'Merrillite';
+      formula = 'Ca9NaMg(PO4)7';
+      context = 'Dehydrated Igneous / Shock-Metamorphosed Phosphate in Martian Basaltic Crust';
+    }
+
+    return {
+      isPhosphateDetected: isApatite || isVivianite || d2180 >= 0.025,
+      phosphateClass: phosClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      petrogeneticVolatileContext: context
+    };
+  }
 }
 
 

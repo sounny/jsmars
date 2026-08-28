@@ -6714,6 +6714,78 @@ export class TrajectoryEngine {
       solarSpiralContext: `Solar-Scaled SEP Spiral (${tBurnDays.toFixed(0)} d to ${rTargAU.toFixed(2)} AU, ${deltaMKg.toFixed(1)} kg Xe, ${(TmarsN * 1000).toFixed(0)} mN -> ${(TtargN * 1000).toFixed(0)} mN)`
     };
   }
+
+  /**
+   * Calculate inward Mars-to-Inner Planet low-thrust continuous ion spiral trajectory coupled with outward Solar Radiation Pressure (SRP) perturbation and lightness parameter.
+   * P_srp = ( Phi_0 / c ) * C_R
+   * beta_light = F_srp / F_grav
+   * mu_eff = mu_sun * ( 1 - beta_light )
+   * Reference: McInnes (1999), Wright (1992), Curtis (2013) for Solar Radiation Pressure Perturbed Trajectories.
+   * @param {number} [initialVehicleMassKg=1500.0] - Initial wet mass in kg (100 to 50000 kg)
+   * @param {number} [thrustMillinewtons=250.0] - Continuous ion engine thrust in mN (10 to 5000 mN)
+   * @param {number} [specificImpulseSec=3500.0] - Specific impulse in seconds (1000 to 10000 s)
+   * @param {number} [solarSailAreaM2=100.0] - Solar array / sail projected area in m^2 (10 to 5000 m^2)
+   * @param {number} [targetHeliocentricAU=1.000] - Target heliocentric orbit in AU (0.2 to 1.4 AU)
+   * @returns {{lowThrustDeltaVKmS: number, propellantConsumedKg: number, srpForceAt1AUMillitewtons: number, solarLightnessBeta: number, effectiveMuRatio: number, spiralDurationDays: number, spiralDurationYears: number, srpSpiralContext: string}}
+   */
+  static computeMarsInwardIonSpiralWithSolarRadiationPressure(initialVehicleMassKg = 1500.0, thrustMillinewtons = 250.0, specificImpulseSec = 3500.0, solarSailAreaM2 = 100.0, targetHeliocentricAU = 1.000) {
+    const m0Kg = Math.max(10.0, initialVehicleMassKg);
+    const ThrustN = Math.max(0.001, thrustMillinewtons / 1000.0);
+    const Isp = Math.max(100.0, specificImpulseSec);
+    const AreaM2 = Math.max(1.0, solarSailAreaM2);
+    const rTargAU = Math.max(0.1, targetHeliocentricAU);
+
+    const AU_KM = 1.495978707e8;
+    const AU_M = 1.495978707e11;
+    const muSun = 1.32712440018e11; // km^3/s^2
+    const g0 = 9.80665;
+    const cMs = g0 * Isp;
+
+    const cLight = 2.99792458e8; // m/s
+    const Phi0 = 1361.0; // W/m^2 at 1 AU
+    const CR = 1.85; // Reflection radiation coefficient
+
+    // SRP Force at 1 AU (N and mN)
+    const Psrp1au = (Phi0 / cLight) * CR; // N/m^2
+    const Fsrp1auN = Psrp1au * AreaM2;
+    const Fsrp1auMN = Fsrp1auN * 1000.0;
+
+    // Solar lightness parameter beta = F_srp / F_grav
+    const Fgrav1auN = (1.32712440018e20 * m0Kg) / Math.pow(AU_M, 2.0); // N
+    const betaLight = Fsrp1auN / Fgrav1auN;
+    const muRatio = Math.max(0.0, 1.0 - betaLight);
+    const muEff = muSun * muRatio;
+
+    // Speeds with effective gravity
+    const rMarsAU = 1.52368;
+    const rMarsKm = rMarsAU * AU_KM;
+    const rTargKm = rTargAU * AU_KM;
+
+    const vMarsEffKmS = Math.sqrt(muEff / rMarsKm);
+    const vTargEffKmS = Math.sqrt(muEff / rTargKm);
+    const dvSpiralKmS = Math.abs(vTargEffKmS - vMarsEffKmS);
+    const dvSpiralMs = dvSpiralKmS * 1000.0;
+
+    // Propellant mass & duration
+    const mfKg = m0Kg * Math.exp(-dvSpiralMs / cMs);
+    const deltaMKg = m0Kg - mfKg;
+
+    const mdotKgS = ThrustN / cMs;
+    const tBurnSec = deltaMKg / mdotKgS;
+    const tBurnDays = tBurnSec / 86400.0;
+    const tBurnYrs = tBurnDays / 365.25;
+
+    return {
+      lowThrustDeltaVKmS: parseFloat(dvSpiralKmS.toFixed(3)),
+      propellantConsumedKg: parseFloat(deltaMKg.toFixed(2)),
+      srpForceAt1AUMillitewtons: parseFloat(Fsrp1auMN.toFixed(3)),
+      solarLightnessBeta: parseFloat(betaLight.toExponential(3)),
+      effectiveMuRatio: parseFloat(muRatio.toFixed(6)),
+      spiralDurationDays: parseFloat(tBurnDays.toFixed(1)),
+      spiralDurationYears: parseFloat(tBurnYrs.toFixed(2)),
+      srpSpiralContext: `SRP-Perturbed Inward Spiral (${tBurnDays.toFixed(0)} d to ${rTargAU.toFixed(2)} AU, ${dvSpiralKmS.toFixed(2)} km/s Delta-V, beta=${betaLight.toExponential(2)})`
+    };
+  }
 }
 
 

@@ -12425,6 +12425,52 @@ describe('Solar-Scaled SEP Spiral, Deep Hydrothermal Plume & Borate-Nitrate Inve
     });
 });
 
+describe('SRP Ion Spiral, Magma Ocean Crystallization & Phosphate Mineral Inversion', () => {
+    it('should calculate inward Mars-to-Earth low-thrust ion spiral with Solar Radiation Pressure perturbation', () => {
+        // Mars to Earth 1.0 AU (1500 kg, 250 mN, 3500 s Isp, 100 m^2 sail area):
+        const srpSpiral = TrajectoryEngine.computeMarsInwardIonSpiralWithSolarRadiationPressure(1500.0, 250.0, 3500.0, 100.0, 1.000);
+        expect(srpSpiral.lowThrustDeltaVKmS).to.be.closeTo(5.654, 0.2); // ~5.65 km/s Delta-V
+        expect(srpSpiral.propellantConsumedKg).to.be.closeTo(227.8, 5.0); // ~228 kg Xe
+        expect(srpSpiral.srpForceAt1AUMillitewtons).to.be.closeTo(0.840, 0.05); // ~0.84 mN SRP force
+        expect(srpSpiral.solarLightnessBeta).to.be.greaterThan(1e-5);
+        expect(srpSpiral.effectiveMuRatio).to.be.closeTo(0.9999, 0.001);
+        expect(srpSpiral.spiralDurationDays).to.be.closeTo(362.0, 10.0); // ~362 days
+        expect(srpSpiral.srpSpiralContext).to.include('SRP-Perturbed Inward Spiral');
+    });
+
+    it('should calculate primordial Martian Magma Ocean crystallization timescale and mantle overturn', () => {
+        // 1500 km magma ocean depth, 100 W/m^2 cooling, 200 kg/m^3 overturn density contrast, 1e20 Pa*s viscosity:
+        const mmo = KRCEngine.computeMartianMagmaOceanCrystallizationAndOverturn(1500.0, 100.0, 200.0, 1.0e20);
+        expect(mmo.solidificationTimescaleMyr).to.be.closeTo(1.42, 0.2); // ~1.42 Myr solidification
+        expect(mmo.mantleOverturnTimescaleKyr).to.be.closeTo(35.7, 5.0); // ~35.7 kyr mantle overturn
+        expect(mmo.totalCrystallizedVolumeKm3).to.be.greaterThan(1.0e8); // Massive mantle volume
+        expect(mmo.cumulateStratigraphyClass).to.include('Layered Cumulate Mantle');
+        expect(mmo.coreDynamoInitiationContext).to.include('MMO Crystallization');
+    });
+
+    it('should discriminate Igneous Apatite vs Aqueous Vivianite Iron Phosphate in CRISM spectra', () => {
+        // Igneous Magmatic Apatite (Shergottite source: BD2180 = 0.04, BD2220 = 0.04, BD1050 = 0.005, BD1900 = 0.01):
+        const apatite = BandMathEngine.computeCRISMPhosphateMineralIndices(0.04, 0.04, 0.005, 0.01);
+        expect(apatite.isPhosphateDetected).to.be.true;
+        expect(apatite.phosphateClass).to.include('Igneous Magmatic Apatite');
+        expect(apatite.mineralSpecies).to.include('Apatite');
+        expect(apatite.chemicalFormula).to.include('Ca5(PO4)3');
+        expect(apatite.petrogeneticVolatileContext).to.include('Magmatic Accessory Phase / Primary Halogen');
+
+        // Aqueous Vivianite (Gale Crater mudstone: BD1050 = 0.06, BD1900 = 0.08, BD2180 = 0.03):
+        const vivianite = BandMathEngine.computeCRISMPhosphateMineralIndices(0.03, 0.01, 0.06, 0.08);
+        expect(vivianite.isPhosphateDetected).to.be.true;
+        expect(vivianite.phosphateClass).to.include('Hydrated Ferrous Phosphate (Vivianite)');
+        expect(vivianite.mineralSpecies).to.include('Vivianite');
+        expect(vivianite.chemicalFormula).to.include('Fe3(PO4)2 * 8H2O');
+        expect(vivianite.petrogeneticVolatileContext).to.include('Reducing Aqueous Lacustrine Mudstone');
+
+        // Non-phosphate basalt:
+        const basalt = BandMathEngine.computeCRISMPhosphateMineralIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isPhosphateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
