@@ -7512,6 +7512,61 @@ export class KRCEngine {
       veinSealingContext: `Vein Clogging at ${TfluidC.toFixed(0)} C (${wFinalMm.toFixed(2)} mm Aperture, ${tSealYr.toFixed(0)} yr Sealing, ${kRatioPct.toFixed(1)}% Permeability, ${stageClass})`
     };
   }
+
+  /**
+   * Calculate progressive evaporative concentration of acidic Martian paleolakes, geochemical saturation indices, fractional sulfate crystallization sequence, and lake desiccation lifespan.
+   * CF = h_0 / ( h_0 - E_evap * t )
+   * Sequence: Gypsum (CF > 2) -> Jarosite/Alunite (CF > 4.5) -> Mg-Sulfates (CF > 12) -> Halite (CF > 30)
+   * Reference: Tosca et al. (2005), McLennan et al. (2005), Squyres et al. (2004) for Meridiani Planum Acid Lake Chemistry.
+   * @param {number} [initialLakeDepthM=50.0] - Initial paleolake depth in m (5.0 to 500.0 m)
+   * @param {number} [evaporationRateMmPerYr=200.0] - Annual net evaporation rate in mm/yr (10 to 2000 mm/yr)
+   * @param {number} [elapsedEvaporationYr=200.0] - Elapsed evaporation time in yr (1 to 10000 yr)
+   * @param {number} [initialPH=2.50] - Initial brine pH (1.0 to 6.0)
+   * @returns {{residualLakeDepthM: number, concentrationFactor: number, lakeDesiccationLifespanYr: number, activePrecipitatingPhaseClass: string, dominantMinerals: string, evaporiteSequenceContext: string}}
+   */
+  static computeMartianAcidLakeEvaporitePrecipitationSequence(initialLakeDepthM = 50.0, evaporationRateMmPerYr = 200.0, elapsedEvaporationYr = 200.0, initialPH = 2.50) {
+    const h0M = Math.max(1.0, initialLakeDepthM);
+    const EEvapMmYr = Math.max(1.0, evaporationRateMmPerYr);
+    const tYr = Math.max(0.1, elapsedEvaporationYr);
+    const pH0 = Math.max(0.5, Math.min(8.0, initialPH));
+
+    const h0Mm = h0M * 1000.0;
+    const tDryYr = h0Mm / EEvapMmYr;
+
+    // Remaining water depth (m)
+    const evaporatedDepthMm = Math.min(h0Mm, EEvapMmYr * tYr);
+    const residualDepthMm = Math.max(0.0, h0Mm - evaporatedDepthMm);
+    const residualDepthM = residualDepthMm / 1000.0;
+
+    // Concentration factor
+    const CF = residualDepthMm > 0.0 ? h0Mm / residualDepthMm : 100.0;
+
+    let phaseClass = 'Dilute Acidic Lacustrine Water (Pre-Saturation)';
+    let minerals = 'Dissolved Fe-Mg-Al-Ca-SO4 Ions';
+
+    if (CF >= 30.0 || residualDepthM === 0.0) {
+      phaseClass = 'Terminal Playa Desiccation (Hypersaline Halite + Kieserite Crust)';
+      minerals = 'Halite (NaCl) + Kieserite (MgSO4 * H2O) + Anhydrite';
+    } else if (CF >= 12.0) {
+      phaseClass = 'Late-Stage Hypersaline Evaporite (Polyhydrated Mg-Sulfates)';
+      minerals = 'Epsomite / Starkeyite (MgSO4 * nH2O) + Jarosite';
+    } else if (CF >= 4.5) {
+      phaseClass = 'Intermediate Acid-Sulfate Evaporite (Jarosite + Alunite Plateau)';
+      minerals = 'Jarosite (KFe3(SO4)2(OH)6) + Alunite (KAl3(SO4)2(OH)6) + Gypsum';
+    } else if (CF >= 2.0) {
+      phaseClass = 'Early Calcium Sulfate Evaporite (Basal Gypsum Bed)';
+      minerals = 'Gypsum (CaSO4 * 2H2O) + Bassanite';
+    }
+
+    return {
+      residualLakeDepthM: parseFloat(residualDepthM.toFixed(2)),
+      concentrationFactor: parseFloat(CF.toFixed(2)),
+      lakeDesiccationLifespanYr: parseFloat(tDryYr.toFixed(1)),
+      activePrecipitatingPhaseClass: phaseClass,
+      dominantMinerals: minerals,
+      evaporiteSequenceContext: `Acid Lake Evaporation (${CF.toFixed(1)}x Conc, ${residualDepthM.toFixed(1)}m Left, ${tDryYr.toFixed(0)} yr Lifespan, ${phaseClass})`
+    };
+  }
 }
 
 

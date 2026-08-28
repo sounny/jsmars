@@ -7029,6 +7029,63 @@ export class BandMathEngine {
       environmentalHumidityContext: context
     };
   }
+
+  /**
+   * Discriminate Acid-Sulfate Alunite vs Jarosite vs Gypsum from CRISM 1.48 um, 1.76 um, 1.90 um, 2.26 um, and 2.40 um absorption bands.
+   * Reference: Swayze et al. (2014), Ehlmann et al. (2016), Viviano-Beck et al. (2014) for Martian Acid-Sulfate Mineral Assemblages.
+   * @param {number} [band1480AluniteDepth=0.05] - BD1480 Alunite Al-OH vibrational overtone depth (0.0 to 0.40)
+   * @param {number} [band1760AluniteDepth=0.04] - BD1760 diagnostic Alunite combination band depth (0.0 to 0.40)
+   * @param {number} [band2260JarositeDepth=0.01] - BD2260 diagnostic Jarosite Fe-OH band depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.06] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band2400SulfateDepth=0.07] - BD2400 fundamental SO4 absorption depth (0.0 to 0.40)
+   * @returns {{isAcidSulfateDetected: boolean, acidSulfateClass: string, mineralSpecies: string, chemicalFormula: string, phEnvironmentContext: string}}
+   */
+  static computeCRISMAcidSulfateAssemblageIndices(band1480AluniteDepth = 0.05, band1760AluniteDepth = 0.04, band2260JarositeDepth = 0.01, band1900WaterDepth = 0.06, band2400SulfateDepth = 0.07) {
+    const d1480 = Math.max(0.0, band1480AluniteDepth);
+    const d1760 = Math.max(0.0, band1760AluniteDepth);
+    const d2260 = Math.max(0.0, band2260JarositeDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2400 = Math.max(0.0, band2400SulfateDepth);
+
+    const isAlunite = d1480 >= 0.030 && d1760 >= 0.025;
+    const isJarosite = d2260 >= 0.030 && d2400 >= 0.030;
+    const isGypsum = d1900 >= 0.040 && d2400 >= 0.035 && !isAlunite && !isJarosite;
+
+    let sulfateClass = 'Standard Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Acid-Sulfate Features';
+
+    if (isAlunite && isJarosite) {
+      sulfateClass = 'Mixed Alunite-Jarosite Acid-Sulfate Horizon';
+      species = 'Alunite + Jarosite';
+      formula = 'KAl3(SO4)2(OH)6 + KFe3(SO4)2(OH)6';
+      context = 'Extreme Acidic Hydrothermal Fumarole / Solfatara Alteration (pH < 2.5) with Acid Fog Leaching';
+    } else if (isAlunite) {
+      sulfateClass = 'Alunite Acid-Sulfate Deposit';
+      species = 'Alunite';
+      formula = 'KAl3(SO4)2(OH)6';
+      context = 'Advanced Argillic Acid-Sulfate Hydrothermal Alteration / Acid Paleolake Ring (Columbus Crater)';
+    } else if (isJarosite) {
+      sulfateClass = 'Jarosite Iron Sulfate Evaporite';
+      species = 'Jarosite';
+      formula = 'KFe3(SO4)2(OH)6';
+      context = 'Oxidizing Acid-Saline Groundwater Diagenesis / Burns Formation Evaporite (Meridiani Planum / Mawrth Vallis)';
+    } else if (isGypsum) {
+      sulfateClass = 'Calcium Sulfate Evaporite (Gypsum/Bassanite)';
+      species = 'Gypsum';
+      formula = 'CaSO4 * 2H2O';
+      context = 'Moderate Acidity / Neutral Evaporitic Sulfate Layer';
+    }
+
+    return {
+      isAcidSulfateDetected: isAlunite || isJarosite || isGypsum,
+      acidSulfateClass: sulfateClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      phEnvironmentContext: context
+    };
+  }
 }
 
 

@@ -12709,6 +12709,53 @@ describe('Optimal-Steering SEP Spiral, Hydrothermal Vein Clogging & Iron Sulfate
     });
 });
 
+describe('Edelbaum Combined Spiral & Plane Change, Acid Lake Evaporites & Acid Sulfates', () => {
+    it('should calculate combined low-thrust spiral and orbital inclination change using Edelbaum formulation', () => {
+        // Mars to Earth (1.52 to 1.00 AU, 5.65 deg inclination change, 1500 kg, 300 mN, 3500 s Isp):
+        const edelbaum = TrajectoryEngine.computeLowThrustCombinedSpiralAndInclinationChange(1.52368, 1.00000, 5.65, 1500.0, 300.0, 3500.0);
+        expect(edelbaum.combinedLowThrustDeltaVKmS).to.be.closeTo(7.016, 0.2); // ~7.02 km/s combined Delta-V
+        expect(edelbaum.coplanarBaselineDeltaVKmS).to.be.closeTo(5.656, 0.2); // ~5.66 km/s coplanar Delta-V
+        expect(edelbaum.planeChangeDeltaVPenaltyKmS).to.be.closeTo(1.360, 0.1); // ~1.36 km/s penalty for 5.65 deg
+        expect(edelbaum.propellantConsumedKg).to.be.closeTo(276.7, 10.0); // ~277 kg Xe
+        expect(edelbaum.transferDurationDays).to.be.closeTo(366.4, 15.0); // ~366 days
+        expect(edelbaum.transferDurationYears).to.be.closeTo(1.00, 0.05); // ~1.00 yr
+        expect(edelbaum.combinedTransferContext).to.include('Combined Spiral + Inc');
+    });
+
+    it('should calculate acid lake evaporative concentration, fractional sulfate precipitation sequence, and lifespan', () => {
+        // 50 m initial lake, 200 mm/yr evaporation, 200 yr elapsed, pH 2.5:
+        const lake = KRCEngine.computeMartianAcidLakeEvaporitePrecipitationSequence(50.0, 200.0, 200.0, 2.50);
+        expect(lake.residualLakeDepthM).to.be.closeTo(10.0, 0.5); // 10 m remaining
+        expect(lake.concentrationFactor).to.be.closeTo(5.0, 0.2); // 5.0x concentration
+        expect(lake.lakeDesiccationLifespanYr).to.be.closeTo(250.0, 1.0); // 250 yr lifespan
+        expect(lake.activePrecipitatingPhaseClass).to.include('Intermediate Acid-Sulfate Evaporite (Jarosite + Alunite Plateau)');
+        expect(lake.dominantMinerals).to.include('Jarosite');
+        expect(lake.dominantMinerals).to.include('Alunite');
+        expect(lake.evaporiteSequenceContext).to.include('Acid Lake Evaporation');
+    });
+
+    it('should discriminate Alunite vs Jarosite vs Gypsum in CRISM acid-sulfate spectra', () => {
+        // Alunite (Columbus Crater: BD1480 = 0.05, BD1760 = 0.04, BD2260 = 0.005, BD1900 = 0.02, BD2400 = 0.06):
+        const alunite = BandMathEngine.computeCRISMAcidSulfateAssemblageIndices(0.05, 0.04, 0.005, 0.02, 0.06);
+        expect(alunite.isAcidSulfateDetected).to.be.true;
+        expect(alunite.acidSulfateClass).to.include('Alunite Acid-Sulfate Deposit');
+        expect(alunite.mineralSpecies).to.include('Alunite');
+        expect(alunite.chemicalFormula).to.include('KAl3(SO4)2(OH)6');
+        expect(alunite.phEnvironmentContext).to.include('Advanced Argillic Acid-Sulfate Hydrothermal Alteration');
+
+        // Jarosite (Meridiani Planum / Burns Formation: BD1480 = 0.01, BD1760 = 0.01, BD2260 = 0.05, BD1900 = 0.02, BD2400 = 0.06):
+        const jarosite = BandMathEngine.computeCRISMAcidSulfateAssemblageIndices(0.01, 0.01, 0.05, 0.02, 0.06);
+        expect(jarosite.isAcidSulfateDetected).to.be.true;
+        expect(jarosite.acidSulfateClass).to.include('Jarosite Iron Sulfate Evaporite');
+        expect(jarosite.mineralSpecies).to.include('Jarosite');
+        expect(jarosite.chemicalFormula).to.include('KFe3(SO4)2(OH)6');
+
+        // Non-sulfate basalt:
+        const basalt = BandMathEngine.computeCRISMAcidSulfateAssemblageIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAcidSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

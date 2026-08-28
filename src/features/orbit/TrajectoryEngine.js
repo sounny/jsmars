@@ -7121,6 +7121,74 @@ export class TrajectoryEngine {
       optimalSteeringContext: `Optimal-Steering SEP Spiral (${tBurnDays.toFixed(0)} d to Venus, ${deltaMKg.toFixed(1)} kg Xe, beta_mean=${betaMeanDeg.toFixed(1)} deg, ${dvOptKmS.toFixed(2)} km/s Delta-V)`
     };
   }
+
+  /**
+   * Calculate combined low-thrust continuous ion spiral orbital radius reduction and inclination plane change using Edelbaum's analytical formulation.
+   * Delta_V = sqrt( v_1^2 + v_2^2 - 2 * v_1 * v_2 * cos( ( pi / 2 ) * Delta_i ) )
+   * m_f = m_0 * exp( -Delta_V / c )
+   * t_burn = delta_m / m_dot
+   * Reference: Edelbaum (1961), Burt (1967), Pollard (2000), Curtis (2013) for Combined Low-Thrust Transfers.
+   * @param {number} [initialOrbitAU=1.52368] - Initial heliocentric circular orbit in AU (0.2 to 10.0 AU)
+   * @param {number} [targetOrbitAU=1.00000] - Target heliocentric circular orbit in AU (0.2 to 10.0 AU)
+   * @param {number} [targetDeltaIncDeg=5.65] - Total orbital plane inclination change in deg (0.0 to 90.0 deg)
+   * @param {number} [initialMassKg=1500.0] - Spacecraft wet mass in kg (100 to 50000 kg)
+   * @param {number} [thrustMN=300.0] - Continuous thruster thrust in mN (10 to 5000 mN)
+   * @param {number} [specificImpulseSec=3500.0] - Thruster Isp in seconds (1000 to 10000 s)
+   * @returns {{combinedLowThrustDeltaVKmS: number, coplanarBaselineDeltaVKmS: number, planeChangeDeltaVPenaltyKmS: number, propellantConsumedKg: number, transferDurationDays: number, transferDurationYears: number, combinedTransferContext: string}}
+   */
+  static computeLowThrustCombinedSpiralAndInclinationChange(initialOrbitAU = 1.52368, targetOrbitAU = 1.00000, targetDeltaIncDeg = 5.65, initialMassKg = 1500.0, thrustMN = 300.0, specificImpulseSec = 3500.0) {
+    const r1AU = Math.max(0.1, initialOrbitAU);
+    const r2AU = Math.max(0.1, targetOrbitAU);
+    const dIncDeg = Math.max(0.0, targetDeltaIncDeg);
+    const m0Kg = Math.max(10.0, initialMassKg);
+    const ThrustN = Math.max(0.001, thrustMN / 1000.0);
+    const Isp = Math.max(100.0, specificImpulseSec);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const g0 = 9.80665;
+    const cMs = g0 * Isp;
+    const mdotKgS = ThrustN / cMs;
+
+    const r1Km = r1AU * AU_KM;
+    const r2Km = r2AU * AU_KM;
+
+    const v1KmS = Math.sqrt(muSun / r1Km);
+    const v2KmS = Math.sqrt(muSun / r2Km);
+    const dvCoplanarKmS = Math.abs(v2KmS - v1KmS);
+
+    // Edelbaum formulation for combined spiral + plane change
+    const dIncRad = (dIncDeg * Math.PI) / 180.0;
+    const edelbaumAngleRad = (Math.PI / 2.0) * dIncRad;
+
+    const dvCombinedKmS = Math.sqrt(
+      Math.pow(v1KmS, 2.0) +
+      Math.pow(v2KmS, 2.0) -
+      (2.0 * v1KmS * v2KmS * Math.cos(edelbaumAngleRad))
+    );
+    const dvCombinedMs = dvCombinedKmS * 1000.0;
+
+    const dvPenaltyKmS = dvCombinedKmS - dvCoplanarKmS;
+
+    // Propellant mass
+    const mfKg = m0Kg * Math.exp(-dvCombinedMs / cMs);
+    const deltaMKg = m0Kg - mfKg;
+
+    // Burn duration
+    const tBurnSec = deltaMKg / mdotKgS;
+    const tBurnDays = tBurnSec / 86400.0;
+    const tBurnYrs = tBurnDays / 365.25;
+
+    return {
+      combinedLowThrustDeltaVKmS: parseFloat(dvCombinedKmS.toFixed(3)),
+      coplanarBaselineDeltaVKmS: parseFloat(dvCoplanarKmS.toFixed(3)),
+      planeChangeDeltaVPenaltyKmS: parseFloat(dvPenaltyKmS.toFixed(3)),
+      propellantConsumedKg: parseFloat(deltaMKg.toFixed(2)),
+      transferDurationDays: parseFloat(tBurnDays.toFixed(1)),
+      transferDurationYears: parseFloat(tBurnYrs.toFixed(2)),
+      combinedTransferContext: `Combined Spiral + Inc (${tBurnDays.toFixed(0)} d Transfer, ${dIncDeg.toFixed(1)} deg Inc, ${dvCombinedKmS.toFixed(2)} km/s Delta-V, ${deltaMKg.toFixed(1)} kg Xe)`
+    };
+  }
 }
 
 
