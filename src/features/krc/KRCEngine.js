@@ -3319,6 +3319,74 @@ export class KRCEngine {
       groundIceState: state
     };
   }
+
+  /**
+   * Calculate subsurface ground ice sublimation front retreat rate, Knudsen vapor diffusion through porous dry lag, and desiccation velocity.
+   * D_eff = ( phi / tau^2 ) * (2/3) * r_pore * v_th
+   * J_vapor = ( D_eff / z_ice ) * ( rho_sat(T_ice) - rho_surf )
+   * dz/dt = J_vapor / ( phi * S_ice * rho_ice )
+   * Reference: Fanale et al. (1986), Mellon & Jakosky (1993), Schorghofer (2008) for Martian equatorial and mid-latitude ground ice retreat.
+   * @param {number} [iceFrontDepthMeters=0.25] - Depth of buried ice table below dry lag mantle in meters (0.01 to 5.0 m)
+   * @param {number} [iceTempK=205.0] - Temperature of ground ice front in Kelvin (170 to 240 K)
+   * @param {number} [porosityPct=40.0] - Dry lag mantle porosity in percent (20 to 60 %)
+   * @param {number} [tortuosityFactor=2.0] - Pore tortuosity factor tau (1.5 to 3.0)
+   * @param {number} [poreRadiusMicrons=5.0] - Mean pore throat radius in microns (1 to 50 um)
+   * @returns {{knudsenDiffusivityM2S: number, vaporMassFluxKgM2S: number, retreatRateMicronsPerYear: number, timeToRetreatOneMeterYears: number, desiccationRegime: string}}
+   */
+  static computePoreIceSublimationFrontRetreatRate(iceFrontDepthMeters = 0.25, iceTempK = 205.0, porosityPct = 40.0, tortuosityFactor = 2.0, poreRadiusMicrons = 5.0) {
+    const zIce = Math.max(0.005, iceFrontDepthMeters);
+    const Tice = Math.max(140.0, Math.min(273.15, iceTempK));
+    const phi = Math.max(0.10, Math.min(0.70, porosityPct / 100.0));
+    const tau = Math.max(1.0, tortuosityFactor);
+    const rPoreM = Math.max(0.1, poreRadiusMicrons) * 1e-6;
+
+    const R_GAS = 8.31446;
+    const M_H2O = 0.018015; // kg/mol
+    const RHO_ICE = 917.0; // kg/m^3
+    const S_ICE = 0.80; // 80% pore saturation
+
+    // Mean thermal molecular velocity v_th = sqrt( 8 * R * T / (pi * M) )
+    const vTh = Math.sqrt((8.0 * R_GAS * Tice) / (Math.PI * M_H2O));
+
+    // Effective Knudsen diffusion coefficient D_eff = (phi / tau^2) * (2/3) * r_pore * v_th
+    const dEffM2S = (phi / (tau * tau)) * (2.0 / 3.0) * rPoreM * vTh;
+
+    // Saturation vapor pressure P_sat = 611.65 * exp( -51058/R * (1/T - 1/273.16) )
+    const L_SUB = 51058.0; // J/mol
+    const pSatPa = 611.65 * Math.exp(-(L_SUB / R_GAS) * ((1.0 / Tice) - (1.0 / 273.16)));
+
+    // Saturated water vapor density rho_sat = (P_sat * M) / (R * T)
+    const rhoSatKgM3 = (pSatPa * M_H2O) / (R_GAS * Tice);
+
+    // Assume dry surface ambient vapor density is ~10% of saturation
+    const rhoSurfKgM3 = rhoSatKgM3 * 0.10;
+
+    // Vapor mass flux J = (D_eff / z_ice) * (rho_sat - rho_surf)
+    const fluxKgM2S = (dEffM2S / zIce) * (rhoSatKgM3 - rhoSurfKgM3);
+
+    // Ice retreat speed dz/dt = J / (phi * S_ice * rho_ice) (m/s -> um/year)
+    const retreatSpeedMS = fluxKgM2S / (phi * S_ICE * RHO_ICE);
+    const secPerYear = 31557600.0;
+    const retreatMicronsYr = retreatSpeedMS * secPerYear * 1e6;
+
+    // Time to retreat 1 meter (years)
+    const yearsPerMeter = retreatMicronsYr > 0.0 ? 1e6 / retreatMicronsYr : 1e9;
+
+    let regime = 'Active Desiccation Retreat (Equatorial Unstable Ground Ice Table)';
+    if (retreatMicronsYr < 0.1) {
+      regime = 'Thermodynamically Preserved Ground Ice (Perennial High-Latitude Stability Table)';
+    } else if (retreatMicronsYr < 10.0) {
+      regime = 'Slow Sublimation Diffusion (Mid-Latitude Mantled Glacial Ice Retention)';
+    }
+
+    return {
+      knudsenDiffusivityM2S: parseFloat(dEffM2S.toExponential(4)),
+      vaporMassFluxKgM2S: parseFloat(fluxKgM2S.toExponential(4)),
+      retreatRateMicronsPerYear: parseFloat(retreatMicronsYr.toFixed(3)),
+      timeToRetreatOneMeterYears: parseFloat(yearsPerMeter.toFixed(0)),
+      desiccationRegime: regime
+    };
+  }
 }
 
 

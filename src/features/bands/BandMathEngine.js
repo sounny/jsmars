@@ -3763,6 +3763,47 @@ export class BandMathEngine {
       metamorphicGrade: grade
     };
   }
+
+  /**
+   * Detect low-grade metamorphic / hydrothermal Prehnite from CRISM 1.475 um OH and 2.35 um Al-OH combination bands.
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013) for Toro Crater central peak and Nili Fossae prehnite-pumpellyite facies metamorphism (200-300 C).
+   * @param {number} r1475 - Reflectance at 1.475 um Prehnite structural OH minimum
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2350 - Reflectance at 2.35 um Al-OH combination minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1475: number, bd1900: number, bd2350: number, isPrehnitePresent: boolean, mineralPhase: string, alterationEnvironment: string}}
+   */
+  static computeCRISMPrehniteIndices(r1475, r1910, r2350, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1475 = Math.max(0.0, 1.0 - (r1475 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2350 = Math.max(0.0, 1.0 - (r2350 / cont));
+
+    let phase = 'Unaltered Basaltic Silicate';
+    let isPrehnite = false;
+    let env = 'Standard Crustal Setting';
+
+    if (bd2350 >= 0.025 && bd1475 >= 0.015) {
+      isPrehnite = true;
+      if (bd1900 < 0.030) {
+        phase = 'Prehnite (Ca2Al(AlSi3O10)(OH)2)';
+        env = 'Sub-Greenschist / Prehnite-Pumpellyite Facies Hydrothermal Metamorphism (200-300 C) in Exhumed Impact Central Peaks (Toro Crater / Nili Fossae)';
+      } else {
+        phase = 'Mixed Prehnite-Chlorite Assemblage';
+        env = 'Pervasive Hydrothermal Veining in Fractured Basaltic Basement';
+      }
+    }
+
+    return {
+      bd1475: parseFloat(bd1475.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2350: parseFloat(bd2350.toFixed(4)),
+      isPrehnitePresent: isPrehnite,
+      mineralPhase: phase,
+      alterationEnvironment: env
+    };
+  }
 }
 
 

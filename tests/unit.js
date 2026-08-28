@@ -9607,6 +9607,38 @@ describe('Atmospheric Entry Deceleration, Pore Ice Saturation & Epidote Metamorp
     });
 });
 
+describe('Guided Lifting Entry Corridor, Pore Ice Sublimation Retreat & Prehnite Metamorphism', () => {
+    it('should calculate guided lifting planetary entry and aerocapture corridor width and bank-control boundaries', () => {
+        // MSL / Perseverance trimmed lifting entry capsule (v_entry = 6.0 km/s, L/D = 0.24, gamma_nom = -11.5 deg):
+        const corridor = TrajectoryEngine.computeGuidedLiftingEntryCorridorWidth(6.0, 0.24, 130.0, -11.5, 'mars');
+        expect(corridor.corridorWidthDeg).to.be.closeTo(1.57, 0.1); // ~1.57 deg corridor width
+        expect(corridor.shallowBoundaryFlightPathAngleDeg).to.be.closeTo(-10.71, 0.1); // -10.71 deg lift-down capture limit
+        expect(corridor.steepBoundaryFlightPathAngleDeg).to.be.closeTo(-12.29, 0.1); // -12.29 deg lift-up load limit
+        expect(corridor.aerocaptureFeasibility).to.include('Nominal Guided Aerocapture');
+    });
+
+    it('should calculate ground ice sublimation front retreat velocity, Knudsen vapor diffusion, and lag resistance', () => {
+        // Unstable equatorial ice table (z_ice = 0.25 m, T_ice = 205 K, porosity = 40%):
+        const retreat = KRCEngine.computePoreIceSublimationFrontRetreatRate(0.25, 205.0, 40.0, 2.0, 5.0);
+        expect(retreat.knudsenDiffusivityM2S).to.be.greaterThan(1e-5); // ~1.6e-4 m^2/s
+        expect(retreat.vaporMassFluxKgM2S).to.be.greaterThan(1e-9);
+        expect(retreat.retreatRateMicronsPerYear).to.be.greaterThan(0.0);
+        expect(retreat.desiccationRegime).to.include('Desiccation Retreat');
+    });
+
+    it('should discriminate low-grade metamorphic Prehnite from smectites and unaltered basalt in CRISM spectra', () => {
+        // Prehnite in Toro Crater central peak impact hydrothermal system (strong 2.35 um Al-OH and 1.475 um OH, dry):
+        const prehnite = BandMathEngine.computeCRISMPrehniteIndices(0.25, 0.30, 0.23, 0.30);
+        expect(prehnite.isPrehnitePresent).to.be.true;
+        expect(prehnite.mineralPhase).to.include('Prehnite');
+        expect(prehnite.alterationEnvironment).to.include('Prehnite-Pumpellyite Facies');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMPrehniteIndices(0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isPrehnitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

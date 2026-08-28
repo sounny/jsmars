@@ -2718,6 +2718,54 @@ export class TrajectoryEngine {
       entryCorridorStatus: corridor
     };
   }
+
+  /**
+   * Calculate guided lifting planetary entry and aerocapture corridor width (Delta gamma) and steep/shallow flight path angle boundaries.
+   * Delta_gamma = 2 * (L/D) / sqrt( (R_p + h_p) / H_s )
+   * gamma_shallow = gamma_nom + 0.5 * Delta_gamma (full lift-down capture limit)
+   * gamma_steep = gamma_nom - 0.5 * Delta_gamma (full lift-up peak load limit)
+   * Reference: Cruz et al. (2006), Braun & Manning (2007), Lu (2014) for MSL Curiosity, Perseverance, and Mars Aerocapture.
+   * @param {number} [entryVelocityKmS=6.0] - Atmospheric entry velocity in km/s (4.0 to 9.0 km/s)
+   * @param {number} [liftToDragRatio=0.24] - Hypersonic trimmed lift-to-drag ratio L/D (0.1 to 0.8)
+   * @param {number} [ballisticCoeffKgM2=130.0] - Vehicle ballistic coefficient beta in kg/m^2
+   * @param {number} [nominalFlightPathAngleDeg=-11.5] - Nominal entry flight path angle gamma in degrees
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{corridorWidthDeg: number, shallowBoundaryFlightPathAngleDeg: number, steepBoundaryFlightPathAngleDeg: number, nominalFlightPathAngleDeg: number, liftToDragRatio: number, aerocaptureFeasibility: string}}
+   */
+  static computeGuidedLiftingEntryCorridorWidth(entryVelocityKmS = 6.0, liftToDragRatio = 0.24, ballisticCoeffKgM2 = 130.0, nominalFlightPathAngleDeg = -11.5, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const RpKm = isEarth ? 6378.137 : 3396.19;
+    const HsKm = isEarth ? 8.5 : 11.1;
+
+    const ld = Math.max(0.05, Math.min(1.5, liftToDragRatio));
+    const gammaNom = Math.min(-1.0, nominalFlightPathAngleDeg);
+    const hpEstKm = isEarth ? 70.0 : 48.0;
+
+    // Atmospheric entry corridor width in radians: Delta_gamma = 2 * (L/D) / sqrt( (Rp + hp) / Hs )
+    const rScaleRatio = (RpKm + hpEstKm) / HsKm;
+    const deltaGammaRad = (2.0 * ld) / Math.sqrt(rScaleRatio);
+    const deltaGammaDeg = (deltaGammaRad * 180.0) / Math.PI;
+
+    // Shallow and steep boundaries
+    const gammaShallow = gammaNom + 0.5 * deltaGammaDeg;
+    const gammaSteep = gammaNom - 0.5 * deltaGammaDeg;
+
+    let feasibility = 'Nominal Guided Aerocapture & Precision Landing Corridor';
+    if (deltaGammaDeg < 0.8) {
+      feasibility = 'Extremely Narrow Corridor (Requires High-Precision Optical Autonomous Navigation & Fast Roll Control)';
+    } else if (deltaGammaDeg >= 2.0) {
+      feasibility = 'Wide Robust Corridor (High Margin against Atmospheric Density Fluctuations & Dust Storms)';
+    }
+
+    return {
+      corridorWidthDeg: parseFloat(deltaGammaDeg.toFixed(3)),
+      shallowBoundaryFlightPathAngleDeg: parseFloat(gammaShallow.toFixed(3)),
+      steepBoundaryFlightPathAngleDeg: parseFloat(gammaSteep.toFixed(3)),
+      nominalFlightPathAngleDeg: parseFloat(gammaNom.toFixed(3)),
+      liftToDragRatio: parseFloat(ld.toFixed(2)),
+      aerocaptureFeasibility: feasibility
+    };
+  }
 }
 
 
