@@ -1937,6 +1937,58 @@ export class TrajectoryEngine {
       transferAngleDeg: parseFloat((deltaNu * 180.0 / Math.PI).toFixed(2))
     };
   }
+
+  /**
+   * Calculate planetary flyby gravity assist turning angle, Delta-V boost, and B-plane impact parameter.
+   * e = 1 + ( r_p * v_inf^2 ) / mu
+   * delta = 2 * asin( 1 / e )
+   * Delta_V = 2 * v_inf * sin( delta / 2 ) = 2 * v_inf / e
+   * b = r_p * sqrt( 1 + 2*mu / (r_p * v_inf^2) )
+   * Reference: Battin (1999), Vallado (2013) for planetary swingby trajectory mechanics.
+   * @param {number} incomingVInfKmS - Hyperbolic excess arrival speed v_infinity in km/s (typically 3 to 10 km/s)
+   * @param {number} [flybyPeriapsisAltitudeKm=500.0] - Flyby closest approach altitude in km
+   * @param {string} [body='mars'] - Flyby planetary body ('mars', 'earth')
+   * @returns {{turningAngleDeg: number, maxDeltaVKmS: number, maxDeltaVMS: number, bPlaneImpactParameterKm: number, hyperbolicEccentricity: number, periapsisSpeedKmS: number}}
+   */
+  static computePlanetaryFlybyGravityAssistAndBPlane(incomingVInfKmS, flybyPeriapsisAltitudeKm = 500.0, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const isEarth = bKey === 'earth';
+
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const Rp = isEarth ? 6378.137 : 3396.19;     // km
+
+    const vInf = Math.max(0.1, incomingVInfKmS);
+    const hp = Math.max(50.0, flybyPeriapsisAltitudeKm);
+
+    const rp = Rp + hp;
+
+    // Hyperbolic eccentricity: e = 1 + (rp * vInf^2) / mu
+    const e = 1.0 + (rp * vInf * vInf) / mu;
+
+    // Turning angle delta = 2 * asin(1 / e)
+    const halfDeltaRad = Math.asin(1.0 / e);
+    const deltaRad = 2.0 * halfDeltaRad;
+    const deltaDeg = (deltaRad * 180.0) / Math.PI;
+
+    // Maximum heliocentric velocity boost Delta_V = 2 * vInf * sin(delta / 2) = 2 * vInf / e
+    const deltaV = (2.0 * vInf) / e;
+    const deltaVMS = deltaV * 1000.0;
+
+    // Impact parameter b = rp * sqrt(1 + 2*mu / (rp * vInf^2))
+    const bParam = rp * Math.sqrt(1.0 + (2.0 * mu) / (rp * vInf * vInf));
+
+    // Periapsis speed: vp = sqrt(vInf^2 + 2*mu / rp)
+    const vp = Math.sqrt(vInf * vInf + (2.0 * mu) / rp);
+
+    return {
+      turningAngleDeg: parseFloat(deltaDeg.toFixed(2)),
+      maxDeltaVKmS: parseFloat(deltaV.toFixed(3)),
+      maxDeltaVMS: parseFloat(deltaVMS.toFixed(1)),
+      bPlaneImpactParameterKm: parseFloat(bParam.toFixed(1)),
+      hyperbolicEccentricity: parseFloat(e.toFixed(4)),
+      periapsisSpeedKmS: parseFloat(vp.toFixed(3))
+    };
+  }
 }
 
 

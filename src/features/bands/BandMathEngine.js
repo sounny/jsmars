@@ -3208,6 +3208,51 @@ export class BandMathEngine {
       geologicalSignificance: sig
     };
   }
+
+  /**
+   * Discriminate Jarosite (KFe3(SO4)2(OH)6) from Alunite (KAl3(SO4)2(OH)6) and non-sulfates using CRISM Fe-OH and Al-OH doublet indices.
+   * Reference: Ehlmann et al. (2011), Farrand et al. (2009), Swayze et al. (2008) for hyper-acidic aqueous environments.
+   * @param {number} r1470 - Reflectance at 1.47 um Alunite Al-OH band
+   * @param {number} r1850 - Reflectance at 1.85 um Jarosite Fe-OH band
+   * @param {number} r2260 - Reflectance at 2.26 um Jarosite combination minimum
+   * @param {number} r2320 - Reflectance at 2.32 um Alunite combination minimum
+   * @param {number} [continuumLevel=0.30] - Mean background continuum level
+   * @returns {{bd2260: number, bd1850: number, bd2320: number, bd1470: number, acidSulfatePhase: string, isJarosite: boolean, isAlunite: boolean, phRegime: string}}
+   */
+  static computeCRISMJarositeAluniteIndices(r1470, r1850, r2260, r2320, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1470 = Math.max(0.0, 1.0 - (r1470 / cont));
+    const bd1850 = Math.max(0.0, 1.0 - (r1850 / cont));
+    const bd2260 = Math.max(0.0, 1.0 - (r2260 / cont));
+    const bd2320 = Math.max(0.0, 1.0 - (r2320 / cont));
+
+    let phase = 'Non-Hydroxylated Sulfate / Basalt';
+    let isJaro = false;
+    let isAlun = false;
+    let ph = 'Circum-Neutral pH 6-8';
+
+    if (bd2260 >= 0.020 && bd1850 >= 0.020) {
+      phase = 'Jarosite (KFe3(SO4)2(OH)6 - Hydrated Iron Hydroxysulfate)';
+      isJaro = true;
+      ph = 'Extreme Hyper-Acidic Oxidizing Fluid (pH < 3.0, Opportunity Meridiani Type)';
+    } else if (bd2320 >= 0.020 && bd1470 >= 0.020) {
+      phase = 'Alunite (KAl3(SO4)2(OH)6 - Hydrated Aluminum Hydroxysulfate)';
+      isAlun = true;
+      ph = 'High-Temperature Advanced Argillic Hydrothermal Alteration (pH < 2.0, T > 100 C)';
+    }
+
+    return {
+      bd2260: parseFloat(bd2260.toFixed(4)),
+      bd1850: parseFloat(bd1850.toFixed(4)),
+      bd2320: parseFloat(bd2320.toFixed(4)),
+      bd1470: parseFloat(bd1470.toFixed(4)),
+      acidSulfatePhase: phase,
+      isJarosite: isJaro,
+      isAlunite: isAlun,
+      phRegime: ph
+    };
+  }
 }
 
 

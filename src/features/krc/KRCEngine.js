@@ -2663,6 +2663,58 @@ export class KRCEngine {
       planetaryProtectionHabitability: isHabitable
     };
   }
+
+  /**
+   * Invert two-layer thermal inertia for shallow buried ice table depth and lag thickness.
+   * I_app = I_lag + ( I_ice - I_lag ) * exp( -2 * z_ice / d_th )
+   * z_ice = - ( d_th / 2 ) * ln( ( I_app - I_lag ) / ( I_ice - I_lag ) )
+   * Reference: Bandfield (2007), Putzig et al. (2005), Titus et al. (2003) for THEMIS & TES ground ice mapping.
+   * @param {number} apparentThermalInertiaSI - Measured apparent diurnal thermal inertia in J m^-2 s^-1/2 K^-1 (e.g. 150 to 800)
+   * @param {number} [dryLagInertiaSI=80.0] - Dry desiccated dust/sand mantle thermal inertia
+   * @param {number} [iceSaturatedInertiaSI=1800.0] - Ice-cemented pore-ice substrate thermal inertia
+   * @param {number} [diurnalSkinDepthCm=4.5] - Diurnal thermal skin depth in cm
+   * @returns {{iceTableDepthCm: number, iceTableDepthMeters: number, isIceTableWithinDiurnalReach: boolean, groundIcePresence: string, iceVolumeFractionEstimate: number}}
+   */
+  static computeTwoLayerThermalInertiaIceTableDepth(apparentThermalInertiaSI, dryLagInertiaSI = 80.0, iceSaturatedInertiaSI = 1800.0, diurnalSkinDepthCm = 4.5) {
+    const Iapp = Math.max(10.0, apparentThermalInertiaSI);
+    const Ilag = Math.max(10.0, dryLagInertiaSI);
+    const Iice = Math.max(Ilag + 50.0, iceSaturatedInertiaSI);
+    const dThCm = Math.max(0.5, diurnalSkinDepthCm);
+
+    let zCm = 0.0;
+    let presence = 'Exposed Surface Ice / Frost';
+    let isWithinReach = true;
+
+    if (Iapp >= Iice) {
+      zCm = 0.0;
+      presence = 'Exposed Massive Ground Ice Sheet';
+    } else if (Iapp <= Ilag) {
+      zCm = dThCm * 3.0; // beyond diurnal skin depth
+      presence = 'Dry Deep Regolith (No Shallow Ice Detected in Diurnal Horizon)';
+      isWithinReach = false;
+    } else {
+      // Analytical two-layer inversion
+      const ratio = (Iapp - Ilag) / (Iice - Ilag);
+      zCm = - (dThCm / 2.0) * Math.log(Math.max(1e-4, ratio));
+      if (zCm < dThCm * 1.5) {
+        presence = 'Shallow Buried Ground Ice Table (Phoenix / High-Latitude Permafrost)';
+      } else {
+        presence = 'Deep Transition Layer (Marginal Diurnal Detection)';
+        isWithinReach = false;
+      }
+    }
+
+    const zM = zCm / 100.0;
+    const iceFrac = Math.min(1.0, Math.max(0.0, (Iapp - Ilag) / (Iice - Ilag)));
+
+    return {
+      iceTableDepthCm: parseFloat(zCm.toFixed(2)),
+      iceTableDepthMeters: parseFloat(zM.toFixed(4)),
+      isIceTableWithinDiurnalReach: isWithinReach,
+      groundIcePresence: presence,
+      iceVolumeFractionEstimate: parseFloat(iceFrac.toFixed(3))
+    };
+  }
 }
 
 

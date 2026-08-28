@@ -9148,6 +9148,46 @@ describe('Lambert Transfer Solver, Perchlorate Brine Deliquescence & Iron Oxide 
     });
 });
 
+describe('Gravity Assist Flyby B-Plane, Two-Layer Ice Table Inversion & Jarosite/Alunite', () => {
+    it('should calculate planetary flyby turning angle, maximum Delta-V boost, and B-plane impact parameter', () => {
+        // Mars hyperbolic flyby (v_inf = 5.0 km/s, h_p = 500 km):
+        const flyby = TrajectoryEngine.computePlanetaryFlybyGravityAssistAndBPlane(5.0, 500.0, 'mars');
+        expect(flyby.hyperbolicEccentricity).to.be.closeTo(3.274, 0.05);
+        expect(flyby.turningAngleDeg).to.be.closeTo(35.58, 0.5); // ~35.6 degree turning
+        expect(flyby.maxDeltaVKmS).to.be.closeTo(3.054, 0.05); // ~3.05 km/s max Delta-V swingby boost
+        expect(flyby.bPlaneImpactParameterKm).to.be.closeTo(5341.3, 50.0);
+        expect(flyby.periapsisSpeedKmS).to.be.closeTo(6.855, 0.05);
+    });
+
+    it('should invert two-layer thermal inertia for shallow buried ice table depth and lag thickness', () => {
+        // High-latitude ground ice table (I_app = 450, I_lag = 80, I_ice = 1800, d_th = 4.5 cm):
+        const iceTable = KRCEngine.computeTwoLayerThermalInertiaIceTableDepth(450.0, 80.0, 1800.0, 4.5);
+        expect(iceTable.isIceTableWithinDiurnalReach).to.be.true;
+        expect(iceTable.iceTableDepthCm).to.be.closeTo(3.45, 0.5); // ~3.5 cm shallow dry lag
+        expect(iceTable.groundIcePresence).to.include('Shallow Buried Ground Ice Table');
+
+        // Thick dry dust mantle (I_app = 85 -> very low inertia, ice too deep):
+        const deepMantle = KRCEngine.computeTwoLayerThermalInertiaIceTableDepth(85.0, 80.0, 1800.0, 4.5);
+        expect(deepMantle.iceTableDepthCm).to.be.greaterThan(10.0);
+    });
+
+    it('should discriminate Jarosite from Alunite in CRISM acidic hydroxylated sulfate spectra', () => {
+        // Jarosite in Meridiani Planum (strong 1.85 um and 2.26 um Fe-OH doublets):
+        const jarosite = BandMathEngine.computeCRISMJarositeAluniteIndices(0.30, 0.26, 0.27, 0.30, 0.30);
+        expect(jarosite.isJarosite).to.be.true;
+        expect(jarosite.isAlunite).to.be.false;
+        expect(jarosite.acidSulfatePhase).to.include('Jarosite');
+        expect(jarosite.phRegime).to.include('Extreme Hyper-Acidic');
+
+        // Alunite in high-temperature hydrothermal solfatara (strong 1.47 um and 2.32 um Al-OH doublets):
+        const alunite = BandMathEngine.computeCRISMJarositeAluniteIndices(0.26, 0.30, 0.30, 0.27, 0.30);
+        expect(alunite.isJarosite).to.be.false;
+        expect(alunite.isAlunite).to.be.true;
+        expect(alunite.acidSulfatePhase).to.include('Alunite');
+        expect(alunite.phRegime).to.include('Advanced Argillic');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
