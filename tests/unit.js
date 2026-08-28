@@ -10137,6 +10137,46 @@ describe('Hohmann Interplanetary Transfer, Impact Hydrothermal Lifetime & Prehni
     });
 });
 
+describe('Mars Orbit Insertion, Paleo-Cryosphere Evolution & Epidote Facies', () => {
+    it('should calculate Mars Orbit Insertion (MOI) capture Delta-V, period, and eccentricity', () => {
+        // Mars arrival insertion (v_inf = 2.65 km/s, pericenter hp = 300 km, target apoapsis ha = 43000 km):
+        const moi = TrajectoryEngine.computeMarsOrbitInsertionCaptureDeltaV(2.65, 300.0, 43000.0, 'mars');
+        expect(moi.hyperbolicPeriapsisSpeedKmS).to.be.closeTo(5.50, 0.05); // ~5.50 km/s hyperbolic pericenter
+        expect(moi.capturedPeriapsisSpeedKmS).to.be.closeTo(4.638, 0.05); // ~4.64 km/s captured pericenter
+        expect(moi.orbitInsertionDeltaVKmS).to.be.closeTo(0.861, 0.05); // ~861 m/s MOI burn
+        expect(moi.capturedOrbitPeriodHours).to.be.closeTo(33.36, 1.0); // ~33.4 hour orbit
+        expect(moi.capturedOrbitEccentricity).to.be.closeTo(0.8526, 0.01);
+        expect(moi.insertionBurnRegime).to.include('Highly Elliptical Capture Orbit');
+    });
+
+    it('should calculate 4-Gyr paleo-geothermal decay and ancient Noachian cryosphere thinning', () => {
+        // Early Noachian 3.8 Ga boundary (T_paleo = 225 K, k_crust = 2.0 W/(m*K), Q_0 = 25 mW/m^2):
+        const paleo = KRCEngine.computePaleoGeothermalCryosphereThinningAndNoachianMelting(3.8, 225.0, 2.0, 25.0);
+        expect(paleo.paleoGeothermalFluxMWm2).to.be.closeTo(62.6, 2.0); // ~62.6 mW/m^2 heat flux in Noachian
+        expect(paleo.paleoCryosphereThicknessKm).to.be.closeTo(1.54, 0.1); // ~1.54 km thin cryosphere seal
+        expect(paleo.presentCryosphereThicknessKm).to.be.closeTo(4.65, 0.2); // ~4.65 km modern cryosphere
+        expect(paleo.cryosphereThinningFactor).to.be.closeTo(0.33, 0.05); // 67% thinner
+        expect(paleo.hydrologicDischargePotential).to.include('Valley Network Carving');
+    });
+
+    it('should discriminate Epidote calc-silicate from Clinozoisite and basalt in CRISM spectra', () => {
+        // Epidote in central crater peak (strong 1.55 um OH and 2.34 um Fe3+-OH, weak 1.91 um water):
+        const epidote = BandMathEngine.computeCRISMEpidoteClinozoisiteIndices(0.24, 0.298, 0.30, 0.22, 0.30);
+        expect(epidote.isEpidoteGroupPresent).to.be.true;
+        expect(epidote.epidoteGroupSpecies).to.include('Epidote');
+        expect(epidote.metamorphicFaciesContext).to.include('Epidote-Amphibolite Metamorphic Facies');
+
+        // Clinozoisite (2.26 um Al-OH):
+        const clinozoisite = BandMathEngine.computeCRISMEpidoteClinozoisiteIndices(0.24, 0.298, 0.22, 0.30, 0.30);
+        expect(clinozoisite.isEpidoteGroupPresent).to.be.true;
+        expect(clinozoisite.epidoteGroupSpecies).to.include('Clinozoisite');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMEpidoteClinozoisiteIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isEpidoteGroupPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

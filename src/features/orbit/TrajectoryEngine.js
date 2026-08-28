@@ -3714,6 +3714,74 @@ export class TrajectoryEngine {
       transferGeometryDescription: desc
     };
   }
+
+  /**
+   * Calculate Mars Orbit Insertion (MOI) hyperbolic capture impulse Delta-V, captured ellipse orbital period, and insertion pericenter speed.
+   * v_p_hyp = sqrt( v_inf^2 + 2*mu / r_p )
+   * v_p_cap = sqrt( mu * ( 2/r_p - 1/a_cap ) )
+   * Delta_V_MOI = v_p_hyp - v_p_cap
+   * Reference: Bate, Mueller & White (1971), Vallado (2013) for MGS, Odyssey, MRO, MAVEN, and Hope MOI burns.
+   * @param {number} [hyperbolicArrivalExcessKmS=2.65] - Arrival asymptotic hyperbolic excess speed in km/s (1.0 to 10.0 km/s)
+   * @param {number} [insertionPeriapsisAltitudeKm=300.0] - Insertion periapsis altitude in km (150 to 2000 km)
+   * @param {number} [targetApoapsisAltitudeKm=43000.0] - Captured orbit apoapsis altitude in km (1000 to 100000 km)
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{hyperbolicPeriapsisSpeedKmS: number, capturedPeriapsisSpeedKmS: number, orbitInsertionDeltaVKmS: number, capturedOrbitPeriodHours: number, capturedOrbitEccentricity: number, insertionBurnRegime: string}}
+   */
+  static computeMarsOrbitInsertionCaptureDeltaV(hyperbolicArrivalExcessKmS = 2.65, insertionPeriapsisAltitudeKm = 300.0, targetApoapsisAltitudeKm = 43000.0, body = 'mars') {
+    const vInfMS = Math.max(100.0, hyperbolicArrivalExcessKmS * 1000.0);
+    const hpKm = Math.max(50.0, insertionPeriapsisAltitudeKm);
+    const haKm = Math.max(hpKm + 50.0, targetApoapsisAltitudeKm);
+
+    let mu = 4.282837e13; // m^3/s^2 (Mars)
+    let rPlanetKm = 3389.5;
+
+    if (body.toLowerCase() === 'earth') {
+      mu = 3.986004418e14;
+      rPlanetKm = 6378.137;
+    } else if (body.toLowerCase() === 'moon') {
+      mu = 4.9048695e12;
+      rPlanetKm = 1737.4;
+    }
+
+    const rpM = (rPlanetKm + hpKm) * 1000.0;
+    const raM = (rPlanetKm + haKm) * 1000.0;
+
+    // Hyperbolic periapsis speed
+    const vpHypMS = Math.sqrt(Math.pow(vInfMS, 2.0) + (2.0 * mu / rpM));
+    const vpHypKmS = vpHypMS / 1000.0;
+
+    // Captured elliptical orbit semi-major axis and eccentricity
+    const aCapM = (rpM + raM) / 2.0;
+    const eCap = (raM - rpM) / (raM + rpM);
+
+    // Captured periapsis speed
+    const vpCapMS = Math.sqrt(mu * ((2.0 / rpM) - (1.0 / aCapM)));
+    const vpCapKmS = vpCapMS / 1000.0;
+
+    // Insertion Delta-V burn
+    const deltaVMoiMS = vpHypMS - vpCapMS;
+    const deltaVMoiKmS = deltaVMoiMS / 1000.0;
+
+    // Orbital period in hours
+    const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(aCapM, 3.0) / mu);
+    const periodHours = periodSec / 3600.0;
+
+    let regime = 'Highly Elliptical Capture Orbit (Standard 24-48 hr Aerobraking Preparation Orbit)';
+    if (periodHours < 8.0) {
+      regime = 'Direct Low-Orbit Insertion (Large Propellant Mass Expenditure)';
+    } else if (periodHours > 72.0) {
+      regime = 'Loosely Bound Ultra-High Apoapsis Capture Orbit';
+    }
+
+    return {
+      hyperbolicPeriapsisSpeedKmS: parseFloat(vpHypKmS.toFixed(3)),
+      capturedPeriapsisSpeedKmS: parseFloat(vpCapKmS.toFixed(3)),
+      orbitInsertionDeltaVKmS: parseFloat(deltaVMoiKmS.toFixed(3)),
+      capturedOrbitPeriodHours: parseFloat(periodHours.toFixed(2)),
+      capturedOrbitEccentricity: parseFloat(eCap.toFixed(4)),
+      insertionBurnRegime: regime
+    };
+  }
 }
 
 

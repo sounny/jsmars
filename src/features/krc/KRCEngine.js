@@ -4304,6 +4304,64 @@ export class KRCEngine {
       astrobiologicalHabitabilityWindow: habitability
     };
   }
+
+  /**
+   * Calculate radioactive secular decay of Martian geothermal heat flux, ancient Noachian cryosphere thinning, and basal aquifer overpressurization.
+   * Q_geo(t) = Q_present * ( 1 + 1.6 * ( t / 4.0 )^1.2 )
+   * z_base_paleo = ( k_crust * ( T_melt - T_paleo ) ) / Q_geo(t)
+   * Reference: Hauck & Phillips (2002), Grott & Breuer (2010), Plesa et al. (2018) for 4-Gyr thermal evolution of Mars.
+   * @param {number} [geologicalLookbackAgeGyr=3.8] - Time before present in Gyr (0.0 to 4.5 Gyr; 3.8 Gyr = Noachian-Hesperian boundary)
+   * @param {number} [paleoSurfaceTempK=225.0] - Ancient mean surface temperature in K (180 to 260 K)
+   * @param {number} [crustalThermalConductivityWMK=2.0] - Bulk crustal conductivity in W/(m*K)
+   * @param {number} [presentGeothermalHeatFluxMWm2=25.0] - Present-day geothermal heat flux in mW/m^2
+   * @returns {{geologicalEpoch: string, paleoGeothermalFluxMWm2: number, paleoCryosphereThicknessKm: number, presentCryosphereThicknessKm: number, cryosphereThinningFactor: number, hydrologicDischargePotential: string}}
+   */
+  static computePaleoGeothermalCryosphereThinningAndNoachianMelting(geologicalLookbackAgeGyr = 3.8, paleoSurfaceTempK = 225.0, crustalThermalConductivityWMK = 2.0, presentGeothermalHeatFluxMWm2 = 25.0) {
+    const tGyr = Math.max(0.0, Math.min(4.5, geologicalLookbackAgeGyr));
+    const Tpaleo = Math.max(150.0, Math.min(270.0, paleoSurfaceTempK));
+    const kCrust = Math.max(0.5, crustalThermalConductivityWMK);
+    const Q0 = Math.max(10.0, presentGeothermalHeatFluxMWm2);
+
+    const Tmelt = 273.15; // K
+
+    // Geothermal flux scaling over 4.5 Gyr mantle radioactive cooling (mW/m^2)
+    const qPaleoMWm2 = Q0 * (1.0 + 1.6 * Math.pow(tGyr / 4.0, 1.2));
+    const qPaleoW = qPaleoMWm2 * 1e-3;
+    const q0W = Q0 * 1e-3;
+
+    // Cryosphere basal melting depths (km)
+    const zPaleoM = (kCrust * (Tmelt - Tpaleo)) / qPaleoW;
+    const zPaleoKm = zPaleoM / 1000.0;
+
+    const TpresentSurf = 215.0; // present average Mars surface temperature
+    const zPresentM = (kCrust * (Tmelt - TpresentSurf)) / q0W;
+    const zPresentKm = zPresentM / 1000.0;
+
+    const thinningRatio = zPaleoKm / zPresentKm;
+
+    let epoch = 'Early Noachian Epoch (~3.8 - 4.1 Ga)';
+    if (tGyr < 1.0) {
+      epoch = 'Late Amazonian Modern Epoch (< 1.0 Ga)';
+    } else if (tGyr < 3.0) {
+      epoch = 'Hesperian Post-Volcanic Epoch (1.0 - 3.0 Ga)';
+    }
+
+    let discharge = 'Widespread Sub-Ice Aquifer Overpressure & Valley Network Carving';
+    if (zPaleoKm > 3.5) {
+      discharge = 'Thick Cryogenic Seal (Confined Deep Subsurface Groundwater)';
+    } else if (zPaleoKm < 1.0) {
+      discharge = 'Ultra-Thin Permafrost Breach & Continuous Hydrothermal Surface Spring Outflow';
+    }
+
+    return {
+      geologicalEpoch: epoch,
+      paleoGeothermalFluxMWm2: parseFloat(qPaleoMWm2.toFixed(1)),
+      paleoCryosphereThicknessKm: parseFloat(zPaleoKm.toFixed(2)),
+      presentCryosphereThicknessKm: parseFloat(zPresentKm.toFixed(2)),
+      cryosphereThinningFactor: parseFloat(thinningRatio.toFixed(3)),
+      hydrologicDischargePotential: discharge
+    };
+  }
 }
 
 

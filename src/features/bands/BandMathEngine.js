@@ -4415,6 +4415,51 @@ export class BandMathEngine {
       hydrothermalPTPressureTemperatureContext: context
     };
   }
+
+  /**
+   * Discriminate high-temperature calc-silicate Epidote from Clinozoisite and prehnite using CRISM 1.55 um (OH), 1.91 um (H2O), 2.26 um (Al-OH), and 2.34 um (Fe3+-OH).
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013), Viviano-Beck et al. (2014) for deep crustal epidote-amphibolite metamorphism in central peaks.
+   * @param {number} r1550 - Reflectance at 1.55 um diagnostic Epidote-group structural OH overtone minimum
+   * @param {number} r1910 - Reflectance at 1.91 um molecular H2O band
+   * @param {number} r2260 - Reflectance at 2.26 um Clinozoisite Al-OH combination band
+   * @param {number} r2340 - Reflectance at 2.34 um Epidote Fe3+-OH combination band
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1550: number, bd1910: number, bd2260: number, bd2340: number, isEpidoteGroupPresent: boolean, epidoteGroupSpecies: string, metamorphicFaciesContext: string}}
+   */
+  static computeCRISMEpidoteClinozoisiteIndices(r1550, r1910, r2260, r2340, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1550 = Math.max(0.0, 1.0 - (r1550 / cont));
+    const bd1910 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2260 = Math.max(0.0, 1.0 - (r2260 / cont));
+    const bd2340 = Math.max(0.0, 1.0 - (r2340 / cont));
+
+    let species = 'Unaltered Primary Igneous Silicate';
+    let isEpidote = false;
+    let context = 'Standard Magmatic Crust';
+
+    if (bd1550 >= 0.020 && bd1910 < 0.020) {
+      if (bd2340 >= 0.025) {
+        isEpidote = true;
+        species = 'Epidote (Ca2Al2(Fe3+,Al)(SiO4)(Si2O7)O(OH))';
+        context = 'High-Temperature Epidote-Amphibolite Metamorphic Facies (250-450 C) / Deep Hydrothermal Alteration of Basaltic Crust';
+      } else if (bd2260 >= 0.025) {
+        isEpidote = true;
+        species = 'Clinozoisite (Ca2Al3(SiO4)(Si2O7)O(OH))';
+        context = 'Fe-Depleted High-Temperature Calc-Silicate Hydrothermal Metamorphism';
+      }
+    }
+
+    return {
+      bd1550: parseFloat(bd1550.toFixed(4)),
+      bd1910: parseFloat(bd1910.toFixed(4)),
+      bd2260: parseFloat(bd2260.toFixed(4)),
+      bd2340: parseFloat(bd2340.toFixed(4)),
+      isEpidoteGroupPresent: isEpidote,
+      epidoteGroupSpecies: species,
+      metamorphicFaciesContext: context
+    };
+  }
 }
 
 
