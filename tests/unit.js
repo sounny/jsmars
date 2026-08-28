@@ -11111,6 +11111,53 @@ describe('Mars Asteroid Gravity Tractor, Glacial Thermal Regimes & Hydrated Sili
     });
 });
 
+describe('Mars-Jupiter Interstellar Escape, Magma Chamber Cooling & Nanophase Hematite', () => {
+    it('should calculate Mars-to-Jupiter trajectory, gravity assist turn angle, and interstellar escape speed', () => {
+        // Mars to Jupiter interstellar escape (2.0 R_j closest approach, 300 km Mars parking orbit):
+        const escape = TrajectoryEngine.computeMarsJupiterInterstellarEscapeTrajectory(2.0, 300.0);
+        expect(escape.departurePlanet).to.equal('Mars');
+        expect(escape.assistPlanet).to.equal('Jupiter');
+        expect(escape.timeOfFlightToJupiterYears).to.be.closeTo(3.09, 0.2); // ~3.1 years to Jupiter
+        expect(escape.transJupiterInjectionDeltaVKmS).to.be.closeTo(4.03, 0.5); // ~4.0 km/s TJI Delta-V
+        expect(escape.jupiterHyperbolicBendingAngleDeg).to.be.greaterThan(90.0); // > 90 deg bending
+        expect(escape.postSlingshotHeliocentricSpeedKmS).to.be.closeTo(17.5, 3.0); // ~17.5 km/s asymptotic heliocentric speed
+        expect(escape.interstellarEscapeRateAUYear).to.be.closeTo(3.69, 0.8); // ~3.7 AU/yr escape rate
+        expect(escape.interstellarMissionContext).to.include('Mars-Jupiter Interstellar Escape');
+    });
+
+    it('should calculate Martian plutonic magma chamber conductive cooling, latent heat, and metamorphic aureole', () => {
+        // Tharsis pluton (5 km radius, 8 km depth, 1450 K magma, 350 K host rock):
+        const pluton = KRCEngine.computeMartianMagmaChamberCoolingAndContactAureole(5.0, 8.0, 1450.0, 350.0);
+        expect(pluton.chamberRadiusKm).to.equal(5.0);
+        expect(pluton.chamberVolumeKm3).to.be.closeTo(523.6, 10.0); // ~524 km^3
+        expect(pluton.conductiveCoolingTimeKyr).to.be.closeTo(198.0, 10.0); // ~198 kyr
+        expect(pluton.totalSolidificationTimeKyr).to.be.closeTo(263.5, 15.0); // ~264 kyr with latent heat
+        expect(pluton.hydrothermalAureoleThicknessKm).to.equal(2.75); // 2.75 km aureole
+        expect(pluton.degassedVolatileMassGigatons).to.be.closeTo(21991.1, 100.0); // ~22,000 Gt volatiles
+        expect(pluton.plutonicMetamorphicContext).to.include('Plutonic Magma Chamber');
+    });
+
+    it('should discriminate Crystalline Gray Hematite from Nanophase Ferric Oxide (npHm) in CRISM spectra', () => {
+        // Crystalline Hematite (alpha-Fe2O3 in Meridiani Planum blueberries: BD860 = 0.08, center = 0.860 um):
+        const hmt = BandMathEngine.computeCRISMNanophaseHematiteWeatheringIndices(0.04, 0.08, 0.860);
+        expect(hmt.isIronOxidePresent).to.be.true;
+        expect(hmt.ironOxidePhase).to.include('Crystalline Gray Hematite (alpha-Fe2O3)');
+        expect(hmt.grainSizeClass).to.include('Coarse Crystalline (> 10 microns');
+        expect(hmt.oxidationPaleoenvironmentContext).to.include('Groundwater Precipitation');
+
+        // Nanophase Hematite (npHm dust coating across high-albedo plains: BD530 = 0.22, BD860 = 0.01):
+        const npHm = BandMathEngine.computeCRISMNanophaseHematiteWeatheringIndices(0.22, 0.01, 0.920);
+        expect(npHm.isIronOxidePresent).to.be.true;
+        expect(npHm.ironOxidePhase).to.include('Nanophase Ferric Oxide (npHm / Palagonite)');
+        expect(npHm.grainSizeClass).to.include('Superparamagnetic Nanocrystals (< 10 nm)');
+        expect(npHm.oxidationPaleoenvironmentContext).to.include('Atmospheric UV-Photo-Oxidation');
+
+        // Dark unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMNanophaseHematiteWeatheringIndices(0.02, 0.01, 0.950);
+        expect(basalt.isIronOxidePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

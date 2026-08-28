@@ -5619,6 +5619,61 @@ export class KRCEngine {
       glacialGeomorphologyContext: context
     };
   }
+
+  /**
+   * Calculate Martian subsurface magma chamber conductive cooling timescale, Stefan problem latent heat crystallization, and contact metamorphic hydrothermal aureole dimensions.
+   * t_diff = R_chamber^2 / ( 4 * kappa )
+   * Ste = c_p * Delta_T / L_m
+   * t_solid = t_diff * ( 1 + 1 / Ste )
+   * Reference: Jaeger (1968), Delaney (1987), Turcotte & Schubert (2002) for Tharsis & Elysium subvolcanic plutons and hydrothermal mineralization.
+   * @param {number} [chamberRadiusKm=5.0] - Plutonic magma chamber equivalent spherical radius in km (0.5 to 50 km)
+   * @param {number} [emplacementDepthKm=8.0] - Intrusion depth below Martian surface in km (1 to 30 km)
+   * @param {number} [initialMagmaTempK=1450.0] - Initial basaltic magma liquidus temperature in K (1200 to 1600 K)
+   * @param {number} [countryRockTempK=350.0] - Ambient host rock geothermal temperature in K (200 to 600 K)
+   * @returns {{chamberRadiusKm: number, chamberVolumeKm3: number, conductiveCoolingTimeKyr: number, totalSolidificationTimeKyr: number, hydrothermalAureoleThicknessKm: number, degassedVolatileMassGigatons: number, plutonicMetamorphicContext: string}}
+   */
+  static computeMartianMagmaChamberCoolingAndContactAureole(chamberRadiusKm = 5.0, emplacementDepthKm = 8.0, initialMagmaTempK = 1450.0, countryRockTempK = 350.0) {
+    const Rkm = Math.max(0.1, chamberRadiusKm);
+    const Zkm = Math.max(0.5, emplacementDepthKm);
+    const Tmagma = Math.max(1000.0, Math.min(1800.0, initialMagmaTempK));
+    const Trock = Math.max(150.0, Math.min(800.0, countryRockTempK));
+
+    const kappa = 1.0e-6; // m^2/s thermal diffusivity
+    const cp = 1100.0; // J/(kg*K)
+    const Lm = 4.0e5; // J/kg latent heat of basalt crystallization
+    const rhoMagma = 2800.0; // kg/m^3
+    const Rm = Rkm * 1000.0;
+
+    // Chamber volume (km^3)
+    const Vkm3 = (4.0 / 3.0) * Math.PI * Math.pow(Rkm, 3.0);
+
+    // Conductive cooling diffusion timescale (seconds and kyr)
+    const tDiffSec = Math.pow(Rm, 2.0) / (4.0 * kappa);
+    const tDiffKyr = tDiffSec / (3.15576e7 * 1000.0);
+
+    // Stefan number and latent heat crystallization correction
+    const deltaT = Math.max(50.0, Tmagma - Trock);
+    const ste = (cp * deltaT) / Lm;
+    const fLatent = 1.0 + (1.0 / ste);
+    const tSolidKyr = tDiffKyr * fLatent;
+
+    // Hydrothermal aureole thickness (km)
+    const WaureoleKm = 0.55 * Rkm;
+
+    // Degassed volatile mass (Gigatons: 1 Gt = 1e9 kg) assuming 1.5 wt% dissolved H2O/CO2/SO2
+    const totalMassKg = rhoMagma * (Vkm3 * 1e9);
+    const degassedGt = (0.015 * totalMassKg) / 1e9;
+
+    return {
+      chamberRadiusKm: parseFloat(Rkm.toFixed(1)),
+      chamberVolumeKm3: parseFloat(Vkm3.toFixed(1)),
+      conductiveCoolingTimeKyr: parseFloat(tDiffKyr.toFixed(1)),
+      totalSolidificationTimeKyr: parseFloat(tSolidKyr.toFixed(1)),
+      hydrothermalAureoleThicknessKm: parseFloat(WaureoleKm.toFixed(2)),
+      degassedVolatileMassGigatons: parseFloat(degassedGt.toFixed(1)),
+      plutonicMetamorphicContext: `Plutonic Magma Chamber (${Vkm3.toFixed(0)} km^3, ~${tSolidKyr.toFixed(0)} kyr Solidification, ${degassedGt.toFixed(1)} Gt Volatile Outgassing)`
+    };
+  }
 }
 
 

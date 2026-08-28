@@ -5420,6 +5420,56 @@ export class BandMathEngine {
       hydrothermalDiageneticContext: context
     };
   }
+
+  /**
+   * Discriminate Nanophase Ferric Oxide Dust (npHm) from Coarse Crystalline Gray Hematite (alpha-Fe2O3) and unweathered basalt from CRISM VIS-NIR spectral parameters.
+   * BD530 = 1 - ( R530 / ( 0.5 * R440 + 0.5 * R770 ) )
+   * HMTINDEX = 1 - ( R860 / ( 0.5 * R770 + 0.5 * R970 ) )
+   * Reference: Morris et al. (2000), Bell et al. (2000), Christensen et al. (2001), Viviano-Beck et al. (2014) for Meridiani Planum hematite spherules & global dust.
+   * @param {number} [bd530SlopeIndex=0.18] - BD530_2 ferric absorption slope depth (0.0 to 0.50)
+   * @param {number} [hmt860Depth=0.06] - HMTINDEX / BD860 crystalline hematite band depth (0.0 to 0.40)
+   * @param {number} [band900CenterUm=0.860] - Wavelength of the ferric absorption minimum in um (0.84 to 0.95 um)
+   * @returns {{isIronOxidePresent: boolean, ironOxidePhase: string, mineralSpecies: string, grainSizeClass: string, oxidationPaleoenvironmentContext: string}}
+   */
+  static computeCRISMNanophaseHematiteWeatheringIndices(bd530SlopeIndex = 0.18, hmt860Depth = 0.06, band900CenterUm = 0.860) {
+    const s530 = Math.max(0.0, bd530SlopeIndex);
+    const d860 = Math.max(0.0, hmt860Depth);
+    const l900 = Math.max(0.80, Math.min(1.00, band900CenterUm));
+
+    let isFeOxide = false;
+    let phase = 'Unweathered Ferrous Silicate / Dark Basalt';
+    let species = 'Basaltic Regolith';
+    let grainSize = 'Coarse Lithic Fragments';
+    let context = 'Standard Unaltered Bedrock Matrix';
+
+    if (d860 >= 0.025 || s530 >= 0.060) {
+      isFeOxide = true;
+      if (d860 >= 0.030 && l900 <= 0.880) {
+        phase = 'Crystalline Gray Hematite (alpha-Fe2O3)';
+        species = 'Crystalline Hematite (Ostracized Spherules / Concretions)';
+        grainSize = 'Coarse Crystalline (> 10 microns, Gray Hematite Blueberries)';
+        context = 'Low-Temperature Neutral-pH Groundwater Precipitation / Diagenetic Evaporite Concretions (Meridiani Planum / Aram Chaos Type)';
+      } else if (s530 >= 0.10) {
+        phase = 'Nanophase Ferric Oxide (npHm / Palagonite)';
+        species = 'Nanophase Hematite / Ferrihydrite Dust Coating';
+        grainSize = 'Superparamagnetic Nanocrystals (< 10 nm)';
+        context = 'Pervasive Atmospheric UV-Photo-Oxidation & Anhydrous Eolian Weathering (High-Albedo Dust Regolith)';
+      } else {
+        phase = 'Poorly Crystalline Goethite / Mixed Ferric Weathering Complex';
+        species = 'Sub-Micron Hydrated Ferric Oxide';
+        grainSize = 'Sub-Micron Aggregates';
+        context = 'Incipient Acid-Sulfate Oxidative Weathering Crust';
+      }
+    }
+
+    return {
+      isIronOxidePresent: isFeOxide,
+      ironOxidePhase: phase,
+      mineralSpecies: species,
+      grainSizeClass: grainSize,
+      oxidationPaleoenvironmentContext: context
+    };
+  }
 }
 
 

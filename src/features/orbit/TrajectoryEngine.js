@@ -5071,6 +5071,78 @@ export class TrajectoryEngine {
       planetaryDefenseContext: `Gravity Tractor Deflection (${dvAstMMS.toFixed(2)} mm/s Delta-V -> ${deltaBKm.toFixed(0)} km B-Plane Shift over ${tLeadYrs.toFixed(0)} Yrs)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Jupiter interplanetary trajectory and Jupiter gravity assist slingshot achieving heliocentric hyperbolic Interstellar Escape velocity.
+   * a_t = ( r_mars + r_jupiter ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * delta = 2 * arcsin( 1 / ( 1 + r_p * v_inf^2 / mu_j ) )
+   * Reference: Bate et al. (1971), Flandro (1966), Curtis (2013) for Interstellar Probe / Outer Solar System Escape Architecture.
+   * @param {number} [jupiterClosestApproachRj=2.0] - Jupiter closest approach periapsis in Jovian radii (1.2 to 10.0 R_j)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure low orbit altitude in km (150 to 1000 km)
+   * @returns {{departurePlanet: string, assistPlanet: string, timeOfFlightToJupiterYears: number, transJupiterInjectionDeltaVKmS: number, jupiterHyperbolicBendingAngleDeg: number, postSlingshotHeliocentricSpeedKmS: number, interstellarEscapeRateAUYear: number, interstellarMissionContext: string}}
+   */
+  static computeMarsJupiterInterstellarEscapeTrajectory(jupiterClosestApproachRj = 2.0, marsParkingAltitudeKm = 300.0) {
+    const rjMult = Math.max(1.15, jupiterClosestApproachRj);
+    const hpKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const muJupiter = 1.26686534e8; // km^3/s^2
+    const rMarsKm = 3389.5;
+    const rJupiterKm = 71492.0;
+
+    const rMarsAU = 1.52368;
+    const rJupiterAU = 5.2044;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rJupiterDistKm = rJupiterAU * AU_KM;
+
+    // Transfer ellipse semi-major axis
+    const aTransferAU = (rMarsAU + rJupiterAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight to Jupiter
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofYears = tofSec / 3.15576e7;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = vPeriTransferKmS - vMarsKmS;
+
+    // Trans-Jupiter Injection Delta-V
+    const rParkKm = rMarsKm + hpKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTjiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Speeds at Jupiter arrival
+    const vJupiterCircKmS = Math.sqrt(muSun / rJupiterDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rJupiterDistKm) - (1.0 / aTransferKm)));
+    const vInfArrJupiterKmS = Math.abs(vJupiterCircKmS - vApoTransferKmS);
+
+    // Jupiter hyperbolic turning angle
+    const rpJupiterKm = rjMult * rJupiterKm;
+    const denom = 1.0 + (rpJupiterKm * Math.pow(vInfArrJupiterKmS, 2.0)) / muJupiter;
+    const deltaRad = 2.0 * Math.asin(1.0 / denom);
+    const deltaDeg = (deltaRad * 180.0) / Math.PI;
+
+    // Heliocentric post-slingshot asymptotic escape speed
+    const vHelioPostKmS = Math.sqrt(Math.pow(vJupiterCircKmS, 2.0) + Math.pow(vInfArrJupiterKmS, 2.0) + (2.0 * vJupiterCircKmS * vInfArrJupiterKmS * Math.cos(deltaRad / 2.0)));
+    const auYearRate = (vHelioPostKmS * 3.15576e7) / AU_KM;
+
+    return {
+      departurePlanet: 'Mars',
+      assistPlanet: 'Jupiter',
+      timeOfFlightToJupiterYears: parseFloat(tofYears.toFixed(2)),
+      transJupiterInjectionDeltaVKmS: parseFloat(dvTjiKmS.toFixed(3)),
+      jupiterHyperbolicBendingAngleDeg: parseFloat(deltaDeg.toFixed(1)),
+      postSlingshotHeliocentricSpeedKmS: parseFloat(vHelioPostKmS.toFixed(2)),
+      interstellarEscapeRateAUYear: parseFloat(auYearRate.toFixed(2)),
+      interstellarMissionContext: `Mars-Jupiter Interstellar Escape (${vHelioPostKmS.toFixed(1)} km/s Helio Speed, ${auYearRate.toFixed(2)} AU/yr Solar System Escape)`
+    };
+  }
 }
 
 
