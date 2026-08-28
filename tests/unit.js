@@ -10051,6 +10051,49 @@ describe('Solar Radiation Pressure, Interfacial Premelted Water & Smectite Layer
     });
 });
 
+describe('B-Plane Hyperbolic Flyby, Cryosphere Basal Melting & Serpentine Inversion', () => {
+    it('should calculate hyperbolic planetary flyby B-plane coordinates, deflection angle, and gravity assist Delta-V', () => {
+        // Mars gravity assist flyby (v_inf = 5.5 km/s, pericenter altitude = 250 km, clock angle = 45 deg):
+        const flyby = TrajectoryEngine.computeBPlaneTargetingCoordinatesAndHyperbolicDeflection(5500.0, 250.0, 45.0, 'mars');
+        expect(flyby.hyperbolicExcessVelocityKmS).to.equal(5.5);
+        expect(flyby.periapsisRadiusKm).to.equal(3639.5);
+        expect(flyby.hyperbolicEccentricity).to.be.closeTo(3.57, 0.1);
+        expect(flyby.deflectionAngleDeg).to.be.closeTo(32.51, 1.0); // ~32.5 deg trajectory bend
+        expect(flyby.impactParameterMagnitudeKm).to.be.closeTo(4852.8, 20.0); // ~4853 km impact parameter
+        expect(flyby.bPlaneRCoordinateKm).to.be.closeTo(3431.4, 20.0); // B_R = b * sin(45 deg)
+        expect(flyby.bPlaneTCoordinateKm).to.be.closeTo(3431.4, 20.0); // B_T = b * cos(45 deg)
+        expect(flyby.gravityAssistDeltaVKmS).to.be.closeTo(3.08, 0.1); // ~3.08 km/s velocity vector impulse
+        expect(flyby.flybyRegime).to.include('Hyperbolic Gravity Assist');
+    });
+
+    it('should calculate Martian cryosphere basal melting depth, geothermal gradient, and global pore ice GEL', () => {
+        // Mid-latitude crust (T_surf = 215 K, Q_geo = 25 mW/m^2, k_crust = 2.0 W/(m*K), porosity = 0.20):
+        const cryo = KRCEngine.computeCryosphereBasalMeltingDepthAndGeothermalHeatFlux(215.0, 25.0, 2.0, 0.20, 'pure_water');
+        expect(cryo.thermalGradientKPerKm).to.equal(12.5); // 12.5 K/km thermal gradient
+        expect(cryo.basalMeltingTempK).to.equal(270.0);
+        expect(cryo.cryosphereThicknessKm).to.be.closeTo(4.40, 0.2); // ~4.4 km permafrost base
+        expect(cryo.poreIceGELMeters).to.be.closeTo(443.9, 20.0); // ~444 m GEL stored pore ice
+        expect(cryo.subsurfaceAquiferStatus).to.include('Basal Liquid Aquifer Feasible');
+    });
+
+    it('should discriminate ultramafic Serpentine from metamorphic Chlorite and basalt in CRISM spectra', () => {
+        // Serpentine in Nili Fossae (strong 1.39 um Mg-OH, 2.12 um, 2.33 um Mg-OH, weak 1.91 um water):
+        const serpentine = BandMathEngine.computeCRISMSerpentineChloriteIndices(0.24, 0.298, 0.25, 0.30, 0.22, 0.30);
+        expect(serpentine.isTrioctahedralPresent).to.be.true;
+        expect(serpentine.trioctahedralSpecies).to.include('Serpentine');
+        expect(serpentine.serpentinizationEnergyContext).to.include('H2 & CH4 Generation');
+
+        // Chlorite (2.25 um and 2.33 um doublet):
+        const chlorite = BandMathEngine.computeCRISMSerpentineChloriteIndices(0.30, 0.29, 0.30, 0.23, 0.22, 0.30);
+        expect(chlorite.isTrioctahedralPresent).to.be.true;
+        expect(chlorite.trioctahedralSpecies).to.include('Chlorite');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMSerpentineChloriteIndices(0.30, 0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isTrioctahedralPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

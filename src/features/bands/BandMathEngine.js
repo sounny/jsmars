@@ -4321,6 +4321,58 @@ export class BandMathEngine {
       paleoenvironmentalContext: env
     };
   }
+
+  /**
+   * Discriminate ultramafic Serpentine from metamorphic Chlorite using CRISM 1.39 um (Mg-OH), 1.91 um (H2O), 2.12 um, 2.25 um (Fe-OH), and 2.33 um (Mg-OH).
+   * Reference: Ehlmann et al. (2009, 2010), Viviano-Beck et al. (2014), Amador et al. (2018) for Nili Fossae and Claritas Rise serpentinization systems.
+   * @param {number} r1390 - Reflectance at 1.39 um diagnostic Serpentine Mg-OH overtone
+   * @param {number} r1910 - Reflectance at 1.91 um molecular H2O band
+   * @param {number} r2120 - Reflectance at 2.12 um diagnostic Serpentine vibration
+   * @param {number} r2250 - Reflectance at 2.25 um Chlorite Fe-OH band
+   * @param {number} r2330 - Reflectance at 2.33 um primary Mg3-OH combination band
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1390: number, bd1910: number, bd2120: number, bd2250: number, bd2330: number, isTrioctahedralPresent: boolean, trioctahedralSpecies: string, serpentinizationEnergyContext: string}}
+   */
+  static computeCRISMSerpentineChloriteIndices(r1390, r1910, r2120, r2250, r2330, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1390 = Math.max(0.0, 1.0 - (r1390 / cont));
+    const bd1910 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2120 = Math.max(0.0, 1.0 - (r2120 / cont));
+    const bd2250 = Math.max(0.0, 1.0 - (r2250 / cont));
+    const bd2330 = Math.max(0.0, 1.0 - (r2330 / cont));
+
+    let species = 'Unaltered Primary Olivine / Pyroxene';
+    let isTrioctahedral = false;
+    let context = 'Standard Magmatic Setting';
+
+    if (bd2330 >= 0.025) {
+      if (bd1390 >= 0.020 && bd2120 >= 0.015 && bd1910 < 0.020) {
+        isTrioctahedral = true;
+        species = 'Serpentine (Mg3Si2O5(OH)4) / Lizardite-Antigorite';
+        context = 'Low-Temperature Hydrothermal Serpentinization of Ultramafic Olivine Crust (H2 & CH4 Generation / Chemosynthetic Habitat)';
+      } else if (bd2250 >= 0.020) {
+        isTrioctahedral = true;
+        species = 'Chlorite ((Mg,Fe)5Al(Si3Al)O10(OH)8)';
+        context = 'Greenschist Facies Low-Grade Metamorphism / Subsurface Hydrothermal Basalt Alteration';
+      } else {
+        isTrioctahedral = true;
+        species = 'Trioctahedral Smectite (Saponite)';
+        context = 'Low-Grade Alkaline Hydrothermal Alteration of Basalt';
+      }
+    }
+
+    return {
+      bd1390: parseFloat(bd1390.toFixed(4)),
+      bd1910: parseFloat(bd1910.toFixed(4)),
+      bd2120: parseFloat(bd2120.toFixed(4)),
+      bd2250: parseFloat(bd2250.toFixed(4)),
+      bd2330: parseFloat(bd2330.toFixed(4)),
+      isTrioctahedralPresent: isTrioctahedral,
+      trioctahedralSpecies: species,
+      serpentinizationEnergyContext: context
+    };
+  }
 }
 
 

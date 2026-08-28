@@ -4181,6 +4181,59 @@ export class KRCEngine {
       habitabilityBiochemicalRegime: habitability
     };
   }
+
+  /**
+   * Calculate Martian cryosphere basal melting depth, geothermal temperature gradient, and pore ice equivalent global water layer (GEL).
+   * z_base = ( k_crust * ( T_base - T_surf ) ) / Q_geo
+   * GEL = phi_0 * h_phi * ( 1 - exp( -z_base / h_phi ) )
+   * Reference: Clifford (1993), Clifford et al. (2010), Lasue et al. (2013), Grimm et al. (2017) for MARSIS/SHARAD deep basal aquifers.
+   * @param {number} [meanSurfaceTempK=215.0] - Mean annual surface temperature in K (150 to 240 K)
+   * @param {number} [geothermalHeatFluxMWm2=25.0] - Geothermal heat flux in mW/m^2 (10 to 80 mW/m^2; present Mars is ~25 mW/m^2)
+   * @param {number} [crustalThermalConductivityWMK=2.0] - Bulk crustal conductivity in W/(m*K) (1.5 to 3.0 W/(m*K))
+   * @param {number} [surfacePorosityFraction=0.20] - Surface megaregolith porosity phi_0 (0.05 to 0.40)
+   * @param {string} [poreFluidSalinity='pure_water'] - Pore fluid type ('pure_water', 'eutectic_brine')
+   * @returns {{thermalGradientKPerKm: number, basalMeltingTempK: number, cryosphereThicknessKm: number, cryosphereThicknessMeters: number, poreIceGELMeters: number, subsurfaceAquiferStatus: string}}
+   */
+  static computeCryosphereBasalMeltingDepthAndGeothermalHeatFlux(meanSurfaceTempK = 215.0, geothermalHeatFluxMWm2 = 25.0, crustalThermalConductivityWMK = 2.0, surfacePorosityFraction = 0.20, poreFluidSalinity = 'pure_water') {
+    const Tsurf = Math.max(120.0, Math.min(260.0, meanSurfaceTempK));
+    const QgeoW = Math.max(5.0, geothermalHeatFluxMWm2) * 1e-3; // W/m^2
+    const kCrust = Math.max(0.5, crustalThermalConductivityWMK);
+    const phi0 = Math.max(0.01, Math.min(0.50, surfacePorosityFraction));
+
+    // Geothermal gradient dT/dz = Q_geo / k_crust (K/m and K/km)
+    const dTDzKPerM = QgeoW / kCrust;
+    const dTDzKPerKm = dTDzKPerM * 1000.0;
+
+    // Basal melting temperature (270 K for pure water with pressure depression, 206 K for eutectic perchlorate)
+    let Tbase = 270.0;
+    if (poreFluidSalinity.toLowerCase().includes('brine') || poreFluidSalinity.toLowerCase().includes('perchlorate')) {
+      Tbase = 206.0;
+    }
+
+    const deltaT = Math.max(1.0, Tbase - Tsurf);
+    const zBaseM = deltaT / dTDzKPerM;
+    const zBaseKm = zBaseM / 1000.0;
+
+    // Global Equivalent Layer (GEL) of pore ice: GEL = phi0 * h_phi * ( 1 - exp(-z_base / h_phi) )
+    const hPhiM = 2800.0; // porosity decay scale depth in meters
+    const gelMeters = phi0 * hPhiM * (1.0 - Math.exp(-zBaseM / hPhiM));
+
+    let status = 'Deep Subpermafrost Basal Liquid Aquifer Feasible (MARSIS Analogue)';
+    if (zBaseKm > 7.0) {
+      status = 'Thick Cryogenic Permafrost Lock (Deep Cryosphere Seal > 7 km)';
+    } else if (zBaseKm < 2.0) {
+      status = 'Shallow Hydrothermal / Elevated Heat Flux Liquefaction Zone';
+    }
+
+    return {
+      thermalGradientKPerKm: parseFloat(dTDzKPerKm.toFixed(2)),
+      basalMeltingTempK: parseFloat(Tbase.toFixed(1)),
+      cryosphereThicknessKm: parseFloat(zBaseKm.toFixed(2)),
+      cryosphereThicknessMeters: parseFloat(zBaseM.toFixed(1)),
+      poreIceGELMeters: parseFloat(gelMeters.toFixed(1)),
+      subsurfaceAquiferStatus: status
+    };
+  }
 }
 
 

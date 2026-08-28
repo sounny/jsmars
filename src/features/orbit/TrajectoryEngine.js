@@ -3562,6 +3562,80 @@ export class TrajectoryEngine {
       orbitalPerturbationRegime: regime
     };
   }
+
+  /**
+   * Calculate hyperbolic planetary flyby B-plane targeting coordinates (B_R, B_T), deflection angle, impact parameter, and gravity assist Delta-V.
+   * a = -mu / v_inf^2
+   * e = 1 - r_p / a
+   * delta = 2 * asin( 1 / e )
+   * b = |a| * sqrt( e^2 - 1 )
+   * Reference: Kizner (1961), Battin (1999), Vallado (2013) for Rosetta, Dawn, and Europa Clipper Mars gravity assist flybys.
+   * @param {number} [vInfinityInMS=5500.0] - Hyperbolic excess arrival velocity v_inf in m/s (1000 to 25000 m/s)
+   * @param {number} [periapsisAltitudeKm=250.0] - Closest approach altitude above surface in km (50 to 50000 km)
+   * @param {number} [bThetaDeg=45.0] - B-plane clock angle theta_B in degrees (0 to 360 deg)
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{hyperbolicExcessVelocityKmS: number, periapsisRadiusKm: number, hyperbolicEccentricity: number, deflectionAngleDeg: number, impactParameterMagnitudeKm: number, bPlaneRCoordinateKm: number, bPlaneTCoordinateKm: number, gravityAssistDeltaVKmS: number, flybyRegime: string}}
+   */
+  static computeBPlaneTargetingCoordinatesAndHyperbolicDeflection(vInfinityInMS = 5500.0, periapsisAltitudeKm = 250.0, bThetaDeg = 45.0, body = 'mars') {
+    const vInfMS = Math.max(100.0, vInfinityInMS);
+    const hpKm = Math.max(10.0, periapsisAltitudeKm);
+    const thetaBRad = (bThetaDeg || 0.0) * (Math.PI / 180.0);
+
+    let mu = 4.282837e13; // m^3/s^2 (Mars)
+    let rPlanetKm = 3389.5;
+
+    if (body.toLowerCase() === 'earth') {
+      mu = 3.986004418e14;
+      rPlanetKm = 6378.137;
+    } else if (body.toLowerCase() === 'moon') {
+      mu = 4.9048695e12;
+      rPlanetKm = 1737.4;
+    }
+
+    const rpKm = rPlanetKm + hpKm;
+    const rpM = rpKm * 1000.0;
+
+    // Semi-major axis a = -mu / v_inf^2 (m)
+    const aM = -mu / Math.pow(vInfMS, 2.0);
+    const aKm = aM / 1000.0;
+
+    // Hyperbolic eccentricity e = 1 - rp / a
+    const e = 1.0 - (rpM / aM);
+
+    // Hyperbolic deflection angle delta = 2 * asin(1 / e) (radians and degrees)
+    const deltaRad = 2.0 * Math.asin(1.0 / Math.max(1.0001, e));
+    const deltaDeg = deltaRad * (180.0 / Math.PI);
+
+    // Impact parameter magnitude b = |a| * sqrt(e^2 - 1) (km)
+    const bKm = Math.abs(aKm) * Math.sqrt(Math.max(0.0, Math.pow(e, 2.0) - 1.0));
+
+    // B-plane components: B_R = b * sin(theta_B), B_T = b * cos(theta_B)
+    const BrKm = bKm * Math.sin(thetaBRad);
+    const BtKm = bKm * Math.cos(thetaBRad);
+
+    // Gravity assist Delta-V = 2 * v_inf * sin(delta / 2)
+    const deltaVFlybyMS = 2.0 * vInfMS * Math.sin(deltaRad / 2.0);
+    const deltaVFlybyKmS = deltaVFlybyMS / 1000.0;
+
+    let regime = 'Hyperbolic Gravity Assist Flyby (Deep Space Trajectory Bending)';
+    if (hpKm < 150.0 && body.toLowerCase() === 'mars') {
+      regime = 'Atmospheric Grazing Aerocapture Corridor Hazard (< 150 km Pericenter)';
+    } else if (deltaDeg > 60.0) {
+      regime = 'High-Deflection Close Encounter (Strong Gravitational Redirection)';
+    }
+
+    return {
+      hyperbolicExcessVelocityKmS: parseFloat((vInfMS / 1000.0).toFixed(3)),
+      periapsisRadiusKm: parseFloat(rpKm.toFixed(2)),
+      hyperbolicEccentricity: parseFloat(e.toFixed(4)),
+      deflectionAngleDeg: parseFloat(deltaDeg.toFixed(2)),
+      impactParameterMagnitudeKm: parseFloat(bKm.toFixed(2)),
+      bPlaneRCoordinateKm: parseFloat(BrKm.toFixed(2)),
+      bPlaneTCoordinateKm: parseFloat(BtKm.toFixed(2)),
+      gravityAssistDeltaVKmS: parseFloat(deltaVFlybyKmS.toFixed(3)),
+      flybyRegime: regime
+    };
+  }
 }
 
 
