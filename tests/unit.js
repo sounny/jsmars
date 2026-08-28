@@ -9054,6 +9054,54 @@ describe('Trans-Earth Injection Delta-V, Methane Clathrate Hydrates & Carbonate 
     });
 });
 
+describe('Phobos/Deimos Rendezvous, Subsurface Radar Attenuation & Opaline Silica', () => {
+    it('should calculate Martian moon Phobos & Deimos Hill sphere radius and escape speed', () => {
+        // Phobos rendezvous (JAXA MMX mission parameters):
+        const phobos = TrajectoryEngine.computeMoonCoOrbitalRendezvousAndHillSphere('phobos', 'mars');
+        expect(phobos.moon).to.equal('Phobos');
+        expect(phobos.semiMajorAxisKm).to.equal(9376.0);
+        expect(phobos.orbitalPeriodHours).to.be.closeTo(7.65, 0.05);
+        expect(phobos.orbitalSpeedKmS).to.be.closeTo(2.137, 0.02);
+        expect(phobos.hillSphereRadiusKm).to.be.closeTo(16.59, 0.5); // ~16.6 km Hill sphere
+        expect(phobos.surfaceEscapeSpeedMS).to.be.closeTo(11.21, 0.5); // ~11.2 m/s escape velocity
+
+        // Deimos rendezvous:
+        const deimos = TrajectoryEngine.computeMoonCoOrbitalRendezvousAndHillSphere('deimos', 'mars');
+        expect(deimos.moon).to.equal('Deimos');
+        expect(deimos.semiMajorAxisKm).to.equal(23463.0);
+        expect(deimos.surfaceEscapeSpeedMS).to.be.closeTo(5.64, 0.5); // ~5.6 m/s
+    });
+
+    it('should calculate subsurface radar attenuation rate and penetration depth for SHARAD & MARSIS', () => {
+        // Cold pore ice layer (80% ice, 15% basalt, 200 K, 20 MHz SHARAD):
+        const iceSounding = KRCEngine.computeSubsurfaceRadarAttenuationAndLossTangent(200.0, 0.80, 0.15, 20.0);
+        expect(iceSounding.bulkPermittivity).to.be.closeTo(3.46, 0.2); // ~3.46 dielectric constant
+        expect(iceSounding.attenuationRateDBPerKm).to.be.lessThan(12.0);
+        expect(iceSounding.penetrationDepthMeters).to.be.greaterThan(500.0); // deep penetration
+        expect(iceSounding.radarRegime).to.include('Pore Ice');
+
+        // Warm basaltic regolith (240 K, 5% ice, 85% basalt):
+        const warmBasalt = KRCEngine.computeSubsurfaceRadarAttenuationAndLossTangent(240.0, 0.05, 0.85, 20.0);
+        expect(warmBasalt.bulkPermittivity).to.be.greaterThan(4.5);
+        expect(warmBasalt.attenuationRateDBPerKm).to.be.greaterThan(20.0);
+        expect(warmBasalt.penetrationDepthMeters).to.be.lessThan(500.0);
+    });
+
+    it('should discriminate Opaline Silica (Opal-A) from volcanic glass in CRISM spectra', () => {
+        // Hydrated Opal-A in Gusev Crater Home Plate (strong 2.21 um Si-OH and 1.91 um H2O):
+        const opalA = BandMathEngine.computeCRISMOpalineSilicaIndices(0.26, 0.29, 0.27, 0.295, 0.30);
+        expect(opalA.isOpalineSilica).to.be.true;
+        expect(opalA.silicaPhase).to.include('Opal-A');
+        expect(opalA.hydrothermalContext).to.include('Fumarole / Hot Spring Sinter');
+
+        // Dry volcanic silicate (negligible 2.21 um and 1.91 um bands):
+        const primaryBasalt = BandMathEngine.computeCRISMOpalineSilicaIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(opalA.bd2210).to.be.greaterThan(0.02);
+        expect(primaryBasalt.isOpalineSilica).to.be.false;
+        expect(primaryBasalt.silicaPhase).to.include('Primary Igneous Silicate');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

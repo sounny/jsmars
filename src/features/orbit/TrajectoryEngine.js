@@ -1766,6 +1766,67 @@ export class TrajectoryEngine {
       propellantMassFractionPct: parseFloat(massFracPct.toFixed(2))
     };
   }
+
+  /**
+   * Calculate Martian moon (Phobos / Deimos) Hill sphere radius, surface escape velocity, and co-orbital rendezvous orbital speed.
+   * R_Hill = a * ( m_moon / ( 3 * M_Mars ) )^(1/3)
+   * v_esc = sqrt( 2 * G * m_moon / R_moon )
+   * Reference: Murray & Dermott (1999), Vallado (2013) for JAXA MMX & Phobos rendezvous orbital design.
+   * @param {string} [moonName='phobos'] - Moon identifier ('phobos', 'deimos')
+   * @param {string} [body='mars'] - Planetary body ('mars')
+   * @returns {{moon: string, semiMajorAxisKm: number, orbitalPeriodHours: number, orbitalSpeedKmS: number, hillSphereRadiusKm: number, hillSphereAltitudeAboveSurfaceKm: number, surfaceEscapeSpeedMS: number, surfaceGravityMS2: number}}
+   */
+  static computeMoonCoOrbitalRendezvousAndHillSphere(moonName = 'phobos', body = 'mars') {
+    const mName = moonName.toLowerCase();
+    const isDeimos = mName === 'deimos';
+
+    const muMars = 42828.37; // km^3/s^2
+    const MMars = 6.4171e23; // kg
+
+    let a = 9376.0;      // km
+    let R = 11.27;       // km mean radius
+    let m = 1.0659e16;   // kg
+    let muMoon = 7.0875e-4; // km^3/s^2
+    let name = 'Phobos';
+
+    if (isDeimos) {
+      a = 23463.0;
+      R = 6.20;
+      m = 1.4762e15;
+      muMoon = 9.851e-5;
+      name = 'Deimos';
+    }
+
+    // Orbital speed around Mars
+    const vOrb = Math.sqrt(muMars / a);
+
+    // Orbital period in hours
+    const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(a, 3.0) / muMars);
+    const periodHours = periodSec / 3600.0;
+
+    // Hill Sphere radius: R_Hill = a * ( m / (3 * M) )^(1/3)
+    const massRatio = m / (3.0 * MMars);
+    const rHillKm = a * Math.pow(massRatio, 1.0 / 3.0);
+    const rHillAltitude = Math.max(0.0, rHillKm - R);
+
+    // Surface escape velocity in m/s: v_esc = sqrt( 2 * mu_moon / R ) * 1000
+    const vEscKmS = Math.sqrt((2.0 * muMoon) / R);
+    const vEscMS = vEscKmS * 1000.0;
+
+    // Surface gravity in m/s^2: g = mu_moon / R^2 * 1000
+    const gSurfMS2 = (muMoon / (R * R)) * 1000.0;
+
+    return {
+      moon: name,
+      semiMajorAxisKm: parseFloat(a.toFixed(1)),
+      orbitalPeriodHours: parseFloat(periodHours.toFixed(2)),
+      orbitalSpeedKmS: parseFloat(vOrb.toFixed(3)),
+      hillSphereRadiusKm: parseFloat(rHillKm.toFixed(2)),
+      hillSphereAltitudeAboveSurfaceKm: parseFloat(rHillAltitude.toFixed(2)),
+      surfaceEscapeSpeedMS: parseFloat(vEscMS.toFixed(2)),
+      surfaceGravityMS2: parseFloat(gSurfMS2.toExponential(3))
+    };
+  }
 }
 
 

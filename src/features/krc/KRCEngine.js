@@ -2527,6 +2527,70 @@ export class KRCEngine {
       outgassingVulnerability: vulnerability
     };
   }
+
+  /**
+   * Calculate subsurface radar sounder dielectric permittivity, loss tangent, two-way attenuation rate, and penetration depth.
+   * sqrt( eps_r ) = sum( f_i * sqrt( eps_i ) ) (CRIM mixing formula)
+   * alpha = ( 8.686 * pi * f / c ) * sqrt( eps_r ) * tan_delta (dB/m)
+   * Reference: Grimm et al. (2006), Stillman & Olhoeft (2008), Heggy et al. (2006) for SHARAD & MARSIS radar propagation.
+   * @param {number} [regolithTempK=200.0] - Cryospheric subsurface temperature in Kelvin (150 to 260 K)
+   * @param {number} [volumeFractionIce=0.80] - Pore ice volume fraction (0 to 1)
+   * @param {number} [volumeFractionDust=0.15] - Silicate dust / basalt volume fraction (0 to 1)
+   * @param {number} [frequencyMHz=20.0] - Radar carrier frequency in MHz (20 MHz for SHARAD, 4 MHz for MARSIS)
+   * @returns {{bulkPermittivity: number, bulkLossTangent: number, attenuationRateDBPerKm: number, penetrationDepthMeters: number, waveVelocityKmPerMicrosec: number, radarRegime: string}}
+   */
+  static computeSubsurfaceRadarAttenuationAndLossTangent(regolithTempK = 200.0, volumeFractionIce = 0.80, volumeFractionDust = 0.15, frequencyMHz = 20.0) {
+    const T = Math.max(100.0, Math.min(273.15, regolithTempK));
+    const fIce = Math.min(1.0, Math.max(0.0, volumeFractionIce));
+    const fDust = Math.min(1.0 - fIce, Math.max(0.0, volumeFractionDust));
+    const fVoid = Math.max(0.0, 1.0 - fIce - fDust);
+    const fHz = Math.max(0.1, frequencyMHz) * 1e6; // Hz
+    const c = 2.99792458e8; // m/s
+
+    // Pure constituent properties
+    const epsIce = 3.15;
+    const epsDust = 5.50;
+    const epsVoid = 1.00;
+
+    // Temperature-dependent ice loss tangent (Stillman & Olhoeft 2008)
+    const tanDeltaIce = 1.0e-4 * Math.exp((T - 200.0) / 20.0);
+    const tanDeltaDust = 0.010; // dry volcanic basalt dust
+
+    // CRIM mixing rule for real permittivity
+    const sqrtEpsBulk = fIce * Math.sqrt(epsIce) + fDust * Math.sqrt(epsDust) + fVoid * Math.sqrt(epsVoid);
+    const epsBulk = sqrtEpsBulk * sqrtEpsBulk;
+
+    // Volume-weighted dielectric loss tangent
+    const epsLossBulk = fIce * epsIce * tanDeltaIce + fDust * epsDust * tanDeltaDust;
+    const tanDeltaBulk = epsLossBulk / epsBulk;
+
+    // Attenuation rate: alpha = (8.686 * pi * f / c) * sqrt(epsBulk) * tanDeltaBulk (dB/m)
+    const alphaDBPerM = ((8.686 * Math.PI * fHz) / c) * Math.sqrt(epsBulk) * tanDeltaBulk;
+    const alphaDBPerKm = alphaDBPerM * 1000.0;
+
+    // Radar propagation speed in medium (km / microsecond)
+    const vPropMPerS = c / Math.sqrt(epsBulk);
+    const vPropKmPerMicrosec = (vPropMPerS / 1000.0) / 1e6;
+
+    // Penetration depth (1/e power decay or ~8.686 dB attenuation)
+    const penDepthM = alphaDBPerM > 1e-8 ? (8.686 / alphaDBPerM) : 10000.0;
+
+    let regime = 'High Transparency Subsurface Ice Sheet (SHARAD Deep Penetration > 1 km)';
+    if (alphaDBPerKm > 25.0) {
+      regime = 'High-Loss Conductive / Warm Basaltic Regolith (Shallow Radar Penetration)';
+    } else if (alphaDBPerKm > 8.0) {
+      regime = 'Moderate Attenuation Pore Ice / Dusty Layered Deposit';
+    }
+
+    return {
+      bulkPermittivity: parseFloat(epsBulk.toFixed(3)),
+      bulkLossTangent: parseFloat(tanDeltaBulk.toExponential(4)),
+      attenuationRateDBPerKm: parseFloat(alphaDBPerKm.toFixed(2)),
+      penetrationDepthMeters: parseFloat(penDepthM.toFixed(1)),
+      waveVelocityKmPerMicrosec: parseFloat((vPropKmPerMicrosec * 1e3).toFixed(3)), // m/microsecond or km/s
+      radarRegime: regime
+    };
+  }
 }
 
 

@@ -3111,6 +3111,53 @@ export class BandMathEngine {
       isSignificantCarbonate: isSig
     };
   }
+
+  /**
+   * Discriminate Opaline Silica (Opal-A / Opal-CT) from Quartz and Phyllosilicates using CRISM 2.21 um Si-OH and 1.91 um H2O band indices.
+   * BD2210 = 1.0 - ( 2 * R_2210 ) / ( R_2140 + R_2290 )
+   * Reference: Squyres et al. (2008), Rice et al. (2013), Sun & Milliken (2015) for Gusev Crater Home Plate hydrothermal sinters.
+   * @param {number} r1910 - Reflectance at 1.91 um structural H2O band
+   * @param {number} r2140 - Reflectance at 2.14 um continuum
+   * @param {number} r2210 - Reflectance at 2.21 um Si-OH overtone minimum
+   * @param {number} r2290 - Reflectance at 2.29 um continuum
+   * @param {number} [continuumLevel=0.30] - Mean background continuum level
+   * @returns {{bd2210: number, bd1900: number, silicaPhase: string, isOpalineSilica: boolean, hydrothermalContext: string}}
+   */
+  static computeCRISMOpalineSilicaIndices(r1910, r2140, r2210, r2290, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    // 2.21 um Si-OH overtone band depth
+    const continuum2210 = (r2140 + r2290) / 2.0;
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / Math.max(1e-4, continuum2210)));
+
+    // 1.91 um molecular water band depth
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+
+    let phase = 'Unaltered Primary Igneous Silicate';
+    let isOpal = false;
+    let context = 'Dry Volcanic Terrain';
+
+    if (bd2210 >= 0.025 && bd1900 >= 0.035) {
+      phase = 'Hydrated Amorphous Opal-A (SiO2 * nH2O)';
+      isOpal = true;
+      context = 'Acid-Sulfate Fumarole / Hot Spring Sinter (Gusev Home Plate Analogue)';
+    } else if (bd2210 >= 0.020 && bd1900 < 0.035) {
+      phase = 'Paracrystalline Opal-CT / Chalcedony (Partially Dehydrated Silica)';
+      isOpal = true;
+      context = 'Diagenetically Matured Hydrothermal Silica Deposit';
+    } else if (bd2210 < 0.020 && bd1900 >= 0.035) {
+      phase = 'Hydrated Volcanic Glass / Smectite Precursor';
+      context = 'Palagonitized Basaltic Ash';
+    }
+
+    return {
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      silicaPhase: phase,
+      isOpalineSilica: isOpal,
+      hydrothermalContext: context
+    };
+  }
 }
 
 
