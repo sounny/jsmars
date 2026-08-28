@@ -4013,6 +4013,45 @@ export class BandMathEngine {
       acidityEnvironment: acidity
     };
   }
+
+  /**
+   * Detect advanced argillic acid-hydrothermal Alunite from CRISM 1.76 um sulfate-OH and 2.17 um Al-OH combination doublet.
+   * Reference: Swayze et al. (2014), Ehlmann et al. (2016) for Columbus Crater and Valles Marineris high-T acid-sulfate hydrothermal systems (150-300 C, pH 1-3).
+   * @param {number} r1480 - Reflectance at 1.48 um OH minimum
+   * @param {number} r1760 - Reflectance at 1.76 um diagnostic sulfate-OH minimum
+   * @param {number} r2170 - Reflectance at 2.17 um primary Al-OH combination minimum
+   * @param {number} r2320 - Reflectance at 2.32 um secondary doublet minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1480: number, bd1760: number, bd2170: number, bd2320: number, isAlunitePresent: boolean, mineralPhase: string, hydrothermalFacies: string}}
+   */
+  static computeCRISMAluniteIndices(r1480, r1760, r2170, r2320 = 0.30, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1480 = Math.max(0.0, 1.0 - (r1480 / cont));
+    const bd1760 = Math.max(0.0, 1.0 - (r1760 / cont));
+    const bd2170 = Math.max(0.0, 1.0 - (r2170 / cont));
+    const bd2320 = Math.max(0.0, 1.0 - (r2320 / cont));
+
+    let phase = 'Unaltered Primary Igneous Silicate';
+    let isAlu = false;
+    let facies = 'Standard Crustal Setting';
+
+    if (bd2170 >= 0.025 && bd1760 >= 0.020) {
+      isAlu = true;
+      phase = 'Alunite (KAl3(SO4)2(OH)6)';
+      facies = 'Advanced Argillic Acid-Sulfate Hydrothermal Solfatara / Fumarolic System (150-300 C, pH 1-3; Columbus Crater / Valles Marineris)';
+    }
+
+    return {
+      bd1480: parseFloat(bd1480.toFixed(4)),
+      bd1760: parseFloat(bd1760.toFixed(4)),
+      bd2170: parseFloat(bd2170.toFixed(4)),
+      bd2320: parseFloat(bd2320.toFixed(4)),
+      isAlunitePresent: isAlu,
+      mineralPhase: phase,
+      hydrothermalFacies: facies
+    };
+  }
 }
 
 

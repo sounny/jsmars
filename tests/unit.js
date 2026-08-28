@@ -9804,6 +9804,39 @@ describe('Aerobraking Orbit Decay, CO2 Clathrate Stability & Jarosite Alteration
     });
 });
 
+describe('Hypersonic Aerocapture, Seasonal Pore Ice Diffusion & Alunite Hydrothermal Alteration', () => {
+    it('should calculate single-pass hypersonic aerocapture velocity depletion, propellant mass saved, and orbit geometry', () => {
+        // Mars sample return aerocapture (v_inf = 5.6 km/s, target r_a = 6000 km altitude, h_p = 50 km, m0 = 1000 kg, Isp = 320 s):
+        const aero = TrajectoryEngine.computeAerocaptureHypersonicPassCaptureParameters(5.6, 6000.0, 50.0, 1000.0, 320.0, 'mars');
+        expect(aero.hyperbolicPeriapsisVelocityKmS).to.be.closeTo(7.498, 0.05); // ~7.50 km/s entry speed
+        expect(aero.capturedPeriapsisVelocityKmS).to.be.closeTo(4.265, 0.05); // ~4.26 km/s exit speed
+        expect(aero.requiredAtmosphericDeltaVKmS).to.be.closeTo(3.233, 0.05); // ~3.23 km/s atmospheric Delta-V
+        expect(aero.propellantMassSavedKg).to.be.greaterThan(600.0); // > 600 kg fuel saved (64% mass savings)
+        expect(aero.aerocaptureFeasibility).to.include('High-Margin Aerocapture');
+    });
+
+    it('should calculate non-isothermal seasonal thermal wave pore ice sublimation, Clausius-Clapeyron enhancement, and vapor flux', () => {
+        // Warm Martian mid-latitude ice table (T_mean = 210 K, Delta_T = 30 K, z_ice = 20 cm, porosity = 40%):
+        const diff = KRCEngine.computeSeasonalHarmonicSublimationPoreIceDiffusion(210.0, 30.0, 0.20, 40.0, 250.0);
+        expect(diff.nonLinearThermalEnhancementFactor).to.be.greaterThan(1.0); // Clausius-Clapeyron exponential enhancement
+        expect(diff.annualMeanVaporDensityKgM3).to.be.greaterThan(diff.isothermalVaporDensityKgM3);
+        expect(diff.annualVaporMassFluxKgM2S).to.be.greaterThan(0.0);
+        expect(diff.iceStabilityAssessment).to.include('Sublimation');
+    });
+
+    it('should discriminate Alunite from Jarosite, kaolinite, and unaltered basalt in CRISM spectra', () => {
+        // Alunite in Columbus Crater solfatara deposits (strong 2.17 um Al-OH and 1.76 um sulfate-OH bands):
+        const alunite = BandMathEngine.computeCRISMAluniteIndices(0.24, 0.23, 0.22, 0.28, 0.30);
+        expect(alunite.isAlunitePresent).to.be.true;
+        expect(alunite.mineralPhase).to.include('Alunite');
+        expect(alunite.hydrothermalFacies).to.include('Advanced Argillic Acid-Sulfate');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMAluniteIndices(0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isAlunitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

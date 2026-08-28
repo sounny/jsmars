@@ -3104,6 +3104,80 @@ export class TrajectoryEngine {
       aerobrakingPassRegime: regime
     };
   }
+
+  /**
+   * Calculate single-pass hypersonic aerocapture velocity depletion Delta-V, propellant mass saved, and post-atmospheric orbit capture geometry.
+   * Delta_V_req = sqrt( v_inf^2 + 2*mu/r_p ) - sqrt( 2*mu*r_a / ( r_p * (r_a + r_p) ) )
+   * Delta_m_saved = m_0 * ( 1 - exp( -Delta_V_req / ( I_sp * g_0 ) ) )
+   * Reference: Cruz et al. (2006), Braun & Manning (2007), Lu (2014) for Mars Sample Return and NASA Ice Giant aerocapture systems.
+   * @param {number} [hyperbolicApproachVelocityKmS=5.6] - Hyperbolic approach excess velocity v_infinity in km/s (3.0 to 12.0 km/s)
+   * @param {number} [targetCaptureApoapsisKm=6000.0] - Target post-capture apoapsis altitude in km
+   * @param {number} [periapsisAltitudeKm=50.0] - Aerocapture atmospheric interface periapsis altitude in km (30 to 80 km)
+   * @param {number} [spacecraftMassKg=1000.0] - Spacecraft entry mass m0 in kg
+   * @param {number} [chemicalIspSec=320.0] - Equivalent chemical propulsion specific impulse in seconds
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{hyperbolicPeriapsisVelocityKmS: number, capturedPeriapsisVelocityKmS: number, requiredAtmosphericDeltaVKmS: number, propellantMassSavedKg: number, propellantSavingsPercent: number, capturedEccentricity: number, aerocaptureFeasibility: string}}
+   */
+  static computeAerocaptureHypersonicPassCaptureParameters(hyperbolicApproachVelocityKmS = 5.6, targetCaptureApoapsisKm = 6000.0, periapsisAltitudeKm = 50.0, spacecraftMassKg = 1000.0, chemicalIspSec = 320.0, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const isVenus = body.toLowerCase() === 'venus';
+
+    let mu = 42828.37; // km^3/s^2 (Mars)
+    let Rp = 3396.19; // km
+
+    if (isEarth) {
+      mu = 398600.4418;
+      Rp = 6378.137;
+    } else if (isVenus) {
+      mu = 324859.0;
+      Rp = 6051.8;
+    }
+
+    const vInf = Math.max(0.5, hyperbolicApproachVelocityKmS);
+    const ha = Math.max(100.0, targetCaptureApoapsisKm);
+    const hp = Math.max(10.0, periapsisAltitudeKm);
+    const m0 = Math.max(1.0, spacecraftMassKg);
+    const Isp = Math.max(100.0, chemicalIspSec);
+    const g0 = 9.80665e-3; // km/s^2
+
+    // Periapsis and apoapsis radii (km)
+    const rpKm = Rp + hp;
+    const raKm = Rp + ha;
+
+    // Hyperbolic entry velocity at periapsis: v_p,hyp = sqrt( vInf^2 + 2*mu/rp ) (km/s)
+    const vpHypKmS = Math.sqrt(Math.pow(vInf, 2.0) + (2.0 * mu) / rpKm);
+
+    // Elliptic captured velocity at periapsis: v_p,cap = sqrt( 2*mu*ra / ( rp * (ra + rp) ) ) (km/s)
+    const vpCapKmS = Math.sqrt((2.0 * mu * raKm) / (rpKm * (raKm + rpKm)));
+
+    // Required atmospheric velocity reduction Delta_V_req = v_p,hyp - v_p,cap (km/s)
+    const deltaVReqKmS = Math.max(0.0, vpHypKmS - vpCapKmS);
+
+    // Equivalent chemical propellant saved: Delta_m = m0 * ( 1 - exp(-Delta_V / (Isp * g0)) )
+    const ce = Isp * g0;
+    const mSavedKg = m0 * (1.0 - Math.exp(-deltaVReqKmS / ce));
+    const savingsPct = (mSavedKg / m0) * 100.0;
+
+    // Captured orbit eccentricity e = (ra - rp) / (ra + rp)
+    const eCap = (raKm - rpKm) / (raKm + rpKm);
+
+    let feasibility = 'High-Margin Aerocapture Orbit Insertion';
+    if (deltaVReqKmS > 4.5) {
+      feasibility = 'Extreme Hypersonic Energy Dissipation (Severe Thermal Protection System TPS Load)';
+    } else if (deltaVReqKmS < 1.0) {
+      feasibility = 'Low-Energy Aerocapture Transfer';
+    }
+
+    return {
+      hyperbolicPeriapsisVelocityKmS: parseFloat(vpHypKmS.toFixed(3)),
+      capturedPeriapsisVelocityKmS: parseFloat(vpCapKmS.toFixed(3)),
+      requiredAtmosphericDeltaVKmS: parseFloat(deltaVReqKmS.toFixed(3)),
+      propellantMassSavedKg: parseFloat(mSavedKg.toFixed(2)),
+      propellantSavingsPercent: parseFloat(savingsPct.toFixed(2)),
+      capturedEccentricity: parseFloat(eCap.toFixed(4)),
+      aerocaptureFeasibility: feasibility
+    };
+  }
 }
 
 

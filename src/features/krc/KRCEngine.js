@@ -3693,6 +3693,92 @@ export class KRCEngine {
       co2TrappingPotential: potential
     };
   }
+
+  /**
+   * Calculate non-isothermal seasonal thermal wave pore ice sublimation kinetics, Clausius-Clapeyron non-linear enhancement, and annual vapor flux.
+   * T_ice(t) = T_mean + Delta_T * exp( -z/d_s ) * cos( omega*t - z/d_s )
+   * <rho_sat> = ( 1 / 2*pi ) * integral( rho_sat( T_ice(t) ) dt )
+   * J_annual = ( D_eff / z_ice ) * ( <rho_sat> - rho_atm )
+   * Reference: Mellon & Jakosky (1993, 1995), Schorghofer & Aharonson (2005), Chamberlain & Boynton (2007) for Martian permafrost vapor dynamics.
+   * @param {number} [meanSurfaceTempK=210.0] - Annual mean surface temperature in K (150 to 240 K)
+   * @param {number} [annualTempAmplitudeK=30.0] - Annual seasonal temperature oscillation amplitude in K (5 to 60 K)
+   * @param {number} [iceFrontDepthMeters=0.20] - Ice table depth in meters (0.02 to 2.0 m)
+   * @param {number} [porosityPct=40.0] - Regolith porosity percentage
+   * @param {number} [thermalInertiaTIU=250.0] - Regolith thermal inertia in tiu
+   * @returns {{meanIceFrontTempK: number, iceTempAmplitudeK: number, annualMeanVaporDensityKgM3: number, isothermalVaporDensityKgM3: number, nonLinearThermalEnhancementFactor: number, annualVaporMassFluxKgM2S: number, iceStabilityAssessment: string}}
+   */
+  static computeSeasonalHarmonicSublimationPoreIceDiffusion(meanSurfaceTempK = 210.0, annualTempAmplitudeK = 30.0, iceFrontDepthMeters = 0.20, porosityPct = 40.0, thermalInertiaTIU = 250.0) {
+    const Tmean = Math.max(120.0, Math.min(260.0, meanSurfaceTempK));
+    const deltaTAnn = Math.max(0.0, Math.min(80.0, annualTempAmplitudeK));
+    const zIce = Math.max(0.01, iceFrontDepthMeters);
+    const phi = Math.max(0.05, Math.min(0.80, porosityPct / 100.0));
+    const I = Math.max(20.0, thermalInertiaTIU);
+
+    const R_GAS = 8.314462;
+    const M_H2O = 0.018015;
+    const L_SUB = 51058.0; // J/mol
+    const P_SOL_SEC = 88775.2;
+    const SOLS_YEAR = 668.6;
+    const P_YEAR_SEC = P_SOL_SEC * SOLS_YEAR;
+    const Cv = 1500.0 * 800.0; // typical Cv = 1.2e6 J/m^3/K
+
+    // Seasonal skin depth ds (m)
+    const dsM = (I / Cv) * Math.sqrt(P_YEAR_SEC / Math.PI);
+
+    // Thermal amplitude at ice front
+    const ampIce = deltaTAnn * Math.exp(-zIce / dsM);
+    const phaseLag = zIce / dsM;
+
+    // Numerical integration across seasonal cycle (120 steps)
+    const STEPS = 120;
+    let sumRhoSat = 0.0;
+
+    for (let i = 0; i < STEPS; i++) {
+      const omegaT = (2.0 * Math.PI * i) / STEPS;
+      const Tice = Tmean + ampIce * Math.cos(omegaT - phaseLag);
+
+      // Saturation vapor pressure Psat(Tice)
+      const pSatPa = 611.65 * Math.exp(-(L_SUB / R_GAS) * ((1.0 / Tice) - (1.0 / 273.16)));
+      const rhoSat = (pSatPa * M_H2O) / (R_GAS * Tice);
+      sumRhoSat += rhoSat;
+    }
+
+    const meanRhoSat = sumRhoSat / STEPS;
+
+    // Isothermal baseline at Tmean
+    const pSatMean = 611.65 * Math.exp(-(L_SUB / R_GAS) * ((1.0 / Tmean) - (1.0 / 273.16)));
+    const isoRhoSat = (pSatMean * M_H2O) / (R_GAS * Tmean);
+
+    // Non-linear enhancement factor due to Clausius-Clapeyron exponential curvature
+    const enhanceFactor = isoRhoSat > 0.0 ? meanRhoSat / isoRhoSat : 1.0;
+
+    // Effective Knudsen diffusivity D_eff (m^2/s)
+    const vTh = Math.sqrt((8.0 * R_GAS * Tmean) / (Math.PI * M_H2O));
+    const rPoreM = 5.0e-6; // 5 microns
+    const tau = 2.0;
+    const dEffM2S = (phi / (tau * tau)) * (2.0 / 3.0) * rPoreM * vTh;
+
+    // Net vapor flux (assuming atmospheric background is 10% of mean saturation)
+    const rhoAtm = meanRhoSat * 0.10;
+    const netFluxKgM2S = (dEffM2S / zIce) * (meanRhoSat - rhoAtm);
+
+    let assessment = 'Active Seasonal Sublimation Loss (Warm Mid-Latitude Ground Ice)';
+    if (enhanceFactor > 2.0) {
+      assessment = 'Severe Summer Thermal Wave Sublimation Pumping (High Non-Linear Vapor Outgassing)';
+    } else if (enhanceFactor <= 1.2 && Tmean < 190.0) {
+      assessment = 'Perennially Stable Cryosphere (Sub-Surface Ice Stable over Milankovitch Cycles)';
+    }
+
+    return {
+      meanIceFrontTempK: parseFloat(Tmean.toFixed(2)),
+      iceTempAmplitudeK: parseFloat(ampIce.toFixed(2)),
+      annualMeanVaporDensityKgM3: parseFloat(meanRhoSat.toExponential(4)),
+      isothermalVaporDensityKgM3: parseFloat(isoRhoSat.toExponential(4)),
+      nonLinearThermalEnhancementFactor: parseFloat(enhanceFactor.toFixed(3)),
+      annualVaporMassFluxKgM2S: parseFloat(netFluxKgM2S.toExponential(4)),
+      iceStabilityAssessment: assessment
+    };
+  }
 }
 
 
