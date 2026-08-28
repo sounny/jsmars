@@ -10914,6 +10914,59 @@ describe('Phobos/Deimos CW Rendezvous, Subsurface Ice Desiccation & Sulfate Hydr
     });
 });
 
+describe('Mars-to-Ice-Giant Transfers, Subglacial Lake Melting & Clinopyroxenes', () => {
+    it('should calculate Mars-to-Uranus/Neptune interplanetary transfer TOF and injection Delta-V', () => {
+        // Mars to Uranus transfer (r_U = 19.22 AU, 300 km parking orbit):
+        const uranus = TrajectoryEngine.computeMarsOuterIceGiantTrajectory('Uranus', 300.0);
+        expect(uranus.destinationPlanet).to.equal('Uranus');
+        expect(uranus.targetSemiMajorAxisAU).to.equal(19.22);
+        expect(uranus.timeOfFlightYears).to.be.closeTo(16.25, 0.5); // ~16.3 years TOF
+        expect(uranus.transIceGiantInjectionDeltaVKmS).to.be.closeTo(6.56, 0.5); // ~6.6 km/s TII Delta-V
+        expect(uranus.arrivalHyperbolicExcessKmS).to.be.closeTo(4.20, 0.5); // ~4.2 km/s arrival excess
+        expect(uranus.outerSystemMissionContext).to.include('Mars-to-Uranus Interplanetary Transfer');
+
+        // Mars to Neptune transfer (r_N = 30.07 AU):
+        const neptune = TrajectoryEngine.computeMarsOuterIceGiantTrajectory('Neptune', 300.0);
+        expect(neptune.destinationPlanet).to.equal('Neptune');
+        expect(neptune.timeOfFlightYears).to.be.closeTo(30.65, 1.0); // ~30.7 years TOF
+    });
+
+    it('should calculate South Polar Layered Deposits (SPLD) basal melting, cryostatic pressure, and subglacial lake brine stability', () => {
+        // High geothermal flux / volcanic sill under SPLD (1500 m ice, 45 mW/m^2 heat flux, 160 K surface, 35% perchlorate salt):
+        const spld = KRCEngine.computeMartianBasalIceMeltingAndSubglacialLakePressure(1500.0, 45.0, 160.0, 35.0);
+        expect(spld.iceThicknessMeters).to.equal(1500.0);
+        expect(spld.basalOverburdenPressureMPa).to.be.closeTo(5.135, 0.1); // ~5.14 MPa cryostatic pressure
+        expect(spld.basalIceTempK).to.be.closeTo(192.1, 5.0); // ~192 K basal ice temp
+        expect(spld.eutecticFreezingTempK).to.be.closeTo(204.9, 2.0); // ~205 K Mg-perchlorate eutectic
+        expect(spld.isSubglacialLiquidBrineStable).to.be.false;
+
+        // Enhanced localized hydrothermal magmatic plume (90 mW/m^2):
+        const plume = KRCEngine.computeMartianBasalIceMeltingAndSubglacialLakePressure(1500.0, 90.0, 160.0, 35.0);
+        expect(plume.basalIceTempK).to.be.greaterThan(220.0);
+        expect(plume.isSubglacialLiquidBrineStable).to.be.true;
+        expect(plume.dielectricReflectivityContext).to.include('Stable Subglacial Hyper-Saline Perchlorate Brine Lake');
+    });
+
+    it('should discriminate High-Ca Augite from Low-Ca Pigeonite clinopyroxene solid solutions in CRISM spectra', () => {
+        // Augite (High-Ca pyroxene) in Syrtis Major volcanic shields (Band 1 = 1.035 um, Band 2 = 2.300 um):
+        const augite = BandMathEngine.computeCRISMPyroxeneAugitePigeoniteSolidSolution(1.035, 2.300, 0.08);
+        expect(augite.isPyroxenePresent).to.be.true;
+        expect(augite.pyroxeneEndmember).to.include('Augite (High-Calcium Clinopyroxene');
+        expect(augite.estimatedWollastoniteMolePct).to.be.greaterThan(35.0); // > Wo35
+        expect(augite.petrologicContext).to.include('Evolved Alkaline Basaltic Volcanism');
+
+        // Pigeonite (Low-Ca pyroxene) in quenched tholeiites (Band 1 = 0.950 um, Band 2 = 2.020 um):
+        const pigeonite = BandMathEngine.computeCRISMPyroxeneAugitePigeoniteSolidSolution(0.950, 2.020, 0.08);
+        expect(pigeonite.isPyroxenePresent).to.be.true;
+        expect(pigeonite.pyroxeneEndmember).to.include('Pigeonite (Low-Calcium Clinopyroxene');
+        expect(pigeonite.estimatedWollastoniteMolePct).to.be.lessThan(20.0); // < Wo20
+
+        // Flat matrix:
+        const basalt = BandMathEngine.computeCRISMPyroxeneAugitePigeoniteSolidSolution(1.035, 2.300, 0.01);
+        expect(basalt.isPyroxenePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

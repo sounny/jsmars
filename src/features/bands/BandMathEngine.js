@@ -5222,6 +5222,52 @@ export class BandMathEngine {
       evaporiticAqueousContext: context
     };
   }
+
+  /**
+   * Discriminate High-Calcium Clinopyroxene (Augite Wo35-45) from Low-Calcium Monoclinic Clinopyroxene (Pigeonite Wo5-15) solid solutions in CRISM NIR spectra.
+   * Reference: Adams (1974), Cloutis & Gaffey (1991), Mustard et al. (2005), Viviano-Beck et al. (2014) for Martian volcanic provinces (Syrtis Major, Tyrrhena).
+   * @param {number} band1CenterUm - Wavelength of Band 1 Fe2+ absorption in um (0.90 to 1.10 um)
+   * @param {number} band2CenterUm - Wavelength of Band 2 Fe2+ absorption in um (1.90 to 2.40 um)
+   * @param {number} [pyroxeneIndexDepth=0.06] - HCPINDEX / LCPINDEX integrated band depth (0.0 to 1.0)
+   * @returns {{band1CenterUm: number, band2CenterUm: number, isPyroxenePresent: boolean, pyroxeneEndmember: string, estimatedWollastoniteMolePct: number, petrologicContext: string}}
+   */
+  static computeCRISMPyroxeneAugitePigeoniteSolidSolution(band1CenterUm, band2CenterUm, pyroxeneIndexDepth = 0.06) {
+    const l1 = Math.max(0.90, Math.min(1.10, band1CenterUm));
+    const l2 = Math.max(1.85, Math.min(2.45, band2CenterUm));
+    const depth = Math.max(0.0, pyroxeneIndexDepth);
+
+    let isPyrox = false;
+    let endmember = 'Non-Pyroxene or Olivine Matrix';
+    let woPct = 0.0;
+    let context = 'Standard Basaltic Regolith';
+
+    if (depth >= 0.025) {
+      isPyrox = true;
+      // Invert Wollastonite (Wo) content from Band 1 and Band 2 positions
+      // Wo% = (l1 - 0.92) / (1.05 - 0.92) * 45
+      woPct = Math.max(5.0, Math.min(50.0, ((l1 - 0.920) / 0.130) * 45.0));
+
+      if (l1 >= 1.020 && l2 >= 2.250) {
+        endmember = 'Augite (High-Calcium Clinopyroxene Wo35-45 En40-50 Fs10-20)';
+        context = 'Evolved Alkaline Basaltic Volcanism / Slow-Cooled Plutonic Cumulate (Syrtis Major Type)';
+      } else if (l1 <= 0.980 && l2 <= 2.100) {
+        endmember = 'Pigeonite (Low-Calcium Clinopyroxene Wo5-15 En55-70 Fs20-35)';
+        context = 'Rapidly Quenched Tholeiitic Volcanic Flows / Primitive Volcanic Flood Basalt';
+      } else {
+        endmember = 'Subcalcic Augite / Intermediate Clinopyroxene (Wo20-30)';
+        context = 'Differentiated Fractional Crystallization Basaltic Suite';
+      }
+    }
+
+    return {
+      band1CenterUm: parseFloat(l1.toFixed(3)),
+      band2CenterUm: parseFloat(l2.toFixed(3)),
+      isPyroxenePresent: isPyrox,
+      pyroxeneEndmember: endmember,
+      estimatedWollastoniteMolePct: parseFloat(woPct.toFixed(1)),
+      petrologicContext: context
+    };
+  }
 }
 
 

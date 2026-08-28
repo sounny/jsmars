@@ -5393,6 +5393,57 @@ export class KRCEngine {
       groundIcePreservationContext: context
     };
   }
+
+  /**
+   * Calculate South Polar Layered Deposits (SPLD) basal ice temperature, cryostatic overburden pressure, and hyper-saline perchlorate brine lake stability.
+   * P_base = rho_ice * g_mars * H_ice
+   * T_base = T_surf + ( q_geo * H_ice ) / k_ice
+   * Reference: Orosei et al. (2018), Lauro et al. (2021), Sori & Bramson (2019) for MARSIS subglacial liquid water detection in Ultimi Scopuli.
+   * @param {number} [iceThicknessMeters=1500.0] - Polar ice cap column thickness in meters (200 to 4000 m)
+   * @param {number} [basalGeothermalFluxMWm2=45.0] - Basal crustal geothermal heat flux in mW/m^2 (15 to 150 mW/m^2)
+   * @param {number} [surfaceTempK=160.0] - Mean annual polar surface ice temperature in K (140 to 180 K)
+   * @param {number} [perchlorateBrineSalinityPct=35.0] - Magnesium/Calcium perchlorate salt mass percentage (0 to 45%)
+   * @returns {{iceThicknessMeters: number, basalOverburdenPressureMPa: number, basalIceTempK: number, eutecticFreezingTempK: number, isSubglacialLiquidBrineStable: boolean, dielectricReflectivityContext: string}}
+   */
+  static computeMartianBasalIceMeltingAndSubglacialLakePressure(iceThicknessMeters = 1500.0, basalGeothermalFluxMWm2 = 45.0, surfaceTempK = 160.0, perchlorateBrineSalinityPct = 35.0) {
+    const Hice = Math.max(50.0, iceThicknessMeters);
+    const qGeoW = Math.max(0.005, basalGeothermalFluxMWm2 / 1000.0);
+    const Tsurf = Math.max(120.0, Math.min(200.0, surfaceTempK));
+    const saltPct = Math.max(0.0, Math.min(50.0, perchlorateBrineSalinityPct));
+
+    const gMars = 3.72076; // m/s^2
+    const rhoIce = 920.0; // kg/m^3
+    const kIce = 2.1; // W/(m*K) bulk conductivity of dusty polar ice
+
+    // Cryostatic overburden pressure (MPa)
+    const PbasePa = rhoIce * gMars * Hice;
+    const PbaseMPa = PbasePa / 1e6;
+
+    // Basal temperature from steady-state conduction (K)
+    const deltaT = (qGeoW * Hice) / kIce;
+    const TbaseK = Tsurf + deltaT;
+
+    // Eutectic freezing point depression of perchlorate brines (Mg(ClO4)2 eutectic at 205 K)
+    const TeffEutecticK = 273.15 - (saltPct * 1.95);
+
+    const isLiquid = TbaseK >= TeffEutecticK;
+
+    let context = 'Frozen Cold-Based Basal Ice Sheet (Low Basal Radar Reflectivity)';
+    if (isLiquid) {
+      context = 'Stable Subglacial Hyper-Saline Perchlorate Brine Lake (High Dielectric Permittivity MARSIS Bright Reflector)';
+    } else if (TbaseK >= 190.0) {
+      context = 'Warm Near-Basal Clathrate Hydrate Ductile Creep Horizon';
+    }
+
+    return {
+      iceThicknessMeters: parseFloat(Hice.toFixed(1)),
+      basalOverburdenPressureMPa: parseFloat(PbaseMPa.toFixed(3)),
+      basalIceTempK: parseFloat(TbaseK.toFixed(1)),
+      eutecticFreezingTempK: parseFloat(TeffEutecticK.toFixed(1)),
+      isSubglacialLiquidBrineStable: isLiquid,
+      dielectricReflectivityContext: context
+    };
+  }
 }
 
 
