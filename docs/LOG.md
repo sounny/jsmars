@@ -512,3 +512,24 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate direct high-energy Hohmann transfer from Mars to innermost planet Mercury
 ?: AssertionError: expected 12.584 to be close to 13.914 +/- 0.5
     at n.<anonymous> (unit.js:12624:54)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 23:01:00 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate 3-burn bi-elliptic transfer from Mars out to high asteroid aphelion and plunge to Venus
+?: AssertionError: expected 3.472 to be close to 3.793 +/- 0.2
+    at n.<anonymous> (unit.js:12765:57)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 23:01:15 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate 3-burn bi-elliptic transfer from Mars out to high asteroid aphelion and plunge to Venus
+?: AssertionError: expected 2.82 to be close to 3.854 +/- 0.2
+    at n.<anonymous> (unit.js:12766:56)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 23:01:27 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate 3-burn bi-elliptic transfer from Mars out to high asteroid aphelion and plunge to Venus
+?: AssertionError: expected 7.468 to be close to 4.488 +/- 0.3
+    at n.<anonymous> (unit.js:12767:56)

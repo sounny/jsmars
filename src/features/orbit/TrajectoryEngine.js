@@ -7189,6 +7189,84 @@ export class TrajectoryEngine {
       combinedTransferContext: `Combined Spiral + Inc (${tBurnDays.toFixed(0)} d Transfer, ${dIncDeg.toFixed(1)} deg Inc, ${dvCombinedKmS.toFixed(2)} km/s Delta-V, ${deltaMKg.toFixed(1)} kg Xe)`
     };
   }
+
+  /**
+   * Calculate 3-burn bi-elliptic inward transfer from Mars out to high intermediate aphelion and plunge to Venus.
+   * a_1 = ( r_mars + r_ap ) / 2, a_2 = ( r_venus + r_ap ) / 2
+   * Delta_V_tot = Delta_V_1 + Delta_V_2 + Delta_V_3
+   * TOF = pi * sqrt( a_1^3 / mu ) + pi * sqrt( a_2^3 / mu )
+   * Reference: Escobal (1965), Chobotov (2002), Curtis (2013) for Bi-Elliptic Orbital Transfers.
+   * @param {number} [intermediateAphelionAU=4.00] - Intermediate transfer aphelion in AU (2.0 to 30.0 AU)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking altitude in km (150 to 1000 km)
+   * @param {number} [venusParkingAltitudeKm=300.0] - Venus arrival parking altitude in km (150 to 1000 km)
+   * @returns {{totalTransferTimeDays: number, totalTransferTimeYears: number, marsDepartureDeltaVKmS: number, aphelionBurnDeltaVKmS: number, venusArrivalDeltaVKmS: number, totalMissionDeltaVKmS: number, intermediateAphelionAU: number, biEllipticContext: string}}
+   */
+  static computeMarsToVenusBiEllipticTransfer(intermediateAphelionAU = 4.00, marsParkingAltitudeKm = 300.0, venusParkingAltitudeKm = 300.0) {
+    const rbAU = Math.max(1.8, intermediateAphelionAU);
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpVKm = Math.max(150.0, venusParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muVenus = 324858.6;
+    const rVenusKm = 6051.8;
+
+    const rMarsAU = 1.52368;
+    const rVenusAU = 0.72333;
+    const r1Km = rMarsAU * AU_KM;
+    const r2Km = rVenusAU * AU_KM;
+    const rbKm = rbAU * AU_KM;
+
+    // Semi-major axes
+    const a1Km = (r1Km + rbKm) / 2.0;
+    const a2Km = (r2Km + rbKm) / 2.0;
+
+    // Time of flight (days and years)
+    const tofs1Sec = Math.PI * Math.sqrt(Math.pow(a1Km, 3.0) / muSun);
+    const tofs2Sec = Math.PI * Math.sqrt(Math.pow(a2Km, 3.0) / muSun);
+    const tofsTotDays = (tofs1Sec + tofs2Sec) / 86400.0;
+    const tofsTotYrs = tofsTotDays / 365.25;
+
+    // Burn 1 (Mars departure)
+    const v1KmS = Math.sqrt(muSun / r1Km);
+    const vTrans1aKmS = Math.sqrt(muSun * ((2.0 / r1Km) - (1.0 / a1Km)));
+    const vInfMarsKmS = Math.abs(vTrans1aKmS - v1KmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dv1KmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Burn 2 (Intermediate Aphelion Burn at rb)
+    const vAp1KmS = Math.sqrt(muSun * ((2.0 / rbKm) - (1.0 / a1Km)));
+    const vAp2KmS = Math.sqrt(muSun * ((2.0 / rbKm) - (1.0 / a2Km)));
+    const dv2KmS = Math.abs(vAp2KmS - vAp1KmS);
+
+    // Burn 3 (Venus Arrival Capture)
+    const v2KmS = Math.sqrt(muSun / r2Km);
+    const vTrans2pKmS = Math.sqrt(muSun * ((2.0 / r2Km) - (1.0 / a2Km)));
+    const vInfVKmS = Math.abs(vTrans2pKmS - v2KmS);
+
+    const rParkVKm = rVenusKm + hpVKm;
+    const vParkVKmS = Math.sqrt(muVenus / rParkVKm);
+    const vHypVKmS = Math.sqrt(Math.pow(vInfVKmS, 2.0) + ((2.0 * muVenus) / rParkVKm));
+    const dv3KmS = vHypVKmS - vParkVKmS;
+
+    const dvTotKmS = dv1KmS + dv2KmS + dv3KmS;
+
+    return {
+      totalTransferTimeDays: parseFloat(tofsTotDays.toFixed(1)),
+      totalTransferTimeYears: parseFloat(tofsTotYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dv1KmS.toFixed(3)),
+      aphelionBurnDeltaVKmS: parseFloat(dv2KmS.toFixed(3)),
+      venusArrivalDeltaVKmS: parseFloat(dv3KmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      intermediateAphelionAU: parseFloat(rbAU.toFixed(2)),
+      biEllipticContext: `Mars-to-Venus Bi-Elliptic (${rbAU.toFixed(1)} AU Aphelion, ${tofsTotYrs.toFixed(1)} yr TOF, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

@@ -7567,6 +7567,68 @@ export class KRCEngine {
       evaporiteSequenceContext: `Acid Lake Evaporation (${CF.toFixed(1)}x Conc, ${residualDepthM.toFixed(1)}m Left, ${tDryYr.toFixed(0)} yr Lifespan, ${phaseClass})`
     };
   }
+
+  /**
+   * Calculate crustal hydraulic fracture vein opening, Sneddon elastic crack aperture, and hydrothermal fluid discharge flux.
+   * w_max = 4 * ( 1 - nu^2 ) * Delta_P * L / ( pi * E )
+   * w_mean = ( pi / 4 ) * w_max
+   * v_fluid = ( w_mean^2 / ( 12 * mu ) ) * ( dP / dz )
+   * Reference: Sneddon (1946), Pollard & Segall (1987), Rubin (1995), Ehlmann et al. (2011) for Crustal Hydrofracture Veins.
+   * @param {number} [crustalDepthKm=4.0] - Vein depth in km (0.5 to 15.0 km)
+   * @param {number} [fluidOverpressureMPa=25.0] - Fluid overpressure Delta P in MPa (1.0 to 100.0 MPa)
+   * @param {number} [fractureLengthM=50.0] - Crack trace length in m (5.0 to 500.0 m)
+   * @param {number} [hostRockYoungsModulusGPa=45.0] - Basalt Young's modulus in GPa (10.0 to 100.0 GPa)
+   * @param {number} [hostRockPoissonsRatio=0.25] - Rock Poisson's ratio (0.15 to 0.35)
+   * @returns {{maximumApertureMm: number, meanHydraulicApertureMm: number, fluidDischargeVelocityMS: number, dailyVolumetricDischargeM3Day: number, hydrofractureRegimeClass: string, hydrofractureContext: string}}
+   */
+  static computeMartianCrustalHydrofractureApertureAndFlux(crustalDepthKm = 4.0, fluidOverpressureMPa = 25.0, fractureLengthM = 50.0, hostRockYoungsModulusGPa = 45.0, hostRockPoissonsRatio = 0.25) {
+    const zKm = Math.max(0.2, crustalDepthKm);
+    const dPMPa = Math.max(0.5, fluidOverpressureMPa);
+    const LM = Math.max(1.0, fractureLengthM);
+    const EGPa = Math.max(5.0, hostRockYoungsModulusGPa);
+    const nu = Math.max(0.10, Math.min(0.40, hostRockPoissonsRatio));
+
+    const zM = zKm * 1000.0;
+    const dPPa = dPMPa * 1.0e6;
+    const EPa = EGPa * 1.0e9;
+    const muFluidPaS = 3.0e-4; // Pa*s at 100 C
+    const fractureWidthM = 10.0; // Standard 10 m strike width
+
+    // Sneddon Griffith crack maximum opening (m & mm)
+    const wMaxM = (4.0 * (1.0 - Math.pow(nu, 2.0)) * dPPa * LM) / (Math.PI * EPa);
+    const wMaxMm = wMaxM * 1000.0;
+
+    // Mean hydraulic aperture (m & mm)
+    const wMeanM = (Math.PI / 4.0) * wMaxM;
+    const wMeanMm = wMeanM * 1000.0;
+
+    // Hydraulic gradient (Pa/m)
+    const gradPPaM = dPPa / zM;
+
+    // Darcy-Weisbach / Poiseuille discharge velocity (m/s)
+    const vDischargeMS = (Math.pow(wMeanM, 2.0) / (12.0 * muFluidPaS)) * gradPPaM;
+
+    // Volumetric discharge rate (m^3/s and m^3/day)
+    const areaM2 = wMeanM * fractureWidthM;
+    const qM3S = vDischargeMS * areaM2;
+    const qM3Day = qM3S * 86400.0;
+
+    let regimeClass = 'High-Overpressure Hydraulic Fracture Opening (Rapid Hydrothermal Vein Injection)';
+    if (wMaxMm < 5.0) {
+      regimeClass = 'Microfracture Crack-Seal Network (Slow Perched Aquifer Leakage)';
+    } else if (wMaxMm >= 50.0) {
+      regimeClass = 'Catastrophic Mega-Hydrofracture (Basalt Dike / Megabreccia Conduit)';
+    }
+
+    return {
+      maximumApertureMm: parseFloat(wMaxMm.toFixed(2)),
+      meanHydraulicApertureMm: parseFloat(wMeanMm.toFixed(2)),
+      fluidDischargeVelocityMS: parseFloat(vDischargeMS.toFixed(1)),
+      dailyVolumetricDischargeM3Day: parseFloat(qM3Day.toFixed(0)),
+      hydrofractureRegimeClass: regimeClass,
+      hydrofractureContext: `Hydrofracture at ${zKm.toFixed(1)}km (${wMeanMm.toFixed(1)} mm Aperture, ${dPMPa.toFixed(0)} MPa Overpressure, ${qM3Day.toExponential(2)} m3/d Discharge)`
+    };
+  }
 }
 
 

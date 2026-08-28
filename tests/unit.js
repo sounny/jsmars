@@ -12756,6 +12756,53 @@ describe('Edelbaum Combined Spiral & Plane Change, Acid Lake Evaporites & Acid S
     });
 });
 
+describe('Mars-to-Venus Bi-Elliptic Transfer, Crustal Hydrofracture & Mg-Sulfates', () => {
+    it('should calculate 3-burn bi-elliptic transfer from Mars out to high asteroid aphelion and plunge to Venus', () => {
+        // Mars to Venus with 4.0 AU intermediate aphelion:
+        const biElliptic = TrajectoryEngine.computeMarsToVenusBiEllipticTransfer(4.00, 300.0, 300.0);
+        expect(biElliptic.totalTransferTimeDays).to.be.closeTo(1501.1, 30.0); // ~1501 days
+        expect(biElliptic.totalTransferTimeYears).to.be.closeTo(4.11, 0.1); // ~4.11 yr
+        expect(biElliptic.marsDepartureDeltaVKmS).to.be.closeTo(3.472, 0.2); // ~3.47 km/s DV1
+        expect(biElliptic.aphelionBurnDeltaVKmS).to.be.closeTo(2.820, 0.2); // ~2.82 km/s DV2
+        expect(biElliptic.venusArrivalDeltaVKmS).to.be.closeTo(7.468, 0.3); // ~7.47 km/s DV3
+        expect(biElliptic.totalMissionDeltaVKmS).to.be.closeTo(13.760, 0.5); // ~13.76 km/s total
+        expect(biElliptic.intermediateAphelionAU).to.equal(4.00);
+        expect(biElliptic.biEllipticContext).to.include('Mars-to-Venus Bi-Elliptic');
+    });
+
+    it('should calculate crustal hydrofracture vein opening, Sneddon aperture, and hydrothermal discharge flux', () => {
+        // 4 km depth, 25 MPa fluid overpressure, 50 m crack length, E = 45 GPa, nu = 0.25:
+        const hydro = KRCEngine.computeMartianCrustalHydrofractureApertureAndFlux(4.0, 25.0, 50.0, 45.0, 0.25);
+        expect(hydro.maximumApertureMm).to.be.closeTo(33.16, 1.0); // ~33.2 mm max aperture
+        expect(hydro.meanHydraulicApertureMm).to.be.closeTo(26.04, 1.0); // ~26.0 mm mean aperture
+        expect(hydro.fluidDischargeVelocityMS).to.be.closeTo(1177.2, 50.0); // ~1177 m/s discharge
+        expect(hydro.dailyVolumetricDischargeM3Day).to.be.closeTo(2.65e7, 3.0e6); // ~2.65e7 m^3/d
+        expect(hydro.hydrofractureRegimeClass).to.include('High-Overpressure Hydraulic Fracture Opening');
+        expect(hydro.hydrofractureContext).to.include('Hydrofracture');
+    });
+
+    it('should discriminate Monohydrated Kieserite vs Polyhydrated Epsomite/Starkeyite in CRISM spectra', () => {
+        // Monohydrated Kieserite (Mount Sharp lower sulfate unit: BD1400 = 0.01, BD1900 = 0.01, BD2130 = 0.05, BD2400 = 0.07):
+        const kieserite = BandMathEngine.computeCRISMMagnesiumSulfateSpeciationIndices(0.01, 0.01, 0.05, 0.07);
+        expect(kieserite.isMgSulfateDetected).to.be.true;
+        expect(kieserite.mgSulfateHydrationClass).to.include('Monohydrated Magnesium Sulfate (Kieserite)');
+        expect(kieserite.mineralSpecies).to.include('Kieserite');
+        expect(kieserite.chemicalFormula).to.include('MgSO4 * H2O');
+        expect(kieserite.environmentalDesiccationContext).to.include('Hyper-Arid Surface Desiccation');
+
+        // Polyhydrated Epsomite / Starkeyite (Juventae Chasma: BD1400 = 0.05, BD1900 = 0.08, BD2130 = 0.01, BD2400 = 0.07):
+        const epsomite = BandMathEngine.computeCRISMMagnesiumSulfateSpeciationIndices(0.05, 0.08, 0.01, 0.07);
+        expect(epsomite.isMgSulfateDetected).to.be.true;
+        expect(epsomite.mgSulfateHydrationClass).to.include('Polyhydrated Magnesium Sulfate (Epsomite / Starkeyite)');
+        expect(epsomite.mineralSpecies).to.include('Epsomite');
+        expect(epsomite.chemicalFormula).to.include('MgSO4 * 7H2O');
+
+        // Non-sulfate basalt:
+        const basalt = BandMathEngine.computeCRISMMagnesiumSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMgSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

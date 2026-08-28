@@ -7086,6 +7086,56 @@ export class BandMathEngine {
       phEnvironmentContext: context
     };
   }
+
+  /**
+   * Discriminate Monohydrated Kieserite vs Polyhydrated Magnesium Sulfates (Epsomite/Starkeyite) from CRISM 1.40 um, 1.90 um, 2.13 um, and 2.40 um absorption bands.
+   * Reference: Chojnacki et al. (2014), Milliken et al. (2008), Viviano-Beck et al. (2014) for Martian Magnesium Sulfate Speciation.
+   * @param {number} [band1400WaterDepth=0.05] - BD1400 molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.08] - BD1900 molecular H2O fundamental combination depth (0.0 to 0.50)
+   * @param {number} [band2130KieseriteDepth=0.01] - BD2130 diagnostic Kieserite OH-SO4 vibration depth (0.0 to 0.40)
+   * @param {number} [band2400SulfateDepth=0.07] - BD2400 fundamental SO4 vibration depth (0.0 to 0.40)
+   * @returns {{isMgSulfateDetected: boolean, mgSulfateHydrationClass: string, mineralSpecies: string, chemicalFormula: string, environmentalDesiccationContext: string}}
+   */
+  static computeCRISMMagnesiumSulfateSpeciationIndices(band1400WaterDepth = 0.05, band1900WaterDepth = 0.08, band2130KieseriteDepth = 0.01, band2400SulfateDepth = 0.07) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2130 = Math.max(0.0, band2130KieseriteDepth);
+    const d2400 = Math.max(0.0, band2400SulfateDepth);
+
+    const isSulfate = d2400 >= 0.025 && (d2130 >= 0.025 || d1900 >= 0.030);
+
+    let mgClass = 'Non-Sulfate Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Magnesium Sulfate Absorption';
+
+    if (isSulfate) {
+      if (d2130 >= 0.035 && d1900 < 0.030) {
+        mgClass = 'Monohydrated Magnesium Sulfate (Kieserite)';
+        species = 'Kieserite';
+        formula = 'MgSO4 * H2O';
+        context = 'Hyper-Arid Surface Desiccation / Thermal Burial Dehydration (Mount Sharp / Gale Crater Sulfate Unit)';
+      } else if (d1900 >= 0.045 && d1400 >= 0.035) {
+        mgClass = 'Polyhydrated Magnesium Sulfate (Epsomite / Starkeyite)';
+        species = 'Epsomite / Starkeyite';
+        formula = 'MgSO4 * 7H2O / MgSO4 * 4H2O';
+        context = 'Subaqueous Saline Paleolake Evaporite / High Relative Humidity Horizon (Valles Marineris / Juventae Chasma)';
+      } else {
+        mgClass = 'Mixed Hydration Magnesium Sulfate Assemblage';
+        species = 'Hydrated Magnesium Sulfate';
+        formula = 'MgSO4 * nH2O';
+        context = 'Transitional Hydration Sulfate Crust';
+      }
+    }
+
+    return {
+      isMgSulfateDetected: isSulfate,
+      mgSulfateHydrationClass: mgClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      environmentalDesiccationContext: context
+    };
+  }
 }
 
 
