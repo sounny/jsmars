@@ -11207,6 +11207,47 @@ describe('Mars Atmospheric Tether Dynamics, Cryopeg Hydrology & Kaolin Polymorph
     });
 });
 
+describe('Mars Aerobraking TPS Pyrolysis, Acid Fog Leaching & Chloride Salt Inversion', () => {
+    it('should calculate hypersonic entry TPS stagnation heat load, PICA charring, and ablation recession', () => {
+        // PICA heatshield hypersonic corridor (1.25 m nose radius, 52 km periapsis, 5.8 km/s entry speed):
+        const tps = TrajectoryEngine.computeMarsAerobrakingTPSPyrolysisAndRecession(1.25, 'PICA', 52.0, 5.8);
+        expect(tps.heatShieldMaterial).to.include('PICA');
+        expect(tps.peakConvectiveHeatFluxKWm2).to.be.closeTo(449.6, 20.0); // ~450 kW/m^2 peak flux
+        expect(tps.totalHeatLoadMJm2).to.be.closeTo(19.0, 2.0); // ~19 MJ/m^2 heat load
+        expect(tps.surfaceAblationRecessionMm).to.be.closeTo(2.01, 0.3); // ~2.0 mm surface recession
+        expect(tps.indepthCharDepthMm).to.be.closeTo(6.43, 1.0); // ~6.4 mm char front
+        expect(tps.tpsAblationContext).to.include('PICA');
+    });
+
+    it('should calculate volcanic acid fog leaching, basalt dissolution, and siliceous hardpan duricrust formation', () => {
+        // Gusev fumarolic acid fog (50 ug/m^2*s SO2, 65% RH, 210 K ground, 10,000 years weathering):
+        const acid = KRCEngine.computeMartianAcidFogLeachingAndSiliceousHardpan(50.0, 65.0, 210.0, 10000.0);
+        expect(acid.so2DepositionFluxMgM2Yr).to.be.closeTo(1064.6, 50.0); // ~1065 mg/(m^2*yr)
+        expect(acid.cumulativeAcidLoadKgM2).to.be.closeTo(10.65, 1.0); // ~10.6 kg/m^2 cumulative acid
+        expect(acid.residualSilicaWeightPct).to.be.closeTo(84.6, 5.0); // ~85 wt% amorphous SiO2
+        expect(acid.hardpanDuricrustThicknessCm).to.be.closeTo(8.16, 2.0); // ~8 cm duricrust
+        expect(acid.acidWeatheringContext).to.include('Siliceous Hardpan Duricrust');
+    });
+
+    it('should discriminate Anhydrous Chloride Salts (Halite Playas) from clays and sulfates in CRISM spectra', () => {
+        // Anhydrous Halite Playa in Southern Highlands (high positive NIR slope, no 1.9/2.3 um bands: ISLOPE = 0.14):
+        const halite = BandMathEngine.computeCRISMChlorideBearingSaltIndices(0.14, 0.005, 0.005);
+        expect(halite.isChloridePresent).to.be.true;
+        expect(halite.chlorideMineralPhase).to.include('Anhydrous Halite / Sylvite');
+        expect(halite.spectralMorphology).to.include('Strong Positive NIR Continuum Slope');
+        expect(halite.evaporiticPaleoenvironmentContext).to.include('Terminal Evaporative Lake Basin');
+
+        // Hydrated Sulfate matrix (high 1.9 um absorption):
+        const sulfate = BandMathEngine.computeCRISMChlorideBearingSaltIndices(0.14, 0.08, 0.04);
+        expect(sulfate.isChloridePresent).to.be.false;
+        expect(sulfate.chlorideMineralPhase).to.include('Hydrated Mineral Matrix');
+
+        // Flat basalt:
+        const basalt = BandMathEngine.computeCRISMChlorideBearingSaltIndices(0.01, 0.005, 0.005);
+        expect(basalt.isChloridePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

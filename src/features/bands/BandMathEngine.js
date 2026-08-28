@@ -5525,6 +5525,54 @@ export class BandMathEngine {
       paleoweatheringContext: context
     };
   }
+
+  /**
+   * Discriminate Anhydrous Chloride-Bearing Salts (NaCl/KCl Halite Playas) from hydrated sulfates and clays using CRISM NIR slope and band absence indices.
+   * Reference: Osterloo et al. (2008, 2010), Glotch et al. (2010), Viviano-Beck et al. (2014) for Noachian highland chloride salt deposits.
+   * @param {number} [nirSlopeIndex=0.12] - ISLOPE / positive near-IR continuum slope (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 molecular H2O band depth (0.0 to 0.40)
+   * @param {number} [band2300CationDepth=0.005] - Cation overtone band depth (Fe/Mg-OH or Al-OH) (0.0 to 0.40)
+   * @returns {{isChloridePresent: boolean, chlorideMineralPhase: string, mineralSpecies: string, spectralMorphology: string, evaporiticPaleoenvironmentContext: string}}
+   */
+  static computeCRISMChlorideBearingSaltIndices(nirSlopeIndex = 0.12, band1900WaterDepth = 0.01, band2300CationDepth = 0.005) {
+    const sNir = Math.max(0.0, nirSlopeIndex);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2300 = Math.max(0.0, band2300CationDepth);
+
+    let isChloride = false;
+    let phase = 'Non-Chloride Matrix';
+    let species = 'Basaltic Regolith';
+    let morph = 'Featureless Background';
+    let context = 'Standard Unaltered Silicate Crust';
+
+    if (sNir >= 0.060 && d1900 <= 0.025 && d2300 <= 0.020) {
+      isChloride = true;
+      if (sNir >= 0.10) {
+        phase = 'Anhydrous Halite / Sylvite Salt Playa (NaCl/KCl)';
+        species = 'Anhydrous Chloride Salt Deposit';
+        morph = 'Strong Positive NIR Continuum Slope with Suppressed H2O/OH Bands';
+        context = 'Terminal Evaporative Lake Basin / Desiccated Saline Playa Flat (Noachian-Hesperian Transition)';
+      } else {
+        phase = 'Dispersed Halite-Bearing Regolith Mixture';
+        species = 'Chloride-Enriched Basaltic Sand';
+        morph = 'Moderate Positive NIR Slope';
+        context = 'Interbedded Saline Siltstone / Eolian Salt Crust';
+      }
+    } else if (d1900 > 0.040 || d2300 > 0.030) {
+      phase = 'Hydrated Mineral Matrix (Phyllosilicates / Hydrated Sulfates)';
+      species = 'Hydrated Clay/Sulfate Complex';
+      morph = 'Prominent Structural Absorption Features';
+      context = 'Aqueous Alteration / Hydrated Sulfate Deposit';
+    }
+
+    return {
+      isChloridePresent: isChloride,
+      chlorideMineralPhase: phase,
+      mineralSpecies: species,
+      spectralMorphology: morph,
+      evaporiticPaleoenvironmentContext: context
+    };
+  }
 }
 
 

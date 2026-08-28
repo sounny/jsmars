@@ -5205,6 +5205,69 @@ export class TrajectoryEngine {
       tetherMechanicsContext: `Atmospheric Tether (${LtetherKm.toFixed(0)} km Tether, ${hTipKm.toFixed(0)} km Dip, ${dvDeorbitMS.toFixed(1)} m/s Non-Propulsive Release Kick)`
     };
   }
+
+  /**
+   * Calculate hypersonic Martian entry / aerocapture TPS charring, in-depth pyrolysis, stagnation heat load, and surface ablation recession.
+   * q_peak = k_SG * sqrt( rho_atm / R_nose ) * v_entry^3
+   * Q_total = q_peak * Delta_t_pulse * 0.65
+   * Delta_s_recession = Q_total / ( rho_tps * H_ablation )
+   * Reference: Tauber et al. (1989), Laub & Venkatapathy (2003), Wright et al. (2006) for PICA & SLA-561V Thermal Protection Systems.
+   * @param {number} [noseRadiusMeters=1.25] - Aeroshell spherical nose radius in meters (0.2 to 5.0 m)
+   * @param {string} [heatShieldMaterial='PICA'] - Ablative material ('PICA', 'SLA-561V', or 'Carbon-Phenolic')
+   * @param {number} [periapsisAltitudeKm=52.0] - Hypersonic corridor periapsis altitude in km (35 to 80 km)
+   * @param {number} [entrySpeedKmS=5.8] - Hypersonic entry velocity in km/s (4.0 to 8.5 km/s)
+   * @returns {{heatShieldMaterial: string, peakConvectiveHeatFluxKWm2: number, totalHeatLoadMJm2: number, surfaceAblationRecessionMm: number, indepthCharDepthMm: number, tpsAblationContext: string}}
+   */
+  static computeMarsAerobrakingTPSPyrolysisAndRecession(noseRadiusMeters = 1.25, heatShieldMaterial = 'PICA', periapsisAltitudeKm = 52.0, entrySpeedKmS = 5.8) {
+    const Rn = Math.max(0.1, noseRadiusMeters);
+    const matName = heatShieldMaterial.toUpperCase();
+    const hpKm = Math.max(30.0, Math.min(100.0, periapsisAltitudeKm));
+    const vEntry = Math.max(3000.0, entrySpeedKmS * 1000.0);
+
+    const kSG = 1.90e-4; // W*s^3/(m^3.5*kg^0.5) for Martian CO2 atmosphere
+    const rho0 = 0.020;
+    const rhoAtm = rho0 * Math.exp(- (hpKm * 1000.0) / 11100.0);
+
+    // Peak stagnation convective heat flux (W/m^2 and kW/m^2)
+    const qPeakW = kSG * Math.sqrt(rhoAtm / Rn) * Math.pow(vEntry, 3.0);
+    const qPeakKW = qPeakW / 1000.0;
+
+    // Total integrated heat load (MJ/m^2) for 65s hypersonic heating pulse
+    const tPulseSec = 65.0;
+    const QloadJ = qPeakW * tPulseSec * 0.65;
+    const QloadMJ = QloadJ / 1e6;
+
+    // Material ablation parameters
+    let rhoTps = 270.0; // kg/m^3 (PICA)
+    let HablJ = 3.5e7; // J/kg (PICA)
+    let label = 'PICA (Phenolic Impregnated Carbon Ablator)';
+
+    if (matName.includes('SLA')) {
+      rhoTps = 260.0;
+      HablJ = 1.8e7;
+      label = 'SLA-561V (Silicone Elastomeric Ablator)';
+    } else if (matName.includes('CARBON')) {
+      rhoTps = 1450.0;
+      HablJ = 4.5e7;
+      label = 'Carbon-Phenolic (High-Density High-Heat-Flux Ablator)';
+    }
+
+    // Surface ablation recession (mm)
+    const deltaSM = QloadJ / (rhoTps * HablJ);
+    const deltaSMm = deltaSM * 1000.0;
+
+    // In-depth charring and pyrolysis front depth (mm)
+    const deltaCharMm = deltaSMm * 3.2;
+
+    return {
+      heatShieldMaterial: label,
+      peakConvectiveHeatFluxKWm2: parseFloat(qPeakKW.toFixed(1)),
+      totalHeatLoadMJm2: parseFloat(QloadMJ.toFixed(2)),
+      surfaceAblationRecessionMm: parseFloat(deltaSMm.toFixed(2)),
+      indepthCharDepthMm: parseFloat(deltaCharMm.toFixed(2)),
+      tpsAblationContext: `${label} TPS (${qPeakKW.toFixed(0)} kW/m^2 Peak Flux, ${deltaSMm.toFixed(1)} mm Ablation Recession, ${deltaCharMm.toFixed(1)} mm Char)`
+    };
+  }
 }
 
 

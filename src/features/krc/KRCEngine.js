@@ -5728,6 +5728,54 @@ export class KRCEngine {
       cryopegHydrologyContext: context
     };
   }
+
+  /**
+   * Calculate volcanic acid fog (SO2/HCl) condensation, basaltic cation leaching, and residual amorphous siliceous hardpan duricrust formation.
+   * J_acid = F_SO2 * ( RH / 100 ) * exp( -E_a / ( R * T ) ) * 1e3
+   * w_SiO2 = 45.0 + 45.0 * ( 1 - exp( -M_acid / 150 ) )
+   * h_crust = 0.05 * sqrt( M_acid )
+   * Reference: Banin et al. (1997), Tosca et al. (2004), Yen et al. (2005) for Gusev Columbia Hills & Paso Robles high-silica duricrusts.
+   * @param {number} [so2FluxMicrogM2S=50.0] - Volcanic fumarolic SO2 gas flux in micro-g/(m^2*s) (1 to 500 ug/m^2*s)
+   * @param {number} [atmosphericRelativeHumidityPct=65.0] - Nocturnal relative humidity percentage (10 to 100%)
+   * @param {number} [meanGroundTempK=210.0] - Mean diurnal surface temperature in K (170 to 260 K)
+   * @param {number} [weatheringDurationYears=10000.0] - Duration of acid fog weathering exposure in years (100 to 500000 yrs)
+   * @returns {{so2DepositionFluxMgM2Yr: number, cumulativeAcidLoadKgM2: number, residualSilicaWeightPct: number, hardpanDuricrustThicknessCm: number, acidWeatheringContext: string}}
+   */
+  static computeMartianAcidFogLeachingAndSiliceousHardpan(so2FluxMicrogM2S = 50.0, atmosphericRelativeHumidityPct = 65.0, meanGroundTempK = 210.0, weatheringDurationYears = 10000.0) {
+    const Fso2 = Math.max(0.1, so2FluxMicrogM2S);
+    const rh = Math.max(5.0, Math.min(100.0, atmosphericRelativeHumidityPct));
+    const T = Math.max(140.0, Math.min(280.0, meanGroundTempK));
+    const durYrs = Math.max(10.0, weatheringDurationYears);
+    const Ea = 12000.0; // J/mol activation energy
+    const R = 8.314; // J/(mol*K)
+
+    // Acid deposition flux (mg/(m^2*yr)) converting micro-g/s to mg/yr
+    const JacidMgYr = Fso2 * (rh / 100.0) * Math.exp(- Ea / (R * T)) * 31557.6;
+
+    // Cumulative acid load (kg/m^2)
+    const MacidKgM2 = (JacidMgYr * durYrs) / 1e6;
+
+    // Residual amorphous silica enrichment (wt%) from cation stripping
+    const wSiO2 = Math.min(95.0, 45.0 + 45.0 * (1.0 - Math.exp(- MacidKgM2 / 5.0)));
+
+    // Hardpan duricrust thickness (cm)
+    const hCrustCm = Math.max(0.1, 2.5 * Math.sqrt(MacidKgM2));
+
+    let context = 'Siliceous Hardpan Duricrust / Acid-Leached Paso Robles Sinter (High Silica & Hydrated Sulfate Matrix)';
+    if (wSiO2 < 55.0) {
+      context = 'Incipient Acid Fog Condensation Crust / Incipient Surface Patina';
+    } else if (wSiO2 >= 85.0) {
+      context = 'Extreme Hydrothermal Acid Fog Leaching (Pristine Amorphous Silica Residue > 85 wt%)';
+    }
+
+    return {
+      so2DepositionFluxMgM2Yr: parseFloat(JacidMgYr.toFixed(2)),
+      cumulativeAcidLoadKgM2: parseFloat(MacidKgM2.toFixed(2)),
+      residualSilicaWeightPct: parseFloat(wSiO2.toFixed(1)),
+      hardpanDuricrustThicknessCm: parseFloat(hCrustCm.toFixed(1)),
+      acidWeatheringContext: context
+    };
+  }
 }
 
 
