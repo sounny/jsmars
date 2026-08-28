@@ -6259,6 +6259,63 @@ export class KRCEngine {
       mantleOverturnContext: `Mantle Cumulate Overturn (~${tauMyr.toFixed(2)} Myr Instability, ${uSinkCmYr.toFixed(1)} cm/yr Sinking, ~${tCmbMyr.toFixed(0)} Myr to CMB)`
     };
   }
+
+  /**
+   * Calculate post-impact hydrothermal circulation, conductive melt sheet cooling timescale, Rayleigh-Darcy convection, and serpentinization H2 production in giant impact basins.
+   * tau_cond = h_melt^2 / ( 4 * kappa )
+   * Ra = rho_f * g_mars * alpha_f * k * Delta_T * h_melt / ( mu_f * kappa )
+   * M_H2 = M_rock * X_ol * r_serp
+   * Reference: Abramov & Kring (2005), Rathbun & Squyres (2002), Barnhart et al. (2010) for Impact Basin Hydrothermal Systems.
+   * @param {number} [basinDiameterKm=1200.0] - Impact basin diameter in km (100 to 2500 km, e.g. Isidis/Argyre/Hellas)
+   * @param {number} [meltSheetThicknessKm=5.0] - Impact melt sheet / central thermal anomaly thickness in km (1 to 20 km)
+   * @param {number} [rockPermeabilityM2=1.0e-13] - Aquifer fractured breccia permeability in m^2 (1e-15 to 1e-11 m^2)
+   * @param {number} [temperatureAnomalyK=400.0] - Hydrothermal fluid temperature excess above background in K (100 to 800 K)
+   * @returns {{conductiveCoolingTimescaleKyr: number, rayleighDarcyNumber: number, isHydrothermalConvectionActive: boolean, nusseltHeatTransportNumber: number, hydrothermalLifespanKyr: number, hydrogenProductionTg: number, basinHydrothermalContext: string}}
+   */
+  static computeMartianBasinHydrothermalCoolingAndSerpentinization(basinDiameterKm = 1200.0, meltSheetThicknessKm = 5.0, rockPermeabilityM2 = 1.0e-13, temperatureAnomalyK = 400.0) {
+    const DbasinKm = Math.max(50.0, basinDiameterKm);
+    const HmeltKm = Math.max(0.5, meltSheetThicknessKm);
+    const kPerm = Math.max(1e-17, rockPermeabilityM2);
+    const dTK = Math.max(50.0, temperatureAnomalyK);
+
+    const gMars = 3.72076;
+    const kappa = 1.0e-6; // Rock thermal diffusivity (m^2/s)
+    const HmeltM = HmeltKm * 1000.0;
+    const rhoF = 950.0; // Water density at ~200 C (kg/m^3)
+    const alphaF = 5.0e-4; // Water thermal expansion (K^-1)
+    const muF = 2.0e-4; // Water dynamic viscosity at ~200 C (Pa*s)
+    const rhoRock = 2900.0; // kg/m^3
+
+    // Conductive cooling timescale (Kyr)
+    const tauCondSec = Math.pow(HmeltM, 2.0) / (4.0 * kappa);
+    const tauCondKyr = tauCondSec / (3.15576e7 * 1000.0);
+
+    // Rayleigh-Darcy number
+    const Ra = (rhoF * gMars * alphaF * kPerm * dTK * HmeltM) / (muF * kappa);
+    const isConvective = Ra > 39.48; // Critical Rayleigh-Darcy threshold
+
+    // Nusselt number and convective lifetime
+    const Nu = isConvective ? Math.max(1.0, 0.025 * Ra) : 1.0;
+    const tauHydroKyr = tauCondKyr / Nu;
+
+    // Hydrogen production from serpentinization of ultramafic breccia (Tg = 10^9 kg)
+    const RringM = (DbasinKm * 1000.0) / 6.0; // inner ring radius
+    const MrockKg = Math.PI * Math.pow(RringM, 2.0) * HmeltM * rhoRock;
+    const Xol = 0.35; // 35% olivine
+    const rSerpH2 = 0.010; // 10 g H2 per kg peridotite
+    const MH2Kg = MrockKg * Xol * rSerpH2;
+    const MH2Tg = MH2Kg / 1e9;
+
+    return {
+      conductiveCoolingTimescaleKyr: parseFloat(tauCondKyr.toFixed(1)),
+      rayleighDarcyNumber: parseFloat(Ra.toFixed(1)),
+      isHydrothermalConvectionActive: isConvective,
+      nusseltHeatTransportNumber: parseFloat(Nu.toFixed(1)),
+      hydrothermalLifespanKyr: parseFloat(tauHydroKyr.toFixed(1)),
+      hydrogenProductionTg: parseFloat(MH2Tg.toFixed(1)),
+      basinHydrothermalContext: `Basin Hydrothermal System (${tauHydroKyr.toFixed(1)} kyr Active Circulation, Ra=${Ra.toFixed(0)}, ${MH2Tg.toFixed(0)} Tg H2 Produced)`
+    };
+  }
 }
 
 

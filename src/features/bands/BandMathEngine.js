@@ -5963,6 +5963,56 @@ export class BandMathEngine {
       alkalineLacustrineContext: context
     };
   }
+
+  /**
+   * Discriminate Low-Calcium Pyroxene (Enstatite/Orthopyroxene) vs Intermediate Pyroxene (Pigeonite) vs High-Calcium Pyroxene (Augite/Diopside) from CRISM 1.0 um and 2.0 um band center minima.
+   * Reference: Cloutis & Gaffey (1991), Sunshine et al. (1990), Mustard et al. (2005), Viviano-Beck et al. (2014) for Martian crustal pyroxenes.
+   * @param {number} [band1000CenterUm=0.925] - Band I Fe2+ M2 site crystal field center in micrometers (0.88 to 1.10 um)
+   * @param {number} [band2000CenterUm=1.880] - Band II Fe2+ crystal field center in micrometers (1.75 to 2.45 um)
+   * @param {number} [band1000Depth=0.12] - Band I absorption depth (0.0 to 0.50)
+   * @param {number} [band2000Depth=0.10] - Band II absorption depth (0.0 to 0.50)
+   * @returns {{isPyroxeneDetected: boolean, pyroxeneClass: string, mineralSpecies: string, estimatedWoContentPercent: number, petrogeneticCrustalContext: string}}
+   */
+  static computeCRISMPyroxeneHighLowCalciumDiscrimination(band1000CenterUm = 0.925, band2000CenterUm = 1.880, band1000Depth = 0.12, band2000Depth = 0.10) {
+    const c1 = Math.max(0.85, Math.min(1.15, band1000CenterUm));
+    const c2 = Math.max(1.70, Math.min(2.50, band2000CenterUm));
+    const d1 = Math.max(0.0, band1000Depth);
+    const d2 = Math.max(0.0, band2000Depth);
+
+    let isPyx = false;
+    let pyxClass = 'Non-Pyroxene Matrix';
+    let species = 'Basalt';
+    let woPct = 0.0;
+    let context = 'Standard Regolith Matrix without Diagnostic Pyroxene Absorption';
+
+    if (d1 >= 0.035 || d2 >= 0.035) {
+      isPyx = true;
+      if (c1 <= 0.945 && c2 <= 1.950) {
+        pyxClass = 'Low-Calcium Pyroxene (LCP / Orthopyroxene)';
+        species = 'Enstatite / Bronzite ((Mg,Fe)2Si2O6)';
+        woPct = 5.0;
+        context = 'Ancient Primordial Noachian Crust / Deep Plutonic Cumulates (Highlands Basement Type)';
+      } else if (c1 >= 1.010 && c2 >= 2.180) {
+        pyxClass = 'High-Calcium Pyroxene (HCP / Clinopyroxene)';
+        species = 'Augite / Diopside (Ca(Mg,Fe)Si2O6)';
+        woPct = 40.0;
+        context = 'Differentiated Basaltic Volcanism / Evolved Effusive Lava Flows (Syrtis Major / Hesperian Volcanics)';
+      } else {
+        pyxClass = 'Intermediate-Calcium Pyroxene (Pigeonite)';
+        species = 'Pigeonite ((Mg,Fe,Ca)2Si2O6)';
+        woPct = 15.0;
+        context = 'Shergottite-Like Rapidly Cooled Basaltic Magma (Tharsis Montes Volcanic Fields)';
+      }
+    }
+
+    return {
+      isPyroxeneDetected: isPyx,
+      pyroxeneClass: pyxClass,
+      mineralSpecies: species,
+      estimatedWoContentPercent: woPct,
+      petrogeneticCrustalContext: context
+    };
+  }
 }
 
 

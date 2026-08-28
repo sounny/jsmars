@@ -11662,6 +11662,59 @@ describe('Mars-to-Interstellar Escape, Mantle Overturn & Sulfate vs Zeolite Inve
     });
 });
 
+describe('Mars-to-Sun Coronal Dive, Basin Hydrothermal Cooling & Pyroxene Discrimination', () => {
+    it('should calculate Mars-to-Sun inward Parker Solar Probe coronal dive trajectory and perihelion velocity', () => {
+        // Coronal plunge (9.86 solar radii, 300 km Mars parking orbit):
+        const dive = TrajectoryEngine.computeMarsToSolarPerihelionDiveTrajectory(9.86, 300.0);
+        expect(dive.perihelionSolarRadii).to.equal(9.86);
+        expect(dive.perihelionDistanceKm).to.be.closeTo(6865912.0, 10000.0); // ~6.87e6 km perihelion
+        expect(dive.timeOfFlightDays).to.be.closeTo(126.9, 2.0); // ~126.9 days TOF
+        expect(dive.transSolarInjectionDeltaVKmS).to.be.closeTo(15.512, 0.5); // ~15.51 km/s TSI
+        expect(dive.solarPerihelionSpeedKmS).to.be.closeTo(193.72, 2.0); // ~193.7 km/s perihelion speed
+        expect(dive.solarDiveContext).to.include('Mars to Sun Coronal Dive');
+    });
+
+    it('should calculate giant impact basin post-impact hydrothermal circulation, cooling, and serpentinization H2', () => {
+        // Isidis Basin (1200 km diameter, 5 km melt sheet, 1e-13 m^2 permeability, 400 K thermal anomaly):
+        const basin = KRCEngine.computeMartianBasinHydrothermalCoolingAndSerpentinization(1200.0, 5.0, 1.0e-13, 400.0);
+        expect(basin.conductiveCoolingTimescaleKyr).to.be.closeTo(198.1, 10.0); // ~198 kyr conductive cooling
+        expect(basin.rayleighDarcyNumber).to.be.closeTo(1767.4, 50.0); // Ra ~ 1767 >> 39.48
+        expect(basin.isHydrothermalConvectionActive).to.be.true;
+        expect(basin.nusseltHeatTransportNumber).to.be.closeTo(44.2, 3.0); // Nu ~ 44
+        expect(basin.hydrothermalLifespanKyr).to.be.closeTo(4.5, 0.5); // ~4.5 kyr vigorous circulation
+        expect(basin.hydrogenProductionTg).to.be.closeTo(6377433.1, 100000.0); // ~6.38e6 Tg H2
+        expect(basin.basinHydrothermalContext).to.include('Basin Hydrothermal System');
+    });
+
+    it('should discriminate Low-Calcium Pyroxene (Enstatite), Intermediate (Pigeonite), and High-Calcium (Augite) in CRISM spectra', () => {
+        // Low-Calcium Pyroxene (Enstatite / Orthopyroxene in ancient Noachian crust: Band I = 0.92 um, Band II = 1.90 um):
+        const lcp = BandMathEngine.computeCRISMPyroxeneHighLowCalciumDiscrimination(0.92, 1.90, 0.12, 0.10);
+        expect(lcp.isPyroxeneDetected).to.be.true;
+        expect(lcp.pyroxeneClass).to.include('Low-Calcium Pyroxene (LCP / Orthopyroxene)');
+        expect(lcp.mineralSpecies).to.include('Enstatite / Bronzite');
+        expect(lcp.estimatedWoContentPercent).to.equal(5.0);
+        expect(lcp.petrogeneticCrustalContext).to.include('Ancient Primordial Noachian Crust');
+
+        // High-Calcium Pyroxene (Augite / Diopside in Syrtis Major lavas: Band I = 1.04 um, Band II = 2.28 um):
+        const hcp = BandMathEngine.computeCRISMPyroxeneHighLowCalciumDiscrimination(1.04, 2.28, 0.14, 0.12);
+        expect(hcp.isPyroxeneDetected).to.be.true;
+        expect(hcp.pyroxeneClass).to.include('High-Calcium Pyroxene (HCP / Clinopyroxene)');
+        expect(hcp.mineralSpecies).to.include('Augite / Diopside');
+        expect(hcp.estimatedWoContentPercent).to.equal(40.0);
+        expect(hcp.petrogeneticCrustalContext).to.include('Differentiated Basaltic Volcanism');
+
+        // Intermediate Pyroxene (Pigeonite: Band I = 0.97 um, Band II = 2.05 um):
+        const pig = BandMathEngine.computeCRISMPyroxeneHighLowCalciumDiscrimination(0.97, 2.05, 0.10, 0.08);
+        expect(pig.isPyroxeneDetected).to.be.true;
+        expect(pig.pyroxeneClass).to.include('Intermediate-Calcium Pyroxene (Pigeonite)');
+        expect(pig.estimatedWoContentPercent).to.equal(15.0);
+
+        // Non-pyroxene matrix:
+        const basalt = BandMathEngine.computeCRISMPyroxeneHighLowCalciumDiscrimination(0.95, 2.00, 0.01, 0.01);
+        expect(basalt.isPyroxeneDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

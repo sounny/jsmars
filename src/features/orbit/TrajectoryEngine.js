@@ -5747,6 +5747,60 @@ export class TrajectoryEngine {
       interstellarContext: `Interstellar Heliopause Escape (${tofYrs.toFixed(1)} yr to ${RhpAU.toFixed(0)} AU, ${dvTiiKmS.toFixed(2)} km/s TII, ${vCrossKmS.toFixed(1)} km/s at Heliopause)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Sun Inward Coronal Dive / Parker Solar Probe trajectory, Trans-Solar Injection (TSI), and coronal perihelion velocity.
+   * a_t = ( r_mars + r_perihelion ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Reference: Fox et al. (2016), Curtis (2013) for Solar Coronal Exploration Trajectories.
+   * @param {number} [targetPerihelionSolarRadii=9.86] - Target perihelion distance in solar radii R_sun (4.0 to 100.0 R_sun)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{perihelionSolarRadii: number, perihelionDistanceKm: number, timeOfFlightDays: number, transSolarInjectionDeltaVKmS: number, solarPerihelionSpeedKmS: number, solarDiveContext: string}}
+   */
+  static computeMarsToSolarPerihelionDiveTrajectory(targetPerihelionSolarRadii = 9.86, marsParkingAltitudeKm = 300.0) {
+    const RsunKm = 696340.0;
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rPeriSolarRad = Math.max(3.0, Math.min(200.0, targetPerihelionSolarRadii));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const rPeriKm = rPeriSolarRad * RsunKm;
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+
+    // Transfer ellipse
+    const aTransferKm = (rMarsDistKm + rPeriKm) / 2.0;
+
+    // Time of flight (days)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+
+    // Speeds at Mars departure (retrograde burn)
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = Math.abs(vMarsKmS - vApoTransferKmS);
+
+    // Trans-Solar Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTsiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Solar perihelion speed
+    const vPeriKmS = Math.sqrt(muSun * ((2.0 / rPeriKm) - (1.0 / aTransferKm)));
+
+    return {
+      perihelionSolarRadii: parseFloat(rPeriSolarRad.toFixed(2)),
+      perihelionDistanceKm: parseFloat(rPeriKm.toFixed(0)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      transSolarInjectionDeltaVKmS: parseFloat(dvTsiKmS.toFixed(3)),
+      solarPerihelionSpeedKmS: parseFloat(vPeriKmS.toFixed(2)),
+      solarDiveContext: `Mars to Sun Coronal Dive (${tofDays.toFixed(0)} d TOF, ${dvTsiKmS.toFixed(2)} km/s TSI, ${vPeriKmS.toFixed(1)} km/s at ${rPeriSolarRad.toFixed(1)} R_sun Perihelion)`
+    };
+  }
 }
 
 
