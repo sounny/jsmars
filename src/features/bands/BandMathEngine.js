@@ -3253,6 +3253,55 @@ export class BandMathEngine {
       phRegime: ph
     };
   }
+
+  /**
+   * Discriminate Serpentine (Mg3Si2O5(OH)4) and Talc (Mg3Si4O10(OH)2) from pyroxenes and smectites in CRISM NIR spectra.
+   * Reference: Ehlmann et al. (2010), Brown et al. (2010), Viviano-Beck et al. (2014) for Nili Fossae serpentinization.
+   * @param {number} r1390 - Reflectance at 1.39 um sharp Serpentine OH overtone
+   * @param {number} r2120 - Reflectance at 2.12 um Serpentine band
+   * @param {number} r2315 - Reflectance at 2.315 um Mg-OH combination band
+   * @param {number} r2380 - Reflectance at 2.38 um Talc diagnostic doublet band
+   * @param {number} [continuumLevel=0.30] - Mean background continuum level
+   * @returns {{bd1390: number, bd2120: number, bd2315: number, bd2380: number, mineralPhase: string, isSerpentine: boolean, isTalc: boolean, serpentinizationSetting: string, h2GenerationPotential: boolean}}
+   */
+  static computeCRISMSerpentineTalcIndices(r1390, r2120, r2315, r2380, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1390 = Math.max(0.0, 1.0 - (r1390 / cont));
+    const bd2120 = Math.max(0.0, 1.0 - (r2120 / cont));
+    const bd2315 = Math.max(0.0, 1.0 - (r2315 / cont));
+    const bd2380 = Math.max(0.0, 1.0 - (r2380 / cont));
+
+    let phase = 'Unaltered Primary Ultramafic Olivine / Pyroxene';
+    let isSerp = false;
+    let isTlc = false;
+    let setting = 'Unaltered Noachian Mantle / Crust';
+    let h2Pot = false;
+
+    if (bd1390 >= 0.020 && bd2315 >= 0.025 && bd2120 >= 0.015 && bd2380 < 0.015) {
+      phase = 'Serpentine (Mg3Si2O5(OH)4 - Lizardite / Antigorite)';
+      isSerp = true;
+      setting = 'Low-to-Moderate Temperature Ultramafic Serpentinization (Nili Fossae / Jezero Rim)';
+      h2Pot = true;
+    } else if (bd2315 >= 0.025 && bd2380 >= 0.020) {
+      phase = 'Talc (Mg3Si4O10(OH)2 - Hydrothermal Magnesium Sheet Silicate)';
+      isTlc = true;
+      setting = 'High-Temperature Hydrothermal Alteration of Ultramafics / Carbonation (Claritas Rise)';
+      h2Pot = true;
+    }
+
+    return {
+      bd1390: parseFloat(bd1390.toFixed(4)),
+      bd2120: parseFloat(bd2120.toFixed(4)),
+      bd2315: parseFloat(bd2315.toFixed(4)),
+      bd2380: parseFloat(bd2380.toFixed(4)),
+      mineralPhase: phase,
+      isSerpentine: isSerp,
+      isTalc: isTlc,
+      serpentinizationSetting: setting,
+      h2GenerationPotential: h2Pot
+    };
+  }
 }
 
 

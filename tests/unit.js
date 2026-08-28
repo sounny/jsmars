@@ -9188,6 +9188,51 @@ describe('Gravity Assist Flyby B-Plane, Two-Layer Ice Table Inversion & Jarosite
     });
 });
 
+describe('Hohmann Transfer Orbits, Liquid Water Metastability & Serpentinization', () => {
+    it('should calculate heliocentric Earth-Mars Hohmann transfer parameters and synodic launch windows', () => {
+        // Earth to Mars transfer:
+        const earthMars = TrajectoryEngine.computeInterplanetaryHohmannTransferParameters('earth', 'mars');
+        expect(earthMars.transferSemiMajorAxisAU).to.be.closeTo(1.2618, 0.005);
+        expect(earthMars.timeOfFlightDays).to.be.closeTo(259.2, 5.0); // ~259 days flight duration (~8.5 months)
+        expect(earthMars.departureExcessVInfKmS).to.be.closeTo(2.945, 0.05); // ~2.95 km/s C3 ~ 8.7 km^2/s^2
+        expect(earthMars.departureC3EnergyKm2S2).to.be.closeTo(8.67, 0.3);
+        expect(earthMars.arrivalExcessVInfKmS).to.be.closeTo(2.650, 0.05);
+        expect(earthMars.synodicPeriodDays).to.be.closeTo(779.9, 5.0); // ~26 months between launch windows
+    });
+
+    it('should calculate pure liquid water thermodynamic metastability window and boiling point in Hellas Basin', () => {
+        // Hellas Basin floor (P = 850 Pa, T = 275 K): P > 611.7 Pa and 273.15 K < T < T_boil (~277.8 K) -> Metastable Liquid!
+        const hellasWater = KRCEngine.computeTransientLiquidWaterMetastabilityWindow(275.0, 850.0, 30.0);
+        expect(hellasWater.isLiquidWaterMetastable).to.be.true;
+        expect(hellasWater.isAboveTriplePointPressure).to.be.true;
+        expect(hellasWater.boilingTemperatureK).to.be.closeTo(277.8, 1.0);
+        expect(hellasWater.thermodynamicRegime).to.include('Transient Metastable Pure Liquid Water');
+
+        // High elevation Olympus Mons summit (P = 70 Pa, T = 280 K): P < 611.7 Pa -> Sublimation only
+        const olympusSummit = KRCEngine.computeTransientLiquidWaterMetastabilityWindow(280.0, 70.0, 10.0);
+        expect(olympusSummit.isLiquidWaterMetastable).to.be.false;
+        expect(olympusSummit.isAboveTriplePointPressure).to.be.false;
+        expect(olympusSummit.thermodynamicRegime).to.include('Sublimation Only');
+    });
+
+    it('should discriminate Serpentine from Talc and olivine in CRISM ultramafic NIR spectra', () => {
+        // Serpentine in Nili Fossae (sharp 1.39 um OH, 2.12 um and 2.315 um Mg-OH):
+        const serpentine = BandMathEngine.computeCRISMSerpentineTalcIndices(0.27, 0.28, 0.26, 0.30, 0.30);
+        expect(serpentine.isSerpentine).to.be.true;
+        expect(serpentine.isTalc).to.be.false;
+        expect(serpentine.mineralPhase).to.include('Serpentine');
+        expect(serpentine.h2GenerationPotential).to.be.true;
+        expect(serpentine.serpentinizationSetting).to.include('Ultramafic Serpentinization');
+
+        // Talc hydrothermal alteration in Claritas Rise (strong 2.315 um and 2.38 um doublet):
+        const talc = BandMathEngine.computeCRISMSerpentineTalcIndices(0.30, 0.30, 0.26, 0.265, 0.30);
+        expect(talc.isSerpentine).to.be.false;
+        expect(talc.isTalc).to.be.true;
+        expect(talc.mineralPhase).to.include('Talc');
+        expect(talc.serpentinizationSetting).to.include('Hydrothermal Alteration');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

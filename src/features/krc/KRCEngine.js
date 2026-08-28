@@ -2715,6 +2715,66 @@ export class KRCEngine {
       iceVolumeFractionEstimate: parseFloat(iceFrac.toFixed(3))
     };
   }
+
+  /**
+   * Calculate pure liquid water thermodynamic metastability window, boiling temperature, and evaporation lifespan.
+   * T_boil(P) = 5380.0 / ( 23.19 - ln(P_Pa) )
+   * Reference: Ingersoll (1970), Haberle et al. (2001), Sears & Chittenden (2005) for Martian liquid water stability.
+   * @param {number} surfaceTempK - Surface temperature in Kelvin (240 to 310 K)
+   * @param {number} atmosphericPressurePa - Ambient surface atmospheric pressure in Pa (300 to 1200 Pa)
+   * @param {number} [relativeHumidityPct=20.0] - Ambient relative humidity %
+   * @returns {{isLiquidWaterMetastable: boolean, isAboveTriplePointPressure: boolean, boilingTemperatureK: number, meltingTemperatureK: number, evaporationRateMmPerHour: number, droplet1mmLifespanMinutes: number, thermodynamicRegime: string}}
+   */
+  static computeTransientLiquidWaterMetastabilityWindow(surfaceTempK, atmosphericPressurePa, relativeHumidityPct = 20.0) {
+    const T = Math.max(150.0, Math.min(350.0, surfaceTempK));
+    const P = Math.max(50.0, atmosphericPressurePa);
+    const rh = Math.min(100.0, Math.max(0.0, relativeHumidityPct));
+
+    const P_TRIPLE = 611.73; // Pa (6.117 mbar)
+    const T_MELT = 273.15;   // K (0 C)
+
+    const isAboveP = P >= P_TRIPLE;
+
+    // Boiling temperature as a function of pressure P (Pa)
+    // ln(P_Pa) = 25.485 - 5208.7 / T -> T_boil = 5208.7 / (25.485 - ln(P_Pa))
+    let tBoilK = 273.15;
+    if (P > 100.0) {
+      tBoilK = 5208.7 / (25.485 - Math.log(P));
+    }
+
+    // Liquid metastability condition: P >= 611.7 Pa AND 273.15 K <= T <= T_boil(P)
+    const isMetastable = isAboveP && (T >= T_MELT) && (T <= tBoilK);
+
+    // Saturation vapor pressure over liquid (Antoine/Clausius-Clapeyron Pa)
+    const pSat = Math.exp(25.485 - 5208.7 / T);
+    const pAmbient = (rh / 100.0) * pSat;
+    const deltaP = Math.max(10.0, pSat - pAmbient);
+
+    // Evaporation rate (Ingersoll free convection model: ~ 0.5 to 5.0 mm/hr)
+    const evapRateMmPerHr = Math.min(50.0, Math.max(0.01, 0.005 * deltaP * Math.sqrt(Math.max(0.01, (T - 250.0) / 20.0))));
+    const lifespanMin = evapRateMmPerHr > 0.001 ? (1.0 / evapRateMmPerHr) * 60.0 : 999.0;
+
+    let regime = 'Sub-Triple Point: Direct Ice-Vapor Sublimation (No Liquid Phase Possible)';
+    if (!isAboveP) {
+      regime = 'High Altitude / Low Pressure: Sublimation Only (P < 6.12 mbar)';
+    } else if (T < T_MELT) {
+      regime = 'Sub-Freezing: Solid H2O Ice Stable Under Ambient Pressure';
+    } else if (T > tBoilK) {
+      regime = 'Superheated: Spontaneous Boiling / Flash Vaporization';
+    } else if (isMetastable) {
+      regime = 'Transient Metastable Pure Liquid Water Window (Hellas / Deep Chasma Basin)';
+    }
+
+    return {
+      isLiquidWaterMetastable: isMetastable,
+      isAboveTriplePointPressure: isAboveP,
+      boilingTemperatureK: parseFloat(tBoilK.toFixed(2)),
+      meltingTemperatureK: 273.15,
+      evaporationRateMmPerHour: parseFloat(evapRateMmPerHr.toFixed(2)),
+      droplet1mmLifespanMinutes: parseFloat(lifespanMin.toFixed(1)),
+      thermodynamicRegime: regime
+    };
+  }
 }
 
 

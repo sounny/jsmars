@@ -1989,6 +1989,76 @@ export class TrajectoryEngine {
       periapsisSpeedKmS: parseFloat(vp.toFixed(3))
     };
   }
+
+  /**
+   * Calculate heliocentric patched-conics Hohmann transfer orbit parameters, hyperbolic excess speeds, flight duration, and synodic launch window.
+   * a_trans = ( r1 + r2 ) / 2
+   * v_t1 = sqrt( mu_sun * ( 2/r1 - 1/a_trans ) )
+   * v_inf_1 = | v_t1 - v_planet1 |
+   * T_flight = pi * sqrt( a_trans^3 / mu_sun )
+   * Reference: Battin (1999), Vallado (2013), Curtis (2013) for interplanetary mission design.
+   * @param {string} [departurePlanet='earth'] - Departure body ('earth', 'mars', 'venus')
+   * @param {string} [targetPlanet='mars'] - Arrival body ('mars', 'earth', 'venus')
+   * @returns {{departureBody: string, targetBody: string, transferSemiMajorAxisAU: number, timeOfFlightDays: number, timeOfFlightMonths: number, departureExcessVInfKmS: number, departureC3EnergyKm2S2: number, arrivalExcessVInfKmS: number, synodicPeriodDays: number, synodicPeriodMonths: number}}
+   */
+  static computeInterplanetaryHohmannTransferParameters(departurePlanet = 'earth', targetPlanet = 'mars') {
+    const AU_KM = 149597870.7;
+    const MU_SUN = 1.32712440018e11; // km^3/s^2
+
+    const planetData = {
+      earth: { rAU: 1.000000, rKm: 1.0 * AU_KM, periodDays: 365.256, name: 'Earth' },
+      mars: { rAU: 1.523662, rKm: 1.523662 * AU_KM, periodDays: 686.980, name: 'Mars' },
+      venus: { rAU: 0.723332, rKm: 0.723332 * AU_KM, periodDays: 224.701, name: 'Venus' }
+    };
+
+    const dKey = departurePlanet.toLowerCase();
+    const tKey = targetPlanet.toLowerCase();
+
+    const p1 = planetData[dKey] || planetData.earth;
+    const p2 = planetData[tKey] || planetData.mars;
+
+    const r1 = p1.rKm;
+    const r2 = p2.rKm;
+
+    // Planetary circular orbital speeds
+    const v1 = Math.sqrt(MU_SUN / r1);
+    const v2 = Math.sqrt(MU_SUN / r2);
+
+    // Transfer orbit semi-major axis
+    const aTransKm = (r1 + r2) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+
+    // Transfer orbit speeds at perihelion and aphelion
+    const vt1 = Math.sqrt(MU_SUN * (2.0 / r1 - 1.0 / aTransKm));
+    const vt2 = Math.sqrt(MU_SUN * (2.0 / r2 - 1.0 / aTransKm));
+
+    // Hyperbolic excess speeds
+    const vInf1 = Math.abs(vt1 - v1);
+    const vInf2 = Math.abs(v2 - vt2);
+    const C3 = vInf1 * vInf1;
+
+    // Time of flight (half transfer orbit period)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / MU_SUN);
+    const tofDays = tofSec / 86400.0;
+    const tofMonths = tofDays / 30.4375;
+
+    // Synodic period
+    const synodicDays = Math.abs(1.0 / (1.0 / p1.periodDays - 1.0 / p2.periodDays));
+    const synodicMonths = synodicDays / 30.4375;
+
+    return {
+      departureBody: p1.name,
+      targetBody: p2.name,
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightMonths: parseFloat(tofMonths.toFixed(1)),
+      departureExcessVInfKmS: parseFloat(vInf1.toFixed(3)),
+      departureC3EnergyKm2S2: parseFloat(C3.toFixed(2)),
+      arrivalExcessVInfKmS: parseFloat(vInf2.toFixed(3)),
+      synodicPeriodDays: parseFloat(synodicDays.toFixed(1)),
+      synodicPeriodMonths: parseFloat(synodicMonths.toFixed(1))
+    };
+  }
 }
 
 
