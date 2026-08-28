@@ -6830,6 +6830,56 @@ export class BandMathEngine {
       geochemicalResistateContext: context
     };
   }
+
+  /**
+   * Discriminate Amorphous Hydrated Silica (Opal-A) vs Paracrystalline Opal-CT vs Crystalline Quartz from CRISM 1.40 um, 1.90 um, 2.21 um silanol, and 2.26 um silica band depths.
+   * Reference: Rice et al. (2013), Sun & Milliken (2015), Viviano-Beck et al. (2014) for Martian Silica Polymorphs & Hydrothermal Sinters.
+   * @param {number} [band1400WaterDepth=0.06] - BD1400 structural OH/H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.08] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band2210SilanolDepth=0.05] - BD2210 diagnostic Si-OH silanol vibration depth (0.0 to 0.40)
+   * @param {number} [band2260SilicaDepth=0.04] - BD2260 broad silica network shoulder depth (0.0 to 0.40)
+   * @returns {{isSilicaDetected: boolean, silicaPolymorphClass: string, mineralSpecies: string, chemicalFormula: string, depositionalEnvironmentContext: string}}
+   */
+  static computeCRISMSilicaCrystallinityIndices(band1400WaterDepth = 0.06, band1900WaterDepth = 0.08, band2210SilanolDepth = 0.05, band2260SilicaDepth = 0.04) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2210 = Math.max(0.0, band2210SilanolDepth);
+    const d2260 = Math.max(0.0, band2260SilicaDepth);
+
+    const isSilica = d2210 >= 0.025 && (d1900 >= 0.025 || d2260 >= 0.020);
+
+    let polyClass = 'Non-Silica Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Hydrated Silica Absorption';
+
+    if (isSilica) {
+      if (d1900 >= 0.045 && d2260 >= 0.025) {
+        polyClass = 'Amorphous Hydrated Silica (Opal-A Sinter)';
+        species = 'Opal-A';
+        formula = 'SiO2 * nH2O (Highly Disordered Amorphous)';
+        context = 'Volcanic Hydrothermal Fumarole / Geyser Sinter / Acid-Sulfate Residual Leaching (Gusev Home Plate / Jezero Crater)';
+      } else if (d1900 >= 0.025) {
+        polyClass = 'Paracrystalline Microcrystalline Silica (Opal-CT / Chalcedony)';
+        species = 'Opal-CT';
+        formula = 'SiO2 * nH2O (Disordered Cristobalite/Tridymite)';
+        context = 'Diagenetically Matured / Thermally Recrystallized Hydrated Silica Deposit';
+      } else {
+        polyClass = 'Dehydrated Microcrystalline Silica';
+        species = 'Chalcedony / Quartz';
+        formula = 'SiO2';
+        context = 'High-Grade Dehydrated Hydrothermal Silica Vein';
+      }
+    }
+
+    return {
+      isSilicaDetected: isSilica,
+      silicaPolymorphClass: polyClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      depositionalEnvironmentContext: context
+    };
+  }
 }
 
 

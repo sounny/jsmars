@@ -7264,6 +7264,67 @@ export class KRCEngine {
       acidFogContext: `Acid-Fog Alteration (${xRindMm.toFixed(2)} mm Rind in ${tKyr.toFixed(0)} kyr, ${xDotMmKyr.toFixed(3)} mm/kyr Growth, ${rindClass})`
     };
   }
+
+  /**
+   * Calculate burial diagenesis, Arrhenius reaction kinetics, and structural dewatering overpressure during the Smectite-to-Illite clay mineral transition in ancient Noachian stratigraphy.
+   * T_burial = T_surf + Gamma_geo * z
+   * k = A * exp( -E_a / ( R * T ) )
+   * f_illite = 1 - exp( -k * [K+] * t )
+   * Reference: Cuadros (2006), Bethke & Altaner (1986), Ehlmann et al. (2011) for Deep Martian Clay Diagenesis.
+   * @param {number} [burialDepthKm=4.0] - Crustal burial depth in km (0.5 to 12.0 km)
+   * @param {number} [regionalGeothermalGradientKPerKm=25.0] - Geothermal gradient in K/km (10 to 60 K/km)
+   * @param {number} [burialDurationMyr=20.0] - Geological heating duration in Myr (1 to 200 Myr)
+   * @param {number} [potassiumConcentrationPpm=200.0] - Pore fluid K+ activity in ppm (10 to 2000 ppm)
+   * @returns {{burialTemperatureC: number, burialTemperatureK: number, illitePercentInClay: number, releasedStructuralWaterWtPct: number, dewateringOverpressureMPa: number, clayDiageneticZoneClass: string, diagenesisContext: string}}
+   */
+  static computeMartianSmectiteToIlliteTransitionKinetics(burialDepthKm = 4.0, regionalGeothermalGradientKPerKm = 25.0, burialDurationMyr = 20.0, potassiumConcentrationPpm = 200.0) {
+    const zKm = Math.max(0.2, burialDepthKm);
+    const gammaGeo = Math.max(5.0, regionalGeothermalGradientKPerKm);
+    const tMyr = Math.max(0.1, burialDurationMyr);
+    const Kppm = Math.max(5.0, potassiumConcentrationPpm);
+
+    const TsurfK = 215.0; // Mean Martian surface temp
+    const Rgas = 8.314; // J/(mol*K)
+    const Ea = 1.15e5; // 115 kJ/mol activation energy
+    const AfreqYr = 1.57788e12; // 1/yr pre-exponential factor
+
+    // Burial temperature
+    const TburialK = TsurfK + (gammaGeo * zKm);
+    const TburialC = TburialK - 273.15;
+
+    // Arrhenius rate constant (1/yr)
+    const kYr = AfreqYr * Math.exp(-Ea / (Rgas * TburialK));
+
+    // Illite fraction in mixed-layer I/S
+    const Kfactor = Kppm / 100.0;
+    const tYr = tMyr * 1.0e6;
+    const exponent = Math.min(50.0, kYr * Kfactor * tYr);
+    const fIllite = 1.0 - Math.exp(-exponent);
+    const illitePct = fIllite * 100.0;
+
+    // Dewatering: 15 wt% smectite down to 4.5 wt% illite
+    const waterReleasedWtPct = fIllite * (15.0 - 4.5);
+
+    // Dewatering fluid overpressure (MPa)
+    const overpressureMPa = (waterReleasedWtPct / 10.5) * 45.0;
+
+    let zoneClass = 'Expandable Smectite Dominant (Diagenetically Immature Nontronite/Saponite)';
+    if (illitePct >= 80.0) {
+      zoneClass = 'High-Grade Diagenetic Illite / Mica (Structural Water Expelled, Hydrofractured)';
+    } else if (illitePct >= 30.0) {
+      zoneClass = 'Mixed-Layer Illite-Smectite (I/S Transition Zone, Intermediate Dewatering)';
+    }
+
+    return {
+      burialTemperatureC: parseFloat(TburialC.toFixed(1)),
+      burialTemperatureK: parseFloat(TburialK.toFixed(1)),
+      illitePercentInClay: parseFloat(illitePct.toFixed(1)),
+      releasedStructuralWaterWtPct: parseFloat(waterReleasedWtPct.toFixed(2)),
+      dewateringOverpressureMPa: parseFloat(overpressureMPa.toFixed(1)),
+      clayDiageneticZoneClass: zoneClass,
+      diagenesisContext: `Clay Diagenesis at ${zKm.toFixed(1)}km (${TburialC.toFixed(0)} C, ${illitePct.toFixed(0)}% Illite, ${waterReleasedWtPct.toFixed(1)} wt% H2O Dewatered, ${zoneClass})`
+    };
+  }
 }
 
 

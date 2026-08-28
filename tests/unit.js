@@ -12523,6 +12523,53 @@ describe('Multi-Planet SEP Inward Tour, Acid Fog Rind & Titanium Oxide Inversion
     });
 });
 
+describe('Venus Gravity Assist Resonant Orbit, Smectite Diagenesis & Silica Inversion', () => {
+    it('should calculate inward Mars-to-Venus gravity assist flyby, deflection angle, and resonant orbit pumping', () => {
+        // Mars to Venus flyby (300 km Venus periapsis, 300 km Mars parking altitude):
+        const assist = TrajectoryEngine.computeMarsToVenusGravityAssistResonantOrbit(300.0, 300.0);
+        expect(assist.transferTimeDays).to.be.closeTo(217.5, 10.0); // ~217.5 d transfer
+        expect(assist.venusArrivalHyperbolicExcessKmS).to.be.closeTo(5.771, 0.2); // ~5.77 km/s v_inf
+        expect(assist.flybyDeflectionAngleDeg).to.be.closeTo(74.55, 3.0); // ~74.6 deg deflection
+        expect(assist.gravityAssistDeltaVKmS).to.be.closeTo(6.990, 0.3); // ~6.99 km/s gravity assist boost
+        expect(assist.postFlybyPerihelionAU).to.be.closeTo(0.511, 0.05); // ~0.511 AU perihelion
+        expect(assist.postFlybySemiMajorAxisAU).to.be.closeTo(0.617, 0.05); // ~0.617 AU
+        expect(assist.postFlybyPeriodDays).to.be.closeTo(177.1, 10.0); // ~177.1 days
+        expect(assist.gravityAssistContext).to.include('Venus Gravity Assist');
+    });
+
+    it('should calculate burial diagenetic Smectite-to-Illite conversion kinetics and dewatering fluid overpressure', () => {
+        // 4 km burial depth, 25 K/km gradient, 20 Myr heating, 200 ppm K+:
+        const diagenesis = KRCEngine.computeMartianSmectiteToIlliteTransitionKinetics(4.0, 25.0, 20.0, 200.0);
+        expect(diagenesis.burialTemperatureK).to.equal(315.0);
+        expect(diagenesis.burialTemperatureC).to.be.closeTo(41.85, 0.2); // ~41.9 C burial temp
+        expect(diagenesis.illitePercentInClay).to.be.greaterThan(90.0); // High conversion
+        expect(diagenesis.releasedStructuralWaterWtPct).to.be.closeTo(10.45, 1.0); // ~10.5 wt% H2O released
+        expect(diagenesis.dewateringOverpressureMPa).to.be.closeTo(44.8, 5.0); // ~45 MPa overpressure
+        expect(diagenesis.clayDiageneticZoneClass).to.include('High-Grade Diagenetic Illite');
+        expect(diagenesis.diagenesisContext).to.include('Clay Diagenesis');
+    });
+
+    it('should discriminate Amorphous Hydrated Opal-A vs Opal-CT vs Quartz in CRISM spectra', () => {
+        // Amorphous Hydrated Silica / Opal-A Sinter (Home Plate / Jezero: BD1400 = 0.06, BD1900 = 0.08, BD2210 = 0.05, BD2260 = 0.04):
+        const opalA = BandMathEngine.computeCRISMSilicaCrystallinityIndices(0.06, 0.08, 0.05, 0.04);
+        expect(opalA.isSilicaDetected).to.be.true;
+        expect(opalA.silicaPolymorphClass).to.include('Amorphous Hydrated Silica (Opal-A Sinter)');
+        expect(opalA.mineralSpecies).to.include('Opal-A');
+        expect(opalA.chemicalFormula).to.include('SiO2 * nH2O');
+        expect(opalA.depositionalEnvironmentContext).to.include('Volcanic Hydrothermal Fumarole / Geyser Sinter');
+
+        // Paracrystalline Opal-CT / Chalcedony (BD1400 = 0.03, BD1900 = 0.03, BD2210 = 0.04, BD2260 = 0.015):
+        const opalCT = BandMathEngine.computeCRISMSilicaCrystallinityIndices(0.03, 0.03, 0.04, 0.015);
+        expect(opalCT.isSilicaDetected).to.be.true;
+        expect(opalCT.silicaPolymorphClass).to.include('Paracrystalline Microcrystalline Silica (Opal-CT / Chalcedony)');
+        expect(opalCT.mineralSpecies).to.include('Opal-CT');
+
+        // Non-silica basalt:
+        const basalt = BandMathEngine.computeCRISMSilicaCrystallinityIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSilicaDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

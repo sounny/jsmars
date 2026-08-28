@@ -474,3 +474,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate Mars-to-Pluto / KBO deep space interplanetary transfer trajectory and flyby mechanics
 ?: AssertionError: expected 46.42 to be close to 45.61 +/- 0.5
     at n.<anonymous> (unit.js:12285:47)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 21:45:47 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate inward Mars-to-Venus gravity assist flyby, deflection angle, and resonant orbit pumping
+?: AssertionError: expected 217.5 to be close to 174.5 +/- 10
+    at n.<anonymous> (unit.js:12530:47)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 21:46:01 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate inward Mars-to-Venus gravity assist flyby, deflection angle, and resonant orbit pumping
+?: AssertionError: expected 0.511 to be close to 0.455 +/- 0.05
+    at n.<anonymous> (unit.js:12534:52)
