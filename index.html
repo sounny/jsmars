@@ -515,7 +515,6 @@
     import { ProjectionManager } from './src/features/projections/ProjectionManager.js';
     import { GridLayer } from './src/features/grid/GridLayer.js';
     import { GridPanel } from './src/features/grid/GridPanel.js';
-    import { NorthArrow } from './src/ui/NorthArrow.js';
     import { PlanetaryScaleBar } from './src/ui/PlanetaryScaleBar.js';
     import { RadarPanel } from './src/features/radar/RadarPanel.js';
     import { TrajectoryPanel } from './src/features/orbit/TrajectoryPanel.js';
@@ -722,11 +721,9 @@
       document.getElementById('grid-panel-container'), gridLayer
     );
 
-    // -- NEW: Planetary Scale Bar & North Arrow --
+    // -- Planetary Scale Bar --
     const scaleBar = new PlanetaryScaleBar(jmars.map, { position: 'bottomleft' });
     scaleBar.add();
-    const northArrow = new NorthArrow(jmars.map, { position: 'topleft' });
-    northArrow.add();
 
     // -- Custom Map Manager (GeoTIFF upload) --
     const customMapManager = new CustomMapManager(jmars.map);

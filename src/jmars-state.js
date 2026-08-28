@@ -31,7 +31,7 @@ export class JMARSState {
         graticule: false,
         panner: false,
         scalebar: true,
-        northArrow: true
+        northArrow: false
       },
       view: {
         lat: 0,
@@ -190,7 +190,7 @@ export class JMARSState {
         graticule: false,
         panner: false,
         scalebar: true,
-        northArrow: true
+        northArrow: false
       },
       view: {
         lat: 0,
