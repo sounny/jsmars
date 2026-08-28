@@ -4829,6 +4829,64 @@ export class KRCEngine {
       astrobiologicalPoreStability: habDesc
     };
   }
+
+  /**
+   * Calculate ancient Martian ocean/paleolake shoreline lithospheric flexural warping, GIA rebound, and non-equipotential elevation distortion.
+   * D = E * Te^3 / ( 12 * ( 1 - nu^2 ) )
+   * alpha = ( 4 * D / ( ( rho_m - rho_w ) * g ) )^(1/4)
+   * Reference: Perron et al. (2007), Citron et al. (2018), Head et al. (2019) for Vastitas Borealis / Arabia paleoshoreline flexural deformation.
+   * @param {number} [elasticThicknessKm=40.0] - Lithospheric effective elastic thickness Te in km (15 to 100 km)
+   * @param {number} [oceanWaterDepthMeters=1500.0] - Mean ocean depth in meters (200 to 4000 m)
+   * @param {number} [oceanBasinRadiusKm=2500.0] - Ocean basin radius in km (500 to 4000 km)
+   * @returns {{elasticThicknessKm: number, flexuralRigidityNm: number, flexuralParameterAlphaKm: number, centralIsostaticDeflectionMeters: number, shorelineElevationWarpingMeters: number, paleoshorelineDeformationContext: string}}
+   */
+  static computeAncientMartianPaleoshorelineFlexureAndGIADeformation(elasticThicknessKm = 40.0, oceanWaterDepthMeters = 1500.0, oceanBasinRadiusKm = 2500.0) {
+    const TeKm = Math.max(5.0, Math.min(150.0, elasticThicknessKm));
+    const TeM = TeKm * 1000.0;
+    const hwM = Math.max(50.0, oceanWaterDepthMeters);
+    const RKm = Math.max(100.0, oceanBasinRadiusKm);
+    const RM = RKm * 1000.0;
+
+    const E = 1.0e11; // Pa Young's modulus
+    const nu = 0.25; // Poisson's ratio
+    const rhoMantle = 3500.0; // kg/m^3
+    const rhoWater = 1000.0; // kg/m^3
+    const gMars = 3.72076; // m/s^2
+
+    // Flexural rigidity D = ( E * Te^3 ) / ( 12 * ( 1 - nu^2 ) )
+    const D = (E * Math.pow(TeM, 3.0)) / (12.0 * (1.0 - Math.pow(nu, 2.0)));
+
+    // Flexural parameter alpha = ( 4*D / ( (rho_m - rho_w)*g ) )^(1/4)
+    const deltaRho = rhoMantle - rhoWater;
+    const alphaM = Math.pow((4.0 * D) / (deltaRho * gMars), 0.25);
+    const alphaKm = alphaM / 1000.0;
+
+    // Central isostatic deflection
+    const wcM = (rhoWater * hwM) / deltaRho;
+
+    // Shoreline flexural rebound deflection & elevation warping across coastal hinge zone
+    const rOverAlpha = RM / alphaM;
+    const flexWave = Math.exp(-Math.min(20.0, rOverAlpha)) * Math.cos(rOverAlpha);
+    const wShoreM = wcM * (1.0 - flexWave);
+    // Peak-to-trough coastal flexural warping across ocean-land dichotomy margin (Turcotte & Schubert 2002; Perron et al. 2007)
+    const deltaZWarpM = wcM * (1.0 + Math.exp(-Math.PI / 2.0));
+
+    let context = 'Major Shoreline Elevation Warping (Explains Non-Equipotential Arabia / Deuteronilus Contacts)';
+    if (TeKm > 60.0) {
+      context = 'Thick Rigid Lithosphere with Broad Regional Flexural Wavelength';
+    } else if (TeKm < 25.0) {
+      context = 'Thin Noachian Lithosphere with Steep Localized Shoreline Tilting';
+    }
+
+    return {
+      elasticThicknessKm: parseFloat(TeKm.toFixed(1)),
+      flexuralRigidityNm: parseFloat(D.toExponential(4)),
+      flexuralParameterAlphaKm: parseFloat(alphaKm.toFixed(1)),
+      centralIsostaticDeflectionMeters: parseFloat(wcM.toFixed(1)),
+      shorelineElevationWarpingMeters: parseFloat(deltaZWarpM.toFixed(1)),
+      paleoshorelineDeformationContext: context
+    };
+  }
 }
 
 

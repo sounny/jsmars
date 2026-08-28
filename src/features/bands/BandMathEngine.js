@@ -4770,6 +4770,51 @@ export class BandMathEngine {
       alkalineAqueousSetting: setting
     };
   }
+
+  /**
+   * Invert Pigeonite / Subcalcic Clinopyroxene (intermediate Wo5-Wo20) from Orthopyroxene (LCP) and Augite (HCP) using dual-band absorption centers (Band 1 ~0.98 um, Band 2 ~2.12 um).
+   * Reference: Mustard et al. (2005), Clénet et al. (2011), Viviano-Beck et al. (2014) for Hesperia Planum & Syrtis Major tholeiitic basalt plains.
+   * @param {number} band1CenterUm - Wavelength of Band 1 Fe2+ absorption in um (0.90 to 1.10 um)
+   * @param {number} band2CenterUm - Wavelength of Band 2 Fe2+ absorption in um (1.80 to 2.40 um)
+   * @param {number} [pyroxeneIndexDepth=0.06] - Integrated pyroxene absorption depth parameter (0.0 to 1.0)
+   * @returns {{band1CenterUm: number, band2CenterUm: number, isPyroxenePresent: boolean, pyroxeneMineralSpecies: string, estimatedWollastoniteMolePct: number, basalticPetrogenesisContext: string}}
+   */
+  static computeCRISMPigeoniteSubcalcicClinopyroxeneIndices(band1CenterUm, band2CenterUm, pyroxeneIndexDepth = 0.06) {
+    const l1 = Math.max(0.85, Math.min(1.15, band1CenterUm));
+    const l2 = Math.max(1.70, Math.min(2.50, band2CenterUm));
+    const depth = Math.max(0.0, pyroxeneIndexDepth);
+
+    let isPx = false;
+    let name = 'Non-Pyroxene Silicate / Plagioclase Feldspar';
+    let woPct = 0.0;
+    let context = 'Standard Regolith Matrix';
+
+    if (depth >= 0.025) {
+      isPx = true;
+      if (l1 <= 0.95 && l2 <= 2.05) {
+        name = 'Orthopyroxene (Low-Calcium Enstatite-Ferrosilite Wo2-Wo5)';
+        woPct = 3.5;
+        context = 'Ancient Noachian Deep Crustal Plutonic Cumulates (ALH84001 Analogue)';
+      } else if (l1 >= 1.01 && l2 >= 2.20) {
+        name = 'High-Calcium Clinopyroxene (Augite / Diopside Wo30-Wo45)';
+        woPct = 38.0;
+        context = 'Evolved Alkaline Volcanism / Late-Stage Basaltic Fractionation';
+      } else {
+        name = 'Pigeonite / Subcalcic Clinopyroxene (Intermediate Wo8-Wo18)';
+        woPct = 12.5;
+        context = 'High-Temperature Rapidly Quenched Tholeiitic Flood Basalts (Syrtis Major & Hesperia Planum)';
+      }
+    }
+
+    return {
+      band1CenterUm: parseFloat(l1.toFixed(3)),
+      band2CenterUm: parseFloat(l2.toFixed(3)),
+      isPyroxenePresent: isPx,
+      pyroxeneMineralSpecies: name,
+      estimatedWollastoniteMolePct: parseFloat(woPct.toFixed(1)),
+      basalticPetrogenesisContext: context
+    };
+  }
 }
 
 

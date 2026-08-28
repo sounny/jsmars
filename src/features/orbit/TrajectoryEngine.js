@@ -4274,6 +4274,73 @@ export class TrajectoryEngine {
       orbitalDecayRegime: regime
     };
   }
+
+  /**
+   * Calculate Phobos / Deimos co-orbital rendezvous trajectory, Hohmann transfer Delta-V from LMO, Hill sphere radius, and QSO insertion delta-V.
+   * r_Hill = a_moon * ( m_moon / ( 3 * M_mars ) )^(1/3)
+   * Delta_V_Hohmann = Delta_V1 + Delta_V2
+   * Reference: Szebehely (1967), Burns (1972), Murray & Dermott (1999), Canup & Salmon (2018) for JAXA MMX / Mars moon rendezvous.
+   * @param {string} [moonTarget='phobos'] - Moon target ('phobos', 'deimos')
+   * @param {number} [initialMarsOrbitAltitudeKm=400.0] - Initial circular LMO altitude in km
+   * @returns {{targetMoon: string, moonSemiMajorAxisKm: number, moonOrbitalSpeedKmS: number, moonOrbitalPeriodHours: number, moonHillSphereRadiusKm: number, hohmannTransferDeltaVKmS: number, transferTimeOfFlightHours: number, qsoProximityInsertionDeltaVMPS: number, rendezvousMissionContext: string}}
+   */
+  static computeMartianMoonCoOrbitalRendezvousAndHillSphere(moonTarget = 'phobos', initialMarsOrbitAltitudeKm = 400.0) {
+    const h1Km = Math.max(50.0, initialMarsOrbitAltitudeKm);
+    const rMarsKm = 3389.5;
+    const muMars = 42828.37; // km^3/s^2
+    const mMarsKg = 6.4171e23;
+
+    let aMoonKm = 9376.0;
+    let mMoonKg = 1.0659e16;
+    let name = 'Phobos (Martian Inner Moon)';
+    let qsoDvMPS = 12.5;
+
+    const tKey = moonTarget.toLowerCase();
+    if (tKey.includes('deimos')) {
+      aMoonKm = 23463.0;
+      mMoonKg = 1.4762e15;
+      name = 'Deimos (Martian Outer Moon)';
+      qsoDvMPS = 6.5;
+    }
+
+    // Moon circular orbital speed & period
+    const vMoonKmS = Math.sqrt(muMars / aMoonKm);
+    const pMoonSec = 2.0 * Math.PI * Math.sqrt(Math.pow(aMoonKm, 3.0) / muMars);
+    const pMoonHours = pMoonSec / 3600.0;
+
+    // Moon Hill Sphere radius r_Hill = a * ( m_moon / (3 * M_mars) )^(1/3)
+    const massRatio = mMoonKg / (3.0 * mMarsKg);
+    const rHillKm = aMoonKm * Math.pow(massRatio, 1.0 / 3.0);
+
+    // Hohmann transfer from LMO (r1) to Moon orbit (aMoon)
+    const r1Km = rMarsKm + h1Km;
+    const v1KmS = Math.sqrt(muMars / r1Km);
+    const atKm = (r1Km + aMoonKm) / 2.0;
+
+    const vTransPeri = Math.sqrt(muMars * ((2.0 / r1Km) - (1.0 / atKm)));
+    const dv1 = vTransPeri - v1KmS;
+
+    const vTransApo = Math.sqrt(muMars * ((2.0 / aMoonKm) - (1.0 / atKm)));
+    const dv2 = vMoonKmS - vTransApo;
+
+    const dvTotKmS = Math.abs(dv1) + Math.abs(dv2);
+    const tofSec = Math.PI * Math.sqrt(Math.pow(atKm, 3.0) / muMars);
+    const tofHours = tofSec / 3600.0;
+
+    let context = 'Low-Energy Martian Moon Rendezvous & Proximity Orbit Insertion (MMX / Sample Return Analogue)';
+
+    return {
+      targetMoon: name,
+      moonSemiMajorAxisKm: parseFloat(aMoonKm.toFixed(1)),
+      moonOrbitalSpeedKmS: parseFloat(vMoonKmS.toFixed(3)),
+      moonOrbitalPeriodHours: parseFloat(pMoonHours.toFixed(3)),
+      moonHillSphereRadiusKm: parseFloat(rHillKm.toFixed(2)),
+      hohmannTransferDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      transferTimeOfFlightHours: parseFloat(tofHours.toFixed(3)),
+      qsoProximityInsertionDeltaVMPS: parseFloat(qsoDvMPS.toFixed(1)),
+      rendezvousMissionContext: context
+    };
+  }
 }
 
 

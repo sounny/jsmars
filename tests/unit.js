@@ -10473,6 +10473,60 @@ describe('LMO Atmospheric Drag Decay, Cryohydrate Stability & Trioctahedral Smec
     });
 });
 
+describe('Phobos/Deimos Moon Rendezvous, Paleoshoreline Flexure & Pigeonite Pyroxenes', () => {
+    it('should calculate Phobos/Deimos co-orbital rendezvous Delta-V, transfer time, and Hill sphere radius', () => {
+        // Phobos rendezvous from 400 km LMO:
+        const phobos = TrajectoryEngine.computeMartianMoonCoOrbitalRendezvousAndHillSphere('phobos', 400.0);
+        expect(phobos.targetMoon).to.include('Phobos');
+        expect(phobos.moonSemiMajorAxisKm).to.equal(9376.0);
+        expect(phobos.moonOrbitalSpeedKmS).to.be.closeTo(2.137, 0.05); // ~2.14 km/s
+        expect(phobos.moonOrbitalPeriodHours).to.be.closeTo(7.654, 0.1); // ~7.65 hours
+        expect(phobos.moonHillSphereRadiusKm).to.be.closeTo(16.59, 0.5); // ~16.6 km Hill sphere
+        expect(phobos.hohmannTransferDeltaVKmS).to.be.closeTo(1.167, 0.05); // ~1.17 km/s total Hohmann burn
+        expect(phobos.transferTimeOfFlightHours).to.be.closeTo(2.247, 0.1); // ~2.25 hours TOF
+        expect(phobos.qsoProximityInsertionDeltaVMPS).to.equal(12.5);
+
+        // Deimos rendezvous:
+        const deimos = TrajectoryEngine.computeMartianMoonCoOrbitalRendezvousAndHillSphere('deimos', 400.0);
+        expect(deimos.targetMoon).to.include('Deimos');
+        expect(deimos.moonSemiMajorAxisKm).to.equal(23463.0);
+        expect(deimos.moonHillSphereRadiusKm).to.be.closeTo(21.48, 0.5); // ~21.5 km Hill sphere
+    });
+
+    it('should calculate ancient Martian ocean shoreline lithospheric flexural warping and GIA rebound', () => {
+        // Northern Lowlands paleoocean (Te = 40 km, depth = 1500 m, basin radius = 2500 km):
+        const flex = KRCEngine.computeAncientMartianPaleoshorelineFlexureAndGIADeformation(40.0, 1500.0, 2500.0);
+        expect(flex.elasticThicknessKm).to.equal(40.0);
+        expect(flex.flexuralParameterAlphaKm).to.be.closeTo(125.1, 10.0); // ~125 km flexural parameter
+        expect(flex.centralIsostaticDeflectionMeters).to.be.closeTo(600.0, 5.0); // ~600 m central depression
+        expect(flex.shorelineElevationWarpingMeters).to.be.greaterThan(500.0); // > 500 m elevation warping
+        expect(flex.paleoshorelineDeformationContext).to.include('Major Shoreline Elevation Warping');
+    });
+
+    it('should discriminate Pigeonite (intermediate-Ca) from Orthopyroxene (LCP) and Augite (HCP) in CRISM spectra', () => {
+        // Pigeonite in Syrtis Major volcanic plains (Band 1 = 0.98 um, Band 2 = 2.12 um):
+        const pigeonite = BandMathEngine.computeCRISMPigeoniteSubcalcicClinopyroxeneIndices(0.98, 2.12, 0.08);
+        expect(pigeonite.isPyroxenePresent).to.be.true;
+        expect(pigeonite.pyroxeneMineralSpecies).to.include('Pigeonite / Subcalcic Clinopyroxene');
+        expect(pigeonite.estimatedWollastoniteMolePct).to.be.closeTo(12.5, 3.0); // ~Wo12.5
+        expect(pigeonite.basalticPetrogenesisContext).to.include('High-Temperature Rapidly Quenched Tholeiitic');
+
+        // Low-Ca Orthopyroxene (Band 1 = 0.93 um, Band 2 = 1.95 um):
+        const opx = BandMathEngine.computeCRISMPigeoniteSubcalcicClinopyroxeneIndices(0.93, 1.95, 0.08);
+        expect(opx.isPyroxenePresent).to.be.true;
+        expect(opx.pyroxeneMineralSpecies).to.include('Orthopyroxene');
+
+        // High-Ca Augite (Band 1 = 1.05 um, Band 2 = 2.30 um):
+        const augite = BandMathEngine.computeCRISMPigeoniteSubcalcicClinopyroxeneIndices(1.05, 2.30, 0.08);
+        expect(augite.isPyroxenePresent).to.be.true;
+        expect(augite.pyroxeneMineralSpecies).to.include('High-Calcium Clinopyroxene');
+
+        // Flat spectrum:
+        const basalt = BandMathEngine.computeCRISMPigeoniteSubcalcicClinopyroxeneIndices(0.98, 2.12, 0.01);
+        expect(basalt.isPyroxenePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
