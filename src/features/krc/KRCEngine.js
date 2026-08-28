@@ -4953,6 +4953,53 @@ export class KRCEngine {
       hydrothermalAstrobiologyContext: habitability
     };
   }
+
+  /**
+   * Calculate CO2 atmospheric frost condensation temperature, regolith adsorption capacity, and runaway climatic atmospheric collapse threshold.
+   * T_frost = 3148.0 / ln( 1.325e11 / P )
+   * M_ads = A_ads * ( P / P0 )^gamma * exp( Q_ads / ( R * T ) )
+   * Reference: Fanale et al. (1982), Forget & Pierrehumbert (1997), Haberle et al. (2001), Manning et al. (2019) for Mars atmospheric collapse.
+   * @param {number} [atmosphericPressurePa=610.0] - Ambient Martian surface atmospheric pressure in Pascals (10 to 100,000 Pa)
+   * @param {number} [polarWinterTempK=145.0] - Winter polar surface ground temperature in K (120 to 220 K)
+   * @param {number} [regolithSpecificAreaM2G=50.0] - Basaltic regolith specific surface area in m^2/g (5 to 200 m^2/g)
+   * @returns {{atmosphericPressurePa: number, co2FrostCondensationTempK: number, co2FrostCondensationTempC: number, regolithCO2AdsorptionKgM3: number, isAtmosphericCollapseTriggered: boolean, climaticCollapseRegime: string}}
+   */
+  static computeCryovolcanicCO2FrostDesorptionAndAtmosphericCollapse(atmosphericPressurePa = 610.0, polarWinterTempK = 145.0, regolithSpecificAreaM2G = 50.0) {
+    const P = Math.max(5.0, Math.min(200000.0, atmosphericPressurePa));
+    const Tpole = Math.max(100.0, Math.min(250.0, polarWinterTempK));
+    const Sarea = Math.max(1.0, regolithSpecificAreaM2G);
+
+    // Clausius-Clapeyron CO2 frost point temperature (K)
+    const TfrostK = 3148.0 / Math.log(1.325e11 / P);
+    const TfrostC = TfrostK - 273.15;
+
+    // Regolith CO2 adsorption isotherm
+    const R_GAS = 8.314;
+    const Qads = 28000.0; // J/mol heat of adsorption
+    const P0 = 1000.0; // Pa reference pressure
+    const gamma = 0.35;
+    const Aads = 1.2e-4 * (Sarea / 50.0);
+    const MadsKgM3 = Aads * Math.pow(P / P0, gamma) * Math.exp(Qads / (R_GAS * Tpole));
+
+    // Runaway atmospheric collapse condition
+    const isCollapse = Tpole < TfrostK;
+
+    let regime = 'Stable Gaseous Atmosphere (Polar Solar Heating Prevents Permanent Ice Cap Sequestration)';
+    if (isCollapse) {
+      regime = 'Runaway Climatic Atmospheric Collapse (CO2 Frost Deposition Exceeds Sublimation -> Thin 600 Pa Equil)';
+    } else if (MadsKgM3 > 50.0) {
+      regime = 'Heavy Regolith CO2 Adsorption Buffering (Subsurface Reservoir Traps Massive Paleopressure)';
+    }
+
+    return {
+      atmosphericPressurePa: parseFloat(P.toFixed(1)),
+      co2FrostCondensationTempK: parseFloat(TfrostK.toFixed(2)),
+      co2FrostCondensationTempC: parseFloat(TfrostC.toFixed(2)),
+      regolithCO2AdsorptionKgM3: parseFloat(MadsKgM3.toFixed(2)),
+      isAtmosphericCollapseTriggered: isCollapse,
+      climaticCollapseRegime: regime
+    };
+  }
 }
 
 

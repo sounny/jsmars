@@ -10577,6 +10577,51 @@ describe('Sun-Synchronous Mapping Orbits, Hydrothermal Convection & Carbonate Gr
     });
 });
 
+describe('Areostationary Orbit Dynamics, CO2 Atmospheric Collapse & Diopside Pyroxenes', () => {
+    it('should calculate Areostationary Orbit altitude, speed, and triaxial gravity drift', () => {
+        // Mars areostationary orbit (at prime meridian 0 deg lon):
+        const aero = TrajectoryEngine.computeAreostationaryOrbitAltitudeAndLongitudinalDrift(0.0);
+        expect(aero.areostationaryAltitudeKm).to.be.closeTo(17058.5, 5.0); // ~17059 km altitude
+        expect(aero.areostationaryRadiusKm).to.be.closeTo(20448.0, 5.0); // ~20448 km synchronous radius
+        expect(aero.areostationarySpeedKmS).to.be.closeTo(1.447, 0.01); // ~1.447 km/s circular speed
+        expect(aero.orbitalPeriodHours).to.be.closeTo(24.6229, 0.05); // ~24.62 hours (1 Mars sol)
+        expect(aero.annualStationKeepingDeltaVMPS).to.be.greaterThan(1.0); // Station-keeping Delta-V
+        expect(aero.stableLibrationWells).to.include('Stable Libration Wells at 17.5 W');
+    });
+
+    it('should calculate CO2 frost condensation temperature, regolith adsorption, and atmospheric collapse', () => {
+        // Modern Mars (P = 610 Pa, winter polar T = 145 K):
+        const modCollapse = KRCEngine.computeCryovolcanicCO2FrostDesorptionAndAtmosphericCollapse(610.0, 145.0, 50.0);
+        expect(modCollapse.atmosphericPressurePa).to.equal(610.0);
+        expect(modCollapse.co2FrostCondensationTempK).to.be.closeTo(164.00, 0.5); // ~164.0 K CO2 frost point
+        expect(modCollapse.isAtmosphericCollapseTriggered).to.be.true; // 145 K < 164 K -> collapse triggered
+        expect(modCollapse.climaticCollapseRegime).to.include('Runaway Climatic Atmospheric Collapse');
+
+        // Warm summer polar surface (T = 180 K):
+        const warm = KRCEngine.computeCryovolcanicCO2FrostDesorptionAndAtmosphericCollapse(610.0, 180.0, 50.0);
+        expect(warm.isAtmosphericCollapseTriggered).to.be.false;
+    });
+
+    it('should discriminate pure Diopside (extreme high-Ca) from Augite in CRISM pyroxene spectra', () => {
+        // Pure Diopside (Wo49) in Olympus Mons pyroxenite cumulates (Band 1 = 1.045 um, Band 2 = 2.320 um):
+        const diopside = BandMathEngine.computeCRISMAugiteDiopsideHighCalciumIndices(1.045, 2.320, 0.08);
+        expect(diopside.isHighCaPyroxenePresent).to.be.true;
+        expect(diopside.pyroxeneEndmemberSpecies).to.include('Diopside (Pure Calcium-Magnesium');
+        expect(diopside.estimatedWollastoniteMolePct).to.be.closeTo(49.0, 2.0); // ~Wo49
+        expect(diopside.alkalineVolcanicPetrogenesis).to.include('Extreme Alkaline Magma Differentiation');
+
+        // Augite (Wo38) in typical basaltic lava flows (Band 1 = 1.015 um, Band 2 = 2.250 um):
+        const augite = BandMathEngine.computeCRISMAugiteDiopsideHighCalciumIndices(1.015, 2.250, 0.08);
+        expect(augite.isHighCaPyroxenePresent).to.be.true;
+        expect(augite.pyroxeneEndmemberSpecies).to.include('Augite (High-Calcium Clinopyroxene');
+        expect(augite.estimatedWollastoniteMolePct).to.be.closeTo(38.5, 3.0); // ~Wo38.5
+
+        // Flat spectrum:
+        const basalt = BandMathEngine.computeCRISMAugiteDiopsideHighCalciumIndices(1.015, 2.250, 0.01);
+        expect(basalt.isHighCaPyroxenePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

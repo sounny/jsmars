@@ -4392,6 +4392,56 @@ export class TrajectoryEngine {
       mappingOrbitDesignContext: `Mars Sun-Synchronous Frozen Mapping Orbit (${incDeg.toFixed(1)} deg Inclination, ${Np}/${Nd} Sol Repeat Pattern)`
     };
   }
+
+  /**
+   * Calculate Areostationary Orbit (AERO) altitude, orbital velocity, triaxial gravity (J22) longitudinal drift acceleration, and station-keeping Delta-V.
+   * r_areo = ( mu / omega_mars^2 )^(1/3)
+   * ddot_lambda = - 12 * ( mu * Rp^2 / r_areo^5 ) * J22 * sin( 2 * ( lambda - lambda_22 ) )
+   * Reference: Szebehely (1967), Silva et al. (2008), Curtis (2013) for Mars synchronous orbit & constellation design.
+   * @param {number} [targetLongitudeDeg=0.0] - Desired planetocentric subsatellite longitude in degrees (-180 to +180 deg)
+   * @returns {{areostationaryAltitudeKm: number, areostationaryRadiusKm: number, areostationarySpeedKmS: number, orbitalPeriodHours: number, longitudinalDriftAccelerationDegDay2: number, annualStationKeepingDeltaVMPS: number, stableLibrationWells: string, areostationaryMissionContext: string}}
+   */
+  static computeAreostationaryOrbitAltitudeAndLongitudinalDrift(targetLongitudeDeg = 0.0) {
+    const lonDeg = ((targetLongitudeDeg % 360.0) + 540.0) % 360.0 - 180.0;
+    const lonRad = lonDeg * (Math.PI / 180.0);
+
+    const RpKm = 3389.5;
+    const muMars = 42828.37; // km^3/s^2
+    const omegaMarsRadS = 7.077651e-5; // rad/s (88775.244 s sol)
+    const J22 = -5.467e-5;
+    const lambda22Deg = 75.0;
+    const lambda22Rad = lambda22Deg * (Math.PI / 180.0);
+
+    // Synchronous radius r = ( mu / omega^2 )^(1/3)
+    const rAreoKm = Math.pow(muMars / Math.pow(omegaMarsRadS, 2.0), 1.0 / 3.0);
+    const hAreoKm = rAreoKm - RpKm;
+
+    // Circular orbital speed & period
+    const vAreoKmS = Math.sqrt(muMars / rAreoKm);
+    const pAreoSec = (2.0 * Math.PI) / omegaMarsRadS;
+    const pAreoHours = pAreoSec / 3600.0;
+
+    // Longitudinal acceleration ddot_lambda = - 12 * ( mu * Rp^2 / r^5 ) * J22 * sin( 2 * (lambda - lambda22) )
+    const coeff = -12.0 * (muMars * Math.pow(RpKm, 2.0) / Math.pow(rAreoKm, 5.0)) * J22;
+    const ddotLambdaRadS2 = coeff * Math.sin(2.0 * (lonRad - lambda22Rad));
+    const SECS_PER_DAY = 86400.0;
+    const RAD_TO_DEG = 180.0 / Math.PI;
+    const ddotLambdaDegDay2 = ddotLambdaRadS2 * Math.pow(SECS_PER_DAY, 2.0) * RAD_TO_DEG;
+
+    // Annual station-keeping Delta-V budget (m/s/year)
+    const deltaVSkMPSYear = Math.abs(ddotLambdaRadS2) * (rAreoKm * 1000.0) * 3.15576e7;
+
+    return {
+      areostationaryAltitudeKm: parseFloat(hAreoKm.toFixed(1)),
+      areostationaryRadiusKm: parseFloat(rAreoKm.toFixed(1)),
+      areostationarySpeedKmS: parseFloat(vAreoKmS.toFixed(3)),
+      orbitalPeriodHours: parseFloat(pAreoHours.toFixed(4)),
+      longitudinalDriftAccelerationDegDay2: parseFloat(ddotLambdaDegDay2.toFixed(5)),
+      annualStationKeepingDeltaVMPS: parseFloat(deltaVSkMPSYear.toFixed(2)),
+      stableLibrationWells: 'Stable Libration Wells at 17.5 W (342.5 E) and 162.5 E; Unstable Saddles at 72.5 E and 107.5 W',
+      areostationaryMissionContext: 'Areostationary Equatorial Relay & Continuous Planetary Disk Monitoring'
+    };
+  }
 }
 
 

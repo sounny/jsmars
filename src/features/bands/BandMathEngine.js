@@ -4860,6 +4860,51 @@ export class BandMathEngine {
       carbonationPaleoenvironment: setting
     };
   }
+
+  /**
+   * Discriminate Diopside (extreme high-Ca endmember Wo48-Wo50) from Augite (Wo30-Wo45) in High-Calcium Pyroxenes using CRISM Band 1 (1.00-1.06 um) and Band 2 (2.22-2.35 um) centers.
+   * Reference: Clénet et al. (2011), Viviano-Beck et al. (2014) for Olympus Mons & Elysium Planitia volcanic calderas.
+   * @param {number} band1CenterUm - Wavelength of Band 1 Fe2+ (M2) absorption in um (0.98 to 1.10 um)
+   * @param {number} band2CenterUm - Wavelength of Band 2 Fe2+ (M2) absorption in um (2.15 to 2.45 um)
+   * @param {number} [hcpIndexDepth=0.07] - HCPINDEX integrated band depth (0.0 to 1.0)
+   * @returns {{band1CenterUm: number, band2CenterUm: number, isHighCaPyroxenePresent: boolean, pyroxeneEndmemberSpecies: string, estimatedWollastoniteMolePct: number, alkalineVolcanicPetrogenesis: string}}
+   */
+  static computeCRISMAugiteDiopsideHighCalciumIndices(band1CenterUm, band2CenterUm, hcpIndexDepth = 0.07) {
+    const l1 = Math.max(0.95, Math.min(1.15, band1CenterUm));
+    const l2 = Math.max(2.10, Math.min(2.50, band2CenterUm));
+    const depth = Math.max(0.0, hcpIndexDepth);
+
+    let isHcp = false;
+    let name = 'Low-Calcium Pyroxene or Plagioclase Feldspar';
+    let woPct = 0.0;
+    let context = 'Standard Tholeiitic Crust';
+
+    if (depth >= 0.025) {
+      isHcp = true;
+      if (l1 >= 1.035 && l2 >= 2.300) {
+        name = 'Diopside (Pure Calcium-Magnesium Pyroxene CaMgSi2O6 Wo48-Wo50)';
+        woPct = 49.0;
+        context = 'Extreme Alkaline Magma Differentiation / High-Pressure Deep Plutonic Pyroxenite';
+      } else if (l1 >= 1.000 && l2 >= 2.220) {
+        name = 'Augite (High-Calcium Clinopyroxene Ca(Mg,Fe)Si2O6 Wo32-Wo45)';
+        woPct = 38.5;
+        context = 'Evolved Basaltic Caldera Lava Flows (Olympus Mons / Elysium / Syrtis Major)';
+      } else {
+        name = 'Subcalcic Augite / Pigeonite Matrix (Intermediate Wo15-Wo28)';
+        woPct = 22.0;
+        context = 'Intermediate Basaltic Phenocrysts';
+      }
+    }
+
+    return {
+      band1CenterUm: parseFloat(l1.toFixed(3)),
+      band2CenterUm: parseFloat(l2.toFixed(3)),
+      isHighCaPyroxenePresent: isHcp,
+      pyroxeneEndmemberSpecies: name,
+      estimatedWollastoniteMolePct: parseFloat(woPct.toFixed(1)),
+      alkalineVolcanicPetrogenesis: context
+    };
+  }
 }
 
 
