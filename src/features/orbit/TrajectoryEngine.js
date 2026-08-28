@@ -6648,6 +6648,72 @@ export class TrajectoryEngine {
       biParabolicContext: `Bi-Parabolic Solar Drop (${dvTotKmS.toFixed(2)} km/s Total Delta-V, ${vPeriCoronalKmS.toFixed(0)} km/s Coronal Entry at ${RsunMult.toFixed(0)} R_sun, saved ${dvSavedKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate inward Mars-to-Inner Planet low-thrust continuous ion spiral trajectory with solar panel inverse-square power/thrust scaling (T ~ 1/r^2).
+   * T(r) = T_1AU / r^2
+   * T_mean = T_1AU / ( r_1 * r_2 )
+   * t_burn = delta_m * c / T_mean
+   * Reference: Sauer (1973), Williams & Coverstone (2000), Curtis (2013) for Solar-Electric Low-Thrust Scaling.
+   * @param {number} [initialVehicleMassKg=1500.0] - Initial wet mass in kg (100 to 50000 kg)
+   * @param {number} [thrustAt1AUmN=300.0] - Solar electric propulsion thrust at 1 AU in mN (10 to 5000 mN)
+   * @param {number} [specificImpulseSec=3500.0] - Ion thruster specific impulse in seconds (1000 to 10000 s)
+   * @param {number} [targetHeliocentricAU=1.000] - Destination heliocentric orbit in AU (0.3 to 1.4 AU)
+   * @returns {{lowThrustDeltaVKmS: number, propellantConsumedKg: number, initialMarsThrustMN: number, finalArrivalThrustMN: number, averageThrustMN: number, spiralDurationDays: number, spiralDurationYears: number, initialAccelerationMmS2: number, finalAccelerationMmS2: number, solarSpiralContext: string}}
+   */
+  static computeMarsInwardSolarElectricIonSpiralWithSolarScaling(initialVehicleMassKg = 1500.0, thrustAt1AUmN = 300.0, specificImpulseSec = 3500.0, targetHeliocentricAU = 1.000) {
+    const m0Kg = Math.max(10.0, initialVehicleMassKg);
+    const T1auN = Math.max(0.001, thrustAt1AUmN / 1000.0);
+    const Isp = Math.max(100.0, specificImpulseSec);
+    const rTargAU = Math.max(0.2, targetHeliocentricAU);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const g0 = 9.80665;
+    const cMs = g0 * Isp;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rTargDistKm = rTargAU * AU_KM;
+
+    // Speeds
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vTargKmS = Math.sqrt(muSun / rTargDistKm);
+    const dvSpiralKmS = Math.abs(vTargKmS - vMarsKmS);
+    const dvSpiralMs = dvSpiralKmS * 1000.0;
+
+    // Fuel consumed
+    const mfKg = m0Kg * Math.exp(-dvSpiralMs / cMs);
+    const deltaMKg = m0Kg - mfKg;
+
+    // Thrust scaling (N)
+    const TmarsN = T1auN / Math.pow(rMarsAU, 2.0);
+    const TtargN = T1auN / Math.pow(rTargAU, 2.0);
+    const TavgN = T1auN / (rMarsAU * rTargAU);
+
+    // Duration with average solar-scaled thrust
+    const mdotAvgKgS = TavgN / cMs;
+    const tBurnSec = deltaMKg / mdotAvgKgS;
+    const tBurnDays = tBurnSec / 86400.0;
+    const tBurnYrs = tBurnDays / 365.25;
+
+    // Accelerations (mm/s^2)
+    const a0MmS2 = (TmarsN / m0Kg) * 1000.0;
+    const afMmS2 = (TtargN / mfKg) * 1000.0;
+
+    return {
+      lowThrustDeltaVKmS: parseFloat(dvSpiralKmS.toFixed(3)),
+      propellantConsumedKg: parseFloat(deltaMKg.toFixed(2)),
+      initialMarsThrustMN: parseFloat((TmarsN * 1000.0).toFixed(1)),
+      finalArrivalThrustMN: parseFloat((TtargN * 1000.0).toFixed(1)),
+      averageThrustMN: parseFloat((TavgN * 1000.0).toFixed(1)),
+      spiralDurationDays: parseFloat(tBurnDays.toFixed(1)),
+      spiralDurationYears: parseFloat(tBurnYrs.toFixed(2)),
+      initialAccelerationMmS2: parseFloat(a0MmS2.toFixed(3)),
+      finalAccelerationMmS2: parseFloat(afMmS2.toFixed(3)),
+      solarSpiralContext: `Solar-Scaled SEP Spiral (${tBurnDays.toFixed(0)} d to ${rTargAU.toFixed(2)} AU, ${deltaMKg.toFixed(1)} kg Xe, ${(TmarsN * 1000).toFixed(0)} mN -> ${(TtargN * 1000).toFixed(0)} mN)`
+    };
+  }
 }
 
 

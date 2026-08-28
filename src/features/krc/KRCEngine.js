@@ -7092,6 +7092,72 @@ export class KRCEngine {
       brineEquilibriumContext: `${name} at ${TambK.toFixed(1)}K (${isLiquid ? 'Liquid Stable' : 'Frozen Solid'}, ${wLiqPct.toFixed(1)}% Liquid Brine, aw=${aw.toFixed(3)}, ${habit})`
     };
   }
+
+  /**
+   * Calculate deep crustal aquifer geothermal hydrothermal plume upwelling, buoyancy driving head, Darcy discharge flux, and surface spring temperature.
+   * T_deep = T_surf + Gamma_geo * z_aq
+   * Delta_rho = rho_0 * beta * ( T_deep - T_freeze )
+   * q_Darcy = k_fault * Delta_rho * g / mu_water
+   * Reference: Clifford (1993), Andrews-Hanna et al. (2007), Harrison & Grimm (2008) for Martian Deep Hydrothermal Groundwater Circulation.
+   * @param {number} [aquiferDepthKm=6.0] - Deep confined aquifer depth in km (1.0 to 15.0 km)
+   * @param {number} [regionalGeothermalGradientKPerKm=20.0] - Geothermal gradient in K/km (10 to 60 K/km)
+   * @param {number} [faultPermeabilityM2=1.0e-11] - Fault damage zone permeability in m^2 (1e-14 to 1e-10 m^2)
+   * @param {number} [faultConduitWidthM=50.0] - Fracture zone width in meters (5 to 500 m)
+   * @param {number} [faultStrikeLengthM=1000.0] - Along-strike fault length in meters (100 to 20000 m)
+   * @returns {{deepAquiferTemperatureC: number, deepAquiferTemperatureK: number, buoyancyDensityDeficitKgM3: number, darcyUpwellingVelocityMPerDay: number, dailySpringDischargeM3Day: number, exitSpringTemperatureC: number, hydrothermalSpringClass: string, hydrothermalPlumeContext: string}}
+   */
+  static computeMartianDeepAquiferHydrothermalPlumeUpwelling(aquiferDepthKm = 6.0, regionalGeothermalGradientKPerKm = 20.0, faultPermeabilityM2 = 1.0e-11, faultConduitWidthM = 50.0, faultStrikeLengthM = 1000.0) {
+    const zKm = Math.max(0.5, aquiferDepthKm);
+    const gammaGeo = Math.max(5.0, regionalGeothermalGradientKPerKm);
+    const kFault = Math.max(1e-16, faultPermeabilityM2);
+    const Wfault = Math.max(1.0, faultConduitWidthM);
+    const Lfault = Math.max(10.0, faultStrikeLengthM);
+
+    const TsurfK = 215.0; // Mean surface temperature (-58.15 C)
+    const TfreezeK = 273.15;
+    const gMars = 3.72; // m/s^2
+    const rho0 = 1000.0; // kg/m^3
+    const betaExp = 3.0e-4; // 1/K
+    const muWater = 4.7e-4; // Pa*s at ~60 C
+
+    // Deep reservoir temperature (K and C)
+    const TdeepK = TsurfK + (gammaGeo * zKm);
+    const TdeepC = TdeepK - 273.15;
+
+    // Buoyant density deficit (kg/m^3)
+    const deltaTBuoy = Math.max(0.0, TdeepK - TfreezeK);
+    const deltaRho = rho0 * betaExp * deltaTBuoy;
+
+    // Darcy upwelling velocity (m/s & m/day)
+    const qDarcyMs = (kFault * deltaRho * gMars) / muWater;
+    const qDarcyMDay = qDarcyMs * 86400.0;
+
+    // Volumetric discharge rate (m^3/day)
+    const Afault = Wfault * Lfault;
+    const QdayM3 = qDarcyMs * Afault * 86400.0;
+
+    // Exit spring temperature at surface (conductive maturation factor 0.75)
+    const etaTherm = 0.75;
+    const TspringC = (TsurfK - 273.15) + (etaTherm * (TdeepK - TsurfK));
+
+    let springClass = 'Warm Hydrothermal Fault Spring (Oasis Candidate)';
+    if (TspringC >= 45.0) {
+      springClass = 'High-Temperature Geothermal Spring / Hydrothermal Mound Source';
+    } else if (TspringC < 10.0) {
+      springClass = 'Low-Temperature Chilled Subsurface Groundwater Seep';
+    }
+
+    return {
+      deepAquiferTemperatureC: parseFloat(TdeepC.toFixed(1)),
+      deepAquiferTemperatureK: parseFloat(TdeepK.toFixed(1)),
+      buoyancyDensityDeficitKgM3: parseFloat(deltaRho.toFixed(3)),
+      darcyUpwellingVelocityMPerDay: parseFloat(qDarcyMDay.toFixed(4)),
+      dailySpringDischargeM3Day: parseFloat(QdayM3.toFixed(1)),
+      exitSpringTemperatureC: parseFloat(TspringC.toFixed(1)),
+      hydrothermalSpringClass: springClass,
+      hydrothermalPlumeContext: `Deep Hydrothermal Plume from ${zKm.toFixed(1)}km (${TdeepC.toFixed(0)} C Aquifer, ${TspringC.toFixed(1)} C Exit Spring, ${QdayM3.toFixed(0)} m3/d Discharge, ${springClass})`
+    };
+  }
 }
 
 

@@ -12376,6 +12376,55 @@ describe('Bi-Parabolic Solar Drop, Perchlorate Cryogenic Eutectic & Serpentine P
     });
 });
 
+describe('Solar-Scaled SEP Spiral, Deep Hydrothermal Plume & Borate-Nitrate Inversion', () => {
+    it('should calculate inward Mars-to-Earth solar-scaled low-thrust ion spiral trajectory', () => {
+        // Mars to Earth 1.0 AU (1500 kg spacecraft, 300 mN at 1 AU, 3500 s Isp):
+        const spiral = TrajectoryEngine.computeMarsInwardSolarElectricIonSpiralWithSolarScaling(1500.0, 300.0, 3500.0, 1.000);
+        expect(spiral.lowThrustDeltaVKmS).to.be.closeTo(5.655, 0.2); // ~5.66 km/s Delta-V
+        expect(spiral.propellantConsumedKg).to.be.closeTo(227.9, 5.0); // ~228 kg Xe
+        expect(spiral.initialMarsThrustMN).to.be.closeTo(129.2, 5.0); // ~129 mN at 1.52 AU
+        expect(spiral.finalArrivalThrustMN).to.be.closeTo(300.0, 1.0); // 300 mN at 1.0 AU
+        expect(spiral.averageThrustMN).to.be.closeTo(196.9, 5.0); // ~197 mN avg thrust
+        expect(spiral.spiralDurationDays).to.be.closeTo(459.7, 10.0); // ~460 days
+        expect(spiral.spiralDurationYears).to.be.closeTo(1.259, 0.05); // ~1.26 yr
+        expect(spiral.solarSpiralContext).to.include('Solar-Scaled SEP Spiral');
+    });
+
+    it('should calculate deep crustal aquifer geothermal hydrothermal plume upwelling and spring temperature', () => {
+        // 6 km depth, 20 K/km gradient, 1e-11 m^2 fault permeability, 50m x 1000m conduit:
+        const plume = KRCEngine.computeMartianDeepAquiferHydrothermalPlumeUpwelling(6.0, 20.0, 1.0e-11, 50.0, 1000.0);
+        expect(plume.deepAquiferTemperatureK).to.equal(335.0);
+        expect(plume.deepAquiferTemperatureC).to.be.closeTo(61.85, 0.2); // ~61.9 C deep reservoir
+        expect(plume.buoyancyDensityDeficitKgM3).to.be.closeTo(18.555, 0.5); // ~18.56 kg/m^3
+        expect(plume.darcyUpwellingVelocityMPerDay).to.be.closeTo(0.1269, 0.01); // ~0.127 m/d
+        expect(plume.dailySpringDischargeM3Day).to.be.closeTo(6344.0, 100.0); // ~6344 m^3/d
+        expect(plume.exitSpringTemperatureC).to.be.closeTo(31.85, 0.5); // ~31.9 C exit spring
+        expect(plume.hydrothermalSpringClass).to.include('Warm Hydrothermal Fault Spring');
+        expect(plume.hydrothermalPlumeContext).to.include('Deep Hydrothermal Plume');
+    });
+
+    it('should discriminate Prebiotic Hydrated Borates vs Nitrate Salts in CRISM spectra', () => {
+        // Hydrated Borate / Borax (Gale Crater / Columbus Crater: BD2150 = 0.06, BD1900 = 0.07, BD1400 = 0.04, BD2450 = 0.005):
+        const borate = BandMathEngine.computeCRISMBorateNitrateEvaporiteIndices(0.06, 0.005, 0.07, 0.04);
+        expect(borate.isPrebioticSaltDetected).to.be.true;
+        expect(borate.evaporiteClass).to.include('Hydrated Borate Evaporite (Borax / Kernite / Ulexite)');
+        expect(borate.mineralSpecies).to.include('Borax');
+        expect(borate.chemicalFormula).to.include('Na2B4O5(OH)4');
+        expect(borate.prebioticAstrobiologyContext).to.include('Prebiotic Ribose Stabilization Catalyst');
+
+        // Nitrate Salt / Nitratine (BD2150 = 0.005, BD2450 = 0.05, BD1900 = 0.01):
+        const nitrate = BandMathEngine.computeCRISMBorateNitrateEvaporiteIndices(0.005, 0.05, 0.01, 0.005);
+        expect(nitrate.isPrebioticSaltDetected).to.be.true;
+        expect(nitrate.evaporiteClass).to.include('Nitrate Salt Deposit (Nitratine / Niter)');
+        expect(nitrate.chemicalFormula).to.include('NaNO3');
+        expect(nitrate.prebioticAstrobiologyContext).to.include('Atmospheric Photochemical Fixed Nitrogen');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMBorateNitrateEvaporiteIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isPrebioticSaltDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

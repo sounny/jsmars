@@ -6683,6 +6683,55 @@ export class BandMathEngine {
       metamorphicGradeContext: metaContext
     };
   }
+
+  /**
+   * Discriminate prebiotic Hydrated Borate Evaporites (Borax/Kernite) vs Nitrate Salts (Nitratine/Niter) from CRISM 1.40 um, 1.90 um, 2.15 um, and 2.45 um band depths.
+   * Reference: Gasda et al. (2017), Stern et al. (2015), Viviano-Beck et al. (2014) for Martian Prebiotic Borate & Fixed Nitrogen Evaporites.
+   * @param {number} [band2150BorateDepth=0.06] - BD2150 diagnostic borate B-O-H overtone depth (0.0 to 0.40)
+   * @param {number} [band2450NitrateDepth=0.01] - BD2450 diagnostic nitrate N-O stretch overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.07] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band1400WaterDepth=0.04] - BD1400 structural OH/H2O overtone depth (0.0 to 0.40)
+   * @returns {{isPrebioticSaltDetected: boolean, evaporiteClass: string, mineralSpecies: string, chemicalFormula: string, prebioticAstrobiologyContext: string}}
+   */
+  static computeCRISMBorateNitrateEvaporiteIndices(band2150BorateDepth = 0.06, band2450NitrateDepth = 0.01, band1900WaterDepth = 0.07, band1400WaterDepth = 0.04) {
+    const d2150 = Math.max(0.0, band2150BorateDepth);
+    const d2450 = Math.max(0.0, band2450NitrateDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+
+    const isBorate = d2150 >= 0.030 && d1900 >= 0.035;
+    const isNitrate = d2450 >= 0.025;
+
+    let evapClass = 'Standard Silicate Regolith';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Borate or Nitrate Absorption';
+
+    if (isBorate && isNitrate) {
+      evapClass = 'Coexisting Borate-Nitrate Prebiotic Evaporite Horizon';
+      species = 'Borax + Nitratine Assemblage';
+      formula = 'Na2B4O5(OH)4 * 8H2O + NaNO3';
+      context = 'Closed Paleolake Playa with Key Prebiotic Ingredients (Ribose Stabilizer + Fixed Nitrogen Nutrient Source)';
+    } else if (isBorate) {
+      evapClass = 'Hydrated Borate Evaporite (Borax / Kernite / Ulexite)';
+      species = 'Borax / Ulexite';
+      formula = 'Na2B4O5(OH)4 * 8H2O / NaCaB5O6(OH)6 * 5H2O';
+      context = 'Alkaline Closed-Basin Paleolake Evaporation / Prebiotic Ribose Stabilization Catalyst (Gale Crater / Columbus Crater)';
+    } else if (isNitrate) {
+      evapClass = 'Nitrate Salt Deposit (Nitratine / Niter)';
+      species = 'Nitratine (Soda Niter)';
+      formula = 'NaNO3 / KNO3';
+      context = 'Atmospheric Photochemical Fixed Nitrogen Accumulation in Hyper-Arid Playa Surface';
+    }
+
+    return {
+      isPrebioticSaltDetected: isBorate || isNitrate,
+      evaporiteClass: evapClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      prebioticAstrobiologyContext: context
+    };
+  }
 }
 
 
