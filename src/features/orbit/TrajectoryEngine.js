@@ -2456,6 +2456,65 @@ export class TrajectoryEngine {
       resonanceClassification: classification
     };
   }
+
+  /**
+   * Calculate Solar Radiation Pressure (SRP) perturbation acceleration, long-period eccentricity oscillation, and annual Delta-V on a planetary orbiter.
+   * P_srp = ( S_0 / d_AU^2 ) / c
+   * a_srp = ( 1 + C_R ) * ( A / m ) * P_srp
+   * Delta_e_srp = 3/2 * ( a_srp * a^2 / mu )
+   * Reference: Milani et al. (1987), Vallado (2013), Curtis (2013) for Mars Global Surveyor, MRO, and MAVEN orbital perturbation analysis.
+   * @param {number} [semiMajorAxisKm=3770.0] - Spacecraft semi-major axis in km
+   * @param {number} [areaToMassM2Kg=0.02] - Spacecraft effective area-to-mass ratio A/m in m^2/kg
+   * @param {number} [reflectivityCoeff=1.3] - Surface reflectivity coefficient C_R (1.0 = absorption, 2.0 = specular)
+   * @param {number} [heliocentricDistanceAU=1.524] - Solar distance in AU
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{solarFluxWM2: number, photonPressureMicroPa: number, srpAccelerationUMSS: number, eccentricityOscillationAmplitude: number, annualDeltaVEquivalentMS: number, perturbationSeverity: string}}
+   */
+  static computeSolarRadiationPressureOrbitPerturbation(semiMajorAxisKm = 3770.0, areaToMassM2Kg = 0.02, reflectivityCoeff = 1.3, heliocentricDistanceAU = 1.524, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const S0 = 1361.0; // W/m^2 at 1 AU
+    const c = 299792458.0; // m/s
+    const dAU = Math.max(0.1, heliocentricDistanceAU);
+    const cr = Math.max(1.0, Math.min(2.0, reflectivityCoeff));
+    const am = Math.max(0.001, areaToMassM2Kg);
+    const a = Math.max(3400.0, semiMajorAxisKm);
+
+    // Solar flux at heliocentric distance d
+    const fluxWM2 = S0 / (dAU * dAU);
+
+    // Direct photon radiation pressure (Pa and uPa)
+    const pSrpPa = fluxWM2 / c;
+    const pSrpMicroPa = pSrpPa * 1e6;
+
+    // Direct perturbing acceleration: a_srp = (1 + C_R) * (A/m) * P_srp (m/s^2 and um/s^2)
+    const aSrpMS2 = (1.0 + cr) * am * pSrpPa;
+    const aSrpUMSS = aSrpMS2 * 1e6;
+
+    // Long-period eccentricity oscillation amplitude: Delta_e = 1.5 * (a_srp * a^2) / mu
+    const aSrpKmS2 = aSrpMS2 / 1000.0;
+    const deltaE = 1.5 * (aSrpKmS2 * Math.pow(a, 2.0)) / mu;
+
+    // Annual cumulative Delta-V equivalent (m/s/year)
+    const secPerYear = 365.25 * 86400.0;
+    const annualDeltaVMS = aSrpMS2 * secPerYear;
+
+    let severity = 'Low Solar Pressure Regime (Minimal Orbital Disruption)';
+    if (annualDeltaVMS > 5.0) {
+      severity = 'High Solar Pressure Regime (Requires Periodic Stationkeeping & Momentum Wheel Desaturation)';
+    } else if (annualDeltaVMS > 1.5) {
+      severity = 'Moderate Solar Pressure Regime (Measurable Long-Period Apsidal Precession Drift)';
+    }
+
+    return {
+      solarFluxWM2: parseFloat(fluxWM2.toFixed(1)),
+      photonPressureMicroPa: parseFloat(pSrpMicroPa.toFixed(3)),
+      srpAccelerationUMSS: parseFloat(aSrpUMSS.toFixed(4)),
+      eccentricityOscillationAmplitude: parseFloat(deltaE.toExponential(4)),
+      annualDeltaVEquivalentMS: parseFloat(annualDeltaVMS.toFixed(2)),
+      perturbationSeverity: severity
+    };
+  }
 }
 
 

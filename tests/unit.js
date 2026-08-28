@@ -9468,6 +9468,39 @@ describe('Phobos Gravitational Perturbations, Stratified Thermal Regolith & Zeol
     });
 });
 
+describe('Solar Radiation Pressure, Glacial Ice Flow & Prebiotic Borates/Nitrates', () => {
+    it('should calculate Solar Radiation Pressure (SRP) perturbation acceleration and long-period eccentricity oscillations', () => {
+        // Mars orbiter (a = 3770 km, A/m = 0.02 m^2/kg, C_R = 1.3 at 1.524 AU):
+        const srp = TrajectoryEngine.computeSolarRadiationPressureOrbitPerturbation(3770.0, 0.02, 1.3, 1.524, 'mars');
+        expect(srp.solarFluxWM2).to.be.closeTo(586.2, 5.0); // ~586 W/m^2
+        expect(srp.photonPressureMicroPa).to.be.closeTo(1.955, 0.05); // ~1.955 uPa
+        expect(srp.srpAccelerationUMSS).to.be.closeTo(0.090, 0.01); // ~0.090 um/s^2
+        expect(srp.eccentricityOscillationAmplitude).to.be.greaterThan(1e-9); // ~4.5e-8
+        expect(srp.annualDeltaVEquivalentMS).to.be.greaterThan(2.0); // ~2.8 m/s/yr
+    });
+
+    it('should calculate Martian polar ice sheet basal shear stress and temperature-dependent Glen flow creep deformation', () => {
+        // North Polar Layered Deposits (NPLD) ice sheet (H = 1000 m, slope = 1.5 deg, basal temp = 210 K, 5% dust):
+        const glacier = KRCEngine.computeGlacialIceFlowAndBasalShearStress(1000.0, 1.5, 210.0, 5.0);
+        expect(glacier.basalShearStressKPa).to.be.closeTo(97.5, 2.0); // ~97.5 kPa driving shear stress
+        expect(glacier.internalDeformationSpeedMmPerYear).to.be.greaterThan(0.0);
+        expect(glacier.isBasalSlidingActive).to.be.false; // cold-based
+        expect(glacier.glacialFlowRegime).to.include('Slow Polar Viscous Relaxation');
+    });
+
+    it('should detect prebiotic Borate (B-O) and fixed Nitrate (NO3-) anions in CRISM evaporite spectra', () => {
+        // Prebiotic Borate salt in Gale Crater playa evaporite (strong 2.38 um B-O band):
+        const borate = BandMathEngine.computeCRISMBorateNitrateIndices(0.30, 0.27, 0.24, 0.30, 0.30);
+        expect(borate.anionPhase).to.include('Borate Evaporite Salt');
+        expect(borate.astrobiologySignificance).to.include('Ribose RNA');
+
+        // Fixed Nitrate salt (strong 2.42 um NO3- band):
+        const nitrate = BandMathEngine.computeCRISMBorateNitrateIndices(0.30, 0.27, 0.30, 0.24, 0.30);
+        expect(nitrate.anionPhase).to.include('Fixed Nitrate Salt');
+        expect(nitrate.astrobiologySignificance).to.include('Bioavailable Nitrogen');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

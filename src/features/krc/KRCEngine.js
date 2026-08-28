@@ -3110,6 +3110,61 @@ export class KRCEngine {
       stratigraphyContext: context
     };
   }
+
+  /**
+   * Calculate glacial ice basal driving shear stress, temperature-dependent Glen flow creep deformation, and flow velocity for Martian polar caps and debris aprons.
+   * tau_b = rho_ice * g * sin(alpha) * H
+   * A(T) = A_0 * exp( -Q / (R * T) )
+   * u_def = 2 * A(T) / (n + 1) * tau_b^n * H
+   * Reference: Glen (1955), Paterson (1994), Fastook et al. (2008), Karlsson et al. (2015) for North Polar Layered Deposits (NPLD) flow.
+   * @param {number} iceThicknessMeters - Total ice sheet or lobate apron thickness H in meters (100 to 3500 m)
+   * @param {number} [surfaceSlopeDeg=1.5] - Surface slope angle alpha in degrees (0.1 to 10 deg)
+   * @param {number} [basalTempK=210.0] - Ice bed/basal temperature in Kelvin (160 to 273 K)
+   * @param {number} [dustFractionPct=5.0] - Embedded lithic dust fraction (0 to 30 %)
+   * @returns {{basalShearStressKPa: number, arrheniusGlenRateFactor: number, internalDeformationSpeedMmPerYear: number, isBasalSlidingActive: boolean, glacialFlowRegime: string}}
+   */
+  static computeGlacialIceFlowAndBasalShearStress(iceThicknessMeters, surfaceSlopeDeg = 1.5, basalTempK = 210.0, dustFractionPct = 5.0) {
+    const H = Math.max(10.0, iceThicknessMeters);
+    const alphaRad = (Math.max(0.01, surfaceSlopeDeg) * Math.PI) / 180.0;
+    const Tbasal = Math.max(120.0, Math.min(273.15, basalTempK));
+    const dustFrac = Math.max(0.0, Math.min(0.50, dustFractionPct / 100.0));
+
+    const RHO_ICE = 917.0 * (1.0 - dustFrac) + 2600.0 * dustFrac; // kg/m^3
+    const G_MARS = 3.72076; // m/s^2
+    const R_GAS = 8.31446; // J/(mol*K)
+    const Q_ACTIVATION = 60000.0; // J/mol for T < 263 K
+    const A0 = 3.615e-13; // Pa^-3 s^-1
+    const n = 3.0; // Glen exponent
+
+    // Basal driving shear stress tau_b = rho * g * sin(alpha) * H (Pa and kPa)
+    const tauBPa = RHO_ICE * G_MARS * Math.sin(alphaRad) * H;
+    const tauBKPa = tauBPa / 1000.0;
+
+    // Arrhenius temperature-dependent rate factor A(T)
+    const AT = A0 * Math.exp(-Q_ACTIVATION / (R_GAS * Tbasal));
+
+    // Internal deformation velocity u_def = (2 * A(T) / (n+1)) * tau_b^n * H (m/s -> mm/year)
+    const uDefMS = (2.0 * AT / (n + 1.0)) * Math.pow(tauBPa, n) * H;
+    const secPerYear = 31557600.0;
+    const uDefMmYr = uDefMS * secPerYear * 1000.0;
+
+    const isSliding = Tbasal >= 250.0;
+
+    let regime = 'Cold-Based Stagnant Ice Sheet (Frozen to Bedrock - Negligible Creep Flow)';
+    if (uDefMmYr > 10.0) {
+      regime = 'Active Viscoplastic Glacial Creep (Debris-Covered Glacier / Lobate Debris Apron Flow)';
+    } else if (uDefMmYr > 0.01) {
+      regime = 'Slow Polar Viscous Relaxation (North Polar Layered Deposit Chasma Infill)';
+    }
+
+    return {
+      basalShearStressKPa: parseFloat(tauBKPa.toFixed(2)),
+      arrheniusGlenRateFactor: parseFloat(AT.toExponential(4)),
+      internalDeformationSpeedMmPerYear: parseFloat(uDefMmYr.toFixed(5)),
+      isBasalSlidingActive: isSliding,
+      glacialFlowRegime: regime
+    };
+  }
 }
 
 

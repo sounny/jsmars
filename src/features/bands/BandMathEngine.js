@@ -3591,6 +3591,46 @@ export class BandMathEngine {
       paleolakeEnvironment: env
     };
   }
+
+  /**
+   * Detect prebiotic Borate (B-O) and Nitrate (NO3-) anions in CRISM playa evaporite and lacustrine mudstone spectra.
+   * Reference: Stern et al. (2015), Gasda et al. (2017), Rapin et al. (2019) for Gale Crater RNA-stabilizing borates & fixed nitrates.
+   * @param {number} r1450 - Reflectance at 1.45 um continuum
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2380 - Reflectance at 2.38 um Borate (B-O) minimum
+   * @param {number} r2420 - Reflectance at 2.42 um Nitrate (NO3-) minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1900: number, bd2380: number, bd2420: number, anionPhase: string, astrobiologySignificance: string}}
+   */
+  static computeCRISMBorateNitrateIndices(r1450, r1910, r2380, r2420, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2380 = Math.max(0.0, 1.0 - (r2380 / cont));
+    const bd2420 = Math.max(0.0, 1.0 - (r2420 / cont));
+
+    let phase = 'Anion-Free Silicate / Basalt';
+    let astro = 'Standard Geological Context';
+
+    if (bd2380 >= 0.025 && bd2380 > bd2420 * 1.15) {
+      phase = 'Borate Evaporite Salt (B-O Anion Complex)';
+      astro = 'Prebiotic Ribose RNA Carbohydrate Ring Stabilization in Saline Alkaline Playa (Gale Crater / Yellowknife Bay Analogue)';
+    } else if (bd2420 >= 0.025 && bd2420 > bd2380 * 1.15) {
+      phase = 'Fixed Nitrate Salt (NO3- Nitrogen Anion)';
+      astro = 'Atmospheric Impact/Lightning Fixed Bioavailable Nitrogen Reservoir for Ancient Martian Habitability';
+    } else if (bd2380 >= 0.020 && bd2420 >= 0.020) {
+      phase = 'Mixed Borate-Nitrate Lacustrine Assemblage';
+      astro = 'Co-Occurring Fixed Nitrogen and Boron in Evaporating Paleolake Shoreline';
+    }
+
+    return {
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2380: parseFloat(bd2380.toFixed(4)),
+      bd2420: parseFloat(bd2420.toFixed(4)),
+      anionPhase: phase,
+      astrobiologySignificance: astro
+    };
+  }
 }
 
 
