@@ -1313,6 +1313,73 @@ export class TrajectoryEngine {
       isSolarConjunctionBlackout: isBlackout
     };
   }
+
+  /**
+   * Solve Kepler's equation M = E - e * sin(E) via Newton-Raphson and compute true anomaly, radius, and orbital speed.
+   * Reference: Battin (1999), Vallado (2013).
+   * @param {number} meanAnomalyDeg - Mean anomaly M in degrees (0 to 360)
+   * @param {number} eccentricity - Orbital eccentricity e (0 <= e < 1)
+   * @param {number} semiMajorAxisKm - Semi-major axis a in km (e.g. 5000 km for MAVEN / Mars Express)
+   * @param {string} [body='mars'] - Planetary body ('mars', 'moon', 'earth')
+   * @returns {{trueAnomalyDeg: number, eccentricAnomalyDeg: number, orbitalRadiusKm: number, orbitalAltitudeKm: number, orbitalVelocityKmS: number, periapsisAltitudeKm: number, apoapsisAltitudeKm: number}}
+   */
+  static computeKeplerOrbitPositionFromMeanAnomaly(meanAnomalyDeg, eccentricity, semiMajorAxisKm, body = 'mars') {
+    const bKey = body.toLowerCase();
+    let mu = 42828.37;
+    let Rp = 3396.19;
+    if (bKey === 'earth') {
+      mu = 398600.4418;
+      Rp = 6378.137;
+    } else if (bKey === 'moon') {
+      mu = 4902.8;
+      Rp = 1737.4;
+    }
+
+    const a = Math.max(100.0, semiMajorAxisKm);
+    const e = Math.min(0.98, Math.max(0.0, eccentricity));
+
+    // Normalize M to [0, 2*pi)
+    let MRad = ((meanAnomalyDeg % 360.0 + 360.0) % 360.0) * (Math.PI / 180.0);
+
+    // Initial guess for Newton-Raphson
+    let E = MRad + e * Math.sin(MRad);
+    for (let iter = 0; iter < 20; iter++) {
+      const f = E - e * Math.sin(E) - MRad;
+      const fPrime = 1.0 - e * Math.cos(E);
+      const delta = f / fPrime;
+      E -= delta;
+      if (Math.abs(delta) < 1e-11) break;
+    }
+
+    // True anomaly nu from E
+    const sinHalfE = Math.sin(E / 2.0);
+    const cosHalfE = Math.cos(E / 2.0);
+    const nuRad = 2.0 * Math.atan2(Math.sqrt(1.0 + e) * sinHalfE, Math.sqrt(1.0 - e) * cosHalfE);
+    let nuDeg = (nuRad * 180.0) / Math.PI;
+    if (nuDeg < 0.0) nuDeg += 360.0;
+
+    const EDeg = ((E * 180.0) / Math.PI) % 360.0;
+
+    // Radius r = a * (1 - e * cos(E))
+    const rKm = a * (1.0 - e * Math.cos(E));
+    const hKm = rKm - Rp;
+
+    // Orbital speed v = sqrt( mu * (2/r - 1/a) )
+    const vKmS = Math.sqrt(Math.max(0.0, mu * (2.0 / rKm - 1.0 / a)));
+
+    const rpKm = a * (1.0 - e);
+    const raKm = a * (1.0 + e);
+
+    return {
+      trueAnomalyDeg: parseFloat(nuDeg.toFixed(3)),
+      eccentricAnomalyDeg: parseFloat(EDeg.toFixed(3)),
+      orbitalRadiusKm: parseFloat(rKm.toFixed(2)),
+      orbitalAltitudeKm: parseFloat(hKm.toFixed(2)),
+      orbitalVelocityKmS: parseFloat(vKmS.toFixed(3)),
+      periapsisAltitudeKm: parseFloat((rpKm - Rp).toFixed(2)),
+      apoapsisAltitudeKm: parseFloat((raKm - Rp).toFixed(2))
+    };
+  }
 }
 
 

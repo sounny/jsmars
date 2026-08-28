@@ -2211,6 +2211,61 @@ export class KRCEngine {
       dominantRegime: regime
     };
   }
+
+  /**
+   * Calculate transient surface frost (CO2 dry ice vs H2O water ice) condensation temperature, latent heat budget, and daily accumulation.
+   * dm/dt = Q_deficit / L_sub
+   * Reference: Kieffer (1979), Titus et al. (2003), Schorghofer & Aharonson (2005).
+   * @param {number} surfaceTempK - Instantaneous nocturnal surface skin temperature in Kelvin
+   * @param {number} [atmosphericPressurePa=610.0] - Ambient surface atmospheric pressure in Pa (610 Pa ~ 6.1 mbar)
+   * @param {string} [frostType='co2'] - Volatile species ('co2' for dry ice or 'h2o' for water frost)
+   * @param {number} [netRadiativeDeficitWm2=25.0] - Net radiative cooling deficit in W/m^2
+   * @returns {{isCondensing: boolean, condensationTempK: number, condensationRateKgM2S: number, dailyAccumulationMicrons: number, latentHeatOfSublimationJkg: number, volatileSpecies: string}}
+   */
+  static computeTransientFrostCondensationBudget(surfaceTempK, atmosphericPressurePa = 610.0, frostType = 'co2', netRadiativeDeficitWm2 = 25.0) {
+    const P = Math.max(10.0, atmosphericPressurePa);
+    const Q = Math.max(0.0, netRadiativeDeficitWm2);
+    const isCO2 = frostType.toLowerCase() === 'co2';
+
+    let tCondK = 147.3;
+    let Lsub = 5.9e5; // J/kg for CO2
+    let rhoIce = 1600.0; // kg/m^3
+
+    if (isCO2) {
+      // CO2 Clausius-Clapeyron: ln(P_Pa) = 28.02 - 3182.48 / T (T ~ 147.3 K at 610 Pa)
+      tCondK = 3182.48 / (28.02 - Math.log(P));
+      Lsub = 5.9e5;
+      rhoIce = 1600.0;
+    } else {
+      // H2O water frost (assuming ~10 pr-um water vapor -> P_H2O ~ 0.0372 Pa)
+      const pH2O = 0.0372;
+      tCondK = 6132.9 / (28.868 - Math.log(pH2O)); // ~193.1 K
+      Lsub = 2.83e6;
+      rhoIce = 920.0;
+    }
+
+    const isCondensing = surfaceTempK <= (tCondK + 0.1);
+
+    let dmdt = 0.0;
+    let accumMicrons = 0.0;
+
+    if (isCondensing) {
+      dmdt = Q / Lsub; // kg / (m^2 * s)
+      // Accumulation over a 12-hour (43,200 s) night:
+      const massPerSol = dmdt * 43200.0; // kg / m^2
+      const depthMeters = massPerSol / rhoIce;
+      accumMicrons = depthMeters * 1e6; // microns
+    }
+
+    return {
+      isCondensing,
+      condensationTempK: parseFloat(tCondK.toFixed(2)),
+      condensationRateKgM2S: parseFloat(dmdt.toExponential(4)),
+      dailyAccumulationMicrons: parseFloat(accumMicrons.toFixed(2)),
+      latentHeatOfSublimationJkg: Lsub,
+      volatileSpecies: isCO2 ? 'Carbon Dioxide (CO2 Dry Ice)' : 'Water Ice (H2O Frost)'
+    };
+  }
 }
 
 

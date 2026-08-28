@@ -8718,6 +8718,57 @@ describe('Earth-Sun-Probe Geometry, Multi-Layer Radar Reflectivity & Pyroxene Ba
     });
 });
 
+describe('Kepler Orbit Solver, Frost Condensation Thermodynamics & Pyroxene Band Inversion', () => {
+    it('should solve Kepler equation and compute eccentric anomaly, true anomaly, and orbit speed', () => {
+        // Highly eccentric orbit (e.g. Mars Express / MAVEN: a = 5000 km, e = 0.50):
+        // Periapsis (M = 0 deg): E = 0 deg, nu = 0 deg, r = 2500 km, alt = -896 km (hypothetical), speed max
+        const periapsis = TrajectoryEngine.computeKeplerOrbitPositionFromMeanAnomaly(0.0, 0.50, 5000.0, 'mars');
+        expect(periapsis.trueAnomalyDeg).to.equal(0.0);
+        expect(periapsis.eccentricAnomalyDeg).to.equal(0.0);
+        expect(periapsis.orbitalRadiusKm).to.equal(2500.0);
+        expect(periapsis.orbitalVelocityKmS).to.be.closeTo(5.069, 0.05);
+
+        // Apoapsis (M = 180 deg): E = 180 deg, nu = 180 deg, r = 7500 km, speed min
+        const apoapsis = TrajectoryEngine.computeKeplerOrbitPositionFromMeanAnomaly(180.0, 0.50, 5000.0, 'mars');
+        expect(apoapsis.trueAnomalyDeg).to.equal(180.0);
+        expect(apoapsis.eccentricAnomalyDeg).to.equal(180.0);
+        expect(apoapsis.orbitalRadiusKm).to.equal(7500.0);
+        expect(apoapsis.orbitalVelocityKmS).to.be.closeTo(1.689, 0.05);
+
+        // Quadrature (M = 90 deg):
+        const quad = TrajectoryEngine.computeKeplerOrbitPositionFromMeanAnomaly(90.0, 0.50, 5000.0, 'mars');
+        expect(quad.trueAnomalyDeg).to.be.greaterThan(90.0);
+    });
+
+    it('should calculate transient surface frost (CO2 dry ice vs H2O) condensation temperature and budget', () => {
+        // Polar winter night with surface temp 140 K < T_cond (147.3 K for CO2 at 610 Pa):
+        const co2Frost = KRCEngine.computeTransientFrostCondensationBudget(140.0, 610.0, 'co2', 30.0);
+        expect(co2Frost.isCondensing).to.be.true;
+        expect(co2Frost.condensationTempK).to.be.closeTo(147.3, 0.5);
+        expect(co2Frost.dailyAccumulationMicrons).to.be.greaterThan(100.0);
+        expect(co2Frost.volatileSpecies).to.include('Carbon Dioxide');
+
+        // Warm night with surface temp 180 K > T_cond: no CO2 condensation
+        const warmNight = KRCEngine.computeTransientFrostCondensationBudget(180.0, 610.0, 'co2', 30.0);
+        expect(warmNight.isCondensing).to.be.false;
+        expect(warmNight.dailyAccumulationMicrons).to.equal(0.0);
+    });
+
+    it('should invert pyroxene composition (Wo-En-Fs mol%) from Band 1 and Band 2 center wavelengths', () => {
+        // High-Ca Augite / Diopside (Band 1 = 1050 nm, Band 2 = 2300 nm):
+        const augite = BandMathEngine.computePyroxeneCompositionFromBandCenters(1050.0, 2300.0);
+        expect(augite.wollastonitePct).to.be.greaterThan(35.0);
+        expect(augite.isHighCalciumPyroxene).to.be.true;
+        expect(augite.pyroxeneClass).to.include('High-Ca');
+
+        // Low-Ca Orthopyroxene (Band 1 = 910 nm, Band 2 = 1850 nm):
+        const opx = BandMathEngine.computePyroxeneCompositionFromBandCenters(910.0, 1850.0);
+        expect(opx.wollastonitePct).to.be.lessThan(5.0);
+        expect(opx.isHighCalciumPyroxene).to.be.false;
+        expect(opx.pyroxeneClass).to.include('Orthopyroxene');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

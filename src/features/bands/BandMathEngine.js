@@ -2733,6 +2733,52 @@ export class BandMathEngine {
       isOrthopyroxeneDominated: isOpx
     };
   }
+
+  /**
+   * Invert Pyroxene Quadrilateral composition (Wo-En-Fs mol%) directly from Band 1 and Band 2 center absorption wavelengths.
+   * Reference: Cloutis & Gaffey (1991), Gaffey et al. (2002), Skok et al. (2010).
+   * @param {number} band1CenterNm - 1 um absorption minimum wavelength in nm (880 to 1080 nm)
+   * @param {number} band2CenterNm - 2 um absorption minimum wavelength in nm (1800 to 2400 nm)
+   * @returns {{wollastonitePct: number, enstatitePct: number, ferrosilitePct: number, mgNumberPct: number, pyroxeneClass: string, isHighCalciumPyroxene: boolean}}
+   */
+  static computePyroxeneCompositionFromBandCenters(band1CenterNm, band2CenterNm) {
+    const b1 = Math.max(850.0, Math.min(1150.0, band1CenterNm));
+    const b2 = Math.max(1700.0, Math.min(2500.0, band2CenterNm));
+
+    // Empirical Gaffey / Cloutis calibration
+    const rawWo = (b1 - 900.0) * 0.28 + (b2 - 1800.0) * 0.025;
+    const rawFs = 25.0 - 0.05 * (b1 - 900.0) + 0.04 * (b2 - 1900.0);
+
+    // Clamping to stoichiometric limits:
+    const wo = Math.min(50.0, Math.max(0.0, rawWo));
+    const fs = Math.min(100.0 - wo, Math.max(0.0, rawFs));
+    const en = Math.max(0.0, 100.0 - wo - fs);
+
+    const mgNum = (en + fs > 1e-4) ? (en / (en + fs)) * 100.0 : 50.0;
+
+    let pClass = 'Intermediate Pyroxene';
+    let isHighCa = false;
+
+    if (wo >= 20.0) {
+      pClass = wo >= 40.0 ? 'Diopside-Hedenbergite (High-Ca Calc-Pyroxene)' : 'Augite (High-Calcium Clinopyroxene)';
+      isHighCa = true;
+    } else if (wo >= 5.0) {
+      pClass = 'Pigeonite (Low-Calcium Clinopyroxene)';
+      isHighCa = false;
+    } else {
+      pClass = mgNum >= 50.0 ? 'Enstatite / Bronzite (Low-Ca Orthopyroxene)' : 'Ferrosilite / Hypersthene (Iron-Rich OPX)';
+      isHighCa = false;
+    }
+
+    return {
+      wollastonitePct: parseFloat(wo.toFixed(1)),
+      enstatitePct: parseFloat(en.toFixed(1)),
+      ferrosilitePct: parseFloat(fs.toFixed(1)),
+      mgNumberPct: parseFloat(mgNum.toFixed(1)),
+      pyroxeneClass: pClass,
+      isHighCalciumPyroxene: isHighCa
+    };
+  }
 }
 
 
