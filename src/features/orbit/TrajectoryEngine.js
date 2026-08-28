@@ -2845,6 +2845,58 @@ export class TrajectoryEngine {
       propulsionEfficiencySummary: summary
     };
   }
+
+  /**
+   * Calculate General and Special Relativistic time dilation clock drift and solar Shapiro gravitational signal delay for deep space planetary orbiters.
+   * Delta_t / t = - 3 * mu / ( 2 * r * c^2 )
+   * Delta_tau_Shapiro = ( 4 * mu_sun / c^3 ) * ln( 4 * r_E * r_target / b^2 )
+   * Reference: Shapiro (1964), Will (1993), Bertotti et al. (2003) for Viking and MRO General Relativity radio science tests.
+   * @param {number} [orbiterSemiMajorAxisKm=3770.0] - Spacecraft semi-major axis in km
+   * @param {number} [sunImpactParameterAU=0.05] - Radio ray-path closest approach to Sun b in AU (0.005 to 1.0 AU)
+   * @param {number} [heliocentricDistanceAU=1.524] - Target planetary heliocentric distance in AU
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{fractionalClockDilation: number, dailyClockDriftMicroseconds: number, solarShapiroDelayMicroseconds: number, oneWayRangeErrorMeters: number, relativisticRegime: string}}
+   */
+  static computeRelativisticTimeDilationAndShapiroDelay(orbiterSemiMajorAxisKm = 3770.0, sunImpactParameterAU = 0.05, heliocentricDistanceAU = 1.524, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const rKm = Math.max(1000.0, orbiterSemiMajorAxisKm);
+    const cKmS = 299792.458; // km/s
+    const muSunKm3S2 = 1.3271244e11; // km^3/s^2
+
+    // 1. Orbital relativistic clock drift (GR potential + SR velocity)
+    const fracDilation = -(1.5 * mu) / (rKm * Math.pow(cKmS, 2.0));
+    const secPerDay = 86400.0;
+    const dailyDriftSec = fracDilation * secPerDay;
+    const dailyDriftUS = dailyDriftSec * 1e6; // microseconds/day
+
+    // 2. Solar Shapiro gravitational radio signal time delay
+    const AU_TO_KM = 1.495978707e8;
+    const rEarthKm = 1.0 * AU_TO_KM;
+    const rTargetKm = Math.max(0.1, heliocentricDistanceAU) * AU_TO_KM;
+    const bKm = Math.max(6.9634e5, sunImpactParameterAU * AU_TO_KM); // minimum solar radius
+
+    const shapiroCoeffS = (4.0 * muSunKm3S2) / Math.pow(cKmS, 3.0); // ~1.97e-5 seconds
+    const logArg = (4.0 * rEarthKm * rTargetKm) / Math.pow(bKm, 2.0);
+    const shapiroDelayS = shapiroCoeffS * Math.log(Math.max(1.0, logArg));
+    const shapiroDelayUS = shapiroDelayS * 1e6; // microseconds
+
+    // Equivalent one-way range error (c * delta_tau / 2 in meters)
+    const rangeErrorMeters = (cKmS * 1000.0 * shapiroDelayS) / 2.0;
+
+    let regime = 'Deep Space Superior Conjunction (Large Shapiro Delay & Radio Plasma Scintillation)';
+    if (sunImpactParameterAU > 0.50) {
+      regime = 'Standard Interplanetary Deep Space Network (DSN) Tracking Geometry';
+    }
+
+    return {
+      fractionalClockDilation: parseFloat(fracDilation.toExponential(4)),
+      dailyClockDriftMicroseconds: parseFloat(dailyDriftUS.toFixed(2)),
+      solarShapiroDelayMicroseconds: parseFloat(shapiroDelayUS.toFixed(2)),
+      oneWayRangeErrorMeters: parseFloat(rangeErrorMeters.toFixed(1)),
+      relativisticRegime: regime
+    };
+  }
 }
 
 

@@ -3848,6 +3848,47 @@ export class BandMathEngine {
       metamorphicContext: context
     };
   }
+
+  /**
+   * Detect high-pressure / low-temperature metamorphic Lawsonite from CRISM 1.45/1.62 um OH doublet, 1.91 um H2O, and 2.21/2.35 um Al-OH bands.
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013) for high-pressure shock metamorphism in giant impact basins.
+   * @param {number} r1450 - Reflectance at 1.45 um OH minimum
+   * @param {number} r1620 - Reflectance at 1.62 um structural OH subsidiary minimum
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2210 - Reflectance at 2.21 um Al-OH primary minimum
+   * @param {number} r2350 - Reflectance at 2.35 um combination minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1450: number, bd1620: number, bd1900: number, bd2210: number, isLawsonitePresent: boolean, mineralPhase: string, metamorphicGrade: string}}
+   */
+  static computeCRISMLawsoniteIndices(r1450, r1620, r1910, r2210, r2350, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1450 = Math.max(0.0, 1.0 - (r1450 / cont));
+    const bd1620 = Math.max(0.0, 1.0 - (r1620 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+    const bd2350 = Math.max(0.0, 1.0 - (r2350 / cont));
+
+    let phase = 'Standard Primary Basalt';
+    let isLawsonite = false;
+    let grade = 'Low-Pressure Crustal Setting';
+
+    if (bd2210 >= 0.025 && bd1900 >= 0.025 && bd1620 >= 0.015 && bd1450 >= 0.015) {
+      isLawsonite = true;
+      phase = 'Lawsonite (CaAl2Si2O7(OH)2*H2O)';
+      grade = 'High-Pressure Low-Temperature (HP-LT) Metamorphism / Shocked Impact Melt Sheet (Blueschist Facies Analogue)';
+    }
+
+    return {
+      bd1450: parseFloat(bd1450.toFixed(4)),
+      bd1620: parseFloat(bd1620.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      isLawsonitePresent: isLawsonite,
+      mineralPhase: phase,
+      metamorphicGrade: grade
+    };
+  }
 }
 
 

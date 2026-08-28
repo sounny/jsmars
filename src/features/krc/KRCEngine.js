@@ -3447,6 +3447,58 @@ export class KRCEngine {
       thermalRegimeDescription: regime
     };
   }
+
+  /**
+   * Calculate 2-layer salt duricrust mantle over pore-filling ground ice conductive thermal gradient and interface stability.
+   * dT_salt/dz = Q_geo / k_salt
+   * T_int = T_surf + (dT_salt/dz) * L_salt
+   * dT_ice/dz = Q_geo / k_ice
+   * T(z) = T_int + (dT_ice/dz) * ( z - L_salt )
+   * Reference: Osterloo et al. (2008), Glotch et al. (2010), Bandfield et al. (2011) for THEMIS chloride evaporite basins.
+   * @param {number} surfaceTempK - Surface ground temperature in K (170 to 240 K)
+   * @param {number} [saltMantleThicknessMeters=0.10] - Salt duricrust thickness L_salt in meters (0.01 to 2.0 m)
+   * @param {number} [saltThermalConductivityWMK=0.60] - Salt duricrust thermal conductivity in W/(m*K) (0.3 to 1.2 W/m/K)
+   * @param {number} [iceSubstrateConductivityWMK=2.50] - Ice substrate thermal conductivity in W/(m*K)
+   * @param {number} [targetDepthMeters=1.00] - Target evaluation depth in meters (z >= L_salt)
+   * @param {number} [geothermalHeatFluxMWM2=25.0] - Geothermal heat flux in mW/m^2
+   * @returns {{interfaceTempK: number, targetDepthTempK: number, saltLayerGradientKPerKm: number, iceLayerGradientKPerKm: number, totalThermalResistanceM2KW: number, saltDepositContext: string}}
+   */
+  static computeSaltDuricrustThermalProfile(surfaceTempK, saltMantleThicknessMeters = 0.10, saltThermalConductivityWMK = 0.60, iceSubstrateConductivityWMK = 2.50, targetDepthMeters = 1.00, geothermalHeatFluxMWM2 = 25.0) {
+    const Tsurf = Math.max(100.0, Math.min(270.0, surfaceTempK));
+    const Lsalt = Math.max(0.005, saltMantleThicknessMeters);
+    const kSalt = Math.max(0.1, saltThermalConductivityWMK);
+    const kIce = Math.max(0.5, iceSubstrateConductivityWMK);
+    const zTarget = Math.max(Lsalt, targetDepthMeters);
+    const QgeoW = Math.max(1.0, geothermalHeatFluxMWM2) * 1e-3; // W/m^2
+
+    // Thermal gradients
+    const gradSaltKPerM = QgeoW / kSalt;
+    const gradSaltKPerKm = gradSaltKPerM * 1000.0;
+
+    const gradIceKPerM = QgeoW / kIce;
+    const gradIceKPerKm = gradIceKPerM * 1000.0;
+
+    // Interface and target depth temperatures
+    const Tint = Tsurf + gradSaltKPerM * Lsalt;
+    const Tz = Tint + gradIceKPerM * (zTarget - Lsalt);
+
+    // Thermal resistance in series R = L_salt/k_salt + (z - L_salt)/k_ice
+    const rTh = (Lsalt / kSalt) + ((zTarget - Lsalt) / kIce);
+
+    let context = 'Chloride Salt Evaporite Duricrust Mantle over Massive Subsurface Ground Ice';
+    if (kSalt >= 1.0) {
+      context = 'Dense Halite / Anhydrite Consolidated Salt Bed over Bedrock';
+    }
+
+    return {
+      interfaceTempK: parseFloat(Tint.toFixed(4)),
+      targetDepthTempK: parseFloat(Tz.toFixed(4)),
+      saltLayerGradientKPerKm: parseFloat(gradSaltKPerKm.toFixed(2)),
+      iceLayerGradientKPerKm: parseFloat(gradIceKPerKm.toFixed(2)),
+      totalThermalResistanceM2KW: parseFloat(rTh.toFixed(4)),
+      saltDepositContext: context
+    };
+  }
 }
 
 

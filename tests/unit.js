@@ -9673,6 +9673,40 @@ describe('Continuous Low-Thrust Spiral Transfer, Multi-Harmonic Skin Depth & Pum
     });
 });
 
+describe('Relativistic Time Dilation, Salt Duricrust Conduction & Lawsonite Metamorphism', () => {
+    it('should calculate relativistic clock dilation drift and solar Shapiro radio signal delay', () => {
+        // Mars science orbiter (r = 3770 km, b = 0.05 AU closest solar approach at superior conjunction):
+        const rel = TrajectoryEngine.computeRelativisticTimeDilationAndShapiroDelay(3770.0, 0.05, 1.524, 'mars');
+        expect(rel.dailyClockDriftMicroseconds).to.be.closeTo(-16.38, 0.5); // ~ -16.38 us/day clock drift
+        expect(rel.solarShapiroDelayMicroseconds).to.be.greaterThan(100.0); // > 100 us Shapiro gravitational delay
+        expect(rel.oneWayRangeErrorMeters).to.be.greaterThan(15000.0); // > 15 km radio range correction
+        expect(rel.relativisticRegime).to.include('Deep Space Superior Conjunction');
+    });
+
+    it('should calculate 2-layer salt duricrust mantle over ground ice thermal profile and total series resistance', () => {
+        // Chloride salt pan (L_salt = 10 cm, k_salt = 0.60 W/m/K) over ice substrate (k_ice = 2.5 W/m/K, Q_geo = 25 mW/m^2, T_surf = 210 K):
+        const salt = KRCEngine.computeSaltDuricrustThermalProfile(210.0, 0.10, 0.60, 2.50, 1.00, 25.0);
+        expect(salt.saltLayerGradientKPerKm).to.be.closeTo(41.67, 0.5); // ~41.67 K/km in salt duricrust
+        expect(salt.iceLayerGradientKPerKm).to.equal(10.0); // 10 K/km in ice substrate
+        expect(salt.interfaceTempK).to.be.closeTo(210.004, 0.005);
+        expect(salt.totalThermalResistanceM2KW).to.be.closeTo(0.527, 0.01);
+        expect(salt.saltDepositContext).to.include('Chloride Salt Evaporite Duricrust');
+    });
+
+    it('should discriminate high-pressure Lawsonite from pumpellyite, prehnite, and basalt in CRISM spectra', () => {
+        // Lawsonite in impact-shocked blueschist megabreccia (strong 1.45 and 1.62 um OH doublet, 1.91 um water, 2.21 um Al-OH):
+        const lawsonite = BandMathEngine.computeCRISMLawsoniteIndices(0.24, 0.26, 0.23, 0.23, 0.30);
+        expect(lawsonite.isLawsonitePresent).to.be.true;
+        expect(lawsonite.mineralPhase).to.include('Lawsonite');
+        expect(lawsonite.metamorphicGrade).to.include('High-Pressure Low-Temperature');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMLawsoniteIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(lawsonite.isLawsonitePresent).to.be.true;
+        expect(basalt.isLawsonitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
