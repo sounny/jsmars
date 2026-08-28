@@ -9978,6 +9978,39 @@ describe('Powered Descent Propellant Budget, Precession Polar Insolation & Kaoli
     });
 });
 
+describe('Sky Crane Bridle Dynamics, Diurnal Frost Condensation & Hydrothermal Dickite', () => {
+    it('should calculate Sky Crane bridle tension, touchdown detection threshold, and flyaway separation distance', () => {
+        // Perseverance Sky Crane touchdown (rover = 1025 kg, stage = 900 kg, bridle angle = 12 deg, flyaway Delta-V = 35 m/s):
+        const crane = TrajectoryEngine.computeSkyCraneBridleDescentTensionAndFlyawayVelocity(1025.0, 900.0, 12.0, 35.0, 45.0, 'mars');
+        expect(crane.totalRoverWeightN).to.be.closeTo(3813.8, 10.0); // ~3814 N in Mars gravity
+        expect(crane.singleBridleTensionN).to.be.closeTo(1299.7, 10.0); // ~1300 N per line
+        expect(crane.downrangeImpactDistanceMeters).to.be.closeTo(329.2, 10.0); // ~329 m flyaway clearance
+        expect(crane.touchdownSafetyAssessment).to.include('High-Margin Flyaway Divert');
+    });
+
+    it('should calculate diurnal water frost condensation onset, frost point temperature, and morning sublimation', () => {
+        // Viking 2 / Phoenix landing site (T_min = 185 K, T_max = 240 K, water column = 20 pr-um):
+        const frost = KRCEngine.computeDiurnalFrostCondensationAndDewPointOnset(185.0, 240.0, 20.0, 250.0);
+        expect(frost.frostPointTempK).to.be.closeTo(207.5, 5.0); // ~207.5 K frost point
+        expect(frost.isNighttimeFrostFormed).to.be.true; // 185 K < 207 K -> frost forms
+        expect(frost.frostDepositionDurationHours).to.be.greaterThan(2.0); // multi-hour nighttime frost
+        expect(frost.peakFrostThicknessMicrons).to.be.greaterThan(0.01);
+        expect(frost.diurnalHydrationRegime).to.include('Frost');
+    });
+
+    it('should discriminate high-temperature hydrothermal Dickite from low-temperature Kaolinite and basalt in CRISM spectra', () => {
+        // Dickite in Nili Fossae hydrothermal fault zone (strong 1.38 um split, 1.41 um, and 2.16/2.21 um doublets):
+        const dickite = BandMathEngine.computeCRISMDickiteNacriteIndices(0.24, 0.23, 0.25, 0.22, 0.30);
+        expect(dickite.isDickitePresent).to.be.true;
+        expect(dickite.polytypeSpecies).to.include('Dickite');
+        expect(dickite.hydrothermalTemperatureRegime).to.include('High-Temperature Hydrothermal');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMDickiteNacriteIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isDickitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

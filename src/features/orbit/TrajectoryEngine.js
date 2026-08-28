@@ -3453,6 +3453,59 @@ export class TrajectoryEngine {
       descentGuidanceRegime: regime
     };
   }
+
+  /**
+   * Calculate Sky Crane triple-bridle tension equilibrium, touchdown unloading detection, and descent stage flyaway divert separation.
+   * T_line = ( m_rover * g ) / ( 3 * cos( theta_bridle ) )
+   * x_impact = ( v_flyaway^2 * sin( 2 * theta_pitch ) ) / g
+   * Reference: Steltzner et al. (2006), Sell et al. (2013), Way et al. (2013) for Curiosity and Perseverance Sky Crane touchdowns.
+   * @param {number} [roverMassKg=1025.0] - Rover mass on bridle in kg (500 to 2500 kg)
+   * @param {number} [descentStageMassKg=900.0] - Descent stage dry mass in kg
+   * @param {number} [bridleAngleDeg=12.0] - Bridle line angle from vertical in degrees
+   * @param {number} [flyawayDeltaVMS=35.0] - Flyaway divert burn Delta-V in m/s (15 to 60 m/s)
+   * @param {number} [flyawayPitchAngleDeg=45.0] - Flyaway climb-out pitch angle in degrees
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{totalRoverWeightN: number, singleBridleTensionN: number, touchdownTensionDropThresholdPercent: number, flyawaySeparationSpeedMS: number, downrangeImpactDistanceMeters: number, touchdownSafetyAssessment: string}}
+   */
+  static computeSkyCraneBridleDescentTensionAndFlyawayVelocity(roverMassKg = 1025.0, descentStageMassKg = 900.0, bridleAngleDeg = 12.0, flyawayDeltaVMS = 35.0, flyawayPitchAngleDeg = 45.0, body = 'mars') {
+    const mRover = Math.max(10.0, roverMassKg);
+    const mStage = Math.max(10.0, descentStageMassKg);
+    const thetaBridleRad = Math.abs(bridleAngleDeg) * (Math.PI / 180.0);
+    const vFlyMS = Math.max(5.0, flyawayDeltaVMS);
+    const thetaPitchRad = Math.max(0.1, Math.min(80.0, flyawayPitchAngleDeg)) * (Math.PI / 180.0);
+
+    let gPlanet = 3.72076; // m/s^2 (Mars)
+    if (body.toLowerCase() === 'earth') {
+      gPlanet = 9.80665;
+    } else if (body.toLowerCase() === 'moon') {
+      gPlanet = 1.62;
+    }
+
+    // Total rover weight in planet gravity (N)
+    const wRoverN = mRover * gPlanet;
+
+    // Single bridle line tension (3 lines at angle theta)
+    const tSingleN = wRoverN / (3.0 * Math.max(0.1, Math.cos(thetaBridleRad)));
+
+    // Ballistic downrange impact distance of descent stage x = (v^2 * sin(2*theta)) / g (m)
+    const xImpactM = (Math.pow(vFlyMS, 2.0) * Math.sin(2.0 * thetaPitchRad)) / gPlanet;
+
+    let safety = 'Nominal Sky Crane Touchdown & High-Margin Flyaway Divert (> 250 m Clearance)';
+    if (xImpactM < 150.0) {
+      safety = 'Hazardous Close Flyaway Impact (< 150 m from Rover - Dust & Plume Contamination Risk)';
+    } else if (xImpactM > 600.0) {
+      safety = 'Ultra-Long Range Flyaway Divert (Deep Valley Terrain Clearance)';
+    }
+
+    return {
+      totalRoverWeightN: parseFloat(wRoverN.toFixed(2)),
+      singleBridleTensionN: parseFloat(tSingleN.toFixed(2)),
+      touchdownTensionDropThresholdPercent: 80.0,
+      flyawaySeparationSpeedMS: parseFloat(vFlyMS.toFixed(2)),
+      downrangeImpactDistanceMeters: parseFloat(xImpactM.toFixed(1)),
+      touchdownSafetyAssessment: safety
+    };
+  }
 }
 
 

@@ -4231,6 +4231,46 @@ export class BandMathEngine {
       weatheringPedogenicContext: context
     };
   }
+
+  /**
+   * Detect high-temperature hydrothermal Dickite / Nacrite polytypes from CRISM 1.38 um structural OH split, 1.41 um, and 2.16/2.21 um Al-OH doublet.
+   * Reference: Ehlmann et al. (2009, 2011), Mustard et al. (2008) for Nili Fossae high-temperature (150-350 C) hydrothermal fault zones.
+   * @param {number} r1380 - Reflectance at 1.38 um diagnostic monoclinic Dickite OH minimum
+   * @param {number} r1410 - Reflectance at 1.41 um primary structural OH minimum
+   * @param {number} r2160 - Reflectance at 2.16 um secondary Al-OH doublet shoulder
+   * @param {number} r2210 - Reflectance at 2.21 um primary Al-OH combination minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1380: number, bd1410: number, bd2160: number, bd2210: number, isDickitePresent: boolean, polytypeSpecies: string, hydrothermalTemperatureRegime: string}}
+   */
+  static computeCRISMDickiteNacriteIndices(r1380, r1410, r2160, r2210, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1380 = Math.max(0.0, 1.0 - (r1380 / cont));
+    const bd1410 = Math.max(0.0, 1.0 - (r1410 / cont));
+    const bd2160 = Math.max(0.0, 1.0 - (r2160 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+
+    let species = 'Unaltered Primary Silicate';
+    let isDickite = false;
+    let temp = 'Low-Temperature Ambient Conditions';
+
+    // Dickite exhibits distinctive 1.38 um split + 2.16/2.21 doublet
+    if (bd2210 >= 0.025 && bd2160 >= 0.015 && bd1380 >= 0.015 && bd1410 >= 0.020) {
+      isDickite = true;
+      species = 'Dickite / Nacrite (High-Temperature Monoclinic Kaolin Polytype)';
+      temp = 'High-Temperature Hydrothermal Circulating Fluids (150-350 C) Along Deep Faults / Impact Uplifts (Nili Fossae Analogue)';
+    }
+
+    return {
+      bd1380: parseFloat(bd1380.toFixed(4)),
+      bd1410: parseFloat(bd1410.toFixed(4)),
+      bd2160: parseFloat(bd2160.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      isDickitePresent: isDickite,
+      polytypeSpecies: species,
+      hydrothermalTemperatureRegime: temp
+    };
+  }
 }
 
 

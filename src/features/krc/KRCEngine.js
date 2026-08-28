@@ -4050,6 +4050,84 @@ export class KRCEngine {
       precessionPhaseDescription: phase
     };
   }
+
+  /**
+   * Calculate diurnal nighttime water frost condensation onset, frost point temperature, nocturnal deposition thickness, and sunrise sublimation.
+   * T_frost = [ (1 / 273.16) - ( R / L_sub ) * ln( P_vap / 611.65 ) ]^(-1)
+   * m_frost = integral( alpha * sqrt( M / (2*pi*R*T) ) * ( P_vap - P_sat(T) ) dt )
+   * Reference: Jakosky & Haberle (1992), Savijärvi et al. (2005), Piqueux et al. (2016) for Viking 2, Phoenix, and InSight diurnal frost cycles.
+   * @param {number} [minNighttimeTempK=185.0] - Diurnal minimum surface temperature at dawn in K (150 to 220 K)
+   * @param {number} [maxDaytimeTempK=240.0] - Diurnal maximum surface temperature in K (200 to 290 K)
+   * @param {number} [atmosphericWaterColumnPrUm=20.0] - Column water vapor in precipitable microns (1 to 100 pr-um)
+   * @param {number} [surfaceThermalInertiaTIU=250.0] - Regolith thermal inertia in tiu
+   * @returns {{frostPointTempK: number, isNighttimeFrostFormed: boolean, frostDepositionDurationHours: number, peakFrostThicknessMicrons: number, morningSublimationTimeHours: number, diurnalHydrationRegime: string}}
+   */
+  static computeDiurnalFrostCondensationAndDewPointOnset(minNighttimeTempK = 185.0, maxDaytimeTempK = 240.0, atmosphericWaterColumnPrUm = 20.0, surfaceThermalInertiaTIU = 250.0) {
+    const Tmin = Math.max(120.0, Math.min(230.0, minNighttimeTempK));
+    const Tmax = Math.max(Tmin + 5.0, Math.min(300.0, maxDaytimeTempK));
+    const prUm = Math.max(0.5, atmosphericWaterColumnPrUm);
+
+    const R_GAS = 8.314462;
+    const M_H2O = 0.018015;
+    const L_SUB = 51058.0; // J/mol
+    const alphaSticking = 0.80; // condensation sticking coefficient
+    const rhoFrostKgM3 = 250.0; // porous microcrystalline surface frost
+
+    // Surface partial pressure of water vapor P_vap (Pa) ~ prUm * 0.025 Pa / pr-um
+    const pVapPa = prUm * 0.025;
+
+    // Clausius-Clapeyron frost point temperature
+    const denom = (1.0 / 273.16) - (R_GAS / L_SUB) * Math.log(pVapPa / 611.65);
+    const Tfrost = denom > 0.0 ? 1.0 / denom : 180.0;
+
+    const isFrostFormed = Tmin < Tfrost;
+
+    let frostHours = 0.0;
+    let totalFrostMassKgM2 = 0.0;
+    const P_SOL_HOURS = 24.66;
+    const STEPS = 100;
+    const dtSec = (P_SOL_HOURS * 3600.0) / STEPS;
+
+    // Approximate diurnal sinusoidal temperature profile
+    for (let i = 0; i < STEPS; i++) {
+      const frac = i / STEPS;
+      const Tsurf = ((Tmax + Tmin) / 2.0) + ((Tmax - Tmin) / 2.0) * Math.sin(2.0 * Math.PI * frac - Math.PI / 2.0);
+
+      if (Tsurf < Tfrost) {
+        frostHours += P_SOL_HOURS / STEPS;
+
+        // Saturation pressure at current surface temperature
+        const pSatPa = 611.65 * Math.exp(-(L_SUB / R_GAS) * ((1.0 / Tsurf) - (1.0 / 273.16)));
+        const deltaP = Math.max(0.0, pVapPa - pSatPa);
+
+        // Hertz-Knudsen condensation flux (kg/(m^2*s))
+        const fluxKgM2S = alphaSticking * Math.sqrt(M_H2O / (2.0 * Math.PI * R_GAS * Tsurf)) * deltaP;
+        totalFrostMassKgM2 += fluxKgM2S * dtSec;
+      }
+    }
+
+    // Peak frost thickness in microns
+    const thicknessMicrons = (totalFrostMassKgM2 / rhoFrostKgM3) * 1e6;
+
+    // Morning sublimation duration (typically 1-2 hours after sunrise)
+    const morningSubHours = isFrostFormed ? Math.min(3.0, 0.5 + thicknessMicrons * 0.25) : 0.0;
+
+    let regime = 'Nocturnal Surface Frost Cycle Active (Morning White Frost & Flash Vaporization)';
+    if (!isFrostFormed) {
+      regime = 'Arid Sub-Saturation (Nighttime Temperature Remains Above Frost Point)';
+    } else if (thicknessMicrons > 10.0) {
+      regime = 'Heavy Polar / High-Latitude Frost Sheet (Multi-Micron Crystalline Snowpack)';
+    }
+
+    return {
+      frostPointTempK: parseFloat(Tfrost.toFixed(2)),
+      isNighttimeFrostFormed: isFrostFormed,
+      frostDepositionDurationHours: parseFloat(frostHours.toFixed(2)),
+      peakFrostThicknessMicrons: parseFloat(thicknessMicrons.toFixed(3)),
+      morningSublimationTimeHours: parseFloat(morningSubHours.toFixed(2)),
+      diurnalHydrationRegime: regime
+    };
+  }
 }
 
 
