@@ -10867,6 +10867,53 @@ describe('SEP Low-Thrust Heliocentric Spirals, Polar Firn Compaction & Plagiocla
     });
 });
 
+describe('Phobos/Deimos CW Rendezvous, Subsurface Ice Desiccation & Sulfate Hydration', () => {
+    it('should calculate Phobos/Deimos Clohessy-Wiltshire relative proximity rendezvous maneuvers', () => {
+        // Phobos proximity approach (5 km radial, 15 km in-track standoff, 2 hour rendezvous):
+        const cw = TrajectoryEngine.computeMartianMoonClohessyWiltshireProximityManeuver('Phobos', 5.0, 15.0, 2.0);
+        expect(cw.targetMoon).to.equal('Phobos');
+        expect(cw.transferDurationHours).to.equal(2.0);
+        expect(cw.totalRendezvousDeltaVMS).to.be.greaterThan(3.0); // > 3 m/s proximity maneuver
+        expect(cw.departureBurnDeltaVMS).to.be.greaterThan(1.0);
+        expect(cw.arrivalBrakingDeltaVMS).to.be.greaterThan(1.0);
+        expect(cw.relativeMotionContext).to.include('Clohessy-Wiltshire Co-Orbital Rendezvous with Phobos');
+    });
+
+    it('should calculate Martian subsurface ground ice sublimation, Knudsen diffusion, and desiccation front retreat', () => {
+        // Mid-latitude ground ice (195 K ground temp, 15 um pore radius, 2.5 Myr):
+        const ice = KRCEngine.computeMartianSubsurfaceIceSublimationAndDesiccationFront(195.0, 15.0, 2.5, 0.35);
+        expect(ice.meanAnnualTempK).to.equal(195.0);
+        expect(ice.effectivePoreDiffusivityM2S).to.be.greaterThan(1e-5);
+        expect(ice.desiccationLagDepthMeters).to.be.closeTo(14.9, 3.0); // ~15 m desiccation dry lag depth
+        expect(ice.isGroundIceStableShallow).to.be.false; // Decoupled at mid-latitudes
+        expect(ice.groundIcePreservationContext).to.include('Mid-Latitude Subsurface Ice Decoupling');
+
+        // Polar stable permafrost (165 K ground temp, Phoenix landing site):
+        const polar = KRCEngine.computeMartianSubsurfaceIceSublimationAndDesiccationFront(165.0, 15.0, 2.5, 0.35);
+        expect(polar.isGroundIceStableShallow).to.be.true;
+        expect(polar.desiccationLagDepthMeters).to.be.at.most(0.05); // Shallow stable ice (< 5 cm)
+    });
+
+    it('should discriminate Monohydrated Sulfate (Kieserite) from Polyhydrated Sulfate (Starkeyite/Epsomite/Gypsum) in CRISM spectra', () => {
+        // Monohydrated Sulfate (Kieserite) in Juventae Chasma (2.13 um & 2.40 um bands, NO 1.93 um H2O band):
+        const mhs = BandMathEngine.computeCRISMMonohydratedVsPolyhydratedSulfateDepths(0.08, 0.09, 0.005, 2.405);
+        expect(mhs.isSulfatePresent).to.be.true;
+        expect(mhs.sulfateHydrationClass).to.include('Monohydrated Sulfate (MHS)');
+        expect(mhs.mineralSpecies).to.include('Kieserite (MgSO4 * H2O)');
+        expect(mhs.evaporiticAqueousContext).to.include('Hyper-Arid Desiccated Evaporite Bedding');
+
+        // Polyhydrated Sulfate (Starkeyite/Epsomite) in Candor Chasma (1.93 um & 2.42 um bands):
+        const phs = BandMathEngine.computeCRISMMonohydratedVsPolyhydratedSulfateDepths(0.005, 0.08, 0.08, 2.425);
+        expect(phs.isSulfatePresent).to.be.true;
+        expect(phs.sulfateHydrationClass).to.include('Polyhydrated Sulfate (PHS)');
+        expect(phs.mineralSpecies).to.include('Starkeyite / Epsomite');
+
+        // Flat basalt:
+        const basalt = BandMathEngine.computeCRISMMonohydratedVsPolyhydratedSulfateDepths(0.005, 0.005, 0.005, 2.405);
+        expect(basalt.isSulfatePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

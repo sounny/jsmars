@@ -5334,6 +5334,65 @@ export class KRCEngine {
       polarPaleoclimateContext: context
     };
   }
+
+  /**
+   * Calculate Martian subsurface pore ice sublimation loss, Knudsen vapor diffusion, and dry regolith desiccation front retreat over geological time.
+   * D_eff = ( phi / tau ) * ( 2/3 * r_pore * v_bar )
+   * z_lag = sqrt( ( 2 * D_eff * Delta_P * t ) / ( phi * rho_ice * R_v * T ) )
+   * Reference: Fanale et al. (1986), Mellon & Jakosky (1993), Schorghofer (2007), Sizemore et al. (2015) for Martian ground ice stability.
+   * @param {number} [meanAnnualGroundTempK=195.0] - Mean annual ground temperature in K (150 to 230 K)
+   * @param {number} [poreRadiusMicrons=15.0] - Regolith mean pore radius in microns (1 to 100 um)
+   * @param {number} [timeSpanMyr=2.5] - Sublimation diffusion duration in million years (0.1 to 50 Myr)
+   * @param {number} [porosityFrac=0.35] - Regolith volumetric porosity (0.15 to 0.60)
+   * @returns {{meanAnnualTempK: number, effectivePoreDiffusivityM2S: number, saturatedVaporPressurePa: number, desiccationLagDepthMeters: number, isGroundIceStableShallow: boolean, groundIcePreservationContext: string}}
+   */
+  static computeMartianSubsurfaceIceSublimationAndDesiccationFront(meanAnnualGroundTempK = 195.0, poreRadiusMicrons = 15.0, timeSpanMyr = 2.5, porosityFrac = 0.35) {
+    const T = Math.max(130.0, Math.min(250.0, meanAnnualGroundTempK));
+    const rPoreUm = Math.max(0.5, poreRadiusMicrons);
+    const tMyr = Math.max(0.01, timeSpanMyr);
+    const phi = Math.max(0.10, Math.min(0.70, porosityFrac));
+
+    const tau = 2.5; // Regolith tortuosity
+    const Rv = 461.5; // J/(kg*K)
+    const rhoIce = 920.0; // kg/m^3
+    const tSec = tMyr * 1e6 * 3.15576e7;
+
+    // Mean thermal velocity v_bar (m/s)
+    const vBar = Math.sqrt((8.0 * Rv * T) / Math.PI);
+
+    // Knudsen diffusivity in pores: D_K = 2/3 * r_pore * v_bar
+    const rPoreM = rPoreUm * 1e-6;
+    const Dk = (2.0 / 3.0) * rPoreM * vBar;
+    const Deff = (phi / tau) * Dk;
+
+    // Saturated vapor pressure (Pa)
+    const Psat = 611.65 * Math.exp(22.5 * (1.0 - 273.15 / T));
+    const Patm = 0.005; // Pa ambient humidity
+    const deltaP = Math.max(1e-6, Psat - Patm);
+
+    // Desiccation front depth z_lag (m)
+    let zLagM = Math.sqrt((2.0 * Deff * deltaP * tSec) / (phi * rhoIce * Rv * T));
+    const isStable = T < 175.0;
+    if (isStable) {
+      zLagM = Math.min(0.05, zLagM);
+    }
+
+    let context = 'Mid-Latitude Subsurface Ice Decoupling (Dry Lag Overburden Layer)';
+    if (isStable) {
+      context = 'High-Latitude Stable Permafrost Ground Ice (Phoenix / Arcadia Planitia Type)';
+    } else if (zLagM > 30.0) {
+      context = 'Equatorial Hyper-Arid Complete Ice Desiccation (Deep Dessicated Megaregolith)';
+    }
+
+    return {
+      meanAnnualTempK: parseFloat(T.toFixed(1)),
+      effectivePoreDiffusivityM2S: parseFloat(Deff.toExponential(4)),
+      saturatedVaporPressurePa: parseFloat(Psat.toFixed(5)),
+      desiccationLagDepthMeters: parseFloat(zLagM.toFixed(2)),
+      isGroundIceStableShallow: isStable,
+      groundIcePreservationContext: context
+    };
+  }
 }
 
 

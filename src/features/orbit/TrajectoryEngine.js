@@ -4759,6 +4759,89 @@ export class TrajectoryEngine {
       ionPropulsionContext: `Solar Electric Low-Thrust Spiral (Isp ${Isp.toFixed(0)}s, ${mpKg.toFixed(1)} kg Xenon consumed over ${tBurnDays.toFixed(0)} Days)`
     };
   }
+
+  /**
+   * Calculate Clohessy-Wiltshire (CW) Hill linearized relative motion and two-burn rendezvous Delta-V for Phobos / Deimos proximity operations.
+   * ddot_x - 2*n*dot_y - 3*n^2*x = 0
+   * ddot_y + 2*n*dot_x = 0
+   * Delta_V = || Delta_v1 || + || Delta_v2 ||
+   * Reference: Clohessy & Wiltshire (1960), Wie (1998), Curtis (2013) for JAXA MMX & Phobos Sample Return rendezvous.
+   * @param {string} [moonName='Phobos'] - Target moon name ('Phobos' or 'Deimos')
+   * @param {number} [initialRelDistXKm=5.0] - Initial radial standoff distance in km (-50 to +50 km)
+   * @param {number} [initialRelDistYKm=15.0] - Initial in-track standoff distance in km (-100 to +100 km)
+   * @param {number} [rendezvousTimeHours=2.0] - Target transfer flight duration in hours (0.5 to 24.0 hours)
+   * @returns {{targetMoon: string, orbitalMeanMotionRadS: number, transferDurationHours: number, departureBurnDeltaVMS: number, arrivalBrakingDeltaVMS: number, totalRendezvousDeltaVMS: number, relativeMotionContext: string}}
+   */
+  static computeMartianMoonClohessyWiltshireProximityManeuver(moonName = 'Phobos', initialRelDistXKm = 5.0, initialRelDistYKm = 15.0, rendezvousTimeHours = 2.0) {
+    const isDeimos = moonName.toLowerCase().includes('deimos');
+    const targetName = isDeimos ? 'Deimos' : 'Phobos';
+    const aMoonKm = isDeimos ? 23463.0 : 9376.0;
+    const muMars = 42828.37; // km^3/s^2
+
+    // Mean motion n (rad/s)
+    const n = Math.sqrt(muMars / Math.pow(aMoonKm, 3.0));
+
+    const x0 = initialRelDistXKm;
+    const y0 = initialRelDistYKm;
+    const tSec = Math.max(300.0, rendezvousTimeHours * 3600.0);
+    const tau = n * tSec;
+
+    // CW State Transition Matrix elements
+    const s = Math.sin(tau);
+    const c = Math.cos(tau);
+
+    // Phi_rr
+    const phi11 = 4.0 - 3.0 * c;
+    const phi12 = 0.0;
+    const phi21 = 6.0 * (s - tau);
+    const phi22 = 1.0;
+
+    // Phi_rv (scaled by n)
+    const m11 = s / n;
+    const m12 = (2.0 * (1.0 - c)) / n;
+    const m21 = (2.0 * (c - 1.0)) / n;
+    const m22 = (4.0 * s - 3.0 * tau) / n;
+
+    // Determinant of Phi_rv
+    const detM = (m11 * m22) - (m12 * m21);
+
+    let dv1MS = 12.5;
+    let dv2MS = 10.2;
+
+    if (Math.abs(detM) > 1e-7) {
+      // Invert Phi_rv
+      const inv11 = m22 / detM;
+      const inv12 = -m12 / detM;
+      const inv21 = -m21 / detM;
+      const inv22 = m11 / detM;
+
+      // Desired final position = (0, 0)
+      const targetX = - (phi11 * x0 + phi12 * y0);
+      const targetY = - (phi21 * x0 + phi22 * y0);
+
+      const vx0KmS = inv11 * targetX + inv12 * targetY;
+      const vy0KmS = inv21 * targetX + inv22 * targetY;
+
+      dv1MS = Math.sqrt(Math.pow(vx0KmS, 2.0) + Math.pow(vy0KmS, 2.0)) * 1000.0;
+
+      // Final velocity at arrival
+      const vxArrivalKmS = (3.0 * n * s * x0) + (c * vx0KmS) + (2.0 * s * vy0KmS);
+      const vyArrivalKmS = (6.0 * n * (c - 1.0) * x0) - (2.0 * s * vx0KmS) + ((4.0 * c - 3.0) * vy0KmS);
+      dv2MS = Math.sqrt(Math.pow(vxArrivalKmS, 2.0) + Math.pow(vyArrivalKmS, 2.0)) * 1000.0;
+    }
+
+    const totalDvMS = dv1MS + dv2MS;
+
+    return {
+      targetMoon: targetName,
+      orbitalMeanMotionRadS: parseFloat(n.toExponential(4)),
+      transferDurationHours: parseFloat((tSec / 3600.0).toFixed(2)),
+      departureBurnDeltaVMS: parseFloat(dv1MS.toFixed(2)),
+      arrivalBrakingDeltaVMS: parseFloat(dv2MS.toFixed(2)),
+      totalRendezvousDeltaVMS: parseFloat(totalDvMS.toFixed(2)),
+      relativeMotionContext: `Clohessy-Wiltshire Co-Orbital Rendezvous with ${targetName} (${totalDvMS.toFixed(1)} m/s Total Delta-V in ${rendezvousTimeHours.toFixed(1)} Hours)`
+    };
+  }
 }
 
 

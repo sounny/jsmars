@@ -5172,6 +5172,56 @@ export class BandMathEngine {
       crustalPetrogenesisContext: context
     };
   }
+
+  /**
+   * Discriminate Monohydrated Sulfate (Kieserite 2.13 um & 2.40 um without 1.93 um H2O) from Polyhydrated Sulfates (Starkeyite/Epsomite/Gypsum 1.93 um & 2.42 um) in CRISM spectra.
+   * Reference: Gendrin et al. (2005), Bibring et al. (2006), Murchie et al. (2009), Viviano-Beck et al. (2014) for Valles Marineris Interior Layered Deposits (ILDs).
+   * @param {number} [band2100Depth=0.06] - BD2100 / D2130 monohydrated sulfate metal-OH band depth (0.0 to 1.0)
+   * @param {number} [band2400Depth=0.08] - BD2400 / SINDEX2 sulfate combination band depth (0.0 to 1.0)
+   * @param {number} [band1900Depth=0.01] - BD1900 molecular H2O band depth (0.0 to 1.0)
+   * @param {number} [band2400CenterUm=2.405] - Center wavelength of the 2.4 um sulfate combination band in um (2.38 to 2.45 um)
+   * @returns {{isSulfatePresent: boolean, sulfateHydrationClass: string, mineralSpecies: string, evaporiticAqueousContext: string}}
+   */
+  static computeCRISMMonohydratedVsPolyhydratedSulfateDepths(band2100Depth = 0.06, band2400Depth = 0.08, band1900Depth = 0.01, band2400CenterUm = 2.405) {
+    const d2100 = Math.max(0.0, band2100Depth);
+    const d2400 = Math.max(0.0, band2400Depth);
+    const d1900 = Math.max(0.0, band1900Depth);
+    const l2400 = Math.max(2.35, Math.min(2.46, band2400CenterUm));
+
+    let isSulf = false;
+    let hydClass = 'Anhydrous Crust / Non-Sulfate Matrix';
+    let species = 'Basaltic Regolith';
+    let context = 'Standard Unaltered Bedrock';
+
+    if (d2400 >= 0.025) {
+      isSulf = true;
+      if (d2100 >= 0.020 && d1900 < 0.020) {
+        hydClass = 'Monohydrated Sulfate (MHS)';
+        species = 'Kieserite (MgSO4 * H2O) / Szomolnokite (FeSO4 * H2O)';
+        context = 'Hyper-Arid Desiccated Evaporite Bedding / Ancient Hesperian Interior Layered Deposits (Juventae / Candor Chasma)';
+      } else if (d1900 >= 0.025) {
+        hydClass = 'Polyhydrated Sulfate (PHS)';
+        if (l2400 >= 2.420) {
+          species = 'Starkeyite / Epsomite (MgSO4 * 4-7H2O)';
+          context = 'Hydrated Saline Playa / Hygroscopic Diurnal Regolith Hydration Dynamics';
+        } else {
+          species = 'Gypsum (CaSO4 * 2H2O) / Bassanite (CaSO4 * 0.5H2O)';
+          context = 'Circum-Polar Dune Gypsum Deposits / Hydrothermal Calcium Sulfate Veins';
+        }
+      } else {
+        hydClass = 'Mixed / Transitional Sulfate Complex';
+        species = 'Intermediate Hydrated Sulfate';
+        context = 'Partially Dehydrated Saline Stratigraphic Horizon';
+      }
+    }
+
+    return {
+      isSulfatePresent: isSulf,
+      sulfateHydrationClass: hydClass,
+      mineralSpecies: species,
+      evaporiticAqueousContext: context
+    };
+  }
 }
 
 
