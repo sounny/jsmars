@@ -7017,6 +7017,81 @@ export class KRCEngine {
       cryovolcanismContext: `Cryovolcanic Chamber at ${zKm.toFixed(1)}km (${PoverMPa.toFixed(0)} MPa Overpressure, ${(Xice * 100).toFixed(0)}% Frozen, ${vExitMs.toFixed(0)} m/s Vent Speed, ${mechClass})`
     };
   }
+
+  /**
+   * Calculate subsurface perchlorate/halogen brine thermodynamic eutectic freezing, liquidus concentration, unfrozen liquid brine fraction, and water activity.
+   * C_liq(T) = C_eut * ( ( 273.15 - T ) / ( 273.15 - T_eut ) )^0.85
+   * w_liq = C_0 / C_liq(T)
+   * a_w = exp( - ( 273.15 - T ) / 103.3 )
+   * Reference: Chevrier et al. (2009), Toner & Catling (2016), Rivera-Valentin et al. (2020) for Martian Perchlorate Cryogenic Brines.
+   * @param {number} [ambientTemperatureK=225.0] - Subsurface regolith temperature in Kelvin (160 to 280 K)
+   * @param {number} [perchlorateWeightPercent=10.0] - Initial bulk salt concentration in wt% (0.5 to 50.0 wt%)
+   * @param {string} [saltCationType='Mg(ClO4)2'] - Cation species: 'Mg(ClO4)2', 'Ca(ClO4)2', 'NaClO4', 'NaCl'
+   * @returns {{saltSpecies: string, eutecticTemperatureK: number, eutecticTemperatureC: number, isLiquidBrineThermodynamicallyStable: boolean, liquidusSaltConcentrationWtPct: number, equilibriumLiquidBrineFractionPercent: number, waterActivityAw: number, habitabilityStatus: string, brineEquilibriumContext: string}}
+   */
+  static computeMartianSubsurfacePerchlorateEutecticEquilibrium(ambientTemperatureK = 225.0, perchlorateWeightPercent = 10.0, saltCationType = 'Mg(ClO4)2') {
+    const TambK = Math.max(140.0, Math.min(300.0, ambientTemperatureK));
+    const C0 = Math.max(0.1, Math.min(50.0, perchlorateWeightPercent));
+
+    let TeutK = 204.65; // Mg(ClO4)2 eutectic (-68.5 C)
+    let Ceut = 44.0;
+    let name = 'Magnesium Perchlorate (Mg(ClO4)2)';
+
+    const st = String(saltCationType || '').toLowerCase();
+    if (st.includes('ca')) {
+      TeutK = 198.55; // Ca(ClO4)2 (-74.6 C)
+      Ceut = 52.0;
+      name = 'Calcium Perchlorate (Ca(ClO4)2)';
+    } else if (st.includes('na') && st.includes('cl') && !st.includes('clo4')) {
+      TeutK = 252.05; // NaCl (-21.1 C)
+      Ceut = 23.3;
+      name = 'Sodium Chloride (NaCl)';
+    } else if (st.includes('na')) {
+      TeutK = 239.15; // NaClO4 (-34.0 C)
+      Ceut = 52.0;
+      name = 'Sodium Perchlorate (NaClO4)';
+    }
+
+    const TeutC = TeutK - 273.15;
+    const isLiquid = TambK >= TeutK;
+
+    let Cliq = Ceut;
+    let wLiqPct = 0.0;
+    let aw = 0.0;
+    let habit = 'Sub-Eutectic Completely Frozen Solid Ice + Salt Hydrate';
+
+    if (isLiquid) {
+      const deltaT = Math.max(0.1, 273.15 - TambK);
+      const deltaTeut = 273.15 - TeutK;
+      Cliq = Math.min(Ceut, Ceut * Math.pow(deltaT / deltaTeut, 0.85));
+      Cliq = Math.max(C0, Cliq);
+
+      const wLiqFrac = Math.min(1.0, C0 / Cliq);
+      wLiqPct = wLiqFrac * 100.0;
+
+      // Water activity
+      aw = Math.exp(-deltaT / 103.3);
+      aw = Math.max(0.20, Math.min(1.0, aw));
+
+      if (aw >= 0.605) {
+        habit = 'Metabolically Permissive Liquid Brine (aw >= 0.605, Terrestrial Halophile Candidate)';
+      } else {
+        habit = 'Hypersaline Cryogenic Liquid Brine (aw < 0.605, Severe Osmotic Water-Activity Stress)';
+      }
+    }
+
+    return {
+      saltSpecies: name,
+      eutecticTemperatureK: parseFloat(TeutK.toFixed(2)),
+      eutecticTemperatureC: parseFloat(TeutC.toFixed(1)),
+      isLiquidBrineThermodynamicallyStable: isLiquid,
+      liquidusSaltConcentrationWtPct: parseFloat(Cliq.toFixed(2)),
+      equilibriumLiquidBrineFractionPercent: parseFloat(wLiqPct.toFixed(1)),
+      waterActivityAw: parseFloat(aw.toFixed(3)),
+      habitabilityStatus: habit,
+      brineEquilibriumContext: `${name} at ${TambK.toFixed(1)}K (${isLiquid ? 'Liquid Stable' : 'Frozen Solid'}, ${wLiqPct.toFixed(1)}% Liquid Brine, aw=${aw.toFixed(3)}, ${habit})`
+    };
+  }
 }
 
 

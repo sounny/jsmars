@@ -6633,6 +6633,56 @@ export class BandMathEngine {
       crustalEvolutionContext: context
     };
   }
+
+  /**
+   * Discriminate Low-Temperature Hydrated Serpentine (Lizardite/Chrysotile) vs High-Temperature Metamorphic Serpentine (Antigorite) from CRISM 1.39 um, 1.90 um, 2.12 um, and 2.33 um band depths.
+   * Reference: Ehlmann et al. (2010), Amador et al. (2018), Viviano-Beck et al. (2014) for Martian Serpentine Polytypes.
+   * @param {number} [band1390MgOHDepth=0.07] - BD1390 diagnostic Mg-OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2330SerpentineDepth=0.08] - BD2330 fundamental serpentine Mg-OH band depth (0.0 to 0.50)
+   * @param {number} [band2120AntigoriteDepth=0.01] - BD2120 diagnostic antigorite structural silicate band depth (0.0 to 0.30)
+   * @param {number} [band1900WaterDepth=0.05] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @returns {{isSerpentineDetected: boolean, polytypeClass: string, mineralSpecies: string, chemicalFormula: string, metamorphicGradeContext: string}}
+   */
+  static computeCRISMSerpentinePolytypeMetamorphicIndices(band1390MgOHDepth = 0.07, band2330SerpentineDepth = 0.08, band2120AntigoriteDepth = 0.01, band1900WaterDepth = 0.05) {
+    const d1390 = Math.max(0.0, band1390MgOHDepth);
+    const d2330 = Math.max(0.0, band2330SerpentineDepth);
+    const d2120 = Math.max(0.0, band2120AntigoriteDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+
+    const isSerp = d2330 >= 0.035 && (d1390 >= 0.030 || d2120 >= 0.025);
+
+    let polyClass = 'Non-Serpentinized Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let metaContext = 'Standard Silicate Matrix without Diagnostic Serpentine Absorption';
+
+    if (isSerp) {
+      if (d2120 >= 0.025 && d1900 < 0.025) {
+        polyClass = 'High-Temperature Metamorphic Serpentine (Antigorite)';
+        species = 'Antigorite';
+        formula = 'Mg3Si2O5(OH)4 (Dehydrated High-P/T Polytype)';
+        metaContext = 'Prograde Metamorphic Serpentinization / Deep Crustal Contact Metamorphism (T ~ 350-550 C, Deep Noachian Basement)';
+      } else if (d1390 >= 0.035 && d1900 >= 0.030) {
+        polyClass = 'Low-Temperature Hydrated Serpentine (Lizardite / Chrysotile)';
+        species = 'Lizardite / Chrysotile';
+        formula = 'Mg3Si2O5(OH)4';
+        metaContext = 'Low-Temperature Hydrothermal Serpentinization & Hydrogen / Methane Outgassing (T < 300 C at Claritas Rise / Nili Fossae)';
+      } else {
+        polyClass = 'Mixed Serpentine Polytype Assemblage';
+        species = 'Serpentine Matrix';
+        formula = 'Mg3Si2O5(OH)4';
+        metaContext = 'Transitional Hydrothermal-Metamorphic Serpentinite';
+      }
+    }
+
+    return {
+      isSerpentineDetected: isSerp,
+      polytypeClass: polyClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metamorphicGradeContext: metaContext
+    };
+  }
 }
 
 

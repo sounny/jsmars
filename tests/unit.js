@@ -12321,6 +12321,61 @@ describe('Trans-Pluto Deep Space Transfer, Cryovolcanic Overpressure & Anorthosi
     });
 });
 
+describe('Bi-Parabolic Solar Drop, Perchlorate Cryogenic Eutectic & Serpentine Polytypes', () => {
+    it('should calculate theoretical absolute minimum Delta-V Bi-Parabolic solar drop trajectory from Mars', () => {
+        // Bi-parabolic solar drop to 10 Solar Radii (10 R_sun closest approach, 300 km Mars parking altitude):
+        const biParabolic = TrajectoryEngine.computeMarsToSunBiParabolicSolarDropTrajectory(10.0, 300.0);
+        expect(biParabolic.solarEscapeSpeedAtMarsKmS).to.be.closeTo(34.124, 0.2); // ~34.12 km/s escape speed
+        expect(biParabolic.marsDepartureExcessKmS).to.be.closeTo(9.994, 0.2); // ~9.99 km/s departure excess
+        expect(biParabolic.transSolarEscapeInjectionDeltaVKmS).to.be.closeTo(7.688, 0.3); // ~7.69 km/s TSEI
+        expect(biParabolic.aphelionInfinityDeltaVKmS).to.equal(0.0);
+        expect(biParabolic.totalMissionDeltaVKmS).to.be.closeTo(7.688, 0.3); // ~7.69 km/s total Delta-V
+        expect(biParabolic.coronalPerihelionSpeedKmS).to.be.closeTo(195.24, 3.0); // ~195 km/s at 10 R_sun
+        expect(biParabolic.hohmannDeltaVSavedKmS).to.be.greaterThan(7.5); // > 7.5 km/s saved
+        expect(biParabolic.biParabolicContext).to.include('Bi-Parabolic Solar Drop');
+    });
+
+    it('should calculate subsurface perchlorate brine thermodynamic eutectic equilibrium, liquid fraction, and water activity', () => {
+        // Mg(ClO4)2 brine at 225 K (-48 C), 10 wt% initial salt:
+        const brine = KRCEngine.computeMartianSubsurfacePerchlorateEutecticEquilibrium(225.0, 10.0, 'Mg(ClO4)2');
+        expect(brine.saltSpecies).to.include('Magnesium Perchlorate');
+        expect(brine.eutecticTemperatureC).to.be.closeTo(-68.5, 0.2);
+        expect(brine.isLiquidBrineThermodynamicallyStable).to.be.true;
+        expect(brine.liquidusSaltConcentrationWtPct).to.be.closeTo(32.60, 2.0); // ~32.6 wt%
+        expect(brine.equilibriumLiquidBrineFractionPercent).to.be.closeTo(30.7, 3.0); // ~30.7% liquid brine
+        expect(brine.waterActivityAw).to.be.closeTo(0.627, 0.05); // aw ~ 0.63
+        expect(brine.habitabilityStatus).to.include('Metabolically Permissive Liquid Brine');
+        expect(brine.brineEquilibriumContext).to.include('Mg(ClO4)2');
+
+        // Sub-eutectic frozen state at 180 K:
+        const frozen = KRCEngine.computeMartianSubsurfacePerchlorateEutecticEquilibrium(180.0, 10.0, 'Mg(ClO4)2');
+        expect(frozen.isLiquidBrineThermodynamicallyStable).to.be.false;
+        expect(frozen.equilibriumLiquidBrineFractionPercent).to.equal(0.0);
+        expect(frozen.habitabilityStatus).to.include('Sub-Eutectic Completely Frozen');
+    });
+
+    it('should discriminate Low-Temperature Lizardite vs High-Temperature Metamorphic Antigorite in CRISM spectra', () => {
+        // Low-Temperature Hydrated Lizardite / Chrysotile (Claritas Rise: BD1390 = 0.07, BD2330 = 0.08, BD2120 = 0.005, BD1900 = 0.05):
+        const lizardite = BandMathEngine.computeCRISMSerpentinePolytypeMetamorphicIndices(0.07, 0.08, 0.005, 0.05);
+        expect(lizardite.isSerpentineDetected).to.be.true;
+        expect(lizardite.polytypeClass).to.include('Low-Temperature Hydrated Serpentine (Lizardite / Chrysotile)');
+        expect(lizardite.mineralSpecies).to.include('Lizardite');
+        expect(lizardite.chemicalFormula).to.include('Mg3Si2O5(OH)4');
+        expect(lizardite.metamorphicGradeContext).to.include('Low-Temperature Hydrothermal Serpentinization');
+
+        // High-Temperature Metamorphic Antigorite (Deep Noachian Basement: BD1390 = 0.01, BD2330 = 0.08, BD2120 = 0.05, BD1900 = 0.005):
+        const antigorite = BandMathEngine.computeCRISMSerpentinePolytypeMetamorphicIndices(0.01, 0.08, 0.05, 0.005);
+        expect(antigorite.isSerpentineDetected).to.be.true;
+        expect(antigorite.polytypeClass).to.include('High-Temperature Metamorphic Serpentine (Antigorite)');
+        expect(antigorite.mineralSpecies).to.include('Antigorite');
+        expect(antigorite.metamorphicGradeContext).to.include('Prograde Metamorphic Serpentinization');
+
+        // Non-serpentine basalt:
+        const basalt = BandMathEngine.computeCRISMSerpentinePolytypeMetamorphicIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSerpentineDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -6589,6 +6589,65 @@ export class TrajectoryEngine {
       plutoTransferContext: `Trans-Pluto Transfer (${tofYrs.toFixed(1)} yr TOF to ${rPlutoAU.toFixed(1)} AU, ${dvTpiKmS.toFixed(2)} km/s TPI, ${vInfArrKmS.toFixed(2)} km/s Pluto Arrival, ${deltaDeg.toFixed(2)} deg Flyby Turn)`
     };
   }
+
+  /**
+   * Calculate theoretical absolute minimum Delta-V Bi-Parabolic solar drop trajectory (Solar Escape to Infinity, infinitesimal stop, radial inward drop).
+   * v_esc = sqrt( 2 * mu_sun / r_mars )
+   * v_inf = ( sqrt(2) - 1 ) * v_circ
+   * Delta_V_tot = Delta_V_TSEI
+   * Reference: Edelbaum (1959), Escobal (1965), Prussing & Conway (1993), Curtis (2013) for Bi-Parabolic Heliocentric Transfer Limits.
+   * @param {number} [targetPerihelionSolarRadii=10.0] - Solar closest approach in solar radii R_sun (2.0 to 50.0 R_sun)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{solarEscapeSpeedAtMarsKmS: number, marsDepartureExcessKmS: number, transSolarEscapeInjectionDeltaVKmS: number, aphelionInfinityDeltaVKmS: number, totalMissionDeltaVKmS: number, coronalPerihelionSpeedKmS: number, hohmannDeltaVSavedKmS: number, biParabolicContext: string}}
+   */
+  static computeMarsToSunBiParabolicSolarDropTrajectory(targetPerihelionSolarRadii = 10.0, marsParkingAltitudeKm = 300.0) {
+    const RsunMult = Math.max(2.0, Math.min(50.0, targetPerihelionSolarRadii));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const R_SUN_KM = 696340.0;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+
+    const rpKm = RsunMult * R_SUN_KM;
+
+    // Solar circular and escape speeds at Mars
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vMarsEscKmS = Math.sqrt(2.0) * vMarsCircKmS;
+    const vInfDepKmS = (Math.sqrt(2.0) - 1.0) * vMarsCircKmS;
+
+    // Trans-Solar Escape Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTseiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // At r -> infinity, delta_v_apo is identically 0
+    const dvApoKmS = 0.0;
+    const dvTotKmS = dvTseiKmS + dvApoKmS;
+
+    // Coronal perihelion speed on parabolic drop (km/s)
+    const vPeriCoronalKmS = Math.sqrt((2.0 * muSun) / rpKm);
+
+    // Direct Hohmann baseline was ~15.483 km/s
+    const directHohmannKmS = 15.483;
+    const dvSavedKmS = Math.max(0.0, directHohmannKmS - dvTotKmS);
+
+    return {
+      solarEscapeSpeedAtMarsKmS: parseFloat(vMarsEscKmS.toFixed(3)),
+      marsDepartureExcessKmS: parseFloat(vInfDepKmS.toFixed(3)),
+      transSolarEscapeInjectionDeltaVKmS: parseFloat(dvTseiKmS.toFixed(3)),
+      aphelionInfinityDeltaVKmS: 0.0,
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      coronalPerihelionSpeedKmS: parseFloat(vPeriCoronalKmS.toFixed(2)),
+      hohmannDeltaVSavedKmS: parseFloat(dvSavedKmS.toFixed(3)),
+      biParabolicContext: `Bi-Parabolic Solar Drop (${dvTotKmS.toFixed(2)} km/s Total Delta-V, ${vPeriCoronalKmS.toFixed(0)} km/s Coronal Entry at ${RsunMult.toFixed(0)} R_sun, saved ${dvSavedKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
