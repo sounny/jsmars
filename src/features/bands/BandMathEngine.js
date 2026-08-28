@@ -6781,6 +6781,55 @@ export class BandMathEngine {
       petrogeneticVolatileContext: context
     };
   }
+
+  /**
+   * Discriminate extreme weathering resistate Titanium Oxides (Hydrated Anatase/Rutile) vs Igneous Opaque Ilmenite from CRISM 0.45 um UV slope, 1.0 um slope, 1.90 um water, and 2.25 um Ti-OH depth.
+   * Reference: Morris et al. (2008), Ehlmann et al. (2011), Viviano-Beck et al. (2014) for Martian Titanium Mineralogy & Weathering Resistates.
+   * @param {number} [band0450UVSlope=0.12] - UV band-gap cutoff slope below 0.45 um (0.0 to 0.50)
+   * @param {number} [band1000OpaqueSlope=0.01] - Opaque broad 1.0 um ferrous absorption slope (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.06] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band2250TiOHDepth=0.04] - BD2250 diagnostic Ti-OH vibrational overtone depth (0.0 to 0.30)
+   * @returns {{isTitaniumMineralDetected: boolean, titaniumClass: string, mineralSpecies: string, chemicalFormula: string, geochemicalResistateContext: string}}
+   */
+  static computeCRISMTitaniumOxideIndices(band0450UVSlope = 0.12, band1000OpaqueSlope = 0.01, band1900WaterDepth = 0.06, band2250TiOHDepth = 0.04) {
+    const s0450 = Math.max(0.0, band0450UVSlope);
+    const s1000 = Math.max(0.0, band1000OpaqueSlope);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2250 = Math.max(0.0, band2250TiOHDepth);
+
+    const isAnatase = s0450 >= 0.08 && d2250 >= 0.025 && d1900 >= 0.030;
+    const isIlmenite = s1000 >= 0.040 && d1900 < 0.020 && d2250 < 0.015;
+
+    let tiClass = 'Standard Basaltic Matrix';
+    let species = 'Basalt';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Titanium Phase Absorption';
+
+    if (isAnatase) {
+      tiClass = 'Hydrated Titanium Oxide (Anatase / Rutile Resistate)';
+      species = 'Anatase / Rutile';
+      formula = 'TiO2 * nH2O';
+      context = 'Ultra-Extreme Aqueous Leaching / Residual Laterite Insoluble Resistate Horizon (Mawrth Vallis / Columbia Hills)';
+    } else if (isIlmenite) {
+      tiClass = 'Magmatic Opaque Fe-Ti Oxide (Ilmenite)';
+      species = 'Ilmenite';
+      formula = 'FeTiO3';
+      context = 'High-Ti Basaltic Lava Flow / Fe-Ti Opaque Cumulate Layer (Syrtis Major)';
+    } else if (s0450 >= 0.07) {
+      tiClass = 'Dispersed Nanophase Titanium Oxide';
+      species = 'Nanophase TiO2';
+      formula = 'TiO2';
+      context = 'Amorphous Weathering Product';
+    }
+
+    return {
+      isTitaniumMineralDetected: isAnatase || isIlmenite || s0450 >= 0.07,
+      titaniumClass: tiClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      geochemicalResistateContext: context
+    };
+  }
 }
 
 

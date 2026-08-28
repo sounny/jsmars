@@ -7212,6 +7212,58 @@ export class KRCEngine {
       coreDynamoInitiationContext: `MMO Crystallization (${tSolidMyr.toFixed(1)} Myr Solidification, ${tauOverturnKyr.toFixed(0)} kyr Overturn, launched Early Martian Dynamo)`
     };
   }
+
+  /**
+   * Calculate volcanic acid-fog condensation, reactive diffusion, and basaltic boulder weathering rind thickness growth over geological time.
+   * x(t) = sqrt( x_0^2 + ( 2 * D_eff * C_acid * t ) / N_rxn )
+   * Reference: Tosca et al. (2004), Hurowitz et al. (2006), Settle (1979) for Gusev Crater Adirondack Weathering Rinds.
+   * @param {number} [atmosphericH2SO4VaporPpm=50.0] - Atmospheric acid-fog / SO2 concentration in ppm (1 to 1000 ppm)
+   * @param {number} [exposureDurationKyr=100.0] - Surface exposure duration in kyr (1 to 5000 kyr)
+   * @param {number} [rockPorosity=0.10] - Basaltic boulder pore fraction (0.01 to 0.40)
+   * @param {number} [acidDiffusivityM2S=5.0e-14] - Effective acid diffusion coefficient in m^2/s (1e-15 to 1e-12 m^2/s)
+   * @returns {{finalRindThicknessMm: number, instantaneousGrowthRateMmPerKyr: number, cationDepletedVolumeCm3PerM2: number, alterationCrustClass: string, acidFogContext: string}}
+   */
+  static computeMartianAcidFogWeatheringRindGrowth(atmosphericH2SO4VaporPpm = 50.0, exposureDurationKyr = 100.0, rockPorosity = 0.10, acidDiffusivityM2S = 5.0e-14) {
+    const CatmPpm = Math.max(0.1, atmosphericH2SO4VaporPpm);
+    const tKyr = Math.max(0.1, exposureDurationKyr);
+    const phi = Math.max(0.01, Math.min(0.50, rockPorosity));
+    const DeffM2S = Math.max(1e-16, acidDiffusivityM2S);
+
+    const x0M = 5.0e-5; // 0.05 mm initial roughness rind
+    const rhoRock = 2800.0; // kg/m^3
+    const Nrxn = 0.25 * rhoRock * (1.0 - phi); // kg/m^3 stoichiometric reaction capacity
+    const CacidKgM3 = CatmPpm / 1000.0; // Normalized reactive acid loading
+
+    const DeffM2Yr = DeffM2S * 3.15576e7;
+    const tYr = tKyr * 1000.0;
+
+    // Rind thickness (m & mm)
+    const xRindSq = Math.pow(x0M, 2.0) + ((2.0 * DeffM2Yr * CacidKgM3 * tYr) / Nrxn);
+    const xRindM = Math.sqrt(xRindSq);
+    const xRindMm = xRindM * 1000.0;
+
+    // Growth rate (mm/kyr)
+    const xDotMYr = (DeffM2Yr * CacidKgM3) / (xRindM * Nrxn);
+    const xDotMmKyr = xDotMYr * 1000.0 * 1000.0;
+
+    // Volume of depleted cation rind per m^2 surface area (cm^3/m^2)
+    const VdepletedCm3M2 = xRindM * 1.0e6;
+
+    let rindClass = 'Thin Millimeter-Scale Acid-Weathered Basaltic Rind (Gusev Adirondack Type)';
+    if (xRindMm >= 10.0) {
+      rindClass = 'Extensively Pervasive Acid-Leached Outer Crust with Sulfate Matrix';
+    } else if (xRindMm < 1.0) {
+      rindClass = 'Sub-Millimeter Incipient Acid Frost Alteration Layer';
+    }
+
+    return {
+      finalRindThicknessMm: parseFloat(xRindMm.toFixed(2)),
+      instantaneousGrowthRateMmPerKyr: parseFloat(xDotMmKyr.toFixed(3)),
+      cationDepletedVolumeCm3PerM2: parseFloat(VdepletedCm3M2.toFixed(1)),
+      alterationCrustClass: rindClass,
+      acidFogContext: `Acid-Fog Alteration (${xRindMm.toFixed(2)} mm Rind in ${tKyr.toFixed(0)} kyr, ${xDotMmKyr.toFixed(3)} mm/kyr Growth, ${rindClass})`
+    };
+  }
 }
 
 

@@ -6786,6 +6786,78 @@ export class TrajectoryEngine {
       srpSpiralContext: `SRP-Perturbed Inward Spiral (${tBurnDays.toFixed(0)} d to ${rTargAU.toFixed(2)} AU, ${dvSpiralKmS.toFixed(2)} km/s Delta-V, beta=${betaLight.toExponential(2)})`
     };
   }
+
+  /**
+   * Calculate continuous low-thrust ion engine inward spiral transit times, propellant consumption, and cumulative Delta-V to Earth, Venus, and Mercury.
+   * Delta_V(r) = | v_circ(r) - v_circ(r_mars) |
+   * m(r) = m_0 * exp( -Delta_V(r) / ( g_0 * I_sp ) )
+   * t(r) = ( m_0 - m(r) ) / m_dot
+   * Reference: Edelbaum (1961), Larson & Wertz (1999), Curtis (2013) for Low-Thrust Interplanetary Tour Design.
+   * @param {number} [initialVehicleMassKg=1500.0] - Initial wet mass in kg (100 to 50000 kg)
+   * @param {number} [thrustMillinewtons=250.0] - Continuous thruster thrust in mN (10 to 5000 mN)
+   * @param {number} [specificImpulseSec=3500.0] - Ion engine specific impulse in seconds (1000 to 10000 s)
+   * @returns {{earthTransitDays: number, earthTransitYears: number, earthDeltaVKmS: number, earthPropellantKg: number, venusTransitDays: number, venusTransitYears: number, venusDeltaVKmS: number, venusPropellantKg: number, mercuryTransitDays: number, mercuryTransitYears: number, mercuryDeltaVKmS: number, mercuryPropellantKg: number, multiPlanetContext: string}}
+   */
+  static computeMarsInwardLowThrustPlanetaryTransitTimes(initialVehicleMassKg = 1500.0, thrustMillinewtons = 250.0, specificImpulseSec = 3500.0) {
+    const m0Kg = Math.max(10.0, initialVehicleMassKg);
+    const ThrustN = Math.max(0.001, thrustMillinewtons / 1000.0);
+    const Isp = Math.max(100.0, specificImpulseSec);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const g0 = 9.80665;
+    const cMs = g0 * Isp;
+    const mdotKgS = ThrustN / cMs;
+
+    const rMarsKm = 1.52368 * AU_KM;
+    const vMarsKmS = Math.sqrt(muSun / rMarsKm);
+
+    // Planet orbits (Earth 1.0 AU, Venus 0.72333 AU, Mercury 0.38710 AU)
+    const planets = [
+      { name: 'Earth', rAU: 1.00000 },
+      { name: 'Venus', rAU: 0.72333 },
+      { name: 'Mercury', rAU: 0.38710 }
+    ];
+
+    const results = planets.map(p => {
+      const rKm = p.rAU * AU_KM;
+      const vCircKmS = Math.sqrt(muSun / rKm);
+      const dvKmS = Math.abs(vCircKmS - vMarsKmS);
+      const dvMs = dvKmS * 1000.0;
+
+      const mfKg = m0Kg * Math.exp(-dvMs / cMs);
+      const dMKg = m0Kg - mfKg;
+      const tSec = dMKg / mdotKgS;
+      const tDays = tSec / 86400.0;
+      const tYrs = tDays / 365.25;
+
+      return {
+        name: p.name,
+        dvKmS,
+        dMKg,
+        tDays,
+        tYrs
+      };
+    });
+
+    const [eRes, vRes, mRes] = results;
+
+    return {
+      earthTransitDays: parseFloat(eRes.tDays.toFixed(1)),
+      earthTransitYears: parseFloat(eRes.tYrs.toFixed(2)),
+      earthDeltaVKmS: parseFloat(eRes.dvKmS.toFixed(3)),
+      earthPropellantKg: parseFloat(eRes.dMKg.toFixed(2)),
+      venusTransitDays: parseFloat(vRes.tDays.toFixed(1)),
+      venusTransitYears: parseFloat(vRes.tYrs.toFixed(2)),
+      venusDeltaVKmS: parseFloat(vRes.dvKmS.toFixed(3)),
+      venusPropellantKg: parseFloat(vRes.dMKg.toFixed(2)),
+      mercuryTransitDays: parseFloat(mRes.tDays.toFixed(1)),
+      mercuryTransitYears: parseFloat(mRes.tYrs.toFixed(2)),
+      mercuryDeltaVKmS: parseFloat(mRes.dvKmS.toFixed(3)),
+      mercuryPropellantKg: parseFloat(mRes.dMKg.toFixed(2)),
+      multiPlanetContext: `Inward Low-Thrust Tour (Earth in ${eRes.tDays.toFixed(0)}d, Venus in ${vRes.tDays.toFixed(0)}d, Mercury in ${mRes.tDays.toFixed(0)}d, ${mRes.dMKg.toFixed(0)}kg Xe Total)`
+    };
+  }
 }
 
 

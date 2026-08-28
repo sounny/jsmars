@@ -12471,6 +12471,58 @@ describe('SRP Ion Spiral, Magma Ocean Crystallization & Phosphate Mineral Invers
     });
 });
 
+describe('Multi-Planet SEP Inward Tour, Acid Fog Rind & Titanium Oxide Inversion', () => {
+    it('should calculate inward low-thrust continuous ion spiral transit times to Earth, Venus, and Mercury', () => {
+        // Multi-planet tour from Mars (1500 kg, 250 mN, 3500 s Isp):
+        const tour = TrajectoryEngine.computeMarsInwardLowThrustPlanetaryTransitTimes(1500.0, 250.0, 3500.0);
+        expect(tour.earthTransitDays).to.be.closeTo(362.1, 10.0); // ~362 d to Earth
+        expect(tour.earthTransitYears).to.be.closeTo(0.99, 0.05); // ~0.99 yr
+        expect(tour.earthPropellantKg).to.be.closeTo(227.9, 5.0); // ~228 kg Xe
+
+        expect(tour.venusTransitDays).to.be.closeTo(647.3, 20.0); // ~647 d to Venus
+        expect(tour.venusTransitYears).to.be.closeTo(1.77, 0.1); // ~1.77 yr
+        expect(tour.venusPropellantKg).to.be.closeTo(407.4, 10.0); // ~407 kg Xe
+
+        expect(tour.mercuryTransitDays).to.be.closeTo(1190.4, 30.0); // ~1190 d to Mercury
+        expect(tour.mercuryTransitYears).to.be.closeTo(3.26, 0.1); // ~3.26 yr
+        expect(tour.mercuryPropellantKg).to.be.closeTo(749.1, 15.0); // ~749 kg Xe
+
+        expect(tour.multiPlanetContext).to.include('Inward Low-Thrust Tour');
+    });
+
+    it('should calculate volcanic acid-fog condensation and basaltic boulder weathering rind growth', () => {
+        // 50 ppm acid fog, 100 kyr duration, 10% rock porosity, 5e-14 m^2/s diffusivity:
+        const rind = KRCEngine.computeMartianAcidFogWeatheringRindGrowth(50.0, 100.0, 0.10, 5.0e-14);
+        expect(rind.finalRindThicknessMm).to.be.closeTo(5.00, 0.2); // ~5.00 mm rind
+        expect(rind.instantaneousGrowthRateMmPerKyr).to.be.closeTo(0.025, 0.005); // ~0.025 mm/kyr
+        expect(rind.cationDepletedVolumeCm3PerM2).to.be.closeTo(5000.0, 200.0); // ~5000 cm^3/m^2
+        expect(rind.alterationCrustClass).to.include('Thin Millimeter-Scale Acid-Weathered Basaltic Rind');
+        expect(rind.acidFogContext).to.include('Acid-Fog Alteration');
+    });
+
+    it('should discriminate Hydrated Anatase / Rutile Resistate vs Magmatic Ilmenite in CRISM spectra', () => {
+        // Hydrated Anatase / Rutile (Mawrth Vallis / Columbia Hills: UV slope = 0.12, Ti-OH = 0.04, BD1900 = 0.06):
+        const anatase = BandMathEngine.computeCRISMTitaniumOxideIndices(0.12, 0.005, 0.06, 0.04);
+        expect(anatase.isTitaniumMineralDetected).to.be.true;
+        expect(anatase.titaniumClass).to.include('Hydrated Titanium Oxide (Anatase / Rutile Resistate)');
+        expect(anatase.mineralSpecies).to.include('Anatase');
+        expect(anatase.chemicalFormula).to.include('TiO2 * nH2O');
+        expect(anatase.geochemicalResistateContext).to.include('Residual Laterite Insoluble Resistate Horizon');
+
+        // Magmatic Opaque Ilmenite (Syrtis Major: UV slope = 0.02, Opaque slope = 0.06, Ti-OH = 0.005):
+        const ilmenite = BandMathEngine.computeCRISMTitaniumOxideIndices(0.02, 0.06, 0.005, 0.005);
+        expect(ilmenite.isTitaniumMineralDetected).to.be.true;
+        expect(ilmenite.titaniumClass).to.include('Magmatic Opaque Fe-Ti Oxide (Ilmenite)');
+        expect(ilmenite.mineralSpecies).to.include('Ilmenite');
+        expect(ilmenite.chemicalFormula).to.include('FeTiO3');
+        expect(ilmenite.geochemicalResistateContext).to.include('High-Ti Basaltic Lava Flow');
+
+        // Non-titanium basalt:
+        const basalt = BandMathEngine.computeCRISMTitaniumOxideIndices(0.02, 0.01, 0.005, 0.005);
+        expect(basalt.isTitaniumMineralDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
