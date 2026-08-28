@@ -2266,6 +2266,52 @@ export class KRCEngine {
       volatileSpecies: isCO2 ? 'Carbon Dioxide (CO2 Dry Ice)' : 'Water Ice (H2O Frost)'
     };
   }
+
+  /**
+   * Calculate 1D crustal geothermal temperature profile, Moho basal boundary temperature, and liquid water melting isotherm depth.
+   * T(z) = T_surf + ( q_base / k ) * z - ( H_radio / (2 * k) ) * z^2
+   * Reference: Plesa et al. (2018), Smrekar et al. (2019) InSight HP3, Orosei et al. (2018) for SPLD basal lake.
+   * @param {number} surfaceTempK - Mean annual surface temperature in Kelvin (e.g. 160 K polar, 215 K equatorial)
+   * @param {number} [crustalThicknessKm=40.0] - Crustal Moho depth in km (20 to 80 km)
+   * @param {number} [geothermalHeatFluxMwm2=25.0] - Surface geothermal heat flux in mW/m^2 (15 to 45 mW/m^2)
+   * @param {number} [crustalThermalConductivityWmK=2.0] - Bulk crustal rock thermal conductivity in W/(m*K)
+   * @param {number} [radiogenicHeatGenerationWPerM3=2.5e-10] - Crustal volumetric radioactive heat production rate in W/m^3
+   * @returns {{mohoTemperatureK: number, mohoTemperatureC: number, depthToWaterMeltingKm: number, thermalGradientKPerKm: number, isBasalMeltingPossible: boolean}}
+   */
+  static computeLithosphericGeothermalBasalTemperature(surfaceTempK, crustalThicknessKm = 40.0, geothermalHeatFluxMwm2 = 25.0, crustalThermalConductivityWmK = 2.0, radiogenicHeatGenerationWPerM3 = 2.5e-10) {
+    const Tsurf = Math.max(50.0, surfaceTempK);
+    const D = Math.max(1.0, crustalThicknessKm) * 1000.0; // meters
+    const qBase = Math.max(1.0, geothermalHeatFluxMwm2) * 1e-3; // W/m^2
+    const k = Math.max(0.1, crustalThermalConductivityWmK);
+    const H = Math.max(0.0, radiogenicHeatGenerationWPerM3);
+
+    // Moho temperature
+    const TMohoK = Tsurf + (qBase / k) * D - (H / (2.0 * k)) * D * D;
+    const TMohoC = TMohoK - 273.15;
+
+    // Linear thermal gradient at surface (K/km)
+    const gradKPerKm = (qBase / k) * 1000.0;
+
+    // Depth to 273.15 K (0 C) water melting isotherm (m)
+    let zMeltKm = 100.0;
+    if (273.15 >= Tsurf) {
+      const deltaT = 273.15 - Tsurf;
+      const zMeltM = (deltaT * k) / qBase;
+      zMeltKm = zMeltM / 1000.0;
+    } else {
+      zMeltKm = 0.0;
+    }
+
+    const isBasalMelting = TMohoK >= 273.15;
+
+    return {
+      mohoTemperatureK: parseFloat(TMohoK.toFixed(1)),
+      mohoTemperatureC: parseFloat(TMohoC.toFixed(1)),
+      depthToWaterMeltingKm: parseFloat(zMeltKm.toFixed(2)),
+      thermalGradientKPerKm: parseFloat(gradKPerKm.toFixed(2)),
+      isBasalMeltingPossible: isBasalMelting
+    };
+  }
 }
 
 

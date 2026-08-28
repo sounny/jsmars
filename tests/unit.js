@@ -8812,6 +8812,41 @@ describe('Aerobraking Aerodynamics, Mesospheric Gravity Waves & Clinopyroxene Su
     });
 });
 
+describe('Frozen Orbit J2/J3 Equilibrium, Crustal Geothermal Moho & Pyroxene Solvus Thermometry', () => {
+    it('should calculate frozen orbit J2/J3 harmonic coupling and equilibrium eccentricity', () => {
+        // Mars Odyssey frozen mapping orbit (a = 3775 km, i = 93.1 deg):
+        const odysseyFrozen = TrajectoryEngine.computeFrozenOrbitEquilibriumAndJ3Coupling(3775.0, 93.1, 'mars');
+        expect(odysseyFrozen.isFrozenOrbitCapable).to.be.true;
+        expect(odysseyFrozen.frozenEquilibriumEccentricity).to.be.closeTo(0.029, 0.01);
+        expect(odysseyFrozen.criticalInclinationDeg).to.be.closeTo(63.43, 0.1);
+        expect(odysseyFrozen.frozenPeriapsisArgumentDeg).to.equal(270.0); // South Pole locked
+    });
+
+    it('should calculate 1D crustal geothermal temperature profile and Moho basal boundary temperature', () => {
+        // Typical Martian crust (T_surf = 215 K, D = 40 km, q = 25 mW/m^2, k = 2.0 W/mK):
+        const crustProfile = KRCEngine.computeLithosphericGeothermalBasalTemperature(215.0, 40.0, 25.0, 2.0);
+        expect(crustProfile.mohoTemperatureK).to.be.greaterThan(400.0);
+        expect(crustProfile.mohoTemperatureC).to.be.greaterThan(100.0);
+        expect(crustProfile.depthToWaterMeltingKm).to.be.closeTo(4.65, 0.2); // ~4.65 km to 0 C isotherm
+        expect(crustProfile.thermalGradientKPerKm).to.equal(12.5);
+        expect(crustProfile.isBasalMeltingPossible).to.be.true;
+    });
+
+    it('should calculate pyroxene solvus equilibrium crystallization geothermometry', () => {
+        // Typical Martian basaltic Augite (Wo = 35%, Mg# = 70%):
+        // T ~ 1213.5 C (magmatic extrusion regime)
+        const augiteTemp = BandMathEngine.computePyroxeneSolvusCrystallizationTemperature(35.0, 70.0);
+        expect(augiteTemp.crystallizationTempC).to.be.closeTo(1213.5, 5.0);
+        expect(augiteTemp.isMagmaticExtrusion).to.be.true;
+        expect(augiteTemp.thermalRegime).to.include('Magmatic Basaltic Extrusion');
+
+        // Slowly cooled plutonic pyroxene (Wo = 15%, Mg# = 45%):
+        const plutonicTemp = BandMathEngine.computePyroxeneSolvusCrystallizationTemperature(15.0, 45.0);
+        expect(plutonicTemp.crystallizationTempC).to.be.lessThan(1000.0);
+        expect(plutonicTemp.thermalRegime).to.include('Plutonic');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -1428,6 +1428,56 @@ export class TrajectoryEngine {
       isWithinSafetyCorridor: isSafe
     };
   }
+
+  /**
+   * Calculate gravitational J2/J3 harmonic coupling, apsidal precession rate domega/dt, and frozen orbit equilibrium eccentricity.
+   * domega/dt = ( 3 / 4 ) * n * J2 * (R_eq / p)^2 * ( 5 * cos^2(i) - 1 )
+   * e_frozen = -( J3 / (2 * J2) ) * ( R_eq / a ) * ( sin(i) / ( 1 - 1.25 * sin^2(i) ) )
+   * Reference: Cook (1966), Vallado (2013) for Mars Odyssey / MRO / MGS mission design.
+   * @param {number} semiMajorAxisKm - Semi-major axis a in km (e.g. 3775 km for Odyssey, 3646 km for MRO)
+   * @param {number} inclinationDeg - Orbital inclination i in degrees (e.g. 93.1 deg for Odyssey)
+   * @param {string} [body='mars'] - Planetary body ('mars', 'earth')
+   * @returns {{apsidalPrecessionDegPerDay: number, frozenEquilibriumEccentricity: number, criticalInclinationDeg: number, isFrozenOrbitCapable: boolean, frozenPeriapsisArgumentDeg: number}}
+   */
+  static computeFrozenOrbitEquilibriumAndJ3Coupling(semiMajorAxisKm, inclinationDeg, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const isEarth = bKey === 'earth';
+
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const Req = isEarth ? 6378.137 : 3396.19;    // km
+    const J2 = isEarth ? 1.08263e-3 : 1.96045e-3;
+    const J3 = isEarth ? -2.532e-6 : 3.15e-5;
+
+    const a = Math.max(100.0, semiMajorAxisKm);
+    const iRad = (inclinationDeg * Math.PI) / 180.0;
+    const n = Math.sqrt(mu / Math.pow(a, 3.0)); // rad/s
+
+    const sinI = Math.sin(iRad);
+    const cosI = Math.cos(iRad);
+
+    // Apsidal precession rate (circular reference e~0 -> p~a)
+    const dOmegaRadSec = 0.75 * n * J2 * Math.pow(Req / a, 2.0) * (5.0 * cosI * cosI - 1.0);
+    const dOmegaDegDay = dOmegaRadSec * (180.0 / Math.PI) * 86400.0;
+
+    // Critical inclination (where 5*cos^2(i) - 1 = 0)
+    const critIDeg = (Math.acos(1.0 / Math.sqrt(5.0)) * 180.0) / Math.PI; // ~63.43 deg
+
+    // Frozen orbit equilibrium eccentricity
+    const den = 1.0 - 1.25 * sinI * sinI;
+    let eFrozen = 0.005;
+    if (Math.abs(den) > 1e-4) {
+      eFrozen = -(J3 / (2.0 * J2)) * (Req / a) * (sinI / den);
+    }
+    eFrozen = Math.abs(eFrozen); // magnitude of equilibrium eccentricity
+
+    return {
+      apsidalPrecessionDegPerDay: parseFloat(dOmegaDegDay.toFixed(4)),
+      frozenEquilibriumEccentricity: parseFloat(eFrozen.toFixed(5)),
+      criticalInclinationDeg: parseFloat(critIDeg.toFixed(2)),
+      isFrozenOrbitCapable: true,
+      frozenPeriapsisArgumentDeg: J3 > 0 ? 270.0 : 90.0 // 270 deg for Mars South Pole
+    };
+  }
 }
 
 

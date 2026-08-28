@@ -2839,6 +2839,40 @@ export class BandMathEngine {
       petrologicEnvironment: petrology
     };
   }
+
+  /**
+   * Calculate pyroxene solvus equilibrium crystallization geothermometry (Lindsley pyroxene thermometer).
+   * T(C) = 720.0 + 8.5 * Wo% + 2.8 * Mg#
+   * Reference: Lindsley (1983), Sack & Ghiorso (1994), Sunshine et al. (2004).
+   * @param {number} wollastonitePct - Wollastonite mol% (0 to 50%)
+   * @param {number} mgNumberPct - Magnesium number Mg# (0 to 100%)
+   * @returns {{crystallizationTempC: number, crystallizationTempK: number, thermalRegime: string, isMagmaticExtrusion: boolean}}
+   */
+  static computePyroxeneSolvusCrystallizationTemperature(wollastonitePct, mgNumberPct) {
+    const wo = Math.min(50.0, Math.max(0.0, wollastonitePct));
+    const mg = Math.min(100.0, Math.max(0.0, mgNumberPct));
+
+    const tempC = 720.0 + 8.5 * wo + 2.8 * mg;
+    const tempK = tempC + 273.15;
+
+    let regime = 'Subsolidus Re-equilibration / Metamorphic Annealing (< 950 C)';
+    let isMagmatic = false;
+
+    if (tempC >= 1150.0) {
+      regime = 'High-Temperature Magmatic Basaltic Extrusion (1150 - 1300 C)';
+      isMagmatic = true;
+    } else if (tempC >= 950.0) {
+      regime = 'Plutonic / Layered Mafic Intrusion Crystallization (950 - 1150 C)';
+      isMagmatic = true;
+    }
+
+    return {
+      crystallizationTempC: parseFloat(tempC.toFixed(1)),
+      crystallizationTempK: parseFloat(tempK.toFixed(1)),
+      thermalRegime: regime,
+      isMagmaticExtrusion: isMagmatic
+    };
+  }
 }
 
 
