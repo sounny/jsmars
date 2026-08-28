@@ -6604,6 +6604,65 @@ export class KRCEngine {
       acidFogContext: `Volcanic Acid-Fog Weathering (${hDotMmKyr.toFixed(2)} mm/kyr Duricrust Growth, ${hTotCm.toFixed(1)} cm Crust in ${tKyr.toFixed(0)} kyr)`
     };
   }
+
+  /**
+   * Calculate acidic hypersaline paleolake evaporative concentration, brine pH evolution, and sequential evaporite (Jarosite/Alunite/Kieserite/Halite) precipitation.
+   * tau_dry = h_lake / E_evap
+   * pH_brine = pH_0 - log10( CF )
+   * M_salts = V_0 * C_salts
+   * Reference: Tosca & McLennan (2006), Marion et al. (2008), Ehlmann et al. (2016) for Columbus Crater Acidic Paleolakes.
+   * @param {number} [lakeVolumeKm3=50.0] - Initial paleolake water volume in km^3 (1.0 to 1000.0 km^3)
+   * @param {number} [meanLakeDepthM=50.0] - Initial average lake depth in m (5.0 to 500.0 m)
+   * @param {number} [initialPH=2.8] - Initial lake fluid pH (1.5 to 6.0)
+   * @param {number} [evaporationRateMmYr=500.0] - Annual net evaporation rate in mm/yr (100 to 2000 mm/yr)
+   * @returns {{desiccationTimescaleYears: number, finalBrinePH: number, totalEvaporiteMassTg: number, evaporiteBedThicknessCm: number, dominantPrecipitateStage: string, lakeEvaporiteContext: string}}
+   */
+  static computeMartianAcidicLakeEvaporitePrecipitation(lakeVolumeKm3 = 50.0, meanLakeDepthM = 50.0, initialPH = 2.8, evaporationRateMmYr = 500.0) {
+    const V0Km3 = Math.max(0.1, lakeVolumeKm3);
+    const h0M = Math.max(1.0, meanLakeDepthM);
+    const pH0 = Math.max(0.5, Math.min(7.0, initialPH));
+    const EevapMmYr = Math.max(50.0, evaporationRateMmYr);
+
+    const EevapMYr = EevapMmYr / 1000.0;
+    const rhoEvap = 2200.0; // kg/m^3 mean evaporite density
+
+    // Lake drying timescale (years)
+    const tDryYrs = h0M / EevapMYr;
+
+    // 90% desiccation concentration factor CF = 10
+    const CF = 10.0;
+    const finalPH = Math.max(0.5, pH0 - Math.log10(CF));
+
+    // Lake surface area (m^2)
+    const V0M3 = V0Km3 * 1e9;
+    const AlakeM2 = V0M3 / h0M;
+
+    // Total precipitated salt mass (Tg = 10^9 kg, ~35 kg/m^3 dissolved salts in acidic sulfate brine)
+    const saltConcKgM3 = 35.0;
+    const MsaltsKg = V0M3 * saltConcKgM3;
+    const MsaltsTg = MsaltsKg / 1e9;
+
+    // Evaporite bed average thickness (cm)
+    const hBedM = MsaltsKg / (AlakeM2 * rhoEvap);
+    const hBedCm = hBedM * 100.0;
+
+    // Mineralogical precipitation stage
+    let prepStage = 'Jarosite + Alunite + Gypsum + Fe-Sulfate Sequence';
+    if (finalPH <= 1.5) {
+      prepStage = 'Hyper-Acidic Jarosite + Alunite + Kieserite + Bitter Halite Crust';
+    } else if (pH0 >= 4.0) {
+      prepStage = 'Neutral-to-Weakly Acidic Polyhydrated Mg-Sulfate + Gypsum Sequence';
+    }
+
+    return {
+      desiccationTimescaleYears: parseFloat(tDryYrs.toFixed(1)),
+      finalBrinePH: parseFloat(finalPH.toFixed(2)),
+      totalEvaporiteMassTg: parseFloat(MsaltsTg.toFixed(1)),
+      evaporiteBedThicknessCm: parseFloat(hBedCm.toFixed(1)),
+      dominantPrecipitateStage: prepStage,
+      lakeEvaporiteContext: `Acidic Paleolake Evaporite (${tDryYrs.toFixed(0)} yr Desiccation, ${hBedCm.toFixed(1)} cm Bed, pH ${pH0.toFixed(1)} -> ${finalPH.toFixed(1)}, ${prepStage})`
+    };
+  }
 }
 
 

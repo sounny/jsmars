@@ -6100,6 +6100,68 @@ export class TrajectoryEngine {
       mgaContext: `Mars Gravity Assist (${deltaDeg.toFixed(1)} deg Deflection, +${dvBoostKmS.toFixed(2)} km/s Boost, Aphelion pumped to ${rApoPostAU.toFixed(1)} AU)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Jupiter Interplanetary Cycler orbit trajectory, orbital resonance period, Trans-Cycler Injection (TCI), and encounter hyperbolic excesses.
+   * a = ( r_mars + r_jupiter ) / 2
+   * P_cycler = a^1.5
+   * e = ( r_jupiter - r_mars ) / ( r_jupiter + r_mars )
+   * Reference: Aldrin (1985), Byrnes et al. (1993), Russell & Ocampo (2004), Curtis (2013) for Interplanetary Cycler Mechanics.
+   * @param {number} [jupiterSemiMajorAxisAU=5.2044] - Jupiter distance in AU (5.0 to 5.5 AU)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, orbitalPeriodYears: number, oneWayTransitYears: number, transCyclerInjectionDeltaVKmS: number, marsEncounterVInfKmS: number, jupiterEncounterVInfKmS: number, cyclerContext: string}}
+   */
+  static computeMarsToJupiterCyclerOrbitTrajectory(jupiterSemiMajorAxisAU = 5.2044, marsParkingAltitudeKm = 300.0) {
+    const rJupAU = Math.max(4.8, Math.min(5.6, jupiterSemiMajorAxisAU));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rJupDistKm = rJupAU * AU_KM;
+
+    // Cycler orbit ellipse
+    const aAU = (rMarsAU + rJupAU) / 2.0;
+    const aKm = aAU * AU_KM;
+    const ecc = (rJupAU - rMarsAU) / (rJupAU + rMarsAU);
+
+    // Period & Transit time (years)
+    const periodYrs = Math.pow(aAU, 1.5);
+    const transitYrs = periodYrs / 2.0;
+
+    // Perihelion and aphelion velocities
+    const vpKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vaKmS = Math.sqrt(muSun * ((2.0 / rJupDistKm) - (1.0 / aKm)));
+
+    // Circular planet velocities
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vJupCircKmS = Math.sqrt(muSun / rJupDistKm);
+
+    // Hyperbolic excesses
+    const vInfMarsKmS = Math.abs(vpKmS - vMarsCircKmS);
+    const vInfJupKmS = Math.abs(vJupCircKmS - vaKmS);
+
+    // Trans-Cycler Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTciKmS = vTransDepHypKmS - vParkCircKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(4)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      orbitalPeriodYears: parseFloat(periodYrs.toFixed(2)),
+      oneWayTransitYears: parseFloat(transitYrs.toFixed(2)),
+      transCyclerInjectionDeltaVKmS: parseFloat(dvTciKmS.toFixed(3)),
+      marsEncounterVInfKmS: parseFloat(vInfMarsKmS.toFixed(3)),
+      jupiterEncounterVInfKmS: parseFloat(vInfJupKmS.toFixed(3)),
+      cyclerContext: `Mars-Jupiter Cycler (${periodYrs.toFixed(1)} yr Period, ${transitYrs.toFixed(1)} yr One-Way Transit, ${dvTciKmS.toFixed(2)} km/s TCI, e=${ecc.toFixed(2)})`
+    };
+  }
 }
 
 

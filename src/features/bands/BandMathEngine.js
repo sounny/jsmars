@@ -6269,6 +6269,65 @@ export class BandMathEngine {
       diageneticAqueousContext: context
     };
   }
+
+  /**
+   * Decompose CRISM 1 um VNIR/SWIR mafic absorption depths into Olivine, Low-Ca Pyroxene (LCP), and High-Ca Pyroxene (HCP) modal fractions and IUGS lithologic classification.
+   * f_ol = d_ol / ( d_ol + d_lcp + d_hcp )
+   * Reference: Sunshine & Pieters (1993), Mustard et al. (2005), Poulet et al. (2007), Viviano-Beck et al. (2014) for Martian Igneous Petrology.
+   * @param {number} [olivineDepth=0.12] - OLINDEX3 / 1 um broad olivine band depth (0.0 to 0.50)
+   * @param {number} [lowCaPyroxeneDepth=0.03] - LCPINDEX2 / 0.92 um orthopyroxene band depth (0.0 to 0.50)
+   * @param {number} [highCaPyroxeneDepth=0.02] - HCPINDEX2 / 1.05 um clinopyroxene band depth (0.0 to 0.50)
+   * @returns {{olivineFractionPercent: number, lowCaPyroxeneFractionPercent: number, highCaPyroxeneFractionPercent: number, dominantLithologyClass: string, petrologicContext: string}}
+   */
+  static computeCRISMMaficMineralTernaryModalComposition(olivineDepth = 0.12, lowCaPyroxeneDepth = 0.03, highCaPyroxeneDepth = 0.02) {
+    const dol = Math.max(0.0, olivineDepth);
+    const dlcp = Math.max(0.0, lowCaPyroxeneDepth);
+    const dhcp = Math.max(0.0, highCaPyroxeneDepth);
+
+    const dtot = dol + dlcp + dhcp;
+
+    if (dtot < 0.015) {
+      return {
+        olivineFractionPercent: 0.0,
+        lowCaPyroxeneFractionPercent: 0.0,
+        highCaPyroxeneFractionPercent: 0.0,
+        dominantLithologyClass: 'Felsic / Plagioclase Feldspar / Dust-Covered Regolith',
+        petrologicContext: 'Non-Mafic Silicate / Dust Matrix without Detectable 1 um Crystal Field Band'
+      };
+    }
+
+    const fol = (dol / dtot) * 100.0;
+    const flcp = (dlcp / dtot) * 100.0;
+    const fhcp = (dhcp / dtot) * 100.0;
+
+    let lithology = 'Basaltic Regolith';
+    let context = 'Standard Tholeiitic Basalt Matrix';
+
+    if (fol >= 75.0) {
+      lithology = 'Dunite (Ultramafic Olivine Cumulate)';
+      context = 'Mantle Peridotite / Primitive Magma Chamber Cumulate (Nili Fossae / Argyre Circum-Basin)';
+    } else if (fol >= 40.0) {
+      lithology = 'Picrite / Olivine Basalt';
+      context = 'Primitive High-Mg Volcanic Flow / Lava Plain';
+    } else if (flcp >= 55.0) {
+      lithology = 'Norite / Orthopyroxenite (Low-Ca Pyroxene Dominant)';
+      context = 'Ancient Noachian Deep Crustal Exposure / Impact Melt Sheet';
+    } else if (fhcp >= 55.0) {
+      lithology = 'Gabbro / Clinopyroxenite (High-Ca Pyroxene Dominant)';
+      context = 'Evolved Hesperian/Amazonian Basaltic Lava Shield (Syrtis Major / Tharsis Flows)';
+    } else if (flcp >= 30.0 && fhcp >= 30.0) {
+      lithology = 'Two-Pyroxene Basalt (LCP + HCP)';
+      context = 'Sub-Equal Orthopyroxene-Clinopyroxene Basalt Flow';
+    }
+
+    return {
+      olivineFractionPercent: parseFloat(fol.toFixed(1)),
+      lowCaPyroxeneFractionPercent: parseFloat(flcp.toFixed(1)),
+      highCaPyroxeneFractionPercent: parseFloat(fhcp.toFixed(1)),
+      dominantLithologyClass: lithology,
+      petrologicContext: `${lithology} (Ol: ${fol.toFixed(0)}%, LCP: ${flcp.toFixed(0)}%, HCP: ${fhcp.toFixed(0)}% - ${context})`
+    };
+  }
 }
 
 

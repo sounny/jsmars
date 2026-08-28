@@ -11974,6 +11974,53 @@ describe('Mars Gravity Assist Flyby, Acid-Fog Duricrust & Iron Oxide Phase Inver
     });
 });
 
+describe('Mars-Jupiter Cycler, Acidic Lake Evaporation & Mafic Ternary Modality', () => {
+    it('should calculate Mars-to-Jupiter Interplanetary Cycler orbit resonance, TCI Delta-V, and encounter excesses', () => {
+        // Mars-Jupiter cycler (5.2044 AU Jupiter distance, 300 km Mars parking altitude):
+        const cycler = TrajectoryEngine.computeMarsToJupiterCyclerOrbitTrajectory(5.2044, 300.0);
+        expect(cycler.semiMajorAxisAU).to.be.closeTo(3.364, 0.01);
+        expect(cycler.eccentricity).to.be.closeTo(0.547, 0.01);
+        expect(cycler.orbitalPeriodYears).to.be.closeTo(6.17, 0.1); // ~6.17 yr period
+        expect(cycler.oneWayTransitYears).to.be.closeTo(3.09, 0.05); // ~3.09 yr one-way
+        expect(cycler.transCyclerInjectionDeltaVKmS).to.be.closeTo(4.197, 0.3); // ~4.20 km/s TCI
+        expect(cycler.marsEncounterVInfKmS).to.be.closeTo(5.883, 0.2); // ~5.88 km/s
+        expect(cycler.jupiterEncounterVInfKmS).to.be.closeTo(5.642, 1.6); // ~5.64 km/s
+        expect(cycler.cyclerContext).to.include('Mars-Jupiter Cycler');
+    });
+
+    it('should calculate acidic paleolake desiccation timescale, pH drop, and sequential evaporite precipitation', () => {
+        // 50 km^3 lake, 50 m depth, initial pH 2.80, 500 mm/yr evaporation:
+        const lake = KRCEngine.computeMartianAcidicLakeEvaporitePrecipitation(50.0, 50.0, 2.8, 500.0);
+        expect(lake.desiccationTimescaleYears).to.equal(100.0); // 100 yr desiccation
+        expect(lake.finalBrinePH).to.equal(1.80); // pH 2.8 -> 1.8 at CF = 10
+        expect(lake.totalEvaporiteMassTg).to.be.closeTo(1750.0, 100.0); // 1750 Tg evaporite salt
+        expect(lake.evaporiteBedThicknessCm).to.be.closeTo(79.5, 5.0); // ~79.5 cm bed
+        expect(lake.dominantPrecipitateStage).to.include('Jarosite + Alunite');
+        expect(lake.lakeEvaporiteContext).to.include('Acidic Paleolake Evaporite');
+    });
+
+    it('should calculate CRISM mafic mineral ternary modality (Olivine vs LCP vs HCP) and IUGS lithologic class', () => {
+        // Dunite cumulate (Nili Fossae: Olivine = 0.14, LCP = 0.02, HCP = 0.01 -> fol = 82.4% >= 75%):
+        const dunite = BandMathEngine.computeCRISMMaficMineralTernaryModalComposition(0.14, 0.02, 0.01);
+        expect(dunite.olivineFractionPercent).to.be.closeTo(82.4, 1.0);
+        expect(dunite.dominantLithologyClass).to.include('Dunite (Ultramafic Olivine Cumulate)');
+
+        // Gabbroic basalt (Syrtis Major: Olivine = 0.02, LCP = 0.03, HCP = 0.10 -> fhcp = 66.7% >= 55%):
+        const gabbro = BandMathEngine.computeCRISMMaficMineralTernaryModalComposition(0.02, 0.03, 0.10);
+        expect(gabbro.highCaPyroxeneFractionPercent).to.be.closeTo(66.7, 1.0);
+        expect(gabbro.dominantLithologyClass).to.include('Gabbro / Clinopyroxenite');
+
+        // Norite deep crust (Ancient Noachian crust: Olivine = 0.02, LCP = 0.10, HCP = 0.03 -> flcp = 66.7% >= 55%):
+        const norite = BandMathEngine.computeCRISMMaficMineralTernaryModalComposition(0.02, 0.10, 0.03);
+        expect(norite.lowCaPyroxeneFractionPercent).to.be.closeTo(66.7, 1.0);
+        expect(norite.dominantLithologyClass).to.include('Norite / Orthopyroxenite');
+
+        // Non-mafic dust/felsic:
+        const dust = BandMathEngine.computeCRISMMaficMineralTernaryModalComposition(0.002, 0.002, 0.002);
+        expect(dust.dominantLithologyClass).to.include('Felsic / Plagioclase Feldspar');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

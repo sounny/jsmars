@@ -425,3 +425,10 @@ TEST FAILURE: Unit test suite failed (2 failures):
 - should discriminate Crystalline Gray Hematite, Oxyhydroxide Goethite, and Red Dust in CRISM spectra
 ?: AssertionError: expected false to be true
     at n.<anonymous> (unit.js:11968:47)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 19:00:49 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Jupiter Interplanetary Cycler orbit resonance, TCI Delta-V, and encounter excesses
+?: AssertionError: expected 5.883 to be close to 6.44 +/- 0.3
+    at n.<anonymous> (unit.js:11986:51)
