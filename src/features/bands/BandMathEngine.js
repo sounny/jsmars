@@ -2873,6 +2873,52 @@ export class BandMathEngine {
       isMagmaticExtrusion: isMagmatic
     };
   }
+
+  /**
+   * Calculate clinopyroxene/melt Fe-Mg exchange distribution coefficient KD and invert equilibrium parent magma composition.
+   * KD(Fe-Mg) = ( (Fe/Mg)_cpx ) / ( (Fe/Mg)_melt ) ~ 0.28
+   * Reference: Roeder & Emslie (1970), Nielsen & Drake (1979), Filiberto & Dasgupta (2011) for Martian shergottites.
+   * @param {number} pyroxeneMgNumberPct - Pyroxene crystal Mg# (0 to 100%)
+   * @param {number} [wollastonitePct=35.0] - Pyroxene crystal Wollastonite mol% (0 to 50%)
+   * @returns {{kdFeMg: number, equilibriumMeltMgNumberPct: number, liquidusTempC: number, parentMagmaType: string, isPrimitiveParentMelt: boolean}}
+   */
+  static computePyroxeneMeltPartitionCoefficients(pyroxeneMgNumberPct, wollastonitePct = 35.0) {
+    const mgCpx = Math.min(99.0, Math.max(1.0, pyroxeneMgNumberPct));
+    const wo = Math.min(50.0, Math.max(0.0, wollastonitePct));
+
+    const KD = 0.28; // Roeder & Emslie equilibrium exchange coefficient
+
+    // (Fe/Mg)_cpx = (100 - Mg#) / Mg#
+    const feMgCpx = (100.0 - mgCpx) / mgCpx;
+
+    // (Fe/Mg)_melt = (Fe/Mg)_cpx / KD
+    const feMgMelt = feMgCpx / KD;
+
+    // Mg#_melt = 100 / (1 + (Fe/Mg)_melt)
+    const mgMelt = 100.0 / (1.0 + feMgMelt);
+
+    // Liquidus temperature approximation (C)
+    const tLiqC = 1020.0 + 4.5 * mgCpx + 3.0 * wo;
+
+    let magmaType = 'Evolved Basaltic Magma (Typical Martian Surface Lava)';
+    let isPrimitive = false;
+
+    if (mgMelt >= 65.0) {
+      magmaType = 'Primitive Primary Mantle Melt (Picritic / Ultramafic)';
+      isPrimitive = true;
+    } else if (mgMelt < 40.0) {
+      magmaType = 'Highly Fractionated Ferrobasalt (Evolved Rift / Caldera)';
+      isPrimitive = false;
+    }
+
+    return {
+      kdFeMg: KD,
+      equilibriumMeltMgNumberPct: parseFloat(mgMelt.toFixed(1)),
+      liquidusTempC: parseFloat(tLiqC.toFixed(1)),
+      parentMagmaType: magmaType,
+      isPrimitiveParentMelt: isPrimitive
+    };
+  }
 }
 
 

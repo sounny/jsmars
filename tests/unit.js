@@ -8847,6 +8847,47 @@ describe('Frozen Orbit J2/J3 Equilibrium, Crustal Geothermal Moho & Pyroxene Sol
     });
 });
 
+describe('King-Hele Orbital Decay, Multi-Harmonic Thermal Skin Depths & Pyroxene Melt Partitions', () => {
+    it('should calculate satellite orbital decay rate and lifetime using King-Hele atmospheric drag', () => {
+        // Low circular science orbit (h = 250 km, a = 3646 km):
+        const lowOrbit = TrajectoryEngine.computeOrbitalLifetimeAndSemiMajorAxisDecayRate(3646.0, 0.005, 1000.0, 15.0, 2.20, 'mars');
+        expect(lowOrbit.periapsisAltitudeKm).to.be.closeTo(231.6, 2.0);
+        expect(lowOrbit.atmosphericDensityAtPeriapsisKgM3).to.be.greaterThan(1e-15);
+        expect(lowOrbit.decayRateKmPerDay).to.be.greaterThan(0.0);
+        expect(lowOrbit.orbitalLifetimeDays).to.be.greaterThan(100.0);
+
+        // Extremely low decaying orbit (h_p = 110 km): rapid decay in sols
+        const decayOrbit = TrajectoryEngine.computeOrbitalLifetimeAndSemiMajorAxisDecayRate(3510.0, 0.005, 1000.0, 15.0, 2.20, 'mars');
+        expect(decayOrbit.decayRateKmPerDay).to.be.greaterThan(0.001);
+        expect(decayOrbit.orbitalLifetimeDays).to.be.lessThan(2500.0);
+    });
+
+    it('should calculate multi-harmonic subsurface thermal skin depth spectrum for diurnal, seasonal, and obliquity cycles', () => {
+        // Typical Martian sandy regolith (I = 250 tiu, rho = 1500 kg/m^3, c_p = 800 J/kgK):
+        const marsSpectrum = KRCEngine.computeMultiHarmonicThermalSkinDepthSpectrum(250.0, 1500.0, 800.0, 'mars');
+        expect(marsSpectrum.diurnalSkinDepthCm).to.be.closeTo(3.50, 0.2); // ~3.5 cm diurnal skin depth
+        expect(marsSpectrum.seasonalSkinDepthMeters).to.be.closeTo(0.905, 0.05); // ~0.9 m seasonal skin depth
+        expect(marsSpectrum.obliquitySkinDepthMeters).to.be.greaterThan(100.0); // >100 m Milankovitch skin depth
+        expect(marsSpectrum.volumetricHeatCapacityJPerM3K).to.equal(1200000);
+        expect(marsSpectrum.thermalConductivityWmK).to.be.closeTo(0.0521, 0.005);
+    });
+
+    it('should calculate clinopyroxene/melt Fe-Mg exchange KD and invert parent magma composition', () => {
+        // High-Mg Augite phenocryst (Mg# = 85%, Wo = 35%):
+        // (Fe/Mg)_cpx = 15/85 = 0.1765 -> (Fe/Mg)_melt = 0.1765 / 0.28 = 0.630 -> Mg#_melt = 100 / 1.630 = 61.3%
+        const primitiveCpx = BandMathEngine.computePyroxeneMeltPartitionCoefficients(85.0, 35.0);
+        expect(primitiveCpx.kdFeMg).to.equal(0.28);
+        expect(primitiveCpx.equilibriumMeltMgNumberPct).to.be.closeTo(61.3, 1.0);
+        expect(primitiveCpx.liquidusTempC).to.be.greaterThan(1400.0);
+        expect(primitiveCpx.parentMagmaType).to.include('Basaltic Magma');
+
+        // Highly evolved Fe-rich pyroxene (Mg# = 40%, Wo = 25%):
+        const evolvedCpx = BandMathEngine.computePyroxeneMeltPartitionCoefficients(40.0, 25.0);
+        expect(evolvedCpx.equilibriumMeltMgNumberPct).to.be.lessThan(25.0);
+        expect(evolvedCpx.parentMagmaType).to.include('Ferrobasalt');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

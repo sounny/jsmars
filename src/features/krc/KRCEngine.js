@@ -2312,6 +2312,61 @@ export class KRCEngine {
       isBasalMeltingPossible: isBasalMelting
     };
   }
+
+  /**
+   * Calculate multi-harmonic subsurface thermal skin depth spectrum across diurnal, seasonal, and obliquity Milankovitch cycles.
+   * d_th = ( I / (rho * c_p) ) * sqrt( P / pi )
+   * Reference: Kieffer (2013), Mellon et al. (2004), Laskar et al. (2004) for KRC layered thermal evolution.
+   * @param {number} thermalInertia - Bulk regolith thermal inertia in tiu (e.g. 50 dust, 250 sand, 1200 bedrock)
+   * @param {number} [bulkDensityKgM3=1500.0] - Regolith bulk density in kg/m^3
+   * @param {number} [specificHeatJkgK=800.0] - Specific heat capacity in J/(kg*K)
+   * @param {string} [body='mars'] - Planetary body ('mars', 'moon', 'earth')
+   * @returns {{diurnalSkinDepthCm: number, seasonalSkinDepthMeters: number, obliquitySkinDepthMeters: number, volumetricHeatCapacityJPerM3K: number, thermalConductivityWmK: number}}
+   */
+  static computeMultiHarmonicThermalSkinDepthSpectrum(thermalInertia, bulkDensityKgM3 = 1500.0, specificHeatJkgK = 800.0, body = 'mars') {
+    const I = Math.max(10.0, thermalInertia);
+    const rho = Math.max(100.0, bulkDensityKgM3);
+    const cp = Math.max(100.0, specificHeatJkgK);
+
+    const bKey = body.toLowerCase();
+    const isMars = bKey === 'mars';
+    const isMoon = bKey === 'moon';
+
+    // Periods in seconds
+    let pDiurnal = 88775.244; // 1 sol for Mars
+    let pSeasonal = 5.935e7;  // 668.6 sols (687 Earth days)
+    let pObliquity = 3.787e12; // 120,000 year Milankovitch cycle
+
+    if (isMoon) {
+      pDiurnal = 29.53 * 86400.0; // 2.551e6 s
+      pSeasonal = 3.156e7;
+      pObliquity = 5.86e11; // 18.6 yr precession
+    } else if (!isMars) {
+      pDiurnal = 86400.0;
+      pSeasonal = 3.156e7;
+      pObliquity = 1.3e12; // 41,000 yr Earth obliquity
+    }
+
+    const Cv = rho * cp; // Volumetric heat capacity (J / (m^3 * K))
+
+    // Thermal conductivity k = I^2 / (rho * cp)
+    const k = (I * I) / Cv;
+
+    // Skin depths d = (I / Cv) * sqrt(P / pi)
+    const coeff = I / Cv;
+
+    const dDiurnalM = coeff * Math.sqrt(pDiurnal / Math.PI);
+    const dSeasonalM = coeff * Math.sqrt(pSeasonal / Math.PI);
+    const dObliquityM = coeff * Math.sqrt(pObliquity / Math.PI);
+
+    return {
+      diurnalSkinDepthCm: parseFloat((dDiurnalM * 100.0).toFixed(2)),
+      seasonalSkinDepthMeters: parseFloat(dSeasonalM.toFixed(3)),
+      obliquitySkinDepthMeters: parseFloat(dObliquityM.toFixed(1)),
+      volumetricHeatCapacityJPerM3K: parseFloat(Cv.toFixed(0)),
+      thermalConductivityWmK: parseFloat(k.toFixed(4))
+    };
+  }
 }
 
 

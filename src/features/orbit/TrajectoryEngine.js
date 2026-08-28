@@ -1478,6 +1478,75 @@ export class TrajectoryEngine {
       frozenPeriapsisArgumentDeg: J3 > 0 ? 270.0 : 90.0 // 270 deg for Mars South Pole
     };
   }
+
+  /**
+   * Calculate orbital decay rate da/dt and remaining orbital lifetime using King-Hele atmospheric drag formulation.
+   * da/dt = - sqrt( mu * a ) * ( rho(h_p) / B )
+   * Lifetime = H / ( 2 * |da/dt| )
+   * Reference: King-Hele (1987), Vallado (2013) for satellite orbital decay.
+   * @param {number} semiMajorAxisKm - Semi-major axis a in km (e.g. 3650 km for low mapping orbit, 3520 km for decaying orbit)
+   * @param {number} [eccentricity=0.005] - Orbital eccentricity e (0 <= e < 0.8)
+   * @param {number} [spacecraftMassKg=1000.0] - Spacecraft mass in kg
+   * @param {number} [dragAreaM2=15.0] - Cross-sectional drag area in m^2
+   * @param {number} [dragCoefficientCd=2.20] - Hypersonic drag coefficient
+   * @param {string} [body='mars'] - Planetary body ('mars', 'earth')
+   * @returns {{decayRateKmPerDay: number, decayRateMetersPerOrbit: number, orbitalLifetimeDays: number, orbitalLifetimeMarsYears: number, periapsisAltitudeKm: number, atmosphericDensityAtPeriapsisKgM3: number}}
+   */
+  static computeOrbitalLifetimeAndSemiMajorAxisDecayRate(semiMajorAxisKm, eccentricity = 0.005, spacecraftMassKg = 1000.0, dragAreaM2 = 15.0, dragCoefficientCd = 2.20, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const isEarth = bKey === 'earth';
+
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const Rp = isEarth ? 6378.137 : 3396.19;    // km
+    const H = isEarth ? 7.2 : 8.0;               // scale height in km
+    const rhoRef = isEarth ? 5e-11 : 1.5e-7;     // ref density at 100 km
+
+    const a = Math.max(100.0, semiMajorAxisKm);
+    const e = Math.min(0.85, Math.max(0.0, eccentricity));
+    const m = Math.max(10.0, spacecraftMassKg);
+    const A = Math.max(0.1, dragAreaM2);
+    const Cd = Math.max(0.5, dragCoefficientCd);
+
+    // Ballistic coefficient B = m / (Cd * A) (kg/m^2)
+    const B = m / (Cd * A);
+
+    const hpKm = a * (1.0 - e) - Rp;
+
+    // Atmospheric density at periapsis
+    const rhoP = rhoRef * Math.exp(-(hpKm - 100.0) / H);
+
+    // Orbital period in seconds T = 2*pi*sqrt(a^3 / mu)
+    const TSec = 2.0 * Math.PI * Math.sqrt(Math.pow(a, 3.0) / mu);
+    const revsPerDay = 86400.0 / TSec;
+
+    // Circular base decay rate da/dt (m/s -> km/day)
+    const vCircMS = Math.sqrt((mu * 1e9) / (a * 1e3));
+    let daDtMS = -(vCircMS * (rhoP / B)); // m/s instantaneous rate
+
+    // Eccentricity concentration factor (King-Hele correction)
+    if (e > 0.01) {
+      const cParam = (a * e) / H;
+      if (cParam > 1.0) {
+        daDtMS *= Math.sqrt(1.0 / (2.0 * Math.PI * cParam));
+      }
+    }
+
+    const daDtKmDay = daDtMS * 86.4; // convert m/s to km/day
+    const daDtMOrbit = (daDtMS * TSec); // meters per orbit
+
+    const absDaDtKmDay = Math.max(1e-12, Math.abs(daDtKmDay));
+    const lifetimeDays = (H / (2.0 * absDaDtKmDay));
+    const lifetimeMarsYears = lifetimeDays / 687.0;
+
+    return {
+      decayRateKmPerDay: parseFloat(Math.abs(daDtKmDay).toExponential(4)),
+      decayRateMetersPerOrbit: parseFloat(Math.abs(daDtMOrbit).toExponential(4)),
+      orbitalLifetimeDays: parseFloat(lifetimeDays.toFixed(1)),
+      orbitalLifetimeMarsYears: parseFloat(lifetimeMarsYears.toFixed(2)),
+      periapsisAltitudeKm: parseFloat(hpKm.toFixed(2)),
+      atmosphericDensityAtPeriapsisKgM3: parseFloat(rhoP.toExponential(4))
+    };
+  }
 }
 
 
