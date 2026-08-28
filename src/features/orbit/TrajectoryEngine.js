@@ -3178,6 +3178,73 @@ export class TrajectoryEngine {
       aerocaptureFeasibility: feasibility
     };
   }
+
+  /**
+   * Calculate hypersonic stagnation point convective heat flux and integrated thermal load using Sutton-Graves relation for aeroshell TPS sizing.
+   * q_s = k_SG * sqrt( rho / R_N ) * v^3
+   * Q_load = q_s * sqrt( pi * H_s / ( 2 * v * |sin(gamma)| ) )
+   * Reference: Sutton & Graves (1971), Tauber & Sutton (1991), Wright et al. (2006) for Mars Pathfinder, MER, MSL, and InSight TPS sizing.
+   * @param {number} [entryVelocityKmS=5.5] - Hypersonic atmospheric velocity in km/s (1.0 to 15.0 km/s)
+   * @param {number} [atmosphericDensityKgM3=1.5e-4] - Free-stream atmospheric density in kg/m^3
+   * @param {number} [noseRadiusMeters=0.66] - Aeroshell effective spherical nose radius in meters (0.1 to 5.0 m)
+   * @param {number} [entryFlightPathAngleDeg=-12.0] - Atmospheric entry flight path angle gamma in degrees
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{stagnationHeatFluxWPerCm2: number, stagnationHeatFluxKWPerM2: number, integratedHeatLoadJPerCm2: number, integratedHeatLoadMJPerM2: number, tpsMaterialSuitability: string, radiativeHeatingRegime: string}}
+   */
+  static computeHypersonicStagnationConvectiveHeatFlux(entryVelocityKmS = 5.5, atmosphericDensityKgM3 = 1.5e-4, noseRadiusMeters = 0.66, entryFlightPathAngleDeg = -12.0, body = 'mars') {
+    const vMS = Math.max(100.0, entryVelocityKmS * 1000.0);
+    const rho = Math.max(1e-10, atmosphericDensityKgM3);
+    const Rn = Math.max(0.01, noseRadiusMeters);
+    const gammaRad = Math.abs(entryFlightPathAngleDeg) * (Math.PI / 180.0);
+    const sinGamma = Math.max(0.05, Math.sin(gammaRad));
+
+    const isEarth = body.toLowerCase() === 'earth';
+    const isVenus = body.toLowerCase() === 'venus';
+
+    let kSG = 1.9027e-4; // kg^0.5 / m for CO2 (Mars)
+    let HsM = 11100.0; // scale height (m)
+
+    if (isEarth) {
+      kSG = 1.7415e-4; // Earth N2-O2
+      HsM = 8500.0;
+    } else if (isVenus) {
+      kSG = 1.898e-4;
+      HsM = 15900.0;
+    }
+
+    // Stagnation point heat flux q_s = kSG * sqrt(rho / Rn) * v^3 (W/m^2)
+    const qsWM2 = kSG * Math.sqrt(rho / Rn) * Math.pow(vMS, 3.0);
+    const qsWPerCm2 = qsWM2 / 10000.0; // W/cm^2
+    const qsKWPerM2 = qsWM2 / 1000.0; // kW/m^2
+
+    // Approximate integrated heat load Q_load = qs * sqrt( pi * Hs / ( 2 * v * sin(gamma) ) ) (J/m^2)
+    const tEffSec = Math.sqrt((Math.PI * HsM) / (2.0 * vMS * sinGamma));
+    const qLoadJM2 = qsWM2 * tEffSec;
+    const qLoadJPerCm2 = qLoadJM2 / 10000.0; // J/cm^2
+    const qLoadMJM2 = qLoadJM2 / 1e6; // MJ/m^2
+
+    // TPS material evaluation
+    let tps = 'SLA-561V / SIRCA Silicone Elastomer (Pathfinder / MER / InSight Class)';
+    if (qsWPerCm2 > 250.0) {
+      tps = 'PICA / C-PICA Phenolic Carbon Ablator (MSL / Perseverance / Stardust Ultra-High Heat Flux Class)';
+    } else if (qsWPerCm2 <= 40.0) {
+      tps = 'Reusable Ceramic Tiles / Low-Density Carbon-Carbon (Shuttle / Spaceplane Class)';
+    }
+
+    let rad = 'Negligible Shock Layer Radiative Heating (Pure Convective Regime)';
+    if (entryVelocityKmS > 7.5) {
+      rad = 'Significant CO2 / CN Shock Layer Radiative Emission (Coupled Convective + Radiative TPS Sizing Required)';
+    }
+
+    return {
+      stagnationHeatFluxWPerCm2: parseFloat(qsWPerCm2.toFixed(2)),
+      stagnationHeatFluxKWPerM2: parseFloat(qsKWPerM2.toFixed(2)),
+      integratedHeatLoadJPerCm2: parseFloat(qLoadJPerCm2.toFixed(2)),
+      integratedHeatLoadMJPerM2: parseFloat(qLoadMJM2.toFixed(2)),
+      tpsMaterialSuitability: tps,
+      radiativeHeatingRegime: rad
+    };
+  }
 }
 
 

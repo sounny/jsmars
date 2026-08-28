@@ -4052,6 +4052,51 @@ export class BandMathEngine {
       hydrothermalFacies: facies
     };
   }
+
+  /**
+   * Detect hydrated amorphous Opaline Silica / hydrothermal sinters from CRISM 1.41 um Si-OH, 1.91 um H2O, and 2.21-2.26 um broad Si-OH combination shoulder.
+   * Reference: Squyres et al. (2008), Ruff et al. (2011), Sun & Milliken (2015) for Gusev Crater (Home Plate / Spirit rover) and Antoniadi Crater hot spring sinters.
+   * @param {number} r1410 - Reflectance at 1.41 um Si-OH overtone minimum
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2210 - Reflectance at 2.21 um Si-OH primary minimum
+   * @param {number} r2260 - Reflectance at 2.26 um broad asymmetric silica shoulder
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1400: number, bd1900: number, bd2210: number, bd2260: number, isSinterSilicaPresent: boolean, silicaPhase: string, biosignaturePotential: string}}
+   */
+  static computeCRISMHydrothermalSinterSilicaIndices(r1410, r1910, r2210, r2260, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1400 = Math.max(0.0, 1.0 - (r1410 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+    const bd2260 = Math.max(0.0, 1.0 - (r2260 / cont));
+
+    let phase = 'Unaltered Basaltic Silicate Matrix';
+    let isSilica = false;
+    let bio = 'Standard Taphonomic Setting';
+
+    // Opaline silica features broad 2.21 um absorption with significant 2.26 um shoulder + 1.91 um water
+    if (bd2210 >= 0.025 && bd2260 >= 0.020 && bd1900 >= 0.025) {
+      isSilica = true;
+      if (bd1400 >= 0.015) {
+        phase = 'Hydrated Opaline Silica (Opal-A / Opal-CT / Chalcedony)';
+        bio = 'High-Priority Astrobiological Target: Hydrothermal Sinter / Hot Spring Precipitate with Exceptional Biosignature Taphonomy & Microfossil Preservation Potential (Home Plate Analogue)';
+      } else {
+        phase = 'Weathered Amorphous Leached Silica Residue';
+        bio = 'Acid-Leached Volcanic Glass / Weathering Rind';
+      }
+    }
+
+    return {
+      bd1400: parseFloat(bd1400.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      bd2260: parseFloat(bd2260.toFixed(4)),
+      isSinterSilicaPresent: isSilica,
+      silicaPhase: phase,
+      biosignaturePotential: bio
+    };
+  }
 }
 
 

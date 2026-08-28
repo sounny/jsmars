@@ -9837,6 +9837,41 @@ describe('Hypersonic Aerocapture, Seasonal Pore Ice Diffusion & Alunite Hydrothe
     });
 });
 
+describe('Hypersonic Stagnation Heat Flux, Milankovitch Obliquity & Opaline Silica', () => {
+    it('should calculate Sutton-Graves peak stagnation convective heat flux and TPS thermal load', () => {
+        // Mars atmospheric entry (v = 5.5 km/s, rho = 1.5e-4 kg/m^3, Rn = 0.66 m, gamma = -12 deg):
+        const heat = TrajectoryEngine.computeHypersonicStagnationConvectiveHeatFlux(5.5, 1.5e-4, 0.66, -12.0, 'mars');
+        expect(heat.stagnationHeatFluxWPerCm2).to.be.closeTo(47.72, 2.0); // ~47.7 W/cm^2 convective peak flux
+        expect(heat.stagnationHeatFluxKWPerM2).to.be.closeTo(477.2, 20.0); // ~477.2 kW/m^2
+        expect(heat.integratedHeatLoadJPerCm2).to.be.greaterThan(100.0); // > 100 J/cm^2 total thermal load
+        expect(heat.tpsMaterialSuitability).to.include('SLA-561V');
+    });
+
+    it('should calculate Milankovitch obliquity-driven insolation and paleoclimate tropical vs polar ice stability', () => {
+        // Current Mars epoch (obliquity = 25.2 deg, latitude = 45 deg):
+        const currentEpoch = KRCEngine.computeMilankovitchObliquityIceStabilityDepth(25.2, 45.0, 250.0, 150.0);
+        expect(currentEpoch.annualMeanInsolationWM2).to.be.greaterThan(100.0);
+        expect(currentEpoch.paleoclimateGlacialRegime).to.include('Mid-Latitude Permafrost');
+
+        // High obliquity epoch (obliquity = 45 deg, latitude = 15 deg equator):
+        const highObliquity = KRCEngine.computeMilankovitchObliquityIceStabilityDepth(45.0, 15.0, 250.0, 150.0);
+        expect(highObliquity.iceTableStabilityDepthMeters).to.equal(0.0); // surface glaciation at equator!
+        expect(highObliquity.tropicalGlaciationPotential).to.include('Tropical Valley Glaciation');
+    });
+
+    it('should discriminate Opaline Silica hot spring sinters from alunite, clays, and unaltered basalt in CRISM spectra', () => {
+        // Opaline silica at Gusev Crater Home Plate (strong 2.21-2.26 um broad Si-OH shoulder, 1.91 um and 1.41 um bands):
+        const silica = BandMathEngine.computeCRISMHydrothermalSinterSilicaIndices(0.24, 0.23, 0.22, 0.23, 0.30);
+        expect(silica.isSinterSilicaPresent).to.be.true;
+        expect(silica.silicaPhase).to.include('Opaline Silica');
+        expect(silica.biosignaturePotential).to.include('Biosignature Taphonomy');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMHydrothermalSinterSilicaIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isSinterSilicaPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

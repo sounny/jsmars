@@ -3779,6 +3779,71 @@ export class KRCEngine {
       iceStabilityAssessment: assessment
     };
   }
+
+  /**
+   * Calculate ground ice equilibrium stability depth and paleoclimate migration under 120-kyr Milankovitch planetary obliquity oscillations.
+   * F_mean(theta, eps) = ( S_0 / pi ) * [ cos(theta)*sin(eps) + (pi/2 - |theta|)*sin(theta)*cos(eps) ]
+   * T_surf = ( (1 - A) * F_mean / ( eps_th * sigma ) )^(1/4)
+   * Reference: Ward (1974), Laskar et al. (2004), Head et al. (2003), Schorghofer (2007) for tropical glaciation & polar cap desiccation.
+   * @param {number} [obliquityDeg=25.2] - Planetary spin-axis obliquity epsilon in degrees (10.0 to 55.0 deg)
+   * @param {number} [latitudeDeg=45.0] - Target planetocentric latitude theta in degrees (-90 to +90 deg)
+   * @param {number} [thermalInertiaTIU=250.0] - Regolith thermal inertia in tiu
+   * @param {number} [atmosphericHumidityPpm=150.0] - Atmospheric water vapor column in pr-um / ppm
+   * @returns {{annualMeanInsolationWM2: number, equilibriumSurfaceTempK: number, iceTableStabilityDepthMeters: number, paleoclimateGlacialRegime: string, tropicalGlaciationPotential: string}}
+   */
+  static computeMilankovitchObliquityIceStabilityDepth(obliquityDeg = 25.2, latitudeDeg = 45.0, thermalInertiaTIU = 250.0, atmosphericHumidityPpm = 150.0) {
+    const eps = Math.max(5.0, Math.min(65.0, obliquityDeg)) * (Math.PI / 180.0);
+    const theta = Math.max(-89.9, Math.min(89.9, latitudeDeg)) * (Math.PI / 180.0);
+    const absLat = Math.abs(theta);
+
+    const S0 = 590.0; // W/m^2 at Mars mean heliocentric distance (1.524 AU)
+    const A = 0.25; // mean Bond albedo
+    const emiss = 0.95;
+    const sigma = 5.670374e-8; // W/m^2/K^4
+
+    // Approximate annual mean top-of-atmosphere insolation
+    const term1 = Math.cos(absLat) * Math.sin(eps);
+    const term2 = (Math.PI / 2.0 - absLat) * Math.sin(absLat) * Math.cos(eps);
+    const fMean = (S0 / Math.PI) * Math.max(0.1, term1 + term2);
+
+    // Equilibrium surface temperature
+    const Tsurf = Math.pow(((1.0 - A) * fMean) / (emiss * sigma), 0.25);
+
+    // Frost point temperature based on atmospheric water vapor (~195 K for 150 ppm)
+    const Tfrost = 195.0 + Math.log(Math.max(10.0, atmosphericHumidityPpm) / 150.0) * 2.5;
+
+    // Equilibrium ice table depth (m)
+    let zIceM = 0.0;
+    if (Tsurf > Tfrost) {
+      zIceM = Math.min(5.0, ((Tsurf - Tfrost) / Tfrost) * 2.5);
+    }
+
+    let regime = 'Mid-Latitude Permafrost Ice Table (Current Astronomical Epoch)';
+    let glaciation = 'Subsurface Cryosphere Stable';
+
+    if (obliquityDeg >= 35.0) {
+      regime = 'High-Obliquity Tropical Glacial Epoch (Polar Desiccation & Equatorial Snowpack Deposition)';
+      if (Math.abs(latitudeDeg) <= 30.0) {
+        glaciation = 'Active Tropical Valley Glaciation & Tharsis Fan-Shaped Glacial Aprons';
+        zIceM = 0.0; // massive surface ice sheets at equator!
+      } else {
+        glaciation = 'Polar Ice Sheet Sublimation Deflation';
+      }
+    } else if (obliquityDeg <= 15.0) {
+      regime = 'Low-Obliquity Polar Cold-Trap Freeze-Out (Deep Equatorial Regolith Desiccation)';
+      if (Math.abs(latitudeDeg) <= 45.0) {
+        glaciation = 'Complete Low-Latitude Cryosphere Desiccation (> 1 m lag)';
+      }
+    }
+
+    return {
+      annualMeanInsolationWM2: parseFloat(fMean.toFixed(2)),
+      equilibriumSurfaceTempK: parseFloat(Tsurf.toFixed(2)),
+      iceTableStabilityDepthMeters: parseFloat(zIceM.toFixed(3)),
+      paleoclimateGlacialRegime: regime,
+      tropicalGlaciationPotential: glaciation
+    };
+  }
 }
 
 
