@@ -10345,6 +10345,48 @@ describe('Planetary Frozen Orbit Conditions, Diurnal Deliquescence & Plagioclase
     });
 });
 
+describe('Mars Aerocapture Entry Dynamics, Paleolake Wave Energy & Opal-A/CT Maturation', () => {
+    it('should calculate Mars aerocapture atmospheric entry speed, aerodynamic Delta-V, and apoapsis raise burn', () => {
+        // Interplanetary approach v_inf = 5.7 km/s, target apoapsis = 6000 km, atmospheric corridor periapsis = 45 km:
+        const aero = TrajectoryEngine.computeMarsAerocaptureAtmosphericEntryAndOrbitInsertion(5.70, 6000.0, 45.0, 125.0, 'mars');
+        expect(aero.atmosphericEntrySpeedKmS).to.be.closeTo(7.541, 0.05); // ~7.54 km/s entry velocity
+        expect(aero.atmosphericExitSpeedKmS).to.be.closeTo(4.206, 0.05); // ~4.21 km/s post-atmospheric exit
+        expect(aero.aerodynamicDeltaVDissipatedKmS).to.be.closeTo(3.335, 0.05); // ~3.34 km/s absorbed by Mars atmosphere
+        expect(aero.apoapsisPeriapsisRaiseDeltaVMPS).to.be.closeTo(33.0, 5.0); // ~33 m/s small raise burn at apoapsis
+        expect(aero.propulsiveMassSavingsPercent).to.be.greaterThan(60.0); // > 60% propellant savings
+        expect(aero.aerocaptureRegime).to.include('Mars Guided Aerocapture');
+    });
+
+    it('should calculate ancient Martian paleolake wind-generated wave height, wave power, and coastal cliff retreat', () => {
+        // Jezero / Gale Crater paleolake (fetch = 50 km, wind = 15 m/s, depth = 100 m):
+        const wave = KRCEngine.computeAncientMartianPaleolakeWaveEnergyAndCoastalErosion(50.0, 15.0, 100.0, 0.50);
+        expect(wave.significantWaveHeightMeters).to.be.closeTo(3.51, 0.2); // ~3.5 m wave height on Mars
+        expect(wave.peakWavePeriodSec).to.be.closeTo(6.4, 0.5); // ~6.4 s wave period
+        expect(wave.wavelengthMeters).to.be.closeTo(24.3, 3.0); // ~24 m wavelength
+        expect(wave.wavePowerFluxKWMeter).to.be.closeTo(5.44, 1.0); // ~5.4 kW/m shoreline wave power
+        expect(wave.coastalCliffRetreatRateMPerKyr).to.be.closeTo(1.09, 0.3); // ~1.09 m / kyr notch retreat
+        expect(wave.lacustrineWaveRegime).to.include('Moderate Lacustrine Wave Action');
+    });
+
+    it('should discriminate Opal-A amorphous silica from Opal-CT paracrystalline silica and basalt in CRISM spectra', () => {
+        // Opal-CT paracrystalline cristobalite silica in Toro Crater (2.21 um Si-OH and 2.26 um cristobalite shoulder):
+        const opalCT = BandMathEngine.computeCRISMOpalA_CTParacrystallineDehydrationIndices(0.25, 0.28, 0.22, 0.22, 0.30);
+        expect(opalCT.isSilicaPhasePresent).to.be.true;
+        expect(opalCT.silicaCrystallinityPhase).to.include('Paracrystalline Opal-CT');
+        expect(opalCT.diageneticMaturationSetting).to.include('Post-Impact Hydrothermal Maturation');
+
+        // Opal-A amorphous sinter in Gusev Home Plate (strong 1.40/1.90 um and 2.21 um Si-OH without 2.26 um shoulder):
+        const opalA = BandMathEngine.computeCRISMOpalA_CTParacrystallineDehydrationIndices(0.24, 0.22, 0.22, 0.30, 0.30);
+        expect(opalA.isSilicaPhasePresent).to.be.true;
+        expect(opalA.silicaCrystallinityPhase).to.include('Amorphous Opal-A');
+        expect(opalA.diageneticMaturationSetting).to.include('Epithermal Hot Spring Sinter');
+
+        // Basalt (no silica absorption):
+        const basalt = BandMathEngine.computeCRISMOpalA_CTParacrystallineDehydrationIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isSilicaPhasePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

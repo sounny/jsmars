@@ -4060,6 +4060,78 @@ export class TrajectoryEngine {
       frozenOrbitStabilityContext: desc
     };
   }
+
+  /**
+   * Calculate Mars aerocapture atmospheric entry kinematics, aerodynamic Delta-V dissipation, and apoapsis periapsis raise burn.
+   * v_entry = sqrt( v_inf^2 + 2*mu / r_entry )
+   * Delta_V_aero = v_entry - v_exit
+   * Delta_V_raise = v_a_post - v_a_pre
+   * Reference: Cruz (1999), Braun & Manning (2007), Lu (2014) for Mars Sample Return / Human Mars aerocapture architectures.
+   * @param {number} [vInfApproachKmS=5.70] - Interplanetary hyperbolic approach speed in km/s (3.0 to 10.0 km/s)
+   * @param {number} [targetApoapsisAltitudeKm=6000.0] - Target captured orbit apoapsis altitude in km (500 to 50000 km)
+   * @param {number} [atmosphericPericenterAltitudeKm=45.0] - Atmospheric entry corridor periapsis in km (35 to 65 km)
+   * @param {number} [entryInterfaceAltitudeKm=125.0] - Atmospheric interface altitude in km (125 km for Mars)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{atmosphericEntrySpeedKmS: number, atmosphericExitSpeedKmS: number, aerodynamicDeltaVDissipatedKmS: number, apoapsisPeriapsisRaiseDeltaVMPS: number, propulsiveMassSavingsPercent: number, aerocaptureRegime: string}}
+   */
+  static computeMarsAerocaptureAtmosphericEntryAndOrbitInsertion(vInfApproachKmS = 5.70, targetApoapsisAltitudeKm = 6000.0, atmosphericPericenterAltitudeKm = 45.0, entryInterfaceAltitudeKm = 125.0, body = 'mars') {
+    const vInf = Math.max(0.5, vInfApproachKmS);
+    const haTargetKm = Math.max(100.0, targetApoapsisAltitudeKm);
+    const hpAtmKm = Math.max(20.0, atmosphericPericenterAltitudeKm);
+    const hEntryKm = Math.max(50.0, entryInterfaceAltitudeKm);
+
+    let RpKm = 3389.5;
+    let mu = 42828.37; // km^3/s^2 (Mars)
+
+    if (body.toLowerCase() === 'earth') {
+      RpKm = 6378.137;
+      mu = 398600.4418;
+    } else if (body.toLowerCase() === 'venus') {
+      RpKm = 6051.8;
+      mu = 324859.0;
+    }
+
+    const rEntryKm = RpKm + hEntryKm;
+    const rAtmPeriKm = RpKm + hpAtmKm;
+    const rTargetApoKm = RpKm + haTargetKm;
+
+    // Atmospheric entry speed v_entry = sqrt( v_inf^2 + 2*mu / r_entry )
+    const vEntryKmS = Math.sqrt(Math.pow(vInf, 2.0) + (2.0 * mu) / rEntryKm);
+
+    // Target captured orbit semi-major axis
+    const aTargetKm = (rTargetApoKm + rAtmPeriKm) / 2.0;
+
+    // Atmospheric exit speed v_exit = sqrt( 2*mu * ( 1/r_entry - 1/(2*a_target) ) )
+    const vExitKmS = Math.sqrt(2.0 * mu * Math.max(1e-6, (1.0 / rEntryKm) - (1.0 / (2.0 * aTargetKm))));
+
+    // Aerodynamic velocity increment absorbed by atmospheric drag
+    const deltaVAeroKmS = vEntryKmS - vExitKmS;
+
+    // Raise periapsis to safe orbit (e.g. 250 km) at apoapsis
+    const rSafePeriKm = RpKm + 250.0;
+    const vaPre = Math.sqrt((2.0 * mu * rAtmPeriKm) / (rTargetApoKm * (rTargetApoKm + rAtmPeriKm)));
+    const vaPost = Math.sqrt((2.0 * mu * rSafePeriKm) / (rTargetApoKm * (rTargetApoKm + rSafePeriKm)));
+    const deltaVRaiseKmS = Math.max(0.0, vaPost - vaPre);
+    const deltaVRaiseMPS = deltaVRaiseKmS * 1000.0;
+
+    // Propulsive MOI burn without aerocapture would require ~ Delta_V_aero
+    // Mass savings compared to pure propulsive MOI (Isp = 320 s)
+    const massSavingsPct = (1.0 - Math.exp(-deltaVAeroKmS / (320.0 * 9.80665e-3))) * 100.0;
+
+    let regime = 'High-Precision Mars Guided Aerocapture & Atmospheric Braking Insertion';
+    if (deltaVAeroKmS > 4.0) {
+      regime = 'High-Energy Deep Atmospheric Aerocapture Trajectory';
+    }
+
+    return {
+      atmosphericEntrySpeedKmS: parseFloat(vEntryKmS.toFixed(3)),
+      atmosphericExitSpeedKmS: parseFloat(vExitKmS.toFixed(3)),
+      aerodynamicDeltaVDissipatedKmS: parseFloat(deltaVAeroKmS.toFixed(3)),
+      apoapsisPeriapsisRaiseDeltaVMPS: parseFloat(deltaVRaiseMPS.toFixed(1)),
+      propulsiveMassSavingsPercent: parseFloat(massSavingsPct.toFixed(1)),
+      aerocaptureRegime: regime
+    };
+  }
 }
 
 

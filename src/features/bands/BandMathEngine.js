@@ -4634,6 +4634,53 @@ export class BandMathEngine {
       primordialCrustContext: context
     };
   }
+
+  /**
+   * Discriminate amorphous hydrated silica (Opal-A) from diagenetically matured paracrystalline silica (Opal-CT: Cristobalite/Tridymite) using CRISM 1.40 um, 1.90 um, 2.21 um (Si-OH), and 2.26 um cristobalite shoulder.
+   * Reference: Smith et al. (2013), Rice et al. (2013), Sun & Milliken (2015), Viviano-Beck et al. (2014) for Home Plate & Toro Crater silica maturation.
+   * @param {number} r1400 - Reflectance at 1.40 um Si-OH overtone
+   * @param {number} r1900 - Reflectance at 1.90 um molecular H2O band
+   * @param {number} r2210 - Reflectance at 2.21 um fundamental Si-OH combination
+   * @param {number} r2260 - Reflectance at 2.26 um diagnostic Opal-CT cristobalite shoulder
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1400: number, bd1900: number, bd2210: number, bd2260: number, isSilicaPhasePresent: boolean, silicaCrystallinityPhase: string, diageneticMaturationSetting: string}}
+   */
+  static computeCRISMOpalA_CTParacrystallineDehydrationIndices(r1400, r1900, r2210, r2260, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1400 = Math.max(0.0, 1.0 - (r1400 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1900 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+    const bd2260 = Math.max(0.0, 1.0 - (r2260 / cont));
+
+    let isSilica = false;
+    let phase = 'Unaltered Primary Igneous Silicate';
+    let setting = 'Standard Basaltic Regolith';
+
+    if (bd2210 >= 0.025) {
+      isSilica = true;
+      if (bd2260 >= 0.020) {
+        phase = 'Paracrystalline Opal-CT (Cristobalite / Tridymite Diagenetic Silica)';
+        setting = 'Post-Impact Hydrothermal Maturation / Thermal Dehydration Metamorphism (> 50-150 C)';
+      } else if (bd1900 >= 0.020) {
+        phase = 'Amorphous Opal-A (Hydrated Sinter / Fumarolic Precipitate)';
+        setting = 'Low-Temperature Epithermal Hot Spring Sinter / Volcanic Fumarole Silica Crust';
+      } else {
+        phase = 'Partially Dehydrated Opaline Silica';
+        setting = 'Intermediate Hydrothermal Weathering Crust';
+      }
+    }
+
+    return {
+      bd1400: parseFloat(bd1400.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      bd2260: parseFloat(bd2260.toFixed(4)),
+      isSilicaPhasePresent: isSilica,
+      silicaCrystallinityPhase: phase,
+      diageneticMaturationSetting: setting
+    };
+  }
 }
 
 

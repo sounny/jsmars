@@ -4643,6 +4643,68 @@ export class KRCEngine {
       deliquescenceThermodynamicState: state
     };
   }
+
+  /**
+   * Calculate ancient Martian paleolake/ocean wind-generated surface wave height, wavelength, wave power flux, and coastal cliff notch retreat rate.
+   * Hs = 0.283 * ( U^2 / g ) * tanh( 0.0125 * ( g*F / U^2 )^0.42 )
+   * P_wave = (1/16) * rho * g * Hs^2 * c_g
+   * Reference: Clifford & Parker (2001), Lorenz et al. (2005), Banfield et al. (2015), DiBiase et al. (2013) for Jezero / Gale / Vastitas Borealis coastal geomorphology.
+   * @param {number} [fetchDistanceKm=50.0] - Wind fetch distance across lake in km (1.0 to 1500.0 km)
+   * @param {number} [windSpeedMS=15.0] - 10-meter surface wind speed in m/s (2.0 to 40.0 m/s)
+   * @param {number} [paleolakeDepthMeters=100.0] - Mean water depth in meters (5.0 to 2000.0 m)
+   * @param {number} [atmosphericPressureBars=0.50] - Paleoclimate atmospheric pressure in bars (0.01 to 2.0 bars)
+   * @returns {{significantWaveHeightMeters: number, peakWavePeriodSec: number, wavelengthMeters: number, wavePowerFluxKWMeter: number, coastalCliffRetreatRateMPerKyr: number, lacustrineWaveRegime: string}}
+   */
+  static computeAncientMartianPaleolakeWaveEnergyAndCoastalErosion(fetchDistanceKm = 50.0, windSpeedMS = 15.0, paleolakeDepthMeters = 100.0, atmosphericPressureBars = 0.50) {
+    const Fkm = Math.max(0.5, fetchDistanceKm);
+    const FM = Fkm * 1000.0;
+    const U = Math.max(1.0, windSpeedMS);
+    const dM = Math.max(2.0, paleolakeDepthMeters);
+    const pAtm = Math.max(0.006, atmosphericPressureBars);
+
+    const gMars = 3.72076;
+    const rhoWater = 1000.0; // kg/m^3
+
+    // Dimensionless fetch
+    const fetchDim = (gMars * FM) / Math.pow(U, 2.0);
+
+    // Significant wave height (CEM / SPM fetch-limited model adapted for Mars gravity)
+    const HsM = 0.283 * (Math.pow(U, 2.0) / gMars) * Math.tanh(0.0125 * Math.pow(fetchDim, 0.42));
+
+    // Peak wave period (SPM / CEM fetch-limited tanh formulation)
+    const TpSec = 7.54 * (U / gMars) * Math.tanh(0.040 * Math.pow(fetchDim, 0.25));
+
+    // Deep/intermediate wavelength
+    const lambdaM = (gMars * Math.pow(TpSec, 2.0)) / (2.0 * Math.PI);
+
+    // Group velocity (deep water c_g = c / 2)
+    const cgMS = (gMars * TpSec) / (4.0 * Math.PI);
+
+    // Wave power flux density (kW / m shoreline)
+    const PwaveWM = (1.0 / 16.0) * rhoWater * gMars * Math.pow(HsM, 2.0) * cgMS;
+    const PwaveKWM = PwaveWM / 1000.0;
+
+    // Coastal notch erosion retreat rate (m / 1000 years for deltaic/lacustrine sediment)
+    // k_erod ~ 2e-4 (m/kyr per kW/m)
+    const kErod = 2.0e-4 * Math.min(2.0, pAtm / 0.5);
+    const RretreatMPerKyr = PwaveKWM * kErod * 1000.0;
+
+    let regime = 'Moderate Lacustrine Wave Action & Deltaic Shoreline Notch Formation';
+    if (HsM > 4.0) {
+      regime = 'Severe Storm Wave Regime / High-Energy Ocean Coastline Erosion';
+    } else if (HsM < 0.5) {
+      regime = 'Quiescent Low-Energy Play Lake / Minimal Shoreline Reworking';
+    }
+
+    return {
+      significantWaveHeightMeters: parseFloat(HsM.toFixed(2)),
+      peakWavePeriodSec: parseFloat(TpSec.toFixed(1)),
+      wavelengthMeters: parseFloat(lambdaM.toFixed(1)),
+      wavePowerFluxKWMeter: parseFloat(PwaveKWM.toFixed(2)),
+      coastalCliffRetreatRateMPerKyr: parseFloat(RretreatMPerKyr.toFixed(2)),
+      lacustrineWaveRegime: regime
+    };
+  }
 }
 
 
