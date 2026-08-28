@@ -3302,6 +3302,47 @@ export class BandMathEngine {
       h2GenerationPotential: h2Pot
     };
   }
+
+  /**
+   * Discriminate anhydrous Chloride / Halite (NaCl, KCl) evaporite deposits using VNIR spectral slope and THEMIS thermal infrared DCS correlation.
+   * Reference: Osterloo et al. (2008, 2010), Glotch et al. (2010), Hynek et al. (2015) for Southern Highlands playa evaporites.
+   * @param {number} r770 - Reflectance at 770 nm NIR base
+   * @param {number} r2500 - Reflectance at 2500 nm NIR end
+   * @param {number} [albedo=0.22] - Visual broadband albedo
+   * @param {number} [themisDcsRedRatio=0.65] - THEMIS DCS 8-7-5 red channel brightness fraction (0 to 1.0)
+   * @returns {{vnirSlopePerUm: number, isChlorideEvaporite: boolean, depositType: string, astrobiologicalPreservationPotential: string, evaporiteSetting: string}}
+   */
+  static computeCRISMChlorideEvaporiteIndices(r770, r2500, albedo = 0.22, themisDcsRedRatio = 0.65) {
+    const deltaWavelengthUm = 2.500 - 0.770; // 1.73 um
+    const slope = (r2500 - r770) / deltaWavelengthUm;
+
+    const isNegativeSlope = slope <= -0.010;
+    const isBrightAlbedo = albedo >= 0.18;
+    const isThemisDcsPositive = themisDcsRedRatio >= 0.55;
+
+    let isChloride = false;
+    let type = 'Unaltered Basaltic Crust / Silicate Sand';
+    let astro = 'Moderate (Standard Silicate Context)';
+    let setting = 'Volcanic Highland Regolith';
+
+    if (isNegativeSlope && isBrightAlbedo && isThemisDcsPositive) {
+      isChloride = true;
+      type = 'Anhydrous Chloride Salt Deposit (Halite NaCl / Sylvite KCl Salt Flats)';
+      astro = 'Extremely High: Halite Fluid Inclusions Can Preserve Biomolecules & Halophiles for Billions of Years';
+      setting = 'Terminal Evaporating Playa Lake / Hydrothermal Basin (Terra Sirenum Type)';
+    } else if (isThemisDcsPositive && !isNegativeSlope) {
+      type = 'Indurated Duricrust / Salt-Cemented Regolith';
+      setting = 'Partially Cemented Highland Crust';
+    }
+
+    return {
+      vnirSlopePerUm: parseFloat(slope.toFixed(4)),
+      isChlorideEvaporite: isChloride,
+      depositType: type,
+      astrobiologicalPreservationPotential: astro,
+      evaporiteSetting: setting
+    };
+  }
 }
 
 

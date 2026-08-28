@@ -2059,6 +2059,67 @@ export class TrajectoryEngine {
       synodicPeriodMonths: parseFloat(synodicMonths.toFixed(1))
     };
   }
+
+  /**
+   * Calculate Edelbaum low-thrust continuous spiral orbital transfer Delta-V, flight duration, propellant mass, and spiral revolutions.
+   * Delta_V = | v1 - v2 |
+   * Delta_t = ( m0 * Isp * g0 / F ) * ( 1 - exp( -Delta_V / (Isp * g0) ) )
+   * Reference: Edelbaum (1961), Battin (1999), Vallado (2013) for Solar Electric Propulsion (SEP) ion drives.
+   * @param {number} initialRadiusKm - Initial circular orbit radius in km (e.g. 3800 km)
+   * @param {number} finalRadiusKm - Target circular orbit radius in km (e.g. 20000 km)
+   * @param {number} [thrustNewtons=0.25] - Continuous thruster force in Newtons (0.05 to 5.0 N)
+   * @param {number} [initialMassKg=1000.0] - Initial spacecraft wet mass in kg
+   * @param {number} [specificImpulseSec=3200.0] - Ion engine specific impulse in seconds (e.g. 3000 to 4500 s)
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{deltaVKmS: number, deltaVMS: number, flightTimeDays: number, flightTimeHours: number, propellantMassKg: number, finalMassKg: number, propellantMassFractionPct: number, spiralRevolutions: number}}
+   */
+  static computeLowThrustContinuousSpiralTransfer(initialRadiusKm, finalRadiusKm, thrustNewtons = 0.25, initialMassKg = 1000.0, specificImpulseSec = 3200.0, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const g0 = 9.80665; // m/s^2
+
+    const r1 = Math.max(100.0, initialRadiusKm);
+    const r2 = Math.max(100.0, finalRadiusKm);
+    const F = Math.max(0.001, thrustNewtons);
+    const m0 = Math.max(1.0, initialMassKg);
+    const Isp = Math.max(100.0, specificImpulseSec);
+
+    // Circular speeds (km/s)
+    const v1KmS = Math.sqrt(mu / r1);
+    const v2KmS = Math.sqrt(mu / r2);
+
+    // Edelbaum low-thrust continuous Delta-V
+    const deltaVKmS = Math.abs(v1KmS - v2KmS);
+    const deltaVMS = deltaVKmS * 1000.0;
+
+    // Mass fraction and propellant consumption
+    const exhaustVelocityMS = Isp * g0;
+    const mf = m0 * Math.exp(-deltaVMS / exhaustVelocityMS);
+    const mProp = m0 - mf;
+    const propFraction = (mProp / m0) * 100.0;
+
+    // Flight time
+    const mDot = F / exhaustVelocityMS; // kg/s
+    const flightTimeSec = mProp / mDot;
+    const flightTimeHours = flightTimeSec / 3600.0;
+    const flightTimeDays = flightTimeSec / 86400.0;
+
+    // Average orbit period and revolution count
+    const rMean = (r1 + r2) / 2.0;
+    const periodMeanSec = 2.0 * Math.PI * Math.sqrt(Math.pow(rMean, 3.0) / mu);
+    const revs = flightTimeSec / Math.max(1.0, periodMeanSec);
+
+    return {
+      deltaVKmS: parseFloat(deltaVKmS.toFixed(3)),
+      deltaVMS: parseFloat(deltaVMS.toFixed(1)),
+      flightTimeDays: parseFloat(flightTimeDays.toFixed(1)),
+      flightTimeHours: parseFloat(flightTimeHours.toFixed(1)),
+      propellantMassKg: parseFloat(mProp.toFixed(2)),
+      finalMassKg: parseFloat(mf.toFixed(2)),
+      propellantMassFractionPct: parseFloat(propFraction.toFixed(2)),
+      spiralRevolutions: parseFloat(revs.toFixed(1))
+    };
+  }
 }
 
 

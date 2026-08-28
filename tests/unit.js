@@ -9233,6 +9233,40 @@ describe('Hohmann Transfer Orbits, Liquid Water Metastability & Serpentinization
     });
 });
 
+describe('Low-Thrust Continuous Spirals, Seasonal CO2 Geysers & Chloride Evaporites', () => {
+    it('should calculate Edelbaum low-thrust spiral orbital transfer Delta-V, flight duration, and propellant mass', () => {
+        // Mars orbit spiral from r1 = 3800 km to r2 = 20000 km (Dawn-type ion thruster: F = 0.25 N, Isp = 3200 s, m0 = 1000 kg):
+        const spiral = TrajectoryEngine.computeLowThrustContinuousSpiralTransfer(3800.0, 20000.0, 0.25, 1000.0, 3200.0, 'mars');
+        expect(spiral.deltaVKmS).to.be.closeTo(1.90, 0.1); // ~1.9 km/s Delta-V
+        expect(spiral.propellantMassKg).to.be.closeTo(58.8, 5.0); // ~59 kg xenon propellant
+        expect(spiral.flightTimeDays).to.be.greaterThan(80.0); // ~80-100 days of continuous spiral thrusting
+        expect(spiral.spiralRevolutions).to.be.greaterThan(100.0);
+    });
+
+    it('should calculate seasonal polar CO2 slab solid-state greenhouse basal gas overpressure and geyser eruption velocity', () => {
+        // South polar seasonal slab (L = 1.0 m, F0 = 450 W/m^2, slab albedo = 0.65, kappa = 2.0 m^-1):
+        const geyser = KRCEngine.computeSpringGeyserBasalSublimationOverpressure(1.0, 450.0, 0.65, 2.0, 600.0);
+        expect(geyser.basalSolarFluxWM2).to.be.closeTo(21.3, 1.0); // ~21.3 W/m^2 reaching dark regolith
+        expect(geyser.ruptureOverpressureKPa).to.be.closeTo(86.0, 5.0); // ~86 kPa rupture pressure
+        expect(geyser.geyserEjectionSpeedMS).to.be.greaterThan(40.0); // high-velocity jet (> 40 m/s)
+        expect(geyser.activeGeyserTerrain).to.include('Araneiform "Spider"');
+    });
+
+    it('should discriminate anhydrous Chloride / Halite salt flats in Terra Sirenum using VNIR slope and THEMIS DCS', () => {
+        // Chloride evaporite playa in Terra Sirenum (negative VNIR slope, bright albedo = 0.23, high THEMIS DCS red = 0.70):
+        const chloride = BandMathEngine.computeCRISMChlorideEvaporiteIndices(0.28, 0.24, 0.23, 0.70);
+        expect(chloride.isChlorideEvaporite).to.be.true;
+        expect(chloride.vnirSlopePerUm).to.be.lessThan(0.0); // negative/blue slope
+        expect(chloride.depositType).to.include('Chloride Salt Deposit');
+        expect(chloride.astrobiologicalPreservationPotential).to.include('Halite Fluid Inclusions');
+
+        // Normal basaltic crust (positive red slope, low albedo = 0.12, low DCS = 0.30):
+        const basalt = BandMathEngine.computeCRISMChlorideEvaporiteIndices(0.12, 0.18, 0.12, 0.30);
+        expect(basalt.isChlorideEvaporite).to.be.false;
+        expect(basalt.depositType).to.include('Basaltic Crust');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -2775,6 +2775,72 @@ export class KRCEngine {
       thermodynamicRegime: regime
     };
   }
+
+  /**
+   * Calculate seasonal polar CO2 slab solid-state greenhouse basal sublimation gas overpressure, rupture threshold, and supersonic geyser jet speed.
+   * F_basal = F0 * (1 - A) * exp( -kappa * L_slab )
+   * m_dot = F_basal / L_sub
+   * v_jet = sqrt( (2*gamma/(gamma-1)) * (R*T/M) * ( 1 - (P_amb/P_rupt)^((gamma-1)/gamma) ) )
+   * Reference: Kieffer (2007), Thomas et al. (2009), Hansen et al. (2010) for araneiform "spider" terrain and dark dust fans.
+   * @param {number} [slabThicknessMeters=1.0] - Seasonal translucent CO2 ice slab thickness in meters
+   * @param {number} [solarInsolationWM2=450.0] - Surface solar irradiance F0 in W/m^2
+   * @param {number} [slabAlbedo=0.65] - Slab surface albedo
+   * @param {number} [extinctionCoeffM=2.0] - Slab optical extinction coefficient kappa in m^-1
+   * @param {number} [ambientPressurePa=600.0] - Ambient atmospheric pressure in Pa
+   * @returns {{basalSolarFluxWM2: number, basalSublimationRateGPerM2Sec: number, ruptureOverpressureKPa: number, geyserEjectionSpeedMS: number, isSupersonicEruption: boolean, activeGeyserTerrain: string, timeToRuptureHours: number}}
+   */
+  static computeSpringGeyserBasalSublimationOverpressure(slabThicknessMeters = 1.0, solarInsolationWM2 = 450.0, slabAlbedo = 0.65, extinctionCoeffM = 2.0, ambientPressurePa = 600.0) {
+    const L = Math.max(0.05, Math.min(5.0, slabThicknessMeters));
+    const F0 = Math.max(10.0, solarInsolationWM2);
+    const A = Math.max(0.1, Math.min(0.95, slabAlbedo));
+    const kappa = Math.max(0.1, extinctionCoeffM);
+    const Pamb = Math.max(50.0, ambientPressurePa);
+
+    const L_SUB_CO2 = 5.9e5; // J/kg latent heat of sublimation
+    const R_GAS = 8.31446;
+    const M_CO2 = 0.04401;   // kg/mol
+    const GAMMA_CO2 = 1.30;  // adiabatic heat capacity ratio
+    const T_SUB = 145.0;     // K basal CO2 sublimation temperature
+    const RHO_ICE = 1600.0;  // kg/m^3 slab density
+    const G_MARS = 3.72076;  // m/s^2
+    const SIGMA_TENSILE = 8.0e4; // Pa (80 kPa slab tensile strength)
+
+    // Solar flux transmitted through slab to dark ground
+    const Fbasal = F0 * (1.0 - A) * Math.exp(-kappa * L);
+
+    // Sublimation rate (kg / (m^2 * s))
+    const mDotKgM2S = Fbasal / L_SUB_CO2;
+    const mDotGM2S = mDotKgM2S * 1000.0;
+
+    // Rupture pressure threshold: tensile strength + slab overburden
+    const Poverburden = RHO_ICE * G_MARS * L;
+    const Prupture = SIGMA_TENSILE + Poverburden;
+    const PruptureKPa = Prupture / 1000.0;
+
+    // Time to rupture assuming 2 cm basal gas cavity
+    const hCavity = 0.02; // m
+    const gasDensityRupture = (Prupture * M_CO2) / (R_GAS * T_SUB);
+    const timeToRuptureSec = (gasDensityRupture * hCavity) / Math.max(1e-8, mDotKgM2S);
+    const timeToRuptureHours = timeToRuptureSec / 3600.0;
+
+    // Isentropic expansion nozzle jet velocity
+    const expansionRatio = Math.pow(Pamb / Prupture, (GAMMA_CO2 - 1.0) / GAMMA_CO2);
+    const vJet = Math.sqrt((2.0 * GAMMA_CO2 / (GAMMA_CO2 - 1.0)) * (R_GAS * T_SUB / M_CO2) * (1.0 - expansionRatio));
+
+    // Sound speed in CO2 at 145 K: c = sqrt(gamma * R * T / M) ~ 189 m/s
+    const soundSpeed = Math.sqrt(GAMMA_CO2 * R_GAS * T_SUB / M_CO2);
+    const isSupersonic = vJet >= soundSpeed;
+
+    return {
+      basalSolarFluxWM2: parseFloat(Fbasal.toFixed(2)),
+      basalSublimationRateGPerM2Sec: parseFloat(mDotGM2S.toFixed(4)),
+      ruptureOverpressureKPa: parseFloat(PruptureKPa.toFixed(2)),
+      geyserEjectionSpeedMS: parseFloat(vJet.toFixed(1)),
+      isSupersonicEruption: isSupersonic,
+      activeGeyserTerrain: 'South Polar Araneiform "Spider" Cryptic Terrain (Dark Dust Fans)',
+      timeToRuptureHours: parseFloat(timeToRuptureHours.toFixed(2))
+    };
+  }
 }
 
 
