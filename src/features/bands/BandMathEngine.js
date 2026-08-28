@@ -6159,6 +6159,63 @@ export class BandMathEngine {
       hydrothermalDepositContext: context
     };
   }
+
+  /**
+   * Discriminate Ultramafic Serpentine vs Hydrothermal Talc vs Lacustrine Saponite from CRISM 1.39 um OH, 1.90 um H2O, 2.29 um, 2.31/2.33 um, and 2.38 um Mg-OH band depths.
+   * Reference: Ehlmann et al. (2010), Viviano-Beck et al. (2014), Brown et al. (2010) for Martian Serpentine-Talc-Carbonate Systems.
+   * @param {number} [band1390OHDepth=0.06] - BD1390 sharp Mg-OH overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 molecular H2O depth (0.0 to 0.50)
+   * @param {number} [band2310MgOHDepth=0.08] - BD2310/2330 Mg-OH fundamental stretch depth (0.0 to 0.40)
+   * @param {number} [band2380TalcDepth=0.01] - BD2380 characteristic talc satellite depth (0.0 to 0.30)
+   * @param {number} [band2290TalcDepth=0.01] - BD2290 characteristic talc satellite depth (0.0 to 0.30)
+   * @returns {{isMgPhyllosilicateDetected: boolean, mineralFamilyClass: string, mineralSpecies: string, chemicalFormula: string, metasomaticPaleoenvironment: string}}
+   */
+  static computeCRISMMgPhyllosilicateSerpentineTalcSaponiteIndices(band1390OHDepth = 0.06, band1900WaterDepth = 0.01, band2310MgOHDepth = 0.08, band2380TalcDepth = 0.01, band2290TalcDepth = 0.01) {
+    const d1390 = Math.max(0.0, band1390OHDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2310 = Math.max(0.0, band2310MgOHDepth);
+    const d2380 = Math.max(0.0, band2380TalcDepth);
+    const d2290 = Math.max(0.0, band2290TalcDepth);
+
+    let isMgPhyllo = false;
+    let famClass = 'Non-Mg-Phyllosilicate Matrix';
+    let species = 'Basalt';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Mg-OH Absorption';
+
+    if (d2310 >= 0.030 || (d1390 >= 0.030 && (d2380 >= 0.025 || d2290 >= 0.025))) {
+      isMgPhyllo = true;
+      if (d2380 >= 0.030 && d2290 >= 0.025 && d1390 >= 0.035) {
+        famClass = 'Hydrothermal Talc';
+        species = 'Talc';
+        formula = 'Mg3Si4O10(OH)2';
+        context = 'High-Temperature Hydrothermal Silica Metasomatism of Serpentinite (Nili Fossae / Claritas Rise)';
+      } else if (d1390 >= 0.035 && d2310 >= 0.040 && d1900 < 0.030) {
+        famClass = 'Serpentine (Serpentinized Peridotite)';
+        species = 'Lizardite / Chrysotile / Antigorite';
+        formula = 'Mg3Si2O5(OH)4';
+        context = 'Subsurface Low-to-Moderate Temperature Serpentinization of Ultramafic Crust (H2/CH4 Generating Habitat)';
+      } else if (d1900 >= 0.035 && d2310 >= 0.035) {
+        famClass = 'Mg-Smectite (Saponite)';
+        species = 'Saponite';
+        formula = '(Ca,Na)0.3(Mg,Fe)3(Si,Al)4O10(OH)2 * 4H2O';
+        context = 'Low-Temperature Alkaline Lacustrine / Weathering Smectite (Jezero Crater Floor / Eridania)';
+      } else {
+        famClass = 'Mixed Serpentine-Smectite Assemblage';
+        species = 'Mg-Phyllosilicate Complex';
+        formula = 'Hydrated Mg-Silicate';
+        context = 'Partially Serpentinized Altered Matrix';
+      }
+    }
+
+    return {
+      isMgPhyllosilicateDetected: isMgPhyllo,
+      mineralFamilyClass: famClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metasomaticPaleoenvironment: context
+    };
+  }
 }
 
 

@@ -6485,6 +6485,64 @@ export class KRCEngine {
       smectiteIllitizationContext: `Smectite Illitization (${XillPct.toFixed(0)}% Illite at ${ThostC.toFixed(0)} C / ${dKm.toFixed(1)} km Depth, ${orderClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal siliceous sinter mound precipitation rate, daily silica mass flux, and mound vertical accretion timescale.
+   * log10( C_sat ) = 4.52 - 731 / T_K
+   * M_dot = Q * ( C_fluid - C_sat_out )
+   * h_dot = M_dot / ( pi * R^2 * rho_sinter * ( 1 - phi ) )
+   * Reference: Fournier (1985), Campbell et al. (2015), Ruff & Farmer (2016) for Home Plate Hydrothermal Sinter Deposits.
+   * @param {number} [springDischargeM3PerDay=100.0] - Thermal spring flow discharge in m^3/day (1.0 to 2000.0 m^3/d)
+   * @param {number} [silicaConcentrationPpm=500.0] - Dissolved SiO2 in fluid in ppm (100.0 to 1500.0 ppm)
+   * @param {number} [springTemperatureC=90.0] - Spring emergence temperature in deg C (30.0 to 120.0 C)
+   * @param {number} [moundRadiusM=25.0] - Sinter apron deposit radius in m (5.0 to 200.0 m)
+   * @param {number} [targetMoundHeightM=3.0] - Target total deposit height in m (0.5 to 20.0 m)
+   * @returns {{dailySilicaMassFluxKg: number, annualSilicaTons: number, verticalAccretionRateMmPerYear: number, timeToAccreteYears: number, sinterDepositContext: string}}
+   */
+  static computeMartianHydrothermalSinterMoundAccretion(springDischargeM3PerDay = 100.0, silicaConcentrationPpm = 500.0, springTemperatureC = 90.0, moundRadiusM = 25.0, targetMoundHeightM = 3.0) {
+    const Qm3d = Math.max(0.1, springDischargeM3PerDay);
+    const Cppm = Math.max(50.0, silicaConcentrationPpm);
+    const TspringC = Math.max(20.0, Math.min(150.0, springTemperatureC));
+    const Rm = Math.max(2.0, moundRadiusM);
+    const HtargetM = Math.max(0.1, targetMoundHeightM);
+
+    const TsurfC = 10.0; // Ambient outflow temperature
+    const TKout = 273.15 + TsurfC;
+    const rhoSinter = 1800.0; // kg/m^3 dry sinter density
+    const porosity = 0.25; // 25% opal sinter porosity
+
+    // Amorphous silica saturation solubility at outflow temp (ppm)
+    const logCsat = 4.52 - (731.0 / TKout);
+    const CsatOutPpm = Math.pow(10.0, logCsat);
+
+    // Excess precipitable silica concentration (kg/m^3)
+    const deltaCPpm = Math.max(10.0, Cppm - CsatOutPpm);
+    const deltaCKgM3 = deltaCPpm / 1000.0;
+
+    // Daily silica mass flux (kg/day)
+    const MdotDayKg = Qm3d * deltaCKgM3;
+    const MdotYrKg = MdotDayKg * 365.25;
+    const MdotYrTons = MdotYrKg / 1000.0;
+
+    // Sinter mound deposit area (m^2)
+    const AmoundM2 = Math.PI * Math.pow(Rm, 2.0);
+    const rhoEff = rhoSinter * (1.0 - porosity);
+
+    // Vertical accretion rate (m/yr and mm/yr)
+    const hDotMYr = MdotYrKg / (AmoundM2 * rhoEff);
+    const hDotMmYr = hDotMYr * 1000.0;
+
+    // Time to accrete target mound height (years)
+    const tAccreteYrs = (HtargetM * 1000.0) / hDotMmYr;
+
+    return {
+      dailySilicaMassFluxKg: parseFloat(MdotDayKg.toFixed(2)),
+      annualSilicaTons: parseFloat(MdotYrTons.toFixed(2)),
+      verticalAccretionRateMmPerYear: parseFloat(hDotMmYr.toFixed(2)),
+      timeToAccreteYears: parseFloat(tAccreteYrs.toFixed(1)),
+      sinterDepositContext: `Siliceous Sinter Mound (${hDotMmYr.toFixed(2)} mm/yr Accretion, ${MdotYrTons.toFixed(1)} t/yr SiO2, ${tAccreteYrs.toFixed(0)} yr for ${HtargetM.toFixed(1)}m Mound)`
+    };
+  }
 }
 
 

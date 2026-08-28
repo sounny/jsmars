@@ -401,3 +401,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate temperature-dependent specific heat capacity of silicate regolith
 ?: AssertionError: expected 579 to be close to 771.38 +/- 0.5
     at n.<anonymous> (unit.js:4574:44)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 18:30:54 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Venus inward transfer trajectory, gravity assist deflection, and heliocentric boost
+?: AssertionError: expected 3.372 to be close to 2.723 +/- 0.3
+    at n.<anonymous> (unit.js:11882:59)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 18:31:11 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Venus inward transfer trajectory, gravity assist deflection, and heliocentric boost
+?: AssertionError: expected 5.763 to be close to 7.019 +/- 0.3
+    at n.<anonymous> (unit.js:11883:57)

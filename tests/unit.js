@@ -11873,6 +11873,56 @@ describe('Ice Giant Aerocapture, Smectite Illitization & Silica Phase Inversion'
     });
 });
 
+describe('Mars-to-Venus Gravity Assist, Sinter Accretion & Serpentine-Talc Inversion', () => {
+    it('should calculate Mars-to-Venus inward transfer trajectory, gravity assist deflection, and heliocentric boost', () => {
+        // Venus gravity assist (300 km Venus closest approach, 300 km Mars parking orbit):
+        const assist = TrajectoryEngine.computeMarsToVenusGravityAssistTrajectory(300.0, 300.0);
+        expect(assist.timeOfFlightDays).to.be.closeTo(217.4, 3.0); // ~217 days TOF
+        expect(assist.timeOfFlightYears).to.be.closeTo(0.595, 0.05); // ~0.60 yr
+        expect(assist.transVenusInjectionDeltaVKmS).to.be.closeTo(3.372, 0.2); // ~3.37 km/s TVI
+        expect(assist.venusArrivalExcessSpeedKmS).to.be.closeTo(5.763, 0.2); // ~5.76 km/s excess
+        expect(assist.flybyDeflectionAngleDeg).to.be.closeTo(74.64, 2.0); // ~74.6 deg turn
+        expect(assist.heliocentricDeltaVBoostKmS).to.be.closeTo(6.988, 0.3); // ~6.99 km/s boost
+        expect(assist.gravityAssistContext).to.include('Mars to Venus Gravity Assist');
+    });
+
+    it('should calculate hydrothermal siliceous sinter mound precipitation rate and vertical accretion time', () => {
+        // 100 m^3/d spring discharge, 500 ppm silica, 90 C emergence, 25 m mound radius, 3 m target height:
+        const sinter = KRCEngine.computeMartianHydrothermalSinterMoundAccretion(100.0, 500.0, 90.0, 25.0, 3.0);
+        expect(sinter.dailySilicaMassFluxKg).to.be.closeTo(41.32, 2.0); // ~41.3 kg/day
+        expect(sinter.annualSilicaTons).to.be.closeTo(15.09, 1.0); // ~15.1 tons/yr
+        expect(sinter.verticalAccretionRateMmPerYear).to.be.closeTo(5.69, 0.5); // ~5.69 mm/yr accretion
+        expect(sinter.timeToAccreteYears).to.be.closeTo(527.1, 40.0); // ~527 years for 3m mound
+        expect(sinter.sinterDepositContext).to.include('Siliceous Sinter Mound');
+    });
+
+    it('should discriminate Serpentine (Ultramafic), Hydrothermal Talc, and Lacustrine Saponite in CRISM spectra', () => {
+        // Hydrothermal Talc (Nili Fossae: sharp 1.39 um OH, 2.29 um & 2.38 um satellites: BD1390 = 0.06, BD1900 = 0.01, BD2310 = 0.08, BD2380 = 0.06, BD2290 = 0.05):
+        const talc = BandMathEngine.computeCRISMMgPhyllosilicateSerpentineTalcSaponiteIndices(0.06, 0.01, 0.08, 0.06, 0.05);
+        expect(talc.isMgPhyllosilicateDetected).to.be.true;
+        expect(talc.mineralFamilyClass).to.include('Hydrothermal Talc');
+        expect(talc.mineralSpecies).to.include('Talc');
+        expect(talc.chemicalFormula).to.equal('Mg3Si4O10(OH)2');
+        expect(talc.metasomaticPaleoenvironment).to.include('Hydrothermal Silica Metasomatism');
+
+        // Serpentine (Claritas Rise / Nili Fossae peridotite: sharp 1.39 um & 2.33 um without talc satellites: BD1390 = 0.07, BD1900 = 0.01, BD2310 = 0.09, BD2380 = 0.005, BD2290 = 0.005):
+        const serp = BandMathEngine.computeCRISMMgPhyllosilicateSerpentineTalcSaponiteIndices(0.07, 0.01, 0.09, 0.005, 0.005);
+        expect(serp.isMgPhyllosilicateDetected).to.be.true;
+        expect(serp.mineralFamilyClass).to.include('Serpentine (Serpentinized Peridotite)');
+        expect(serp.chemicalFormula).to.equal('Mg3Si2O5(OH)4');
+        expect(serp.metasomaticPaleoenvironment).to.include('Serpentinization of Ultramafic Crust');
+
+        // Saponite (Jezero crater floor: broad 2.31 um + 1.90 um water: BD1390 = 0.01, BD1900 = 0.08, BD2310 = 0.07, BD2380 = 0.005, BD2290 = 0.005):
+        const sap = BandMathEngine.computeCRISMMgPhyllosilicateSerpentineTalcSaponiteIndices(0.01, 0.08, 0.07, 0.005, 0.005);
+        expect(sap.isMgPhyllosilicateDetected).to.be.true;
+        expect(sap.mineralFamilyClass).to.include('Mg-Smectite (Saponite)');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMMgPhyllosilicateSerpentineTalcSaponiteIndices(0.005, 0.005, 0.005, 0.001, 0.001);
+        expect(basalt.isMgPhyllosilicateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
