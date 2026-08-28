@@ -6444,6 +6444,80 @@ export class TrajectoryEngine {
       solarPlungeContext: `Solar Corona Plunge (${RsunMult.toFixed(0)} R_sun Perihelion, ${tofDays.toFixed(0)} d TOF, ${dvTspiKmS.toFixed(2)} km/s TSPI, ${vPeriKmS.toFixed(0)} km/s Coronal Speed, e=${ecc.toFixed(3)})`
     };
   }
+
+  /**
+   * Calculate Mars-to-Sun Bi-Elliptic solar drop trajectory with aphelion reverse impulse (Oberth via Outer Solar System), leg times, and total Delta-V savings.
+   * TOF_tot = TOF_leg1 + TOF_leg2
+   * Delta_V_tot = Delta_V_TAI + Delta_V_apo
+   * Reference: Edelbaum (1959), Roth (1965), Curtis (2013) for Bi-Elliptic Heliocentric Solar Drop Trajectories.
+   * @param {number} [intermediateAphelionAU=5.2044] - Outward intermediate aphelion in AU (2.5 to 30.0 AU)
+   * @param {number} [targetPerihelionSolarRadii=10.0] - Target solar closest approach in solar radii R_sun (4.0 to 50.0 R_sun)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{totalTimeOfFlightDays: number, totalTimeOfFlightYears: number, marsDepartureDeltaVKmS: number, aphelionReverseDeltaVKmS: number, totalMissionDeltaVKmS: number, directHohmannDeltaVSavedKmS: number, biEllipticContext: string}}
+   */
+  static computeMarsToSunBiEllipticSolarDropTrajectory(intermediateAphelionAU = 5.2044, targetPerihelionSolarRadii = 10.0, marsParkingAltitudeKm = 300.0) {
+    const raAU = Math.max(2.0, intermediateAphelionAU);
+    const RsunMult = Math.max(2.0, Math.min(50.0, targetPerihelionSolarRadii));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const R_SUN_KM = 696340.0;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const raDistKm = raAU * AU_KM;
+
+    const rpKm = RsunMult * R_SUN_KM;
+    const rpAU = rpKm / AU_KM;
+
+    // Leg 1: Mars to Aphelion
+    const a1AU = (rMarsAU + raAU) / 2.0;
+    const a1Km = a1AU * AU_KM;
+    const tof1Sec = Math.PI * Math.sqrt(Math.pow(a1Km, 3.0) / muSun);
+    const tof1Days = tof1Sec / 86400.0;
+
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPeri1KmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / a1Km)));
+    const vInfDepKmS = Math.abs(vPeri1KmS - vMarsKmS);
+
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTaiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    const va1KmS = Math.sqrt(muSun * ((2.0 / raDistKm) - (1.0 / a1Km)));
+
+    // Leg 2: Aphelion to Solar Corona Plunge
+    const a2AU = (raAU + rpAU) / 2.0;
+    const a2Km = a2AU * AU_KM;
+    const tof2Sec = Math.PI * Math.sqrt(Math.pow(a2Km, 3.0) / muSun);
+    const tof2Days = tof2Sec / 86400.0;
+
+    const va2KmS = Math.sqrt(muSun * ((2.0 / raDistKm) - (1.0 / a2Km)));
+    const dvApoKmS = Math.abs(va1KmS - va2KmS);
+
+    // Total metrics
+    const tofTotDays = tof1Days + tof2Days;
+    const tofTotYrs = tofTotDays / 365.25;
+    const dvTotKmS = dvTaiKmS + dvApoKmS;
+
+    // Baseline direct plunge TSPI was ~15.483 km/s
+    const directTspiKmS = 15.483;
+    const dvSavedKmS = Math.max(0.0, directTspiKmS - dvTotKmS);
+
+    return {
+      totalTimeOfFlightDays: parseFloat(tofTotDays.toFixed(1)),
+      totalTimeOfFlightYears: parseFloat(tofTotYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTaiKmS.toFixed(3)),
+      aphelionReverseDeltaVKmS: parseFloat(dvApoKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      directHohmannDeltaVSavedKmS: parseFloat(dvSavedKmS.toFixed(3)),
+      biEllipticContext: `Bi-Elliptic Solar Drop via ${raAU.toFixed(1)} AU (${tofTotYrs.toFixed(1)} yr Total TOF, ${dvTotKmS.toFixed(2)} km/s Total Delta-V, saved ${dvSavedKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

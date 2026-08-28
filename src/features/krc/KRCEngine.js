@@ -6900,6 +6900,64 @@ export class KRCEngine {
       fumaroleContext: `Fumarolic Silica Halo (${tSilicifyYrs.toFixed(1)} yr Silicification, ${MsilicaTons.toFixed(0)} t Opal-A Residue in ${RhaloM.toFixed(1)}m Halo, ${gradeClass})`
     };
   }
+
+  /**
+   * Calculate ice-covered Martian paleolake thermal equilibrium, conductive ice lid heat loss, sub-ice Rayleigh convection, and bottom water persistence.
+   * q_cond = k_ice * ( T_freeze - T_surf ) / h_ice
+   * h_ice_eq = k_ice * ( T_freeze - T_surf ) / q_basal
+   * Ra = g * alpha * delta_T * H_water^3 / ( nu * kappa )
+   * Reference: McKay et al. (1985), Fastook et al. (2012), Wordsworth (2016) for Gale & Jezero Ice-Covered Paleolakes.
+   * @param {number} [totalLakeDepthM=100.0] - Total paleolake basin depth in meters (10 to 2000 m)
+   * @param {number} [surfaceAirTempK=230.0] - Annual mean surface atmosphere temperature in Kelvin (180 to 265 K)
+   * @param {number} [activeIceThicknessM=15.0] - Current ice lid thickness in meters (1 to 500 m)
+   * @param {number} [basalHeatFlowMwM2=50.0] - Geothermal basal heat flow in mW/m^2 (20 to 200 mW/m^2)
+   * @returns {{conductiveIceHeatFluxWM2: number, equilibriumIceLidThicknessM: number, subIceLiquidWaterDepthM: number, rayleighNumber: number, bottomWaterTempC: number, lakeThermalRegime: string, paleolakeContext: string}}
+   */
+  static computeMartianIceCoveredPaleolakeThermalEquilibrium(totalLakeDepthM = 100.0, surfaceAirTempK = 230.0, activeIceThicknessM = 15.0, basalHeatFlowMwM2 = 50.0) {
+    const HtotM = Math.max(5.0, totalLakeDepthM);
+    const TsurfK = Math.max(150.0, Math.min(270.0, surfaceAirTempK));
+    const HiceM = Math.max(0.5, Math.min(HtotM - 1.0, activeIceThicknessM));
+    const qBasalWM2 = Math.max(10.0, basalHeatFlowMwM2) / 1000.0;
+
+    const kIce = 2.22; // W/(m*K)
+    const TfreezeK = 273.15;
+    const deltaTIce = TfreezeK - TsurfK;
+
+    // Upward conductive heat loss through active ice lid (W/m^2)
+    const qCondWM2 = (kIce * deltaTIce) / HiceM;
+
+    // Theoretical equilibrium ice thickness under purely basal + convective heat flux (m)
+    const qTotBasal = qBasalWM2 + 0.020; // 20 mW/m^2 convective support
+    const hIceEqM = (kIce * deltaTIce) / qTotBasal;
+
+    // Liquid water column depth (m)
+    const HwaterM = Math.max(1.0, HtotM - HiceM);
+
+    // Rayleigh number of sub-ice water
+    const gMars = 3.72; // m/s^2
+    const alpha = 2.0e-4; // 1/K
+    const nu = 1.0e-6; // m^2/s
+    const kappa = 1.4e-7; // m^2/s
+    const deltaTWater = 4.0; // 4 K temperature gradient to 4 C bottom water
+    const Ra = (gMars * alpha * deltaTWater * Math.pow(HwaterM, 3.0)) / (nu * kappa);
+
+    let regime = 'Vigorously Convecting Perennial Sub-Ice Lake (Liquid Habitability)';
+    if (HwaterM <= 5.0) {
+      regime = 'Nearly Frozen Basal Cryolake Horizon';
+    } else if (TsurfK >= 260.0) {
+      regime = 'Seasonally Ice-Covered High-Latitude Lacustrine System';
+    }
+
+    return {
+      conductiveIceHeatFluxWM2: parseFloat(qCondWM2.toFixed(3)),
+      equilibriumIceLidThicknessM: parseFloat(hIceEqM.toFixed(1)),
+      subIceLiquidWaterDepthM: parseFloat(HwaterM.toFixed(1)),
+      rayleighNumber: parseFloat(Ra.toExponential(3)),
+      bottomWaterTempC: 4.0,
+      lakeThermalRegime: regime,
+      paleolakeContext: `Ice-Covered Paleolake (${HiceM.toFixed(0)}m Ice Lid, ${HwaterM.toFixed(0)}m Sub-Ice Water at 4.0 C, q_cond=${qCondWM2.toFixed(2)} W/m2, ${regime})`
+    };
+  }
 }
 
 

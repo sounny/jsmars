@@ -12221,6 +12221,61 @@ describe('Solar Corona Plunge, Fumarolic Silica Halo & Zeolite-Carbonate Metasom
     });
 });
 
+describe('Bi-Elliptic Solar Drop, Ice-Covered Paleolake Convection & Alunite-Jarosite Inversion', () => {
+    it('should calculate Mars-to-Sun Bi-Elliptic solar drop trajectory via Jupiter distance and Delta-V savings', () => {
+        // Bi-elliptic drop via 5.2044 AU (10 R_sun solar perihelion, 300 km Mars parking altitude):
+        const biElliptic = TrajectoryEngine.computeMarsToSunBiEllipticSolarDropTrajectory(5.2044, 10.0, 300.0);
+        expect(biElliptic.totalTimeOfFlightDays).to.be.closeTo(1905.0, 10.0); // ~1905 days TOF
+        expect(biElliptic.totalTimeOfFlightYears).to.be.closeTo(5.216, 0.1); // ~5.22 yr
+        expect(biElliptic.marsDepartureDeltaVKmS).to.be.closeTo(4.197, 0.3); // ~4.20 km/s TAI
+        expect(biElliptic.aphelionReverseDeltaVKmS).to.be.closeTo(7.008, 0.3); // ~7.01 km/s apo burn
+        expect(biElliptic.totalMissionDeltaVKmS).to.be.closeTo(11.205, 0.5); // ~11.21 km/s total Delta-V
+        expect(biElliptic.directHohmannDeltaVSavedKmS).to.be.greaterThan(4.0); // > 4.0 km/s saved vs direct drop
+        expect(biElliptic.biEllipticContext).to.include('Bi-Elliptic Solar Drop');
+    });
+
+    it('should calculate ice-covered paleolake thermal equilibrium, conductive lid heat flux, and Rayleigh convection', () => {
+        // 100 m total lake depth, 230 K surface air (-43 C), 15 m ice lid, 50 mW/m^2 geothermal flux:
+        const paleolake = KRCEngine.computeMartianIceCoveredPaleolakeThermalEquilibrium(100.0, 230.0, 15.0, 50.0);
+        expect(paleolake.conductiveIceHeatFluxWM2).to.be.closeTo(6.386, 0.2); // ~6.39 W/m^2
+        expect(paleolake.equilibriumIceLidThicknessM).to.be.closeTo(1368.5, 50.0); // ~1368 m eq thickness
+        expect(paleolake.subIceLiquidWaterDepthM).to.equal(85.0); // 85 m liquid column
+        expect(paleolake.bottomWaterTempC).to.equal(4.0); // 4 C liquid water
+        expect(paleolake.rayleighNumber).to.be.greaterThan(1.0e15); // Turbulently convecting
+        expect(paleolake.lakeThermalRegime).to.include('Vigorously Convecting Perennial Sub-Ice Lake');
+        expect(paleolake.paleolakeContext).to.include('Ice-Covered Paleolake');
+    });
+
+    it('should discriminate Acid-Sulfate Alunite vs Acidic Jarosite vs Neutral Nontronite in CRISM spectra', () => {
+        // Alunite / Advanced Argillic (Cross Crater: BD1480 = 0.08, BD1900 = 0.07, BD2260 = 0.01, BD2290 = 0.01):
+        const alunite = BandMathEngine.computeCRISMAluniteJarositeNontroniteIndices(0.08, 0.01, 0.01, 0.07);
+        expect(alunite.isAlterationMineralDetected).to.be.true;
+        expect(alunite.mineralFamilyClass).to.include('Acid-Sulfate Alunite');
+        expect(alunite.mineralSpecies).to.include('Alunite');
+        expect(alunite.chemicalFormula).to.include('KAl3(SO4)2(OH)6');
+        expect(alunite.phGeochemicalRegime).to.include('Hyper-Acidic Hydrothermal System (pH < 3.0');
+
+        // Jarosite (Meridiani Planum: BD1480 = 0.01, BD2260 = 0.07, BD2290 = 0.01):
+        const jarosite = BandMathEngine.computeCRISMAluniteJarositeNontroniteIndices(0.01, 0.07, 0.01, 0.05);
+        expect(jarosite.isAlterationMineralDetected).to.be.true;
+        expect(jarosite.mineralFamilyClass).to.include('Acid-Sulfate Jarosite');
+        expect(jarosite.mineralSpecies).to.include('Jarosite');
+        expect(jarosite.chemicalFormula).to.include('KFe3(SO4)2(OH)6');
+        expect(jarosite.phGeochemicalRegime).to.include('Acidic Oxidizing Sulfate Playa');
+
+        // Nontronite Fe-Smectite (Mawrth Vallis: BD1480 = 0.01, BD2260 = 0.01, BD2290 = 0.08, BD1900 = 0.06):
+        const nontronite = BandMathEngine.computeCRISMAluniteJarositeNontroniteIndices(0.01, 0.01, 0.08, 0.06);
+        expect(nontronite.isAlterationMineralDetected).to.be.true;
+        expect(nontronite.mineralFamilyClass).to.include('Fe-Smectite (Nontronite)');
+        expect(nontronite.chemicalFormula).to.include('Fe2Si4O10(OH)2');
+        expect(nontronite.phGeochemicalRegime).to.include('Circum-Neutral to Weakly Alkaline');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMAluniteJarositeNontroniteIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAlterationMineralDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

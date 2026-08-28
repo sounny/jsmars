@@ -6530,6 +6530,61 @@ export class BandMathEngine {
       alkalineHydrothermalContext: context
     };
   }
+
+  /**
+   * Discriminate Acid-Sulfate Alunite vs Acidic Jarosite vs Circum-Neutral Nontronite Smectite from CRISM 1.48 um, 1.90 um, 2.16/2.26 um, and 2.29 um band depths.
+   * Reference: Milliken et al. (2008), Swayze et al. (2014), Viviano-Beck et al. (2014) for Martian Acid-Sulfate Alteration Sequences.
+   * @param {number} [band1480AluniteDepth=0.06] - BD1480 diagnostic alunite Al-OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2260JarositeDepth=0.01] - BD2260 diagnostic jarosite Fe-OH band depth (0.0 to 0.40)
+   * @param {number} [band2290NontroniteDepth=0.01] - BD2290 diagnostic nontronite Fe-OH band depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.06] - BD1900 molecular H2O fundamental depth (0.0 to 0.50)
+   * @returns {{isAlterationMineralDetected: boolean, mineralFamilyClass: string, mineralSpecies: string, chemicalFormula: string, phGeochemicalRegime: string}}
+   */
+  static computeCRISMAluniteJarositeNontroniteIndices(band1480AluniteDepth = 0.06, band2260JarositeDepth = 0.01, band2290NontroniteDepth = 0.01, band1900WaterDepth = 0.06) {
+    const d1480 = Math.max(0.0, band1480AluniteDepth);
+    const d2260 = Math.max(0.0, band2260JarositeDepth);
+    const d2290 = Math.max(0.0, band2290NontroniteDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+
+    let isDet = false;
+    let famClass = 'Unaltered Basalt / Matrix';
+    let species = 'Basalt';
+    let formula = 'Silicate Matrix';
+    let phRegime = 'Standard Unaltered Crust';
+
+    if (d1480 >= 0.035 || d2260 >= 0.035 || d2290 >= 0.035) {
+      isDet = true;
+      if (d1480 >= 0.035 && d1480 >= d2260 && d1480 >= d2290) {
+        famClass = 'Acid-Sulfate Alunite (Advanced Argillic Alteration)';
+        species = 'Alunite';
+        formula = 'KAl3(SO4)2(OH)6';
+        phRegime = 'Hyper-Acidic Hydrothermal System (pH < 3.0, Intense Acid Leaching at Cross Crater / Columbus Crater)';
+      } else if (d2260 >= 0.035 && d2260 >= d2290) {
+        famClass = 'Acid-Sulfate Jarosite';
+        species = 'Jarosite';
+        formula = 'KFe3(SO4)2(OH)6';
+        phRegime = 'Acidic Oxidizing Sulfate Playa / Groundwater Alteration (pH 2.0-4.0 at Meridiani Planum)';
+      } else if (d2290 >= 0.035 && d1900 >= 0.030) {
+        famClass = 'Fe-Smectite (Nontronite)';
+        species = 'Nontronite';
+        formula = '(Ca,Na)0.3Fe2Si4O10(OH)2 * 4H2O';
+        phRegime = 'Circum-Neutral to Weakly Alkaline Aqueous Weathering (pH 6.5-8.5 at Mawrth Vallis / Nili Fossae)';
+      } else {
+        famClass = 'Mixed Sulfate-Smectite Alteration Horizon';
+        species = 'Hydrated Fe/Al Silicate-Sulfate Complex';
+        formula = 'Fe-Al Hydrothermal Complex';
+        phRegime = 'Transitional Hydrothermal Alteration Horizon';
+      }
+    }
+
+    return {
+      isAlterationMineralDetected: isDet,
+      mineralFamilyClass: famClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      phGeochemicalRegime: phRegime
+    };
+  }
 }
 
 
