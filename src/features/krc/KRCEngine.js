@@ -6206,6 +6206,59 @@ export class KRCEngine {
       flexureContext: `Lithospheric Flexure (Te=${TeKm.toFixed(0)} km, w0=${w0Km.toFixed(1)} km Crustal Sag, alpha=${alphaKm.toFixed(0)} km)`
     };
   }
+
+  /**
+   * Calculate Rayleigh-Taylor gravitational overturn timescale of dense Fe-Ti cumulates, Stokes diapir sinking velocity, and CMB basal melt initiation.
+   * lambda_RT = 2.56 * h_c
+   * tau_RT = 4 * pi * eta / ( Delta_rho * g_mars * lambda_RT )
+   * u_sink = 2 * Delta_rho * g_mars * R_diapir^2 / ( 9 * eta )
+   * Reference: Hess & Parmentier (1995), Elkins-Tanton et al. (2005), Scheinberg et al. (2014) for Martian Mantle Overturn & Tharsis Plume Initiation.
+   * @param {number} [cumulateLayerThicknessKm=50.0] - Dense Fe-Ti-rich ilmenite cumulate layer thickness in km (10 to 150 km)
+   * @param {number} [densityInversionKgM3=300.0] - Density contrast Delta_rho in kg/m^3 (50 to 800 kg/m^3)
+   * @param {number} [mantleViscosityPaS=1.0e20] - Dynamic mantle viscosity in Pa*s (1e19 to 1e22 Pa*s)
+   * @returns {{rayleighTaylorWavelengthKm: number, overturnTimescaleMyr: number, diapirSinkingVelocityCmYr: number, cmbTransitTimescaleMyr: number, basalPlumeVolumeKm3: number, mantleOverturnContext: string}}
+   */
+  static computeMartianMantleOverturnAndBasalMagmaCrystallization(cumulateLayerThicknessKm = 50.0, densityInversionKgM3 = 300.0, mantleViscosityPaS = 1.0e20) {
+    const hcKm = Math.max(5.0, cumulateLayerThicknessKm);
+    const dRho = Math.max(10.0, densityInversionKgM3);
+    const eta = Math.max(1e18, mantleViscosityPaS);
+
+    const gMars = 3.72076;
+    const hcM = hcKm * 1000.0;
+    const dMantleM = 1500.0 * 1000.0; // 1500 km mantle depth to CMB
+
+    // Dominant Rayleigh-Taylor wavelength (km & m)
+    const lambdaM = 2.56 * hcM;
+    const lambdaKm = lambdaM / 1000.0;
+
+    // Instability growth timescale (Myr)
+    const tauSec = (4.0 * Math.PI * eta) / (dRho * gMars * lambdaM);
+    const tauMyr = tauSec / (3.15576e7 * 1e6);
+
+    // Diapir sinking radius (m)
+    const RdiapM = lambdaM / 4.0;
+    const RdiapKm = RdiapM / 1000.0;
+
+    // Stokes sinking velocity (m/s & cm/yr)
+    const uSinkMS = (2.0 * dRho * gMars * Math.pow(RdiapM, 2.0)) / (9.0 * eta);
+    const uSinkCmYr = (uSinkMS * 3.15576e7) * 100.0;
+
+    // Transit time to CMB (Myr)
+    const tCmbSec = dMantleM / uSinkMS;
+    const tCmbMyr = tCmbSec / (3.15576e7 * 1e6);
+
+    // Basal melt volume (km^3)
+    const VmeltKm3 = (4.0 / 3.0) * Math.PI * Math.pow(RdiapKm, 3.0);
+
+    return {
+      rayleighTaylorWavelengthKm: parseFloat(lambdaKm.toFixed(1)),
+      overturnTimescaleMyr: parseFloat(tauMyr.toFixed(3)),
+      diapirSinkingVelocityCmYr: parseFloat(uSinkCmYr.toFixed(2)),
+      cmbTransitTimescaleMyr: parseFloat(tCmbMyr.toFixed(1)),
+      basalPlumeVolumeKm3: parseFloat(VmeltKm3.toFixed(0)),
+      mantleOverturnContext: `Mantle Cumulate Overturn (~${tauMyr.toFixed(2)} Myr Instability, ${uSinkCmYr.toFixed(1)} cm/yr Sinking, ~${tCmbMyr.toFixed(0)} Myr to CMB)`
+    };
+  }
 }
 
 

@@ -5690,6 +5690,63 @@ export class TrajectoryEngine {
       kboTransferContext: `Mars to ${targetKboName} Transfer (${tofYrs.toFixed(1)} yr TOF, ${dvTkboKmS.toFixed(2)} km/s Injection, ${vInfArrKmS.toFixed(2)} km/s Flyby Excess)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Interstellar Heliopause Escape Hyperbolic Trajectory, Trans-Interstellar Injection (TII), and Heliopause crossing time.
+   * v_p = sqrt( v_inf_sun^2 + 2 * mu_sun / r_mars )
+   * Delta_V_TII = sqrt( v_inf_mars^2 + 2 * mu_mars / r_park ) - sqrt( mu_mars / r_park )
+   * Reference: Stone et al. (2013), McNutt et al. (2022), Curtis (2013) for Interstellar Heliopause Escape.
+   * @param {number} [heliopauseDistanceAU=122.0] - Outer Heliopause boundary distance in AU (80.0 to 200.0 AU, Voyager 1)
+   * @param {number} [asymptoticEscapeSpeedKmS=15.0] - Asymptotic interstellar escape speed v_inf in km/s (5.0 to 35.0 km/s)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{heliopauseDistanceAU: number, asymptoticEscapeSpeedKmS: number, transInterstellarInjectionDeltaVKmS: number, timeOfFlightYears: number, heliopauseCrossingSpeedKmS: number, interstellarContext: string}}
+   */
+  static computeMarsToInterstellarEscapeTrajectory(heliopauseDistanceAU = 122.0, asymptoticEscapeSpeedKmS = 15.0, marsParkingAltitudeKm = 300.0) {
+    const RhpAU = Math.max(50.0, Math.min(300.0, heliopauseDistanceAU));
+    const vInfSunKmS = Math.max(5.0, Math.min(50.0, asymptoticEscapeSpeedKmS));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const RhpDistKm = RhpAU * AU_KM;
+
+    // Heliocentric hyperbolic perihelion speed at Mars
+    const vPeriSunKmS = Math.sqrt(Math.pow(vInfSunKmS, 2.0) + (2.0 * muSun / rMarsDistKm));
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vInfMarsKmS = vPeriSunKmS - vMarsCircKmS;
+
+    // Trans-Interstellar Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTiiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Speed at Heliopause crossing (km/s)
+    const vCrossKmS = Math.sqrt(Math.pow(vInfSunKmS, 2.0) + (2.0 * muSun / RhpDistKm));
+
+    // Hyperbolic Keplerian time of flight (years)
+    const aHyperKm = muSun / Math.pow(vInfSunKmS, 2.0);
+    const eHyper = 1.0 + (rMarsDistKm / aHyperKm);
+    const coshF = (1.0 / eHyper) * (1.0 + (RhpDistKm / aHyperKm));
+    const F = Math.acosh(Math.max(1.0, coshF));
+    const Mh = (eHyper * Math.sinh(F)) - F;
+    const tofSec = Math.sqrt(Math.pow(aHyperKm, 3.0) / muSun) * Mh;
+    const tofYrs = tofSec / (86400.0 * 365.25);
+
+    return {
+      heliopauseDistanceAU: parseFloat(RhpAU.toFixed(1)),
+      asymptoticEscapeSpeedKmS: parseFloat(vInfSunKmS.toFixed(2)),
+      transInterstellarInjectionDeltaVKmS: parseFloat(dvTiiKmS.toFixed(3)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(1)),
+      heliopauseCrossingSpeedKmS: parseFloat(vCrossKmS.toFixed(2)),
+      interstellarContext: `Interstellar Heliopause Escape (${tofYrs.toFixed(1)} yr to ${RhpAU.toFixed(0)} AU, ${dvTiiKmS.toFixed(2)} km/s TII, ${vCrossKmS.toFixed(1)} km/s at Heliopause)`
+    };
+  }
 }
 
 

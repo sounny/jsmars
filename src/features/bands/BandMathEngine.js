@@ -5913,6 +5913,56 @@ export class BandMathEngine {
       petrologicContext: context
     };
   }
+
+  /**
+   * Discriminate Polyhydrated Sulfate (Hexahydrite / Epsomite) vs Hydrated Zeolite (Analcime / Clinoptilolite) from CRISM BD1400, BD1900, BD2400, and BD2500 band indices.
+   * Reference: Ehlmann et al. (2009), Ruff et al. (2011), Viviano-Beck et al. (2014) for Mawrth Vallis and Columbus crater alkaline closed basins.
+   * @param {number} [band1400WaterDepth=0.04] - BD1400 OH/H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.08] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band2400SulfateDepth=0.07] - BD2400 broad SO4 combination band depth (0.0 to 0.50)
+   * @param {number} [band2500ZeoliteDepth=0.01] - BD2500 zeolite framework combination band depth (0.0 to 0.40)
+   * @returns {{isHydratedMineralDetected: boolean, mineralFamilyClass: string, mineralSpecies: string, chemicalFormula: string, alkalineLacustrineContext: string}}
+   */
+  static computeCRISMPolyhydratedSulfateVsZeoliteIndices(band1400WaterDepth = 0.04, band1900WaterDepth = 0.08, band2400SulfateDepth = 0.07, band2500ZeoliteDepth = 0.01) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2400 = Math.max(0.0, band2400SulfateDepth);
+    const d2500 = Math.max(0.0, band2500ZeoliteDepth);
+
+    let isMin = false;
+    let famClass = 'Non-Hydrated Silicate Matrix';
+    let species = 'Basalt';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Unaltered Silicate Matrix';
+
+    if (d1900 >= 0.030 && (d2400 >= 0.025 || d2500 >= 0.025)) {
+      isMin = true;
+      if (d2400 >= 0.035 && d2400 > d2500) {
+        famClass = 'Polyhydrated Sulfate (Hexahydrite / Epsomite)';
+        species = 'Hexahydrite / Epsomite / Gypsum';
+        formula = 'MgSO4 * 6H2O / CaSO4 * 2H2O';
+        context = 'Acid-to-Neutral Evaporative Playa Salina / High Water Activity Evaporation (Meridiani Planum / Columbus Crater)';
+      } else if (d2500 >= 0.025 && d2500 > d2400) {
+        famClass = 'Hydrated Zeolite (Analcime / Clinoptilolite)';
+        species = 'Analcime / Clinoptilolite';
+        formula = 'NaAlSi2O6 * H2O';
+        context = 'Alkaline-Saline Lacustrine / Hydrothermal Glass Alteration (Mawrth Vallis / Terra Sirenum Closed Basins)';
+      } else {
+        famClass = 'Mixed Hydrated Sulfate-Zeolite Assemblage';
+        species = 'Hydrated Framework Silicate Complex';
+        formula = 'Hydrated Silicate-Sulfate';
+        context = 'Evolving Diagenetic Hydrated Bed';
+      }
+    }
+
+    return {
+      isHydratedMineralDetected: isMin,
+      mineralFamilyClass: famClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      alkalineLacustrineContext: context
+    };
+  }
 }
 
 

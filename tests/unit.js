@@ -11618,6 +11618,50 @@ describe('Mars-to-Kuiper Belt Transfer, Mantle Plume Flexure & Olivine Fo# Inver
     });
 });
 
+describe('Mars-to-Interstellar Escape, Mantle Overturn & Sulfate vs Zeolite Inversion', () => {
+    it('should calculate Mars-to-Interstellar Heliopause hyperbolic escape trajectory and crossing time', () => {
+        // Heliopause escape (122 AU, 15 km/s asymptotic escape speed, 300 km Mars parking orbit):
+        const escape = TrajectoryEngine.computeMarsToInterstellarEscapeTrajectory(122.0, 15.0, 300.0);
+        expect(escape.heliopauseDistanceAU).to.equal(122.0);
+        expect(escape.asymptoticEscapeSpeedKmS).to.equal(15.0);
+        expect(escape.transInterstellarInjectionDeltaVKmS).to.be.closeTo(10.594, 0.4); // ~10.59 km/s TII
+        expect(escape.timeOfFlightYears).to.be.closeTo(35.0, 2.0); // ~35.0 years to Heliopause
+        expect(escape.heliopauseCrossingSpeedKmS).to.be.closeTo(15.48, 0.4); // ~15.5 km/s crossing speed
+        expect(escape.interstellarContext).to.include('Interstellar Heliopause Escape');
+    });
+
+    it('should calculate Rayleigh-Taylor cumulate overturn timescale, diapir sinking velocity, and CMB transit', () => {
+        // Dense ilmenite cumulates (50 km layer, 300 kg/m^3 density contrast, 1e20 Pa*s mantle viscosity):
+        const overturn = KRCEngine.computeMartianMantleOverturnAndBasalMagmaCrystallization(50.0, 300.0, 1.0e20);
+        expect(overturn.rayleighTaylorWavelengthKm).to.be.closeTo(128.0, 5.0); // ~128 km wavelength
+        expect(overturn.overturnTimescaleMyr).to.be.closeTo(0.279, 0.03); // ~0.28 Myr instability growth
+        expect(overturn.diapirSinkingVelocityCmYr).to.be.closeTo(8.01, 0.5); // ~8.0 cm/yr sinking speed
+        expect(overturn.cmbTransitTimescaleMyr).to.be.closeTo(18.7, 1.5); // ~18.7 Myr to reach CMB
+        expect(overturn.basalPlumeVolumeKm3).to.be.closeTo(137258.0, 10000.0); // ~1.37e5 km^3 plume
+        expect(overturn.mantleOverturnContext).to.include('Mantle Cumulate Overturn');
+    });
+
+    it('should discriminate Polyhydrated Sulfate (Hexahydrite) vs Hydrated Zeolite (Analcime) in CRISM spectra', () => {
+        // Polyhydrated Sulfate (Hexahydrite / Gypsum: strong 1.90 um and 2.40 um SO4 band in Meridiani: BD1400 = 0.05, BD1900 = 0.09, BD2400 = 0.08, BD2500 = 0.01):
+        const gypsum = BandMathEngine.computeCRISMPolyhydratedSulfateVsZeoliteIndices(0.05, 0.09, 0.08, 0.01);
+        expect(gypsum.isHydratedMineralDetected).to.be.true;
+        expect(gypsum.mineralFamilyClass).to.include('Polyhydrated Sulfate (Hexahydrite / Epsomite)');
+        expect(gypsum.chemicalFormula).to.include('MgSO4 * 6H2O');
+        expect(gypsum.alkalineLacustrineContext).to.include('High Water Activity Evaporation');
+
+        // Hydrated Zeolite (Analcime: strong 1.90 um and 2.50 um framework band in Mawrth: BD1400 = 0.06, BD1900 = 0.08, BD2400 = 0.01, BD2500 = 0.07):
+        const zeolite = BandMathEngine.computeCRISMPolyhydratedSulfateVsZeoliteIndices(0.06, 0.08, 0.01, 0.07);
+        expect(zeolite.isHydratedMineralDetected).to.be.true;
+        expect(zeolite.mineralFamilyClass).to.include('Hydrated Zeolite (Analcime / Clinoptilolite)');
+        expect(zeolite.chemicalFormula).to.include('NaAlSi2O6 * H2O');
+        expect(zeolite.alkalineLacustrineContext).to.include('Alkaline-Saline Lacustrine');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMPolyhydratedSulfateVsZeoliteIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isHydratedMineralDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
