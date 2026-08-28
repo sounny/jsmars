@@ -3009,6 +3009,57 @@ export class KRCEngine {
       subglacialSetting: setting
     };
   }
+
+  /**
+   * Calculate subsurface ground ice thermodynamic equilibrium stability and desiccation retreat depth under atmospheric water vapor pressure.
+   * T_frost = 6141.9 / ( 28.90 - ln(P_vapor) )
+   * Reference: Mellon & Phillips (2001), Schorghofer & Aharonson (2005), Chamberlain & Boynton (2007) for Phoenix & Odyssey GRS ground ice stability.
+   * @param {number} meanAnnualSurfaceTempK - Mean annual surface regolith temperature in K (170 to 225 K)
+   * @param {number} [atmosphericVaporPressurePa=0.25] - Column atmospheric water vapor partial pressure in Pa (0.05 to 1.5 Pa)
+   * @param {number} [latitudeDeg=65.0] - Target latitude in degrees
+   * @returns {{frostPointTempK: number, isGroundIceStableAtSurface: boolean, equilibriumIceTableDepthCm: number, equilibriumIceTableDepthMeters: number, iceStabilityRegime: string, vaporEquilibriumStatus: string}}
+   */
+  static computeSubsurfaceIceTableEquilibriumRetreatDepth(meanAnnualSurfaceTempK, atmosphericVaporPressurePa = 0.25, latitudeDeg = 65.0) {
+    const Tsurf = Math.max(120.0, Math.min(260.0, meanAnnualSurfaceTempK));
+    const Pv = Math.max(0.01, atmosphericVaporPressurePa);
+    const latAbs = Math.abs(latitudeDeg);
+
+    // Frost point temperature for water vapor
+    const Tfrost = 6141.9 / (28.90 - Math.log(Pv));
+
+    const isStable = Tsurf <= Tfrost;
+
+    let zDepthCm = 0.0;
+    let regime = 'Perennial Surface Frost & Ground Ice Table (< 5 cm Depth)';
+    let status = 'Thermodynamically Stable in Vapor Equilibrium with Atmosphere';
+
+    if (isStable) {
+      // Stable near surface with thin dry lag
+      zDepthCm = Math.max(1.0, (Tsurf / Tfrost) * 3.5);
+      if (latAbs >= 60.0) {
+        regime = 'High-Latitude Permafrost Excess Ground Ice (Phoenix / Utopia Planitia Type)';
+      }
+    } else {
+      // Unstable: retreats to deep desiccation horizon
+      const deltaT = Tsurf - Tfrost;
+      zDepthCm = Math.min(500.0, 5.0 + deltaT * 8.5); // cm
+      status = 'Metastable / Actively Sublimating (Requires Thick Regolith Dust Mantle to Retard Loss)';
+      if (zDepthCm > 100.0) {
+        regime = 'Desiccated Equatorial Regolith (Ice Table Discontinuous or Deep > 1 m)';
+      } else {
+        regime = 'Mid-Latitude Buried Glacial Ice (Protected by Decimeter Regolith Mantle)';
+      }
+    }
+
+    return {
+      frostPointTempK: parseFloat(Tfrost.toFixed(2)),
+      isGroundIceStableAtSurface: isStable,
+      equilibriumIceTableDepthCm: parseFloat(zDepthCm.toFixed(1)),
+      equilibriumIceTableDepthMeters: parseFloat((zDepthCm / 100.0).toFixed(3)),
+      iceStabilityRegime: regime,
+      vaporEquilibriumStatus: status
+    };
+  }
 }
 
 

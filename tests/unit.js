@@ -9392,6 +9392,48 @@ describe('Frozen Orbit Equilibrium, Basal Cryosphere Melting & Smectite Clay Spe
     });
 });
 
+describe('Areostationary Synchronous Orbit, Subsurface Ice Table Retreat & Carbonate Speciation', () => {
+    it('should calculate Mars Areostationary orbit radius, velocity, and longitudinal drift stationkeeping Delta-V', () => {
+        // Spacecraft at 90 deg West longitude (high drift toward stable libration well at ~16 deg W):
+        const aero = TrajectoryEngine.computeAreostationaryOrbitAndLongitudinalDrift(90.0, 'mars');
+        expect(aero.synchronousRadiusKm).to.be.closeTo(20428.2, 5.0); // ~20428 km synchronous radius
+        expect(aero.synchronousAltitudeKm).to.be.closeTo(17032.0, 5.0); // ~17032 km altitude
+        expect(aero.orbitalSpeedKmS).to.be.closeTo(1.448, 0.01); // ~1.448 km/s
+        expect(aero.rotationPeriodHours).to.be.closeTo(24.623, 0.01); // 24.623 hours Mars sol
+        expect(aero.annualStationkeepingDeltaVMS).to.be.greaterThan(2.0); // ~2-6 m/s/yr
+        expect(aero.nearestStableLongitudeDegW).to.be.closeTo(15.9, 1.0);
+    });
+
+    it('should calculate ground ice table thermodynamic equilibrium stability and desiccation retreat depth', () => {
+        // High-latitude polar permafrost at 68 deg N (Phoenix site, T_surf = 190 K, P_vapor = 0.25 Pa -> T_frost = 202.8 K):
+        const polarIce = KRCEngine.computeSubsurfaceIceTableEquilibriumRetreatDepth(190.0, 0.25, 68.0);
+        expect(polarIce.isGroundIceStableAtSurface).to.be.true;
+        expect(polarIce.frostPointTempK).to.be.closeTo(202.8, 1.0);
+        expect(polarIce.equilibriumIceTableDepthCm).to.be.lessThan(5.0); // shallow ice table (< 5 cm)
+        expect(polarIce.iceStabilityRegime).to.include('High-Latitude Permafrost');
+
+        // Mid-latitude desiccated zone (T_surf = 215 K -> T_surf > T_frost):
+        const midIce = KRCEngine.computeSubsurfaceIceTableEquilibriumRetreatDepth(215.0, 0.25, 30.0);
+        expect(midIce.isGroundIceStableAtSurface).to.be.false;
+        expect(midIce.equilibriumIceTableDepthCm).to.be.greaterThan(50.0); // retreats deep (> 50 cm)
+        expect(midIce.vaporEquilibriumStatus).to.include('Metastable / Actively Sublimating');
+    });
+
+    it('should discriminate Magnesite (MgCO3) from Calcite (CaCO3) and Dolomite using CRISM 2.3/2.5 um bands', () => {
+        // Magnesite (MgCO3) in Jezero crater margin / Nili Fossae (strong 2.30 um and 2.50 um Mg-carbonate bands):
+        const mgCarb = BandMathEngine.computeCRISMCarbonateAnionSpeciationIndices(0.24, 0.30, 0.24, 0.30, 0.30);
+        expect(mgCarb.carbonatePhase).to.include('Magnesite');
+        expect(mgCarb.cationType).to.include('Mg2+');
+        expect(mgCarb.carbonSequestrationContext).to.include('Ultramafic Olivine Bedrock');
+
+        // Calcite (CaCO3) in Phoenix alkaline soil (strong 2.34 um and 2.54 um Ca-carbonate bands):
+        const caCarb = BandMathEngine.computeCRISMCarbonateAnionSpeciationIndices(0.30, 0.24, 0.30, 0.24, 0.30);
+        expect(caCarb.carbonatePhase).to.include('Calcite');
+        expect(caCarb.cationType).to.include('Ca2+');
+        expect(caCarb.carbonSequestrationContext).to.include('Soil Duricrust');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

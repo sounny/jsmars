@@ -2332,6 +2332,72 @@ export class TrajectoryEngine {
       stabilityState: state
     };
   }
+
+  /**
+   * Calculate Mars Areostationary Orbit (AERO) parameters, triaxial gravity libration points, and annual stationkeeping Delta-V.
+   * r_sync = ( mu / omega_rot^2 )^(1/3)
+   * J_22 = sqrt( C_22^2 + S_22^2 )
+   * d2lambda/dt2 = - 12 * ( mu * R_p^2 / r_sync^5 ) * J_22 * sin( 2*(lambda - lambda_0) )
+   * Reference: Silva & Romero (2013), Vallado (2013) for Mars synchronous relay constellation dynamics.
+   * @param {number} [longitudeWestDeg=0.0] - Spacecraft sub-satellite longitude in West degrees (0 to 360)
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{synchronousRadiusKm: number, synchronousAltitudeKm: number, orbitalSpeedKmS: number, rotationPeriodHours: number, annualStationkeepingDeltaVMS: number, librationBehavior: string, nearestStableLongitudeDegW: number}}
+   */
+  static computeAreostationaryOrbitAndLongitudinalDrift(longitudeWestDeg = 0.0, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const Rp = isEarth ? 6378.137 : 3396.19;     // km
+    const ProtSec = isEarth ? 86164.0905 : 88642.663; // sidereal rotation sec
+    const C22 = isEarth ? 1.57e-6 : -5.46e-5;
+    const S22 = isEarth ? -9.04e-7 : 3.39e-5;
+
+    const omegaRot = (2.0 * Math.PI) / ProtSec; // rad/s
+    const ProtHours = ProtSec / 3600.0;
+
+    // Synchronous radius r_sync = (mu / omega^2)^(1/3)
+    const rSyncKm = Math.pow(mu / (omegaRot * omegaRot), 1.0 / 3.0);
+    const hSyncKm = rSyncKm - Rp;
+    const vSyncKmS = Math.sqrt(mu / rSyncKm);
+
+    // Triaxial harmonic magnitude J22 and equilibrium phase
+    const J22 = Math.sqrt(C22 * C22 + S22 * S22);
+    const lambda0Deg = (0.5 * Math.atan2(S22, -C22) * 180.0) / Math.PI; // equilibrium axis (~17.9 deg W)
+    const stableLon1 = ((lambda0Deg % 360) + 360) % 360;
+    const stableLon2 = (stableLon1 + 180.0) % 360.0;
+
+    const lambdaLon = ((longitudeWestDeg % 360) + 360) % 360;
+    const deltaLonRad = ((lambdaLon - stableLon1) * Math.PI) / 180.0;
+
+    // Longitudinal angular acceleration d2lambda/dt2 (rad/s^2)
+    const accelRadS2 = -12.0 * (mu / Math.pow(rSyncKm, 3.0)) * Math.pow(Rp / rSyncKm, 2.0) * J22 * Math.sin(2.0 * deltaLonRad);
+
+    // Annual stationkeeping Delta-V = r_sync * |accel| * (seconds per year)
+    const secPerYear = 365.25 * 86400.0;
+    const deltaVSKMS = Math.abs(rSyncKm * 1000.0 * accelRadS2 * secPerYear);
+
+    // Closest stable longitude
+    const diff1 = Math.abs(lambdaLon - stableLon1);
+    const diff2 = Math.abs(lambdaLon - stableLon2);
+    const nearestStable = diff1 < diff2 ? stableLon1 : stableLon2;
+
+    let behavior = 'Stable Gravitational Libration Well';
+    if (deltaVSKMS < 0.5) {
+      behavior = 'Near Gravitational Equilibrium Node (Minimal Stationkeeping Fuel)';
+    } else if (deltaVSKMS > 4.0) {
+      behavior = 'High Longitudinal Drift Corridor (Active East-West Thruster Stationkeeping Required)';
+    }
+
+    return {
+      synchronousRadiusKm: parseFloat(rSyncKm.toFixed(1)),
+      synchronousAltitudeKm: parseFloat(hSyncKm.toFixed(1)),
+      orbitalSpeedKmS: parseFloat(vSyncKmS.toFixed(3)),
+      rotationPeriodHours: parseFloat(ProtHours.toFixed(3)),
+      annualStationkeepingDeltaVMS: parseFloat(deltaVSKMS.toFixed(2)),
+      librationBehavior: behavior,
+      nearestStableLongitudeDegW: parseFloat(nearestStable.toFixed(1))
+    };
+  }
 }
 
 
