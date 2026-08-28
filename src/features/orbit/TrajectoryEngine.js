@@ -7416,6 +7416,78 @@ export class TrajectoryEngine {
       jupiterTransferContext: `Mars-to-Jupiter Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfJupKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
     };
   }
+
+  /**
+   * Calculate continuous low-thrust ion propulsion optimal thrust angle steering for maximum apsidal line precession rate (dot_omega).
+   * tan( theta_opt ) = - cos( nu ) / ( ( 1 + r / p ) * sin( nu ) )
+   * dot_omega_max = ( 1 / e ) * sqrt( p / mu ) * [ -f_r * cos( nu ) + f_theta * ( 1 + r / p ) * sin( nu ) ]
+   * Reference: Kechichian (1997), Petropoulos & Longuski (2004), Curtis (2013) for Low-Thrust Apsidal Rotation.
+   * @param {number} [initialOrbitAU=1.52368] - Semi-major axis in AU (0.2 to 10.0 AU)
+   * @param {number} [initialEccentricity=0.0934] - Orbit eccentricity (0.01 to 0.90)
+   * @param {number} [initialMassKg=1500.0] - Spacecraft mass in kg (100 to 50000 kg)
+   * @param {number} [thrustMN=300.0] - Continuous thrust in mN (10 to 5000 mN)
+   * @param {number} [specificImpulseSec=3500.0] - Thruster Isp in seconds (1000 to 10000 s)
+   * @param {number} [trueAnomalyDeg=90.0] - True anomaly in degrees (0 to 360 deg)
+   * @returns {{thrustSteeringAngleDeg: number, maxPrecessionRateDegPerYear: number, radialAccelerationMmS2: number, projectedApsidalShift180DaysDeg: number, propellantConsumed180DaysKg: number, apsidalSteeringContext: string}}
+   */
+  static computeLowThrustMaximumApsidalPrecessionSteering(initialOrbitAU = 1.52368, initialEccentricity = 0.0934, initialMassKg = 1500.0, thrustMN = 300.0, specificImpulseSec = 3500.0, trueAnomalyDeg = 90.0) {
+    const aAU = Math.max(0.1, initialOrbitAU);
+    const e = Math.max(0.005, Math.min(0.95, initialEccentricity));
+    const m0Kg = Math.max(10.0, initialMassKg);
+    const ThrustN = Math.max(0.001, thrustMN / 1000.0);
+    const Isp = Math.max(100.0, specificImpulseSec);
+    const nuDeg = trueAnomalyDeg % 360.0;
+
+    const AU_M = 1.495978707e11;
+    const muSunM = 1.32712440018e20; // m^3/s^2
+    const g0 = 9.80665;
+    const cMs = g0 * Isp;
+
+    const aM = aAU * AU_M;
+    const pM = aM * (1.0 - Math.pow(e, 2.0));
+    const nuRad = (nuDeg * Math.PI) / 180.0;
+    const rM = pM / (1.0 + (e * Math.cos(nuRad)));
+
+    const aThrustMs2 = ThrustN / m0Kg;
+    const aThrustMmS2 = aThrustMs2 * 1000.0;
+
+    // Optimal steering angle for maximizing dot_omega
+    const cosNu = Math.cos(nuRad);
+    const sinNu = Math.sin(nuRad);
+    const rOverP = rM / pM;
+
+    let thetaOptRad = 0.0;
+    if (Math.abs(sinNu) > 1e-4) {
+      thetaOptRad = Math.atan2(-cosNu, (1.0 + rOverP) * sinNu);
+    } else {
+      thetaOptRad = cosNu > 0 ? -Math.PI / 2.0 : Math.PI / 2.0;
+    }
+    const thetaOptDeg = thetaOptRad * (180.0 / Math.PI);
+
+    const frMs2 = aThrustMs2 * Math.sin(thetaOptRad);
+    const fthMs2 = aThrustMs2 * Math.cos(thetaOptRad);
+
+    // Instantaneous maximum dot_omega (rad/s and deg/yr)
+    const factor = (1.0 / e) * Math.sqrt(pM / muSunM);
+    const dotOmegaRadS = factor * ((-frMs2 * cosNu) + (fthMs2 * (1.0 + rOverP) * sinNu));
+    const dotOmegaDegS = dotOmegaRadS * (180.0 / Math.PI);
+    const dotOmegaDegYr = dotOmegaDegS * 86400.0 * 365.25;
+
+    // 180 days projected shift and propellant consumed
+    const tBurnSec = 180.0 * 86400.0;
+    const shift180Deg = dotOmegaDegS * tBurnSec;
+    const mdotKgS = ThrustN / cMs;
+    const propKg = mdotKgS * tBurnSec;
+
+    return {
+      thrustSteeringAngleDeg: parseFloat(thetaOptDeg.toFixed(1)),
+      maxPrecessionRateDegPerYear: parseFloat(dotOmegaDegYr.toFixed(1)),
+      radialAccelerationMmS2: parseFloat(aThrustMmS2.toFixed(3)),
+      projectedApsidalShift180DaysDeg: parseFloat(shift180Deg.toFixed(1)),
+      propellantConsumed180DaysKg: parseFloat(propKg.toFixed(2)),
+      apsidalSteeringContext: `Max Apsidal Precession Steering (${dotOmegaDegYr.toFixed(0)} deg/yr at nu=${nuDeg.toFixed(0)} deg, theta=${thetaOptDeg.toFixed(1)} deg, ${propKg.toFixed(1)} kg Xe)`
+    };
+  }
 }
 
 

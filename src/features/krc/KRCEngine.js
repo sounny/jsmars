@@ -7752,6 +7752,66 @@ export class KRCEngine {
       acidLeachingContext: `Acid Leaching at pH ${pH.toFixed(1)} (${residualSiO2Pct.toFixed(1)}% SiO2, ${phiFinalPct.toFixed(1)}% Porosity, TIU=${TIU.toFixed(0)}, ${alterClass})`
     };
   }
+
+  /**
+   * Calculate contact metamorphic thermal dehydroxylation, structural lattice collapse, and recrystallization kinetics of baked clay phyllosilicates.
+   * k = A * exp( -E_a / ( R * T ) )
+   * f_dehydrox = 1 - exp( -k * t )
+   * m_steam = rho_clay * w_OH_0 * f_dehydrox
+   * Reference: Guggenheim et al. (1987), Bish (1993), Chemtob et al. (2010), Ehlmann et al. (2011) for Baked Martian Phyllosilicates.
+   * @param {number} [contactTemperatureC=650.0] - Intrusive dike contact baking temperature in C (100 to 1200 C)
+   * @param {number} [initialClayWaterContentWtPct=14.0] - Unbaked phyllosilicate structural OH content in wt% (5 to 25 wt%)
+   * @param {number} [thermalEventDurationYr=100.0] - Thermal intrusion duration in yr (0.1 to 10000 yr)
+   * @param {number} [activationEnergyKJPerMol=180.0] - Dehydroxylation activation energy in kJ/mol (100 to 300 kJ/mol)
+   * @returns {{dehydroxylationFractionPercent: number, residualWaterContentWtPct: number, expelledSteamKgPerM3: number, bakedThermalInertiaTIU: number, metamorphicPhaseClass: string, thermalBakingContext: string}}
+   */
+  static computeMartianClayDehydroxylationRecrystallizationKinetics(contactTemperatureC = 650.0, initialClayWaterContentWtPct = 14.0, thermalEventDurationYr = 100.0, activationEnergyKJPerMol = 180.0) {
+    const TcontactC = Math.max(50.0, contactTemperatureC);
+    const wOH0 = Math.max(1.0, Math.min(30.0, initialClayWaterContentWtPct));
+    const tYr = Math.max(0.01, thermalEventDurationYr);
+    const EaKJ = Math.max(50.0, activationEnergyKJPerMol);
+
+    const TcontactK = TcontactC + 273.15;
+    const Rgas = 8.314;
+    const EaJ = EaKJ * 1000.0;
+    const A = 1.0e10; // yr^-1
+
+    const kDehydroxYr = A * Math.exp(-EaJ / (Rgas * TcontactK));
+    const exponent = Math.min(50.0, kDehydroxYr * tYr);
+    const fDehydrox = 1.0 - Math.exp(-exponent);
+    const dehydroxPct = fDehydrox * 100.0;
+
+    const wOHFinal = wOH0 * (1.0 - fDehydrox);
+    const rhoClay = 2400.0; // kg/m^3
+    const expelledSteamKgM3 = rhoClay * (wOH0 / 100.0) * fDehydrox;
+
+    // Metamorphic recrystallization phase & thermal properties
+    let phaseClass = 'Pristine Hydrated Smectite Clay (Unbaked)';
+    let kTherm = 0.40; // W/(m*K)
+    let rhoBulk = 2400.0;
+
+    if (TcontactC >= 600.0 && dehydroxPct >= 80.0) {
+      phaseClass = 'High-Grade Baked Hornfels (Anhydrous Pyroxene + Spinel + Cristobalite Recrystallization)';
+      kTherm = 2.10;
+      rhoBulk = 2750.0;
+    } else if (TcontactC >= 400.0 && dehydroxPct >= 30.0) {
+      phaseClass = 'Partially Dehydroxylated Amorphous Phase (Lattice Collapse / Hydroxyl Depleted)';
+      kTherm = 1.10;
+      rhoBulk = 2550.0;
+    }
+
+    const Cspec = 850.0; // J/(kg*K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    return {
+      dehydroxylationFractionPercent: parseFloat(dehydroxPct.toFixed(1)),
+      residualWaterContentWtPct: parseFloat(wOHFinal.toFixed(2)),
+      expelledSteamKgPerM3: parseFloat(expelledSteamKgM3.toFixed(1)),
+      bakedThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      metamorphicPhaseClass: phaseClass,
+      thermalBakingContext: `Contact Baking at ${TcontactC.toFixed(0)} C (${dehydroxPct.toFixed(0)}% Dehydroxylated, ${expelledSteamKgM3.toFixed(0)} kg/m3 Steam, TIU=${TIU.toFixed(0)})`
+    };
+  }
 }
 
 

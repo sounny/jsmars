@@ -7241,6 +7241,52 @@ export class BandMathEngine {
       serpentinizationThermalContext: context
     };
   }
+
+  /**
+   * Discriminate Pristine Crystalline Clay vs Thermally Dehydroxylated Amorphous Silicate Phase from CRISM/THEMIS NIR/TIR absorption features.
+   * Reference: Chemtob et al. (2010), Michalski et al. (2010), Viviano-Beck et al. (2014) for Thermally Altered Martian Clays.
+   * @param {number} [band1400WaterDepth=0.01] - BD1400 molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 molecular H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2200AlOHDepth=0.01] - BD2200 Al-OH vibration depth (0.0 to 0.40)
+   * @param {number} [band2290FeOHDepth=0.03] - BD2290 Fe3+-OH vibration depth (0.0 to 0.40)
+   * @param {number} [tirLatticeReststrahlenDepth=0.08] - THEMIS/TES 10 um Si-O-Si asymmetric stretch depth (0.0 to 0.40)
+   * @returns {{isSilicatePhaseDetected: boolean, clayThermalStateClass: string, mineralSpecies: string, chemicalStructureState: string, contactMetamorphicContext: string}}
+   */
+  static computeCRISMDehydroxylatedClayPhaseIndices(band1400WaterDepth = 0.01, band1900WaterDepth = 0.01, band2200AlOHDepth = 0.01, band2290FeOHDepth = 0.03, tirLatticeReststrahlenDepth = 0.08) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2200 = Math.max(0.0, band2200AlOHDepth);
+    const d2290 = Math.max(0.0, band2290FeOHDepth);
+    const dTIR = Math.max(0.0, tirLatticeReststrahlenDepth);
+
+    const isHydrated = (d2200 >= 0.030 || d2290 >= 0.030) && (d1400 >= 0.025 || d1900 >= 0.030);
+    const isBaked = (d2200 >= 0.020 || d2290 >= 0.020 || dTIR >= 0.050) && d1400 < 0.020 && d1900 < 0.020;
+
+    let stateClass = 'Unaltered Basaltic Matrix';
+    let species = 'Basalt / Pyroxene';
+    let structure = 'Crystalline Igneous Silicate';
+    let context = 'Standard Basaltic Bedrock';
+
+    if (isBaked) {
+      stateClass = 'Thermally Dehydroxylated Amorphous Silicate Phase (Baked Clay Hornfels)';
+      species = 'Dehydroxylated Nontronite / Pyroxene-Spinel Matrix';
+      structure = 'Collapsed 2:1 Layer Lattice (Anhydrous Recrystallized)';
+      context = 'Volcanic Dike Intrusion / Lava Flow Contact Metamorphic Aureole (Syrtis Major / Nili Patera)';
+    } else if (isHydrated) {
+      stateClass = 'Pristine Crystalline Smectite Clay (Unbaked)';
+      species = d2290 >= d2200 ? 'Nontronite (Fe-Smectite)' : 'Montmorillonite (Al-Smectite)';
+      structure = 'Intact Hydrated 2:1 Layer Lattice';
+      context = 'Aqueous Alteration Horizon Preserving Structural Hydroxyls and Interlayer Molecular Water';
+    }
+
+    return {
+      isSilicatePhaseDetected: isHydrated || isBaked,
+      clayThermalStateClass: stateClass,
+      mineralSpecies: species,
+      chemicalStructureState: structure,
+      contactMetamorphicContext: context
+    };
+  }
 }
 
 

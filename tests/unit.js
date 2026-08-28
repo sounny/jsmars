@@ -12902,6 +12902,49 @@ describe('Mars-to-Jupiter Hohmann Insertion, Acid Leached Silica & Serpentine Sp
     });
 });
 
+describe('Maximum Apsidal Precession Steering, Clay Dehydroxylation & Contact Metamorphism', () => {
+    it('should calculate continuous low-thrust optimal steering for maximum apsidal precession rate', () => {
+        // Mars orbit (1.52368 AU, e = 0.0934, 1500 kg, 300 mN thrust, 3500 s Isp, nu = 90 deg):
+        const steer = TrajectoryEngine.computeLowThrustMaximumApsidalPrecessionSteering(1.52368, 0.0934, 1500.0, 300.0, 3500.0, 90.0);
+        expect(steer.maxPrecessionRateDegPerYear).to.be.closeTo(319.5, 30.0); // ~320 deg/yr max precession rate
+        expect(steer.radialAccelerationMmS2).to.equal(0.200); // 0.20 mm/s^2
+        expect(steer.projectedApsidalShift180DaysDeg).to.be.closeTo(157.4, 20.0); // ~157 deg shift over 180 d
+        expect(steer.propellantConsumed180DaysKg).to.be.closeTo(135.9, 5.0); // ~136 kg Xe
+        expect(steer.apsidalSteeringContext).to.include('Max Apsidal Precession Steering');
+    });
+
+    it('should calculate contact metamorphic clay dehydroxylation, steam release, and recrystallization kinetics', () => {
+        // 650 C contact baking, 14 wt% initial OH, 100 yr duration, 180 kJ/mol Ea:
+        const dehydrox = KRCEngine.computeMartianClayDehydroxylationRecrystallizationKinetics(650.0, 14.0, 100.0, 180.0);
+        expect(dehydrox.dehydroxylationFractionPercent).to.be.closeTo(100.0, 1.0); // 100% dehydroxylated
+        expect(dehydrox.residualWaterContentWtPct).to.equal(0.00); // completely dry
+        expect(dehydrox.expelledSteamKgPerM3).to.be.closeTo(336.0, 10.0); // ~336 kg/m^3 steam
+        expect(dehydrox.bakedThermalInertiaTIU).to.be.closeTo(2215.6, 50.0); // high TIU baked hornfels
+        expect(dehydrox.metamorphicPhaseClass).to.include('High-Grade Baked Hornfels');
+        expect(dehydrox.thermalBakingContext).to.include('Contact Baking');
+    });
+
+    it('should discriminate Pristine Crystalline Clay vs Thermally Dehydroxylated Amorphous Phase in CRISM spectra', () => {
+        // Pristine Nontronite (BD1400 = 0.04, BD1900 = 0.06, BD2200 = 0.01, BD2290 = 0.05, TIR = 0.02):
+        const pristine = BandMathEngine.computeCRISMDehydroxylatedClayPhaseIndices(0.04, 0.06, 0.01, 0.05, 0.02);
+        expect(pristine.isSilicatePhaseDetected).to.be.true;
+        expect(pristine.clayThermalStateClass).to.include('Pristine Crystalline Smectite Clay');
+        expect(pristine.mineralSpecies).to.include('Nontronite');
+        expect(pristine.contactMetamorphicContext).to.include('Aqueous Alteration Horizon Preserving Structural Hydroxyls');
+
+        // Thermally Dehydroxylated Hornfels (Syrtis Major dike aureole: BD1400 = 0.005, BD1900 = 0.005, BD2200 = 0.01, BD2290 = 0.03, TIR = 0.08):
+        const baked = BandMathEngine.computeCRISMDehydroxylatedClayPhaseIndices(0.005, 0.005, 0.01, 0.03, 0.08);
+        expect(baked.isSilicatePhaseDetected).to.be.true;
+        expect(baked.clayThermalStateClass).to.include('Thermally Dehydroxylated Amorphous Silicate Phase');
+        expect(baked.chemicalStructureState).to.include('Collapsed 2:1 Layer Lattice');
+        expect(baked.contactMetamorphicContext).to.include('Volcanic Dike Intrusion / Lava Flow Contact Metamorphic Aureole');
+
+        // Unbaked basalt:
+        const basalt = BandMathEngine.computeCRISMDehydroxylatedClayPhaseIndices(0.005, 0.005, 0.005, 0.005, 0.01);
+        expect(basalt.isSilicatePhaseDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
