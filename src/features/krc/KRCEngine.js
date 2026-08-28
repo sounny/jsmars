@@ -4440,6 +4440,79 @@ export class KRCEngine {
       astrobiologicalHabitabilityAssessment: habitability
     };
   }
+
+  /**
+   * Calculate subsurface methane clathrate hydrate (CH4 * 5.75H2O) thermodynamic dissociation, overpressure, and Darcy atmospheric plume flux.
+   * ln( P_eq / kPa ) = 38.98 - 4438.0 / T
+   * F_CH4 = ( k_perm / mu_gas ) * ( delta_P / z )
+   * Reference: Chassefière et al. (2013), Lasue et al. (2015), Webster et al. (2018) for MSL Curiosity Gale Crater methane spikes.
+   * @param {number} [subsurfaceDepthMeters=150.0] - Depth of methane clathrate pocket in meters (10 to 2000 m)
+   * @param {number} [geothermalThermalPulseDeltaTK=15.0] - Transient subsurface thermal anomaly / pulse in K (0 to 50 K)
+   * @param {number} [hostRockPermeabilityMilliDarcies=50.0] - Overlying fractured rock permeability in mD (0.1 to 1000 mD)
+   * @param {number} [meanSurfaceTempK=215.0] - Mean ambient ground temperature in K
+   * @returns {{lithostaticPorePressureKPa: number, clathrateEquilibriumTempK: number, isClathrateThermallyDestabilized: boolean, gasOverpressureKPa: number, surfaceMethaneFluxNmolM2S: number, atmosphericColumnSpikePpbv: number, atmosphericPlumeSignature: string}}
+   */
+  static computeSubsurfaceMethaneClathrateDissociationAndPlumeFlux(subsurfaceDepthMeters = 150.0, geothermalThermalPulseDeltaTK = 15.0, hostRockPermeabilityMilliDarcies = 50.0, meanSurfaceTempK = 215.0) {
+    const zM = Math.max(5.0, subsurfaceDepthMeters);
+    const deltaT = Math.max(0.0, geothermalThermalPulseDeltaTK);
+    const kMD = Math.max(0.01, hostRockPermeabilityMilliDarcies);
+    const Tsurf = Math.max(150.0, Math.min(270.0, meanSurfaceTempK));
+
+    const gMars = 3.72076; // m/s^2
+    const rhoRock = 2500.0; // kg/m^3
+    const muGas = 1.2e-5; // Pa*s CH4 gas viscosity at Martian temperatures
+
+    // Lithostatic / hydrostatic confining pressure at depth z (kPa)
+    const pLithPa = 610.0 + (rhoRock * gMars * zM);
+    const pLithKPa = pLithPa / 1000.0;
+
+    // Background cryosphere temperature at depth z (assuming dT/dz = 12.5 K/km)
+    const Tbg = Tsurf + (0.0125 * zM);
+    const Tlocal = Tbg + deltaT;
+
+    // Clathrate equilibrium dissociation temp at confining pressure pLithKPa
+    const Teq = 4438.0 / (38.98 - Math.log(Math.max(1.0, pLithKPa)));
+
+    // Clathrate equilibrium vapor pressure at Tlocal (kPa)
+    const pEqKPa = Math.exp(38.98 - (4438.0 / Math.max(100.0, Tlocal)));
+
+    const isDestabilized = Tlocal >= Teq || pEqKPa > pLithKPa;
+    const overpressureKPa = Math.max(0.0, pEqKPa - pLithKPa);
+    const overpressurePa = overpressureKPa * 1000.0;
+
+    // Darcy diffusive volumetric gas flux (m/s)
+    const kPermM2 = kMD * 9.869233e-16;
+    const dPdz = overpressurePa / zM;
+    const qDarcyMS = (kPermM2 / muGas) * dPdz;
+
+    // Molar density of CH4 gas at Martian boundary layer (mol/m^3)
+    const R_GAS = 8.314;
+    const rhoMolar = 610.0 / (R_GAS * 215.0); // ~0.34 mol/m^3
+    const fluxMolM2S = qDarcyMS * rhoMolar;
+    const fluxNmolM2S = fluxMolM2S * 1e9;
+
+    // Atmospheric column mixing ratio enhancement (ppbv)
+    const H_ATM_SCALE_M = 11100.0; // Mars atmospheric scale height (m)
+    const columnAirMolM2 = (610.0 / (gMars * 0.044)); // ~3700 mol/m^2
+    const deltaChiPpbv = Math.min(500.0, (fluxMolM2S * 86400.0 / columnAirMolM2) * 1e9);
+
+    let plumeDesc = 'Quiescent Background Methane Seepage (< 0.5 ppbv / MSL Background Level)';
+    if (deltaChiPpbv > 10.0) {
+      plumeDesc = 'High-Concentration Methane Plume Outburst (> 10 ppbv / MSL Curiosity Gale Crater Spike Analogue)';
+    } else if (isDestabilized) {
+      plumeDesc = 'Active Subsurface Clathrate Thermal Destabilization & Micro-Seepage';
+    }
+
+    return {
+      lithostaticPorePressureKPa: parseFloat(pLithKPa.toFixed(2)),
+      clathrateEquilibriumTempK: parseFloat(Teq.toFixed(1)),
+      isClathrateThermallyDestabilized: isDestabilized,
+      gasOverpressureKPa: parseFloat(overpressureKPa.toFixed(1)),
+      surfaceMethaneFluxNmolM2S: parseFloat(fluxNmolM2S.toFixed(4)),
+      atmosphericColumnSpikePpbv: parseFloat(deltaChiPpbv.toFixed(2)),
+      atmosphericPlumeSignature: plumeDesc
+    };
+  }
 }
 
 

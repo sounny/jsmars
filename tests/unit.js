@@ -10221,6 +10221,49 @@ describe('Orbital Plane Change Maneuver, Subsurface Cryopeg & Opaline Silica Inv
     });
 });
 
+describe('Heliocentric Gravity Assist Vectors, Methane Clathrate & Sulfate Hydration States', () => {
+    it('should calculate 2D planetocentric-to-heliocentric gravity assist vector addition and energy gain', () => {
+        // Rosetta / Dawn Mars flyby (v_inf = 5.6 km/s, approach angle = 120 deg, pericenter altitude = 250 km):
+        const ga = TrajectoryEngine.computeInterplanetaryGravityAssistHeliocentricVelocityVector(5.60, 120.0, 24.13, 250.0, 'mars');
+        expect(ga.hyperbolicDeflectionAngleDeg).to.be.closeTo(31.67, 1.0); // ~31.7 deg turn angle
+        expect(ga.ingoingHeliocentricSpeedKmS).to.be.closeTo(29.115, 0.1); // ~29.12 km/s heliocentric arrival
+        expect(ga.outgoingHeliocentricSpeedKmS).to.be.closeTo(29.728, 0.1); // ~29.73 km/s heliocentric departure
+        expect(ga.netHeliocentricSpeedChangeKmS).to.be.closeTo(0.613, 0.05); // ~+613 m/s speed boost
+        expect(ga.flybyVectorImpulseMagnitudeKmS).to.be.closeTo(3.056, 0.1); // ~3.06 km/s vector impulse
+        expect(ga.gravityAssistRegime).to.include('Trailing-Side Flyby');
+    });
+
+    it('should calculate subsurface methane clathrate thermodynamic dissociation and Darcy plume flux', () => {
+        // Gale Crater clathrate pocket (z = 150 m, delta_T = 15 K pulse, k = 50 mD):
+        const clathrate = KRCEngine.computeSubsurfaceMethaneClathrateDissociationAndPlumeFlux(150.0, 15.0, 50.0, 215.0);
+        expect(clathrate.lithostaticPorePressureKPa).to.be.closeTo(1395.9, 10.0); // ~1396 kPa confining pressure
+        expect(clathrate.clathrateEquilibriumTempK).to.be.closeTo(139.8, 2.0); // ~140 K dissociation temp
+        expect(clathrate.isClathrateThermallyDestabilized).to.be.true;
+        expect(clathrate.gasOverpressureKPa).to.be.greaterThan(0);
+        expect(clathrate.surfaceMethaneFluxNmolM2S).to.be.greaterThan(0);
+        expect(clathrate.atmosphericColumnSpikePpbv).to.be.greaterThan(10.0); // > 10 ppbv spike
+        expect(clathrate.atmosphericPlumeSignature).to.include('Methane Plume Outburst');
+    });
+
+    it('should discriminate Monohydrated Sulfates from Polyhydrated Sulfates and basalt in CRISM spectra', () => {
+        // Monohydrated Sulfate (Kieserite in Juventae Chasma: strong 2.13 um and 2.40 um):
+        const kieserite = BandMathEngine.computeCRISMSulfateHydrationStateIndices(0.30, 0.30, 0.22, 0.22, 0.30);
+        expect(kieserite.isSulfatePresent).to.be.true;
+        expect(kieserite.sulfateHydrationState).to.include('Monohydrated Sulfate');
+        expect(kieserite.paleoclimateDesiccationContext).to.include('Hyper-Arid Paleoclimate');
+
+        // Polyhydrated Sulfate (Epsomite/Gypsum: strong 1.43 um, 1.93 um, and 2.40 um):
+        const poly = BandMathEngine.computeCRISMSulfateHydrationStateIndices(0.24, 0.22, 0.30, 0.22, 0.30);
+        expect(poly.isSulfatePresent).to.be.true;
+        expect(poly.sulfateHydrationState).to.include('Polyhydrated Sulfate');
+        expect(poly.paleoclimateDesiccationContext).to.include('Aqueous Evaporite Lake Basin');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMSulfateHydrationStateIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isSulfatePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

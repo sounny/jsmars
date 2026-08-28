@@ -3835,6 +3835,87 @@ export class TrajectoryEngine {
       maneuverEfficiencyContext: context
     };
   }
+
+  /**
+   * Calculate 2D/3D planetocentric-to-heliocentric gravity assist vector addition, turn angle, heliocentric velocity gain, and specific energy change.
+   * delta = 2 * asin( 1 / ( 1 + r_p * v_inf^2 / mu ) )
+   * v_hel_in = v_planet + v_inf_in
+   * v_hel_out = v_planet + v_inf_out
+   * Reference: Bate, Mueller & White (1971), Prussing & Conway (1993), Curtis (2013) for Rosetta/Dawn planetary gravity assists.
+   * @param {number} [vInfInKmS=5.60] - Hyperbolic approach speed in km/s (1.0 to 20.0 km/s)
+   * @param {number} [approachAngleDeg=120.0] - Angle between approach asymptote and planet velocity vector in degrees
+   * @param {number} [vPlanetHeliocentricKmS=24.13] - Planet circular heliocentric orbital velocity in km/s (24.13 km/s for Mars)
+   * @param {number} [periapsisAltitudeKm=250.0] - Flyby periapsis altitude in km (150 to 10000 km)
+   * @param {string} [body='mars'] - Planetary encounter body
+   * @returns {{hyperbolicDeflectionAngleDeg: number, ingoingHeliocentricSpeedKmS: number, outgoingHeliocentricSpeedKmS: number, netHeliocentricSpeedChangeKmS: number, flybyVectorImpulseMagnitudeKmS: number, specificOrbitalEnergyChangeKm2S2: number, gravityAssistRegime: string}}
+   */
+  static computeInterplanetaryGravityAssistHeliocentricVelocityVector(vInfInKmS = 5.60, approachAngleDeg = 120.0, vPlanetHeliocentricKmS = 24.13, periapsisAltitudeKm = 250.0, body = 'mars') {
+    const vInf = Math.max(0.1, vInfInKmS);
+    const vPlanet = Math.max(0.1, vPlanetHeliocentricKmS);
+    const hpKm = Math.max(50.0, periapsisAltitudeKm);
+    const psiInRad = approachAngleDeg * (Math.PI / 180.0);
+
+    let mu = 4.282837e13; // m^3/s^2 (Mars)
+    let rPlanetKm = 3389.5;
+
+    if (body.toLowerCase() === 'earth') {
+      mu = 3.986004418e14;
+      rPlanetKm = 6378.137;
+    } else if (body.toLowerCase() === 'venus') {
+      mu = 3.24859e14;
+      rPlanetKm = 6051.8;
+    } else if (body.toLowerCase() === 'jupiter') {
+      mu = 1.26686534e17;
+      rPlanetKm = 71492.0;
+    }
+
+    const rpM = (rPlanetKm + hpKm) * 1000.0;
+    const vInfMS = vInf * 1000.0;
+
+    // Hyperbolic eccentricity e = 1 + (rp * v_inf^2) / mu
+    const e = 1.0 + (rpM * Math.pow(vInfMS, 2.0)) / mu;
+
+    // Turn angle delta = 2 * asin(1 / e)
+    const deltaRad = 2.0 * Math.asin(1.0 / Math.max(1.0001, e));
+    const deltaDeg = deltaRad * (180.0 / Math.PI);
+
+    // Ingoing asymptotes (planet motion is along +y axis, sun is along -x)
+    const vInfInX = vInf * Math.cos(psiInRad);
+    const vInfInY = vInf * Math.sin(psiInRad);
+
+    const vHelInX = vInfInX;
+    const vHelInY = vPlanet + vInfInY;
+    const vHelIn = Math.sqrt(Math.pow(vHelInX, 2.0) + Math.pow(vHelInY, 2.0));
+
+    // Outgoing asymptote rotated trailing-side by delta
+    const psiOutRad = psiInRad - deltaRad;
+    const vInfOutX = vInf * Math.cos(psiOutRad);
+    const vInfOutY = vInf * Math.sin(psiOutRad);
+
+    const vHelOutX = vInfOutX;
+    const vHelOutY = vPlanet + vInfOutY;
+    const vHelOut = Math.sqrt(Math.pow(vHelOutX, 2.0) + Math.pow(vHelOutY, 2.0));
+
+    const deltaVGain = vHelOut - vHelIn;
+
+    // Vector impulse magnitude = 2 * v_inf * sin(delta / 2)
+    const impulse = 2.0 * vInf * Math.sin(deltaRad / 2.0);
+
+    // Specific orbital energy change = ( v_out^2 - v_in^2 ) / 2
+    const deltaEnergy = (Math.pow(vHelOut, 2.0) - Math.pow(vHelIn, 2.0)) / 2.0;
+
+    let regime = deltaVGain >= 0 ? 'Trailing-Side Flyby (Heliocentric Energy & Aphelion Boosting)' : 'Leading-Side Flyby (Heliocentric Braking / Inward Solar System Insertion)';
+
+    return {
+      hyperbolicDeflectionAngleDeg: parseFloat(deltaDeg.toFixed(2)),
+      ingoingHeliocentricSpeedKmS: parseFloat(vHelIn.toFixed(3)),
+      outgoingHeliocentricSpeedKmS: parseFloat(vHelOut.toFixed(3)),
+      netHeliocentricSpeedChangeKmS: parseFloat(deltaVGain.toFixed(3)),
+      flybyVectorImpulseMagnitudeKmS: parseFloat(impulse.toFixed(3)),
+      specificOrbitalEnergyChangeKm2S2: parseFloat(deltaEnergy.toFixed(2)),
+      gravityAssistRegime: regime
+    };
+  }
 }
 
 

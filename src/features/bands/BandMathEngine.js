@@ -4502,6 +4502,51 @@ export class BandMathEngine {
       hydrothermalGenesisContext: context
     };
   }
+
+  /**
+   * Discriminate Monohydrated Sulfates (MHS: Kieserite, Szomolnokite) from Polyhydrated Sulfates (PHS: Epsomite, Starkeyite, Gypsum) using CRISM 1.43 um, 1.93 um, 2.13 um, and 2.40 um bands.
+   * Reference: Gendrin et al. (2005), Bibring et al. (2006), Roach et al. (2009), Viviano-Beck et al. (2014) for layered sulfate mounds in Juventae & Candor Chasmata.
+   * @param {number} r1430 - Reflectance at 1.43 um H2O overtone band
+   * @param {number} r1930 - Reflectance at 1.93 um primary molecular H2O band
+   * @param {number} r2130 - Reflectance at 2.13 um diagnostic Kieserite/MHS combination band
+   * @param {number} r2400 - Reflectance at 2.40 um fundamental sulfate combination band
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1430: number, bd1930: number, bd2130: number, bd2400: number, isSulfatePresent: boolean, sulfateHydrationState: string, paleoclimateDesiccationContext: string}}
+   */
+  static computeCRISMSulfateHydrationStateIndices(r1430, r1930, r2130, r2400, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1430 = Math.max(0.0, 1.0 - (r1430 / cont));
+    const bd1930 = Math.max(0.0, 1.0 - (r1930 / cont));
+    const bd2130 = Math.max(0.0, 1.0 - (r2130 / cont));
+    const bd2400 = Math.max(0.0, 1.0 - (r2400 / cont));
+
+    let species = 'Unaltered Primary Igneous Silicate';
+    let isSulfate = false;
+    let context = 'Standard Basaltic Regolith';
+
+    if (bd2400 >= 0.025) {
+      if (bd2130 >= 0.025) {
+        isSulfate = true;
+        species = 'Monohydrated Sulfate (MHS: Kieserite MgSO4*H2O / Szomolnokite FeSO4*H2O)';
+        context = 'Hyper-Arid Paleoclimate Evaporative Desiccation / Advanced Thermodynamic Dehydration of Playa Lacustrine Deposits';
+      } else if (bd1930 >= 0.025) {
+        isSulfate = true;
+        species = 'Polyhydrated Sulfate (PHS: Epsomite MgSO4*7H2O / Starkeyite MgSO4*4H2O / Gypsum CaSO4*2H2O)';
+        context = 'Aqueous Evaporite Lake Basin / Groundwater Upwelling & Low-Temperature Evaporation';
+      }
+    }
+
+    return {
+      bd1430: parseFloat(bd1430.toFixed(4)),
+      bd1930: parseFloat(bd1930.toFixed(4)),
+      bd2130: parseFloat(bd2130.toFixed(4)),
+      bd2400: parseFloat(bd2400.toFixed(4)),
+      isSulfatePresent: isSulfate,
+      sulfateHydrationState: species,
+      paleoclimateDesiccationContext: context
+    };
+  }
 }
 
 
