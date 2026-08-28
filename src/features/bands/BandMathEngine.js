@@ -6880,6 +6880,56 @@ export class BandMathEngine {
       depositionalEnvironmentContext: context
     };
   }
+
+  /**
+   * Discriminate anhydrous Chloride-Bearing Evaporite deposits (Halite/Sylvite) from phyllosilicates and basalt from CRISM NIR red slope, 1.90 um water, 2.20 um depth, and THEMIS TIR anomaly.
+   * Reference: Osterloo et al. (2008, 2010), Glotch et al. (2010), Viviano-Beck et al. (2014) for Martian Chloride-Bearing Evaporites.
+   * @param {number} [nirSlopeBand=0.12] - CRISM NIR 1.0 to 2.5 um positive red slope (0.0 to 0.40)
+   * @param {number} [band2200AbsorptionDepth=0.005] - BD2200 Al-OH absorption band depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.010] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [thermalMIRChlorideAnomaly=0.050] - THEMIS TIR band 8/7/5 decorrelation stretch anomaly (0.0 to 0.20)
+   * @returns {{isChlorideDetected: boolean, evaporiteClass: string, mineralSpecies: string, chemicalFormula: string, halitePlayaContext: string}}
+   */
+  static computeCRISMAnhydrousHaliteChloridePlayaIndices(nirSlopeBand = 0.12, band2200AbsorptionDepth = 0.005, band1900WaterDepth = 0.010, thermalMIRChlorideAnomaly = 0.050) {
+    const sNIR = Math.max(0.0, nirSlopeBand);
+    const d2200 = Math.max(0.0, band2200AbsorptionDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const aTIR = Math.max(0.0, thermalMIRChlorideAnomaly);
+
+    const isChloride = (sNIR >= 0.07 && d2200 < 0.020 && d1900 < 0.025) || (aTIR >= 0.035 && sNIR >= 0.04);
+
+    let evapClass = 'Standard Silicate Regolith';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Chloride Signature';
+
+    if (isChloride) {
+      if (aTIR >= 0.040 && sNIR >= 0.08) {
+        evapClass = 'Massive Crystalline Halite / Chloride Salt Flat (Playa Core)';
+        species = 'Halite (NaCl) + Sylvite (KCl)';
+        formula = 'NaCl +/- KCl';
+        context = 'Terminal Hypersaline Evaporative Playa / Salt Pan with High Fluid-Inclusion Biosignature Preservation Potential (Terra Sirenum)';
+      } else {
+        evapClass = 'Dispersed Chloride-Bearing Duricrust / Saline Silt Matrix';
+        species = 'Halite-Basalt Mix';
+        formula = 'NaCl + Silicate Regolith';
+        context = 'Perched Groundwater Evaporite Crust / Saline Ephemeral Lake Margin';
+      }
+    } else if (d2200 >= 0.030) {
+      evapClass = 'Phyllosilicate Clay Horizon (Non-Chloride)';
+      species = 'Smectite / Illite';
+      formula = '(Al,Mg,Fe)2Si4O10(OH)2';
+      context = 'Hydrated Clay-Rich Strata';
+    }
+
+    return {
+      isChlorideDetected: isChloride,
+      evaporiteClass: evapClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      halitePlayaContext: context
+    };
+  }
 }
 
 

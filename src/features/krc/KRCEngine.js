@@ -7325,6 +7325,67 @@ export class KRCEngine {
       diagenesisContext: `Clay Diagenesis at ${zKm.toFixed(1)}km (${TburialC.toFixed(0)} C, ${illitePct.toFixed(0)}% Illite, ${waterReleasedWtPct.toFixed(1)} wt% H2O Dewatered, ${zoneClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal silica sinter maturation, dissolution-reprecipitation Ostwald ripening, porosity reduction, and thermal inertia evolution.
+   * k_sinter = A * exp( -E_a / ( R * T ) ) * 10^( pH - 7 )
+   * phi(t) = phi_inf + ( phi_0 - phi_inf ) * exp( -k_sinter * t )
+   * I = sqrt( k_therm * rho_bulk * C )
+   * Reference: Lynne et al. (2005), Ruff et al. (2011), Rice et al. (2013) for Silica Sinter Compaction & Thermal Inertia.
+   * @param {number} [ambientTemperatureC=75.0] - Hydrothermal vent / fluid temperature in C (10 to 250 C)
+   * @param {number} [initialPorosity=0.55] - Fresh spicular sinter porosity (0.20 to 0.85)
+   * @param {number} [durationYears=100.0] - Geothermal activity duration in years (1 to 100000 yr)
+   * @param {number} [pHLevel=8.0] - Fluid pH level (2.0 to 11.0)
+   * @returns {{finalPorosityPercent: number, bulkDensityKgM3: number, thermalConductivityWMK: number, thermalInertiaTIU: number, sinterMaturationStageClass: string, silicaSinterContext: string}}
+   */
+  static computeMartianHydrothermalSilicaSinteringKinetics(ambientTemperatureC = 75.0, initialPorosity = 0.55, durationYears = 100.0, pHLevel = 8.0) {
+    const TfluidC = Math.max(5.0, ambientTemperatureC);
+    const TfluidK = TfluidC + 273.15;
+    const phi0 = Math.max(0.10, Math.min(0.90, initialPorosity));
+    const tYr = Math.max(0.1, durationYears);
+    const pH = Math.max(1.0, Math.min(13.0, pHLevel));
+
+    const Rgas = 8.314;
+    const Ea = 6.5e4; // 65 kJ/mol
+    const A = 1.0e7; // 1/yr
+    const phiInf = 0.05; // Irreducible residual micro-porosity
+    const rhoMatrix = 2200.0; // kg/m^3 (amorphous opal)
+    const kMatrix = 1.50; // W/(m*K)
+    const Cspec = 800.0; // J/(kg*K)
+
+    // Dissolution/reprecipitation rate constant (1/yr)
+    const pHFactor = Math.pow(10.0, Math.min(3.0, Math.max(-3.0, pH - 7.0)));
+    const kSinterYr = A * Math.exp(-Ea / (Rgas * TfluidK)) * pHFactor;
+
+    // Porosity evolution
+    const phiFinal = phiInf + ((phi0 - phiInf) * Math.exp(-kSinterYr * tYr));
+    const phiPct = phiFinal * 100.0;
+
+    // Bulk density (kg/m^3)
+    const rhoBulk = rhoMatrix * (1.0 - phiFinal);
+
+    // Thermal conductivity (W/(m*K))
+    const kTherm = kMatrix * Math.pow(1.0 - phiFinal, 2.5);
+
+    // Thermal Inertia (J m^-2 K^-1 s^-1/2 = tiu)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let stageClass = 'Porous Spicular Opal-A Sinter (Frutexites / Geyser Mound)';
+    if (phiPct <= 15.0) {
+      stageClass = 'Dense Recrystallized Chalcedonic Chert / Massive Quartzite';
+    } else if (phiPct <= 35.0) {
+      stageClass = 'Compacted Vitreous Opal-A / Opal-CT Sinter Terrace';
+    }
+
+    return {
+      finalPorosityPercent: parseFloat(phiPct.toFixed(1)),
+      bulkDensityKgM3: parseFloat(rhoBulk.toFixed(1)),
+      thermalConductivityWMK: parseFloat(kTherm.toFixed(3)),
+      thermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      sinterMaturationStageClass: stageClass,
+      silicaSinterContext: `Silica Sintering at ${TfluidC.toFixed(0)} C (${phiPct.toFixed(1)}% Porosity, TIU=${TIU.toFixed(0)}, ${stageClass})`
+    };
+  }
 }
 
 

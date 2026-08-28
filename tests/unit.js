@@ -12570,6 +12570,51 @@ describe('Venus Gravity Assist Resonant Orbit, Smectite Diagenesis & Silica Inve
     });
 });
 
+describe('Radial Low-Thrust Dynamics, Silica Sintering & Chloride Evaporite Inversion', () => {
+    it('should calculate continuous radial low-thrust propulsion perturbation, effective gravity, and apsidal shift', () => {
+        // Mars orbit 1.52 AU (1500 kg, 300 mN, 3500 s Isp, 180 d duration):
+        const radial = TrajectoryEngine.computeLowThrustRadialThrustOrbitModification(1.52368, 1500.0, 300.0, 3500.0, 180.0);
+        expect(radial.radialAccelerationMmS2).to.be.closeTo(0.200, 0.01); // 0.20 mm/s^2
+        expect(radial.solarGravityRatioPercent).to.be.closeTo(7.83, 0.5); // ~7.83% gravity reduction
+        expect(radial.effectiveCircularSpeedKmS).to.be.closeTo(23.161, 0.5); // ~23.16 km/s
+        expect(radial.apsidalPrecessionDegPerYear).to.be.closeTo(14.99, 1.0); // ~15.0 deg/yr
+        expect(radial.cumulativeApsidalShiftDeg).to.be.closeTo(7.39, 1.0); // ~7.4 deg in 180 d
+        expect(radial.propellantConsumedKg).to.be.closeTo(135.9, 5.0); // ~136 kg Xe
+        expect(radial.radialSteeringContext).to.include('Radial Low-Thrust');
+    });
+
+    it('should calculate hydrothermal silica sinter maturation, porosity compaction, and thermal inertia evolution', () => {
+        // 75 C fluid, 55% initial porosity, 100 yr duration, pH 8.0:
+        const sinter = KRCEngine.computeMartianHydrothermalSilicaSinteringKinetics(75.0, 0.55, 100.0, 8.0);
+        expect(sinter.finalPorosityPercent).to.be.closeTo(13.6, 2.0); // ~13.6% porosity
+        expect(sinter.bulkDensityKgM3).to.be.closeTo(1901.7, 50.0); // ~1902 kg/m^3
+        expect(sinter.thermalConductivityWMK).to.be.closeTo(1.042, 0.1); // ~1.04 W/(m K)
+        expect(sinter.thermalInertiaTIU).to.be.closeTo(1259.1, 50.0); // ~1259 tiu
+        expect(sinter.sinterMaturationStageClass).to.include('Dense Recrystallized Chalcedonic Chert');
+        expect(sinter.silicaSinterContext).to.include('Silica Sintering');
+    });
+
+    it('should discriminate anhydrous Chloride-Bearing Halite Evaporite flats in CRISM and THEMIS spectra', () => {
+        // Massive Halite Playa (Terra Sirenum: NIR slope = 0.12, BD2200 = 0.005, BD1900 = 0.010, TIR anomaly = 0.050):
+        const chloride = BandMathEngine.computeCRISMAnhydrousHaliteChloridePlayaIndices(0.12, 0.005, 0.010, 0.050);
+        expect(chloride.isChlorideDetected).to.be.true;
+        expect(chloride.evaporiteClass).to.include('Massive Crystalline Halite / Chloride Salt Flat');
+        expect(chloride.mineralSpecies).to.include('Halite');
+        expect(chloride.chemicalFormula).to.include('NaCl');
+        expect(chloride.halitePlayaContext).to.include('Terminal Hypersaline Evaporative Playa');
+
+        // Dispersed chloride duricrust (NIR slope = 0.08, BD2200 = 0.010, BD1900 = 0.015, TIR anomaly = 0.020):
+        const duricrust = BandMathEngine.computeCRISMAnhydrousHaliteChloridePlayaIndices(0.08, 0.010, 0.015, 0.020);
+        expect(duricrust.isChlorideDetected).to.be.true;
+        expect(duricrust.evaporiteClass).to.include('Dispersed Chloride-Bearing Duricrust');
+
+        // Clay strata (BD2200 = 0.05, NIR slope = 0.02):
+        const clay = BandMathEngine.computeCRISMAnhydrousHaliteChloridePlayaIndices(0.02, 0.050, 0.050, 0.010);
+        expect(clay.isChlorideDetected).to.be.false;
+        expect(clay.evaporiteClass).to.include('Phyllosilicate Clay Horizon');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

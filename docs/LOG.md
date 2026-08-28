@@ -488,3 +488,13 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate inward Mars-to-Venus gravity assist flyby, deflection angle, and resonant orbit pumping
 ?: AssertionError: expected 0.511 to be close to 0.455 +/- 0.05
     at n.<anonymous> (unit.js:12534:52)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 22:01:02 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should discriminate anhydrous Chloride / Halite salt flats in Terra Sirenum using VNIR slope and THEMIS DCS
+?: AssertionError: expected undefined to be true
+    at n.<anonymous> (unit.js:9258:51)
+- should calculate continuous radial low-thrust propulsion perturbation, effective gravity, and apsidal shift
+?: AssertionError: expected 14.99 to be close to 28.19 +/- 2
+    at n.<anonymous> (unit.js:12580:58)

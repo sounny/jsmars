@@ -6928,6 +6928,72 @@ export class TrajectoryEngine {
       gravityAssistContext: `Venus Gravity Assist (${tofsDays.toFixed(0)} d Transfer, ${deltaDeg.toFixed(1)} deg Bend, ${dvAssistKmS.toFixed(2)} km/s Assist, Perihelion -> ${rpPostAU.toFixed(2)} AU)`
     };
   }
+
+  /**
+   * Calculate continuous radial low-thrust propulsion perturbation, effective gravity reduction, and apsidal line precession rate.
+   * a_r = T_r / m
+   * mu_eff = mu_sun * ( 1 - a_r / g_sun )
+   * dot_omega = 2 * pi * a_r / g_sun (per revolution)
+   * Reference: Kechichian (1997), Petropoulos & Longuski (2004), Curtis (2013) for Radial Low-Thrust Steering.
+   * @param {number} [initialOrbitAU=1.52368] - Initial heliocentric circular orbit in AU (0.2 to 10.0 AU)
+   * @param {number} [initialMassKg=1500.0] - Spacecraft mass in kg (100 to 50000 kg)
+   * @param {number} [thrustMN=300.0] - Continuous radial thrust in mN (10 to 5000 mN)
+   * @param {number} [specificImpulseSec=3500.0] - Thruster Isp in seconds (1000 to 10000 s)
+   * @param {number} [burnDurationDays=180.0] - Radial burn duration in days (1 to 1000 days)
+   * @returns {{radialAccelerationMmS2: number, solarGravityRatioPercent: number, effectiveCircularSpeedKmS: number, apsidalPrecessionDegPerYear: number, cumulativeApsidalShiftDeg: number, propellantConsumedKg: number, radialSteeringContext: string}}
+   */
+  static computeLowThrustRadialThrustOrbitModification(initialOrbitAU = 1.52368, initialMassKg = 1500.0, thrustMN = 300.0, specificImpulseSec = 3500.0, burnDurationDays = 180.0) {
+    const rAU = Math.max(0.1, initialOrbitAU);
+    const m0Kg = Math.max(10.0, initialMassKg);
+    const ThrustN = Math.max(0.001, thrustMN / 1000.0);
+    const Isp = Math.max(100.0, specificImpulseSec);
+    const tDays = Math.max(1.0, burnDurationDays);
+
+    const AU_M = 1.495978707e11;
+    const muSunM = 1.32712440018e20; // m^3/s^2
+    const g0 = 9.80665;
+    const cMs = g0 * Isp;
+
+    const rM = rAU * AU_M;
+
+    // Solar gravity at orbit (m/s^2)
+    const gSunMs2 = muSunM / Math.pow(rM, 2.0);
+
+    // Radial acceleration (m/s^2 & mm/s^2)
+    const arMs2 = ThrustN / m0Kg;
+    const arMmS2 = arMs2 * 1000.0;
+
+    // Gravity reduction ratio (%)
+    const gravRatioFrac = Math.min(0.99, arMs2 / gSunMs2);
+    const gravRatioPct = gravRatioFrac * 100.0;
+
+    // Effective circular speed (km/s)
+    const muEffM = muSunM * (1.0 - gravRatioFrac);
+    const vCircEffMs = Math.sqrt(muEffM / rM);
+    const vCircEffKmS = vCircEffMs / 1000.0;
+
+    // Orbital period (years)
+    const tPeriodYr = Math.pow(rAU, 1.5);
+
+    // Apsidal precession rate (deg/yr and cumulative deg)
+    const dotOmegaDegYr = (gravRatioFrac * 360.0) / tPeriodYr;
+    const tYr = tDays / 365.25;
+    const cumulativeShiftDeg = dotOmegaDegYr * tYr;
+
+    // Propellant consumed (kg)
+    const mdotKgS = ThrustN / cMs;
+    const propKg = mdotKgS * (tDays * 86400.0);
+
+    return {
+      radialAccelerationMmS2: parseFloat(arMmS2.toFixed(3)),
+      solarGravityRatioPercent: parseFloat(gravRatioPct.toFixed(2)),
+      effectiveCircularSpeedKmS: parseFloat(vCircEffKmS.toFixed(3)),
+      apsidalPrecessionDegPerYear: parseFloat(dotOmegaDegYr.toFixed(2)),
+      cumulativeApsidalShiftDeg: parseFloat(cumulativeShiftDeg.toFixed(2)),
+      propellantConsumedKg: parseFloat(propKg.toFixed(2)),
+      radialSteeringContext: `Radial Low-Thrust (${gravRatioPct.toFixed(1)}% Gravity Offset, ${dotOmegaDegYr.toFixed(1)} deg/yr Precession, ${propKg.toFixed(1)} kg Xe)`
+    };
+  }
 }
 
 
