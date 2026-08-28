@@ -3387,6 +3387,66 @@ export class KRCEngine {
       desiccationRegime: regime
     };
   }
+
+  /**
+   * Calculate multi-harmonic planetary thermal penetration skin depth, diurnal/annual damping ratios, and subsurface phase lag.
+   * d_s = ( I / (rho * C_p) ) * sqrt( P / pi )
+   * A(z) / A_0 = exp( -z / d_s )
+   * Delta_phi = z / d_s
+   * Reference: Kieffer et al. (1977), Mellon et al. (2000), Kieffer (2013) for KRC diurnal and seasonal regolith grids.
+   * @param {number} [thermalInertiaTIU=250.0] - Surface thermal inertia in J m^-2 K^-1 s^-1/2 (50 to 2000 tiu)
+   * @param {number} [bulkDensityKgM3=1500.0] - Regolith bulk density in kg/m^3 (1000 to 3000 kg/m^3)
+   * @param {number} [specificHeatJPerKgK=800.0] - Regolith specific heat capacity in J/(kg*K)
+   * @param {number} [evaluationDepthMeters=0.10] - Evaluation depth z in meters
+   * @returns {{thermalDiffusivityM2S: number, diurnalSkinDepthCm: number, seasonalSkinDepthMeters: number, diurnalAmplitudeDampingFraction: number, seasonalAmplitudeDampingFraction: number, diurnalPhaseLagHours: number, thermalRegimeDescription: string}}
+   */
+  static computeMultiHarmonicThermalPenetrationDepth(thermalInertiaTIU = 250.0, bulkDensityKgM3 = 1500.0, specificHeatJPerKgK = 800.0, evaluationDepthMeters = 0.10) {
+    const I = Math.max(10.0, thermalInertiaTIU);
+    const rho = Math.max(500.0, bulkDensityKgM3);
+    const Cp = Math.max(200.0, specificHeatJPerKgK);
+    const z = Math.max(0.001, evaluationDepthMeters);
+
+    const P_SOL_SEC = 88775.2; // 1 Mars sol in seconds (24h 39m 35s)
+    const SOLS_PER_YEAR = 668.6;
+    const P_YEAR_SEC = P_SOL_SEC * SOLS_PER_YEAR;
+
+    // Volumetric heat capacity C_v = rho * Cp
+    const Cv = rho * Cp;
+
+    // Thermal diffusivity kappa = (I / Cv)^2 (m^2/s)
+    const kappaM2S = Math.pow(I / Cv, 2.0);
+
+    // Diurnal and seasonal skin depths d_s = (I / Cv) * sqrt(P / pi) (m)
+    const dsDiurnalM = (I / Cv) * Math.sqrt(P_SOL_SEC / Math.PI);
+    const dsDiurnalCm = dsDiurnalM * 100.0;
+
+    const dsSeasonalM = (I / Cv) * Math.sqrt(P_YEAR_SEC / Math.PI);
+
+    // Attenuation fractions: exp(-z / ds)
+    const dampDiurnal = Math.exp(-z / dsDiurnalM);
+    const dampSeasonal = Math.exp(-z / dsSeasonalM);
+
+    // Diurnal phase lag in hours: (z / ds) / (2*pi) * 24.66 hours
+    const phaseLagRad = z / dsDiurnalM;
+    const lagHours = (phaseLagRad / (2.0 * Math.PI)) * 24.6598;
+
+    let regime = 'Fine Dust Mantle (Extremely Shallow Diurnal Penetration < 3 cm)';
+    if (I >= 1200.0) {
+      regime = 'Exposed Bedrock / Cemented Ground Ice (Deep Thermal Penetration > 10 cm Diurnal / > 2.5 m Annual)';
+    } else if (I >= 400.0) {
+      regime = 'Coarse Sand / Duricrust Regolith (Intermediate Thermal Inertia)';
+    }
+
+    return {
+      thermalDiffusivityM2S: parseFloat(kappaM2S.toExponential(4)),
+      diurnalSkinDepthCm: parseFloat(dsDiurnalCm.toFixed(2)),
+      seasonalSkinDepthMeters: parseFloat(dsSeasonalM.toFixed(3)),
+      diurnalAmplitudeDampingFraction: parseFloat(dampDiurnal.toFixed(4)),
+      seasonalAmplitudeDampingFraction: parseFloat(dampSeasonal.toFixed(4)),
+      diurnalPhaseLagHours: parseFloat(lagHours.toFixed(2)),
+      thermalRegimeDescription: regime
+    };
+  }
 }
 
 

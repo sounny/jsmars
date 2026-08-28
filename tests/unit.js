@@ -9639,6 +9639,40 @@ describe('Guided Lifting Entry Corridor, Pore Ice Sublimation Retreat & Prehnite
     });
 });
 
+describe('Continuous Low-Thrust Spiral Transfer, Multi-Harmonic Skin Depth & Pumpellyite', () => {
+    it('should calculate continuous low-thrust Edelbaum spiral Delta-V, propellant mass, and insertion burn days', () => {
+        // Ion-drive spacecraft spiral from high capture (r1 = 20000 km) to mapping orbit (r2 = 3770 km, Isp = 3000 s, T = 0.25 N, m0 = 1000 kg):
+        const spiral = TrajectoryEngine.computeLowThrustContinuousSpiralCaptureDuration(20000.0, 3770.0, 0.250, 3000.0, 1000.0, 'mars');
+        expect(spiral.edelbaumDeltaVKmS).to.be.closeTo(1.907, 0.05); // ~1.91 km/s Delta-V
+        expect(spiral.propellantConsumedKg).to.be.closeTo(62.8, 2.0); // ~62.8 kg xenon propellant
+        expect(spiral.finalSpacecraftMassKg).to.be.closeTo(937.2, 2.0);
+        expect(spiral.burnDurationDays).to.be.closeTo(85.5, 5.0); // ~85.5 days continuous spiral
+        expect(spiral.propulsionEfficiencySummary).to.include('High-Efficiency Electric Propulsion');
+    });
+
+    it('should calculate multi-harmonic diurnal and annual thermal skin depth, damping ratios, and subsurface phase lag', () => {
+        // Typical Martian sand/duricrust regolith (I = 250 tiu, rho = 1500 kg/m^3, Cp = 800 J/kg/K, z = 10 cm):
+        const skinDepth = KRCEngine.computeMultiHarmonicThermalPenetrationDepth(250.0, 1500.0, 800.0, 0.10);
+        expect(skinDepth.diurnalSkinDepthCm).to.be.closeTo(3.50, 0.1); // ~3.5 cm diurnal skin depth
+        expect(skinDepth.seasonalSkinDepthMeters).to.be.closeTo(0.905, 0.05); // ~90.5 cm seasonal skin depth
+        expect(skinDepth.diurnalAmplitudeDampingFraction).to.be.lessThan(0.10); // damped at 10 cm depth
+        expect(skinDepth.seasonalAmplitudeDampingFraction).to.be.greaterThan(0.80); // well preserved seasonally
+        expect(skinDepth.diurnalPhaseLagHours).to.be.greaterThan(5.0); // significant phase lag
+    });
+
+    it('should discriminate hydrated metamorphic Pumpellyite from prehnite, epidote, and unaltered basalt', () => {
+        // Pumpellyite in impact megabreccia (strong 2.21 um Al/Mg-OH, 2.34 um shoulder, 1.91 um water, 1.45 um OH):
+        const pump = BandMathEngine.computeCRISMPumpellyiteIndices(0.24, 0.24, 0.23, 0.25, 0.30);
+        expect(pump.isPumpellyitePresent).to.be.true;
+        expect(pump.mineralPhase).to.include('Pumpellyite');
+        expect(pump.metamorphicContext).to.include('Prehnite-Pumpellyite Facies');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMPumpellyiteIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isPumpellyitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

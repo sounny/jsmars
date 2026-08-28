@@ -2766,6 +2766,85 @@ export class TrajectoryEngine {
       aerocaptureFeasibility: feasibility
     };
   }
+
+  /**
+   * Calculate continuous low-thrust ion/plasma spiral orbit transfer Delta-V, propellant consumption, and burn duration.
+   * Delta_V = | sqrt( mu / r_1 ) - sqrt( mu / r_2 ) |
+   * m_f = m_0 * exp( -Delta_V / ( I_sp * g_0 ) )
+   * t_burn = ( m_0 - m_f ) / ( T / ( I_sp * g_0 ) )
+   * Reference: Edelbaum (1961), Wiesel (1997), Curtis (2013) for Hall thruster & ion engine planetary spiral insertions.
+   * @param {number} [initialRadiusKm=20000.0] - Initial capture orbital radius r1 in km
+   * @param {number} [finalRadiusKm=3770.0] - Final science mapping orbital radius r2 in km
+   * @param {number} [thrustNewtons=0.250] - Continuous thruster thrust in Newtons (0.01 to 5.0 N)
+   * @param {number} [specificImpulseSec=3000.0] - Thruster specific impulse I_sp in seconds (1500 to 5000 s)
+   * @param {number} [initialMassKg=1000.0] - Spacecraft initial wet mass m0 in kg
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{edelbaumDeltaVKmS: number, propellantConsumedKg: number, finalSpacecraftMassKg: number, burnDurationDays: number, meanThrustAccelerationMS2: number, propulsionEfficiencySummary: string}}
+   */
+  static computeLowThrustContinuousSpiralCaptureDuration(initialRadiusKm = 20000.0, finalRadiusKm = 3770.0, thrustNewtons = 0.250, specificImpulseSec = 3000.0, initialMassKg = 1000.0, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const isMoon = body.toLowerCase() === 'moon';
+
+    let mu = 42828.37;
+    let Rp = 3396.19;
+
+    if (isEarth) {
+      mu = 398600.4418;
+      Rp = 6378.137;
+    } else if (isMoon) {
+      mu = 4902.80;
+      Rp = 1737.4;
+    }
+
+    const r1 = Math.max(Rp + 50.0, initialRadiusKm);
+    const r2 = Math.max(Rp + 50.0, finalRadiusKm);
+    const T = Math.max(0.001, thrustNewtons);
+    const Isp = Math.max(100.0, specificImpulseSec);
+    const m0 = Math.max(1.0, initialMassKg);
+    const g0 = 9.80665; // m/s^2
+
+    // Orbital velocities at r1 and r2 (km/s -> m/s)
+    const v1MS = Math.sqrt(mu / r1) * 1000.0;
+    const v2MS = Math.sqrt(mu / r2) * 1000.0;
+
+    // Edelbaum low-thrust circular spiral Delta-V: Delta_V = |v2 - v1| (m/s)
+    const deltaVMS = Math.abs(v2MS - v1MS);
+    const deltaVKmS = deltaVMS / 1000.0;
+
+    // Effective exhaust velocity c_e = Isp * g0
+    const ce = Isp * g0;
+
+    // Final mass: m_f = m_0 * exp(-Delta_V / c_e)
+    const mf = m0 * Math.exp(-deltaVMS / ce);
+    const mPropellant = m0 - mf;
+
+    // Mass flow rate: m_dot = T / c_e (kg/s)
+    const mDot = T / ce;
+
+    // Burn duration in seconds -> days
+    const tBurnSec = mPropellant / mDot;
+    const tBurnDays = tBurnSec / 86400.0;
+
+    // Mean thrust acceleration
+    const meanMass = (m0 + mf) / 2.0;
+    const meanAccMS2 = T / meanMass;
+
+    let summary = 'High-Efficiency Electric Propulsion Low-Thrust Spiral';
+    if (tBurnDays > 180.0) {
+      summary = 'Extended Multi-Month Low-Thrust Spiral Insertion Campaign';
+    } else if (tBurnDays <= 30.0) {
+      summary = 'Rapid High-Thrust-to-Weight Electric Orbit Lowering';
+    }
+
+    return {
+      edelbaumDeltaVKmS: parseFloat(deltaVKmS.toFixed(4)),
+      propellantConsumedKg: parseFloat(mPropellant.toFixed(2)),
+      finalSpacecraftMassKg: parseFloat(mf.toFixed(2)),
+      burnDurationDays: parseFloat(tBurnDays.toFixed(2)),
+      meanThrustAccelerationMS2: parseFloat(meanAccMS2.toExponential(4)),
+      propulsionEfficiencySummary: summary
+    };
+  }
 }
 
 

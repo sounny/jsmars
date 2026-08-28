@@ -3804,6 +3804,50 @@ export class BandMathEngine {
       alterationEnvironment: env
     };
   }
+
+  /**
+   * Detect hydrated metamorphic Pumpellyite from CRISM 1.45 um OH, 1.91 um H2O, and 2.21/2.34 um Al/Mg-OH combination doublet.
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013) for Toro Crater & Nili Fossae low-grade prehnite-pumpellyite facies metamorphism (150-250 C).
+   * @param {number} r1450 - Reflectance at 1.45 um Pumpellyite OH minimum
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2210 - Reflectance at 2.21 um Al/Mg-OH primary minimum
+   * @param {number} r2340 - Reflectance at 2.34 um secondary shoulder minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1450: number, bd1900: number, bd2210: number, bd2340: number, isPumpellyitePresent: boolean, mineralPhase: string, metamorphicContext: string}}
+   */
+  static computeCRISMPumpellyiteIndices(r1450, r1910, r2210, r2340, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1450 = Math.max(0.0, 1.0 - (r1450 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+    const bd2340 = Math.max(0.0, 1.0 - (r2340 / cont));
+
+    let phase = 'Unaltered Basalt / Primary Silicate';
+    let isPumpellyite = false;
+    let context = 'Standard Low-Metamorphic Matrix';
+
+    if (bd2210 >= 0.025 && bd2340 >= 0.015 && bd1900 >= 0.025) {
+      isPumpellyite = true;
+      if (bd1450 >= 0.015) {
+        phase = 'Pumpellyite (Ca2MgAl2(SiO4)(Si2O7)(OH)2*H2O)';
+        context = 'Low-Grade Hydrated Prehnite-Pumpellyite Facies Metamorphism (150-250 C) in Impact Melt Megabreccia';
+      } else {
+        phase = 'Mixed Pumpellyite-Smectite Alteration Phase';
+        context = 'Low-Temperature Hydrothermal Fracture Filling';
+      }
+    }
+
+    return {
+      bd1450: parseFloat(bd1450.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      bd2340: parseFloat(bd2340.toFixed(4)),
+      isPumpellyitePresent: isPumpellyite,
+      mineralPhase: phase,
+      metamorphicContext: context
+    };
+  }
 }
 
 
