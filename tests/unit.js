@@ -10011,6 +10011,46 @@ describe('Sky Crane Bridle Dynamics, Diurnal Frost Condensation & Hydrothermal D
     });
 });
 
+describe('Solar Radiation Pressure, Interfacial Premelted Water & Smectite Layer Charge', () => {
+    it('should calculate Solar Radiation Pressure (SRP) perturbation acceleration and daily velocity drift', () => {
+        // Mars orbit spacecraft (r = 1.524 AU, area = 15 m^2, mass = 1000 kg, Cr = 1.30):
+        const srp = TrajectoryEngine.computeSolarRadiationPressurePerturbation(1.524, 15.0, 1000.0, 1.30);
+        expect(srp.totalSrpForceMicronewtons).to.be.closeTo(38.12, 1.0); // ~38.1 uN total force
+        expect(srp.srpAccelerationNmS2).to.be.closeTo(38.12, 1.0); // ~38.12 nm/s^2 acceleration
+        expect(srp.dailyDeltaVDriftMmSDay).to.be.closeTo(3.29, 0.2); // ~3.29 mm/s/day drift
+        expect(srp.annualDeltaVDriftMSYear).to.be.closeTo(1.20, 0.1); // ~1.20 m/s/year
+        expect(srp.orbitalPerturbationRegime).to.include('Moderate Perturbation');
+    });
+
+    it('should calculate cryogenic interfacial premelted unfrozen liquid water film thickness and habitability water activity', () => {
+        // Warm subsurface permafrost boundary at 260 K (-13 deg C, specific area = 25 m^2/g):
+        const film = KRCEngine.computeInterfacialPremeltedUnfrozenWaterFilmThickness(260.0, 25.0, 0.05);
+        expect(film.interfacialFilmThicknessNm).to.be.closeTo(3.61, 0.5); // ~3.6 nm thick liquid film
+        expect(film.molecularMonolayersCount).to.be.greaterThan(10.0); // > 10 molecular water monolayers
+        expect(film.unfrozenWaterMgPerGSoil).to.be.closeTo(90.3, 15.0); // ~90 mg H2O / g soil
+        expect(film.waterActivityAw).to.be.greaterThan(0.80); // high water activity
+        expect(film.habitabilityBiochemicalRegime).to.include('Interfacial');
+    });
+
+    it('should discriminate Beidellite (Al-smectite) from Nontronite (Fe-smectite) and basalt in CRISM spectra', () => {
+        // Beidellite in Mawrth Vallis upper leached unit (1.41 um, 1.91 um, 2.21 um Al-OH):
+        const beidellite = BandMathEngine.computeCRISMBeidelliteNontroniteIndices(0.24, 0.22, 0.23, 0.30, 0.30);
+        expect(beidellite.isSmectitePresent).to.be.true;
+        expect(beidellite.smectiteCationSpecies).to.include('Beidellite');
+        expect(beidellite.paleoenvironmentalContext).to.include('Open-System Leaching');
+
+        // Nontronite in lower Noachian unit (1.41 um, 1.91 um, 2.29 um Fe-OH):
+        const nontronite = BandMathEngine.computeCRISMBeidelliteNontroniteIndices(0.24, 0.22, 0.30, 0.23, 0.30);
+        expect(nontronite.isSmectitePresent).to.be.true;
+        expect(nontronite.smectiteCationSpecies).to.include('Nontronite');
+        expect(nontronite.paleoenvironmentalContext).to.include('Closed-Basin');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMBeidelliteNontroniteIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isSmectitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

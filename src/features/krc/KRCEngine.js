@@ -4128,6 +4128,59 @@ export class KRCEngine {
       diurnalHydrationRegime: regime
     };
   }
+
+  /**
+   * Calculate cryogenic interfacial premelted unfrozen liquid water film thickness, gravimetric liquid content, and water activity.
+   * d_film = lambda_vdw * ( T_m / (T_m - T) )^(1/3) + lambda_elec * ( T_m / (T_m - T) )^(1/2)
+   * W_unfrozen = S_spec * d_film * rho_water
+   * Reference: Dash et al. (1995, 2006), Wettlaufer & Worster (2006), Sizemore et al. (2015), Mohapatra et al. (2021) for astrobiological habitability.
+   * @param {number} [subsurfaceTempK=260.0] - Subsurface soil temperature in K (180 to 273.15 K)
+   * @param {number} [specificSurfaceAreaM2G=25.0] - Regolith specific surface area in m^2/g (5 to 150 m^2/g)
+   * @param {number} [soilSalinityMolar=0.05] - Pore water dissolved ionic salinity in mol/L
+   * @returns {{interfacialFilmThicknessNm: number, molecularMonolayersCount: number, unfrozenWaterContentWtPercent: number, unfrozenWaterMgPerGSoil: number, waterActivityAw: number, habitabilityBiochemicalRegime: string}}
+   */
+  static computeInterfacialPremeltedUnfrozenWaterFilmThickness(subsurfaceTempK = 260.0, specificSurfaceAreaM2G = 25.0, soilSalinityMolar = 0.05) {
+    const Tm = 273.15; // Bulk water melting point in K
+    const T = Math.max(150.0, Math.min(273.10, subsurfaceTempK));
+    const Sspec = Math.max(1.0, specificSurfaceAreaM2G);
+    const deltaT = Math.max(0.05, Tm - T);
+
+    const lambdaVdw = 0.65; // nm (Van der Waals dispersion coefficient)
+    const lambdaElec = 0.40; // nm (electrostatic double layer coefficient)
+
+    // Interfacial liquid film thickness d_film in nanometers
+    const dVdw = lambdaVdw * Math.pow(Tm / deltaT, 1.0 / 3.0);
+    const dElec = lambdaElec * Math.pow(Tm / deltaT, 0.5);
+    const dFilmNm = dVdw + dElec;
+
+    // Number of molecular water monolayers (1 monolayer ~ 0.30 nm)
+    const monolayers = dFilmNm / 0.30;
+
+    // Gravimetric unfrozen liquid water content (mg H2O / g soil and wt%)
+    const wUnfrozenMgG = Sspec * dFilmNm; // mg/g
+    const wUnfrozenWtPct = wUnfrozenMgG / 10.0; // 1000 mg = 100% -> /10 = wt%
+
+    // Thermodynamic water activity aw = exp( - (Lf * deltaT) / (R * Tm * T) )
+    const Lf = 6010.0; // J/mol latent heat of fusion
+    const R_GAS = 8.314462;
+    const aw = Math.max(0.10, Math.min(1.0, Math.exp(-(Lf * deltaT) / (R_GAS * Tm * T))));
+
+    let habitability = 'Astrobiologically Permissive Interfacial Liquid Water (aw >= 0.60 Terrestrial Extremophile Limit)';
+    if (aw < 0.60) {
+      habitability = 'Cryogenic Thermodynamic Desiccation (aw < 0.60 Incompatible with Active Metabolism)';
+    } else if (monolayers > 10.0) {
+      habitability = 'Bulk-Like Mobile Interfacial Brine Layer (Active Solute Diffusion & Biomineralization)';
+    }
+
+    return {
+      interfacialFilmThicknessNm: parseFloat(dFilmNm.toFixed(2)),
+      molecularMonolayersCount: parseFloat(monolayers.toFixed(1)),
+      unfrozenWaterContentWtPercent: parseFloat(wUnfrozenWtPct.toFixed(2)),
+      unfrozenWaterMgPerGSoil: parseFloat(wUnfrozenMgG.toFixed(1)),
+      waterActivityAw: parseFloat(aw.toFixed(3)),
+      habitabilityBiochemicalRegime: habitability
+    };
+  }
 }
 
 

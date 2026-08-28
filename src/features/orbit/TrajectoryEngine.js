@@ -3506,6 +3506,62 @@ export class TrajectoryEngine {
       touchdownSafetyAssessment: safety
     };
   }
+
+  /**
+   * Calculate Solar Radiation Pressure (SRP) force, orbital acceleration perturbation, and cumulative daily velocity drift.
+   * P_srp(r) = ( S_0 / c ) * ( 1 AU / r )^2
+   * a_srp = ( P_srp * A * C_R ) / m_sc
+   * Delta_V_day = a_srp * 86400 s
+   * Reference: Milani et al. (1987), Montenbruck & Gill (2000), Vallado (2013) for MAVEN, Mars Express, and MRO orbit determination.
+   * @param {number} [heliocentricDistanceAU=1.524] - Spacecraft heliocentric distance in AU (0.3 to 30.0 AU; Mars mean is 1.524 AU)
+   * @param {number} [spacecraftAreaM2=15.0] - Sun-facing illuminated cross-sectional area in m^2 (0.5 to 200 m^2)
+   * @param {number} [spacecraftMassKg=1000.0] - Spacecraft total mass in kg (10 to 10000 kg)
+   * @param {number} [radiationPressureCoeffCR=1.30] - Cannonball reflectivity coefficient C_R (1.0 = absorption, 2.0 = pure specular reflection)
+   * @returns {{srpFluxPressurePa: number, totalSrpForceMicronewtons: number, srpAccelerationNmS2: number, srpAccelerationMS2: number, dailyDeltaVDriftMmSDay: number, annualDeltaVDriftMSYear: number, orbitalPerturbationRegime: string}}
+   */
+  static computeSolarRadiationPressurePerturbation(heliocentricDistanceAU = 1.524, spacecraftAreaM2 = 15.0, spacecraftMassKg = 1000.0, radiationPressureCoeffCR = 1.30) {
+    const rAU = Math.max(0.1, heliocentricDistanceAU);
+    const areaM2 = Math.max(0.01, spacecraftAreaM2);
+    const massKg = Math.max(1.0, spacecraftMassKg);
+    const Cr = Math.max(1.0, Math.min(2.0, radiationPressureCoeffCR));
+
+    const S0 = 1361.0; // W/m^2 (solar constant at 1 AU)
+    const c = 299792458.0; // speed of light in m/s
+    const p1AU = S0 / c; // ~4.5398e-6 Pa at 1 AU
+
+    // Local solar radiation pressure (Pa = N/m^2)
+    const pSrpPa = p1AU / Math.pow(rAU, 2.0);
+
+    // Total SRP force (N)
+    const fSrpN = pSrpPa * areaM2 * Cr;
+    const fSrpMicroN = fSrpN * 1e6; // micro-Newtons (uN)
+
+    // Acceleration on spacecraft (m/s^2 and nm/s^2)
+    const aSrpMS2 = fSrpN / massKg;
+    const aSrpNmS2 = aSrpMS2 * 1e9; // nm/s^2
+
+    // Velocity drift per day (mm/s/day) and per year (m/s/year)
+    const SECS_PER_DAY = 86400.0;
+    const deltaVDayMmS = aSrpMS2 * SECS_PER_DAY * 1000.0;
+    const deltaVYearMS = aSrpMS2 * SECS_PER_DAY * 365.25;
+
+    let regime = 'Moderate Perturbation (Standard Reaction Wheel Momentum Dumping & Ephemeris Propagation)';
+    if (aSrpNmS2 > 100.0) {
+      regime = 'Dominant Non-Gravitational Force (Solar Sail / High Area-to-Mass Orbital Precession)';
+    } else if (aSrpNmS2 < 5.0) {
+      regime = 'Negligible Outer Solar System SRP Perturbation (Outer Planet Cruise)';
+    }
+
+    return {
+      srpFluxPressurePa: parseFloat(pSrpPa.toExponential(4)),
+      totalSrpForceMicronewtons: parseFloat(fSrpMicroN.toFixed(2)),
+      srpAccelerationNmS2: parseFloat(aSrpNmS2.toFixed(2)),
+      srpAccelerationMS2: parseFloat(aSrpMS2.toExponential(4)),
+      dailyDeltaVDriftMmSDay: parseFloat(deltaVDayMmS.toFixed(3)),
+      annualDeltaVDriftMSYear: parseFloat(deltaVYearMS.toFixed(3)),
+      orbitalPerturbationRegime: regime
+    };
+  }
 }
 
 

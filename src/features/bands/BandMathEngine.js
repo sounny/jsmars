@@ -4271,6 +4271,56 @@ export class BandMathEngine {
       hydrothermalTemperatureRegime: temp
     };
   }
+
+  /**
+   * Discriminate Al-rich Beidellite from Fe3+-rich Nontronite and mixed dioctahedral smectites using CRISM 1.41 um, 1.91 um, 2.21 um (Al-OH), and 2.29 um (Fe-OH).
+   * Reference: Ehlmann et al. (2009), Carter et al. (2013), Bristow et al. (2015) for Mawrth Vallis and Nili Fossae stratigraphies.
+   * @param {number} r1410 - Reflectance at 1.41 um structural OH/H2O absorption
+   * @param {number} r1910 - Reflectance at 1.91 um molecular interlayer water band
+   * @param {number} r2210 - Reflectance at 2.21 um Al2-OH combination minimum
+   * @param {number} r2290 - Reflectance at 2.29 um Fe3+2-OH combination minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1410: number, bd1910: number, bd2210: number, bd2290: number, isSmectitePresent: boolean, smectiteCationSpecies: string, paleoenvironmentalContext: string}}
+   */
+  static computeCRISMBeidelliteNontroniteIndices(r1410, r1910, r2210, r2290, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1410 = Math.max(0.0, 1.0 - (r1410 / cont));
+    const bd1910 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+    const bd2290 = Math.max(0.0, 1.0 - (r2290 / cont));
+
+    let species = 'Unaltered Basaltic Crust';
+    let isSmectite = false;
+    let env = 'Standard Crustal Setting';
+
+    // Smectite requires prominent 1.91 um interlayer water band (>= 0.020)
+    if (bd1910 >= 0.020 && bd1410 >= 0.015) {
+      if (bd2210 >= 0.020 && bd2290 < 0.015) {
+        isSmectite = true;
+        species = 'Beidellite (Al-rich Dioctahedral Smectite)';
+        env = 'Open-System Leaching / Top-Down Pedogenic Weathering of Basaltic Ash (Mawrth Vallis Upper Layer)';
+      } else if (bd2290 >= 0.020 && bd2210 < 0.015) {
+        isSmectite = true;
+        species = 'Nontronite (Fe3+-rich Dioctahedral Smectite)';
+        env = 'Circum-Neutral to Alkaline Subsurface Aquifer / Closed-Basin Lacustrine Weathering (Noachian Bedrock)';
+      } else if (bd2210 >= 0.015 && bd2290 >= 0.015) {
+        isSmectite = true;
+        species = 'Mixed Al/Fe Dioctahedral Smectite Solid Solution';
+        env = 'Intermediate Redox / Transitional Weathering Horizon';
+      }
+    }
+
+    return {
+      bd1410: parseFloat(bd1410.toFixed(4)),
+      bd1910: parseFloat(bd1910.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      bd2290: parseFloat(bd2290.toFixed(4)),
+      isSmectitePresent: isSmectite,
+      smectiteCationSpecies: species,
+      paleoenvironmentalContext: env
+    };
+  }
 }
 
 
