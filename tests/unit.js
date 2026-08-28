@@ -11349,6 +11349,56 @@ describe('Mars-Phobos Low-Thrust Spiral, Hydrothermal Convection & Pyroxene BAR 
     });
 });
 
+describe('Mars-Venus Gravity Assist, Impact Shock Melt & Acid Drainage Ferric Sulfates', () => {
+    it('should calculate Mars-to-Venus inward transfer, Venus gravity assist turn angle, and Delta-V', () => {
+        // Mars to Venus inward transfer (300 km Venus flyby, 300 km Mars parking altitude):
+        const inward = TrajectoryEngine.computeMarsVenusMercuryInwardTransferTrajectory(300.0, 300.0);
+        expect(inward.departurePlanet).to.equal('Mars');
+        expect(inward.assistPlanet).to.equal('Venus');
+        expect(inward.timeOfFlightToVenusDays).to.be.closeTo(217.4, 5.0); // ~217 days TOF
+        expect(inward.transVenusInjectionDeltaVKmS).to.be.closeTo(3.372, 0.2); // ~3.37 km/s TVI
+        expect(inward.venusHyperbolicExcessKmS).to.be.closeTo(5.763, 0.2); // ~5.76 km/s excess
+        expect(inward.venusBendingAngleDeg).to.be.closeTo(74.6, 3.0); // ~75 deg bending
+        expect(inward.gravityAssistDeltaVKmS).to.be.closeTo(6.99, 0.3); // ~7.0 km/s effective assist Delta-V
+        expect(inward.inwardTransferContext).to.include('Mars-Venus Inward Transfer');
+    });
+
+    it('should calculate planar impact shock Hugoniot pressure, impact melt volume, and sheet crystallization', () => {
+        // 5 km asteroid impact at 10 km/s onto Martian basalt (120 m melt sheet):
+        const shock = KRCEngine.computeMartianImpactShockAttenuationAndMeltSheet(5.0, 10.0, 2900.0, 120.0);
+        expect(shock.peakHugoniotShockPressureGPa).to.be.closeTo(151.5, 10.0); // ~152 GPa peak pressure
+        expect(shock.impactMeltVolumeKm3).to.be.closeTo(21.08, 3.0); // ~21 km^3 melt
+        expect(shock.meltSheetThicknessMeters).to.equal(120.0);
+        expect(shock.meltSheetSolidificationYears).to.be.closeTo(148.6, 15.0); // ~149 years
+        expect(shock.shockMetamorphismContext).to.include('Impact Shock Melt');
+    });
+
+    it('should discriminate Jarosite, Copiapite, and Coquimbite acid drainage ferric sulfates in CRISM spectra', () => {
+        // Jarosite (diagnostic 2.26 um Fe-OH band at Mawrth Vallis & Meridiani Planum: BD2260 = 0.07, BD880 = 0.12):
+        const jarosite = BandMathEngine.computeCRISMAcidDrainageFerricSulfateIndices(0.07, 0.08, 0.12, 0.04);
+        expect(jarosite.isFerricSulfatePresent).to.be.true;
+        expect(jarosite.ferricSulfateSpecies).to.include('Jarosite (Hydroxyl-Bearing');
+        expect(jarosite.mineralFormula).to.equal('KFe3(SO4)2(OH)6');
+        expect(jarosite.pHRange).to.include('Hyper-Acidic (pH 1.5 - 3.0)');
+        expect(jarosite.acidDrainagePaleoenvironmentContext).to.include('Low-Water Oxidative Weathering');
+
+        // Copiapite (extreme acid drainage polyhydrated sulfate on Valles Marineris floor: BD2260 = 0.01, BD1940 = 0.10, BD2400 = 0.06):
+        const copiapite = BandMathEngine.computeCRISMAcidDrainageFerricSulfateIndices(0.01, 0.10, 0.12, 0.06);
+        expect(copiapite.isFerricSulfatePresent).to.be.true;
+        expect(copiapite.ferricSulfateSpecies).to.include('Copiapite (Highly Hydrated');
+        expect(copiapite.pHRange).to.include('Extreme Acid Mine Drainage (pH < 1.0)');
+
+        // Coquimbite:
+        const coquimbite = BandMathEngine.computeCRISMAcidDrainageFerricSulfateIndices(0.01, 0.02, 0.08, 0.01);
+        expect(coquimbite.isFerricSulfatePresent).to.be.true;
+        expect(coquimbite.ferricSulfateSpecies).to.include('Coquimbite / Rhomboclase');
+
+        // Flat basalt:
+        const basalt = BandMathEngine.computeCRISMAcidDrainageFerricSulfateIndices(0.005, 0.005, 0.01, 0.005);
+        expect(basalt.isFerricSulfatePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

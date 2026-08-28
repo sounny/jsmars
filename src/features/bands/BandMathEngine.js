@@ -5669,6 +5669,56 @@ export class BandMathEngine {
       petrologicContext: context
     };
   }
+
+  /**
+   * Discriminate Hyper-Acidic Ferric Sulfate Minerals (Jarosite vs Copiapite vs Coquimbite) from CRISM VIS-NIR Fe-OH and polyhydrated absorption parameters.
+   * Reference: Farrand et al. (2009), Milliken et al. (2008), Sowe et al. (2012), Viviano-Beck et al. (2014) for Mawrth Vallis & Valles Marineris acid drainage.
+   * @param {number} [band2260FeOHDepth=0.06] - BD2260 / jarosite diagnostic Fe-OH absorption depth (0.0 to 0.40)
+   * @param {number} [band1940WaterDepth=0.08] - BD1940 / polyhydrated molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band880Fe3Depth=0.12] - BD860/BD880 ferric electronic transition depth (0.0 to 0.50)
+   * @param {number} [band2400SulfateDepth=0.05] - BD2400 polyhydrated sulfate overtone depth (0.0 to 0.40)
+   * @returns {{isFerricSulfatePresent: boolean, ferricSulfateSpecies: string, mineralFormula: string, pHRange: string, acidDrainagePaleoenvironmentContext: string}}
+   */
+  static computeCRISMAcidDrainageFerricSulfateIndices(band2260FeOHDepth = 0.06, band1940WaterDepth = 0.08, band880Fe3Depth = 0.12, band2400SulfateDepth = 0.05) {
+    const d2260 = Math.max(0.0, band2260FeOHDepth);
+    const d1940 = Math.max(0.0, band1940WaterDepth);
+    const d880 = Math.max(0.0, band880Fe3Depth);
+    const d2400 = Math.max(0.0, band2400SulfateDepth);
+
+    let isFerricSulfate = false;
+    let species = 'Non-Ferric Sulfate Matrix';
+    let formula = 'Basaltic Crust';
+    let ph = 'Neutral pH (6.0 - 8.0)';
+    let context = 'Standard Unaltered Silicate Matrix';
+
+    if (d880 >= 0.040 && (d2260 >= 0.025 || d1940 >= 0.015 || d2400 >= 0.010)) {
+      isFerricSulfate = true;
+      if (d2260 >= 0.030) {
+        species = 'Jarosite (Hydroxyl-Bearing Potassium Ferric Sulfate)';
+        formula = 'KFe3(SO4)2(OH)6';
+        ph = 'Hyper-Acidic (pH 1.5 - 3.0)';
+        context = 'Low-Water Oxidative Weathering of Pyrite / Acid Brine Evaporite (Meridiani Planum / Mawrth Vallis Type)';
+      } else if (d1940 >= 0.050 && d2400 >= 0.035) {
+        species = 'Copiapite (Highly Hydrated Mixed Fe2+/Fe3+ Sulfate)';
+        formula = 'Fe2+Fe3+4(SO4)6(OH)2 * 20H2O';
+        ph = 'Extreme Acid Mine Drainage (pH < 1.0)';
+        context = 'Extreme Acid-Sulfate Hydrothermal Efflorescence / Ephemeral Acid Salt Crusts (Valles Marineris Floor)';
+      } else {
+        species = 'Coquimbite / Rhomboclase (Hydrated Ferric Sulfate)';
+        formula = 'Fe2(SO4)3 * 9H2O';
+        ph = 'Strongly Acidic (pH 1.0 - 2.5)';
+        context = 'Desiccated Ferric Sulfate Evaporite / Acid Fumarolic Sublimate';
+      }
+    }
+
+    return {
+      isFerricSulfatePresent: isFerricSulfate,
+      ferricSulfateSpecies: species,
+      mineralFormula: formula,
+      pHRange: ph,
+      acidDrainagePaleoenvironmentContext: context
+    };
+  }
 }
 
 

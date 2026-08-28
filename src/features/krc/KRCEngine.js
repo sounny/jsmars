@@ -5898,6 +5898,66 @@ export class KRCEngine {
       hydrothermalConvectionContext: context
     };
   }
+
+  /**
+   * Calculate Martian impact shock Hugoniot equation of state, peak pressure attenuation, impact melt sheet volume, and thermal crystallization timescale.
+   * P_0 = rho_0 * ( C_0 + S * u_p ) * u_p
+   * V_melt = 0.0125 * E_k / ( rho_0 * ( c_p * Delta_T + L_m ) )
+   * t_solid = ( H_sheet^2 / ( 4 * kappa ) ) * ( 1 + 1 / Ste )
+   * Reference: Melosh (1989), Pierazzo et al. (1997), Grieve & Cintala (1992) for Planetary Impact Cratering & Shock Metamorphism.
+   * @param {number} [impactorDiameterKm=5.0] - Spherical impactor diameter in km (0.1 to 50 km)
+   * @param {number} [impactVelocityKmS=10.0] - Asteroid impact velocity in km/s (5 to 30 km/s)
+   * @param {number} [targetBasaltDensityKgM3=2900.0] - Martian target crustal density in kg/m^3 (2200 to 3300 kg/m^3)
+   * @param {number} [meltSheetThicknessMeters=120.0] - Central crater floor melt sheet thickness in meters (10 to 1000 m)
+   * @returns {{peakHugoniotShockPressureGPa: number, impactKineticEnergyJoules: number, impactMeltVolumeKm3: number, meltSheetThicknessMeters: number, meltSheetSolidificationYears: number, shockMetamorphismContext: string}}
+   */
+  static computeMartianImpactShockAttenuationAndMeltSheet(impactorDiameterKm = 5.0, impactVelocityKmS = 10.0, targetBasaltDensityKgM3 = 2900.0, meltSheetThicknessMeters = 120.0) {
+    const DimpKm = Math.max(0.05, impactorDiameterKm);
+    const vImpKmS = Math.max(2.0, impactVelocityKmS);
+    const rho0 = Math.max(1500.0, targetBasaltDensityKgM3);
+    const HsheetM = Math.max(5.0, meltSheetThicknessMeters);
+
+    const aM = (DimpKm * 1000.0) / 2.0;
+    const vImpMS = vImpKmS * 1000.0;
+    const upMS = vImpMS / 2.0; // symmetric 1D planar impact
+
+    // Hugoniot parameters for basalt
+    const C0 = 3200.0; // m/s
+    const S = 1.45;
+    const UsMS = C0 + (S * upMS);
+
+    // Peak Hugoniot shock pressure (GPa)
+    const P0Pa = rho0 * UsMS * upMS;
+    const P0GPa = P0Pa / 1e9;
+
+    // Impactor mass (kg) and kinetic energy (J)
+    const MimpKg = (4.0 / 3.0) * Math.PI * Math.pow(aM, 3.0) * rho0;
+    const EkJ = 0.5 * MimpKg * Math.pow(vImpMS, 2.0);
+
+    // Melt generation (km^3)
+    const cp = 1100.0;
+    const Lm = 4.0e5;
+    const deltaTMelt = 1400.0;
+    const enthMelt = (cp * deltaTMelt) + Lm;
+    const VmeltM3 = 0.0125 * (EkJ / (rho0 * enthMelt));
+    const VmeltKm3 = VmeltM3 / 1e9;
+
+    // Melt sheet solidification timescale (years)
+    const kappa = 1.0e-6; // m^2/s
+    const ste = (cp * 1200.0) / Lm;
+    const tDiffSec = Math.pow(HsheetM, 2.0) / (4.0 * kappa);
+    const tSolidSec = tDiffSec * (1.0 + (1.0 / ste));
+    const tSolidYears = tSolidSec / 3.15576e7;
+
+    return {
+      peakHugoniotShockPressureGPa: parseFloat(P0GPa.toFixed(1)),
+      impactKineticEnergyJoules: parseFloat(EkJ.toExponential(3)),
+      impactMeltVolumeKm3: parseFloat(VmeltKm3.toFixed(2)),
+      meltSheetThicknessMeters: parseFloat(HsheetM.toFixed(1)),
+      meltSheetSolidificationYears: parseFloat(tSolidYears.toFixed(1)),
+      shockMetamorphismContext: `Impact Shock Melt (${P0GPa.toFixed(0)} GPa Peak Shock, ${VmeltKm3.toFixed(1)} km^3 Melt, ~${tSolidYears.toFixed(0)} yr Crystallization)`
+    };
+  }
 }
 
 

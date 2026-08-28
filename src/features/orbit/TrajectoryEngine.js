@@ -5376,6 +5376,77 @@ export class TrajectoryEngine {
       lowThrustMissionContext: `Low-Thrust Spiral Descent (${dvMS.toFixed(0)} m/s Delta-V, ${mXeKg.toFixed(1)} kg Xe over ${tSpiralDays.toFixed(0)} Days / ${nRevs.toFixed(0)} Revs)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Venus inward interplanetary transfer, Venus gravity assist slingshot deflection, and perihelion reduction toward Mercury.
+   * a_t = ( r_mars + r_venus ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * delta_V = 2 * arcsin( 1 / ( 1 + r_p * v_inf^2 / mu_venus ) )
+   * Reference: Bate et al. (1971), Curtis (2013), Broucke (1988) for Inner Solar System Gravity Assist Trajectories.
+   * @param {number} [venusFlybyAltitudeKm=300.0] - Venus closest approach altitude in km (200 to 5000 km)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{departurePlanet: string, assistPlanet: string, timeOfFlightToVenusDays: number, transVenusInjectionDeltaVKmS: number, venusHyperbolicExcessKmS: number, venusBendingAngleDeg: number, gravityAssistDeltaVKmS: number, inwardTransferContext: string}}
+   */
+  static computeMarsVenusMercuryInwardTransferTrajectory(venusFlybyAltitudeKm = 300.0, marsParkingAltitudeKm = 300.0) {
+    const hpVenusKm = Math.max(150.0, venusFlybyAltitudeKm);
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const muVenus = 324858.6; // km^3/s^2
+    const rMarsKm = 3389.5;
+    const rVenusKm = 6051.8;
+
+    const rMarsAU = 1.52368;
+    const rVenusAU = 0.72333;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rVenusDistKm = rVenusAU * AU_KM;
+
+    // Transfer ellipse semi-major axis
+    const aTransferAU = (rMarsAU + rVenusAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight to Venus (days)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = Math.abs(vMarsKmS - vApoTransferKmS);
+
+    // Trans-Venus Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTviKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Speeds at Venus arrival
+    const vVenusCircKmS = Math.sqrt(muSun / rVenusDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rVenusDistKm) - (1.0 / aTransferKm)));
+    const vInfArrVenusKmS = Math.abs(vPeriTransferKmS - vVenusCircKmS);
+
+    // Venus hyperbolic turning angle
+    const rpVenusKm = rVenusKm + hpVenusKm;
+    const denom = 1.0 + (rpVenusKm * Math.pow(vInfArrVenusKmS, 2.0)) / muVenus;
+    const deltaRad = 2.0 * Math.asin(1.0 / denom);
+    const deltaDeg = (deltaRad * 180.0) / Math.PI;
+
+    // Effective gravity assist Delta-V
+    const dvAssistKmS = 2.0 * vInfArrVenusKmS * Math.sin(deltaRad / 2.0);
+
+    return {
+      departurePlanet: 'Mars',
+      assistPlanet: 'Venus',
+      timeOfFlightToVenusDays: parseFloat(tofDays.toFixed(1)),
+      transVenusInjectionDeltaVKmS: parseFloat(dvTviKmS.toFixed(3)),
+      venusHyperbolicExcessKmS: parseFloat(vInfArrVenusKmS.toFixed(3)),
+      venusBendingAngleDeg: parseFloat(deltaDeg.toFixed(1)),
+      gravityAssistDeltaVKmS: parseFloat(dvAssistKmS.toFixed(3)),
+      inwardTransferContext: `Mars-Venus Inward Transfer (${tofDays.toFixed(0)} Days TOF, ${dvTviKmS.toFixed(2)} km/s TVI, ${dvAssistKmS.toFixed(2)} km/s Venus Gravity Assist)`
+    };
+  }
 }
 
 
