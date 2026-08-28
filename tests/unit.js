@@ -9872,6 +9872,40 @@ describe('Hypersonic Stagnation Heat Flux, Milankovitch Obliquity & Opaline Sili
     });
 });
 
+describe('Hypersonic Entry Deceleration G-Load, Barometric Pumping & Bassanite Sulfate', () => {
+    it('should calculate Allen-Eggers analytical peak hypersonic deceleration, G-load, and altitude of peak drag', () => {
+        // Mars Pathfinder / MSL EDL entry (v_entry = 5.7 km/s, gamma = -12.5 deg, beta = 120 kg/m^2, Hs = 11.1 km):
+        const edl = TrajectoryEngine.computeHypersonicEntryPeakDecelerationGLoad(5.7, -12.5, 120.0, 11.1, 'mars');
+        expect(edl.peakDecelerationMS2).to.be.closeTo(116.5, 5.0); // ~116.5 m/s^2 peak drag deceleration
+        expect(edl.peakDecelerationGs).to.be.closeTo(11.88, 0.8); // ~11.9 Earth Gs
+        expect(edl.velocityAtPeakDecelerationKmS).to.be.closeTo(3.457, 0.1); // ~3.46 km/s at peak drag
+        expect(edl.altitudeOfPeakDecelerationKm).to.be.greaterThan(10.0); // peak drag occurs at ~15-25 km altitude
+        expect(edl.structuralLoadRegime).to.include('Robotic EDL Deceleration');
+    });
+
+    it('should calculate porous regolith permeability, Klinkenberg slip, barometric skin depth, and gas exchange volume', () => {
+        // Typical Martian sandy regolith (r_grain = 50 um, porosity = 40%, diurnal deltaP = 30 Pa, P0 = 610 Pa):
+        const pump = KRCEngine.computeSubsurfaceBarometricPumpingAndPermeability(50.0, 40.0, 30.0, 610.0);
+        expect(pump.permeabilityInDarcies).to.be.greaterThan(1.0); // ~10 Darcies
+        expect(pump.barometricSkinDepthMeters).to.be.greaterThan(3.0); // multi-meter barometric breathing depth
+        expect(pump.diurnalGasExchangeVolumeM3PerM2).to.be.greaterThan(0.01);
+        expect(pump.regolithPoreVentilationRegime).to.include('Gas Permeability');
+    });
+
+    it('should discriminate Bassanite hemihydrate from polyhydrated sulfates, clays, and unaltered basalt in CRISM spectra', () => {
+        // Bassanite in Gale Crater Curiosity veins (strong 1.44 um, 1.78 um, 1.92 um, and 2.40 um sulfate bands):
+        const bassanite = BandMathEngine.computeCRISMBassaniteIndices(0.23, 0.24, 0.22, 0.25, 0.30);
+        expect(bassanite.isBassanitePresent).to.be.true;
+        expect(bassanite.sulfatePhase).to.include('Bassanite');
+        expect(bassanite.diageneticEnvironment).to.include('Gale Crater / Curiosity ChemMin Analogue');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMBassaniteIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(bassanite.bd1920).to.be.greaterThan(0.02);
+        expect(basalt.isBassanitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

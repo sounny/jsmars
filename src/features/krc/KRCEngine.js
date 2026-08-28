@@ -3844,6 +3844,64 @@ export class KRCEngine {
       tropicalGlaciationPotential: glaciation
     };
   }
+
+  /**
+   * Calculate porous regolith gas permeability, Klinkenberg slip correction, barometric penetration skin depth, and diurnal atmospheric pumping volume.
+   * k_perm = ( phi^3 / ( 180 * (1 - phi)^2 ) ) * d_grain^2
+   * delta_baro = sqrt( ( 2 * k_gas * P_0 ) / ( phi * mu_gas * omega_diurnal ) )
+   * V_pump = phi * delta_baro * ( Delta_P / P_0 )
+   * Reference: Schorghofer & Aharonson (2005), Massé et al. (2014), Hudson et al. (2007) for Martian atmospheric gas-soil exchange.
+   * @param {number} [meanGrainRadiusMicrons=50.0] - Effective regolith grain radius in microns (5 to 1000 um)
+   * @param {number} [porosityPct=40.0] - Bulk porosity percentage (10 to 70%)
+   * @param {number} [diurnalPressureAmplitudePa=30.0] - Diurnal thermal tide pressure variation in Pa (5 to 100 Pa)
+   * @param {number} [meanSurfacePressurePa=610.0] - Mean ambient atmospheric pressure in Pa
+   * @returns {{intrinsicPermeabilityM2: number, permeabilityInDarcies: number, klinkenbergPermeabilityM2: number, barometricSkinDepthMeters: number, diurnalGasExchangeVolumeM3PerM2: number, regolithPoreVentilationRegime: string}}
+   */
+  static computeSubsurfaceBarometricPumpingAndPermeability(meanGrainRadiusMicrons = 50.0, porosityPct = 40.0, diurnalPressureAmplitudePa = 30.0, meanSurfacePressurePa = 610.0) {
+    const rGrainM = Math.max(1.0, meanGrainRadiusMicrons) * 1e-6;
+    const dGrainM = 2.0 * rGrainM;
+    const phi = Math.max(0.05, Math.min(0.80, porosityPct / 100.0));
+    const deltaP = Math.max(1.0, diurnalPressureAmplitudePa);
+    const P0 = Math.max(100.0, meanSurfacePressurePa);
+
+    const P_SOL_SEC = 88775.2; // Mars sol (seconds)
+    const omegaDiurnal = (2.0 * Math.PI) / P_SOL_SEC;
+    const muCO2 = 1.2e-5; // dynamic viscosity of CO2 at 210 K (Pa*s)
+    const DARCY_M2 = 9.869233e-13; // 1 Darcy in m^2
+
+    // Kozeny-Carman intrinsic permeability (m^2)
+    const kozenyFactor = Math.pow(phi, 3.0) / (180.0 * Math.pow(1.0 - phi, 2.0));
+    const kPermM2 = kozenyFactor * Math.pow(dGrainM, 2.0);
+    const kDarcies = kPermM2 / DARCY_M2;
+
+    // Klinkenberg slip correction: k_gas = k_perm * (1 + b_k / P0)
+    const bKlinkenbergPa = 450.0;
+    const slipFactor = 1.0 + (bKlinkenbergPa / P0);
+    const kGasM2 = kPermM2 * slipFactor;
+
+    // Barometric pressure penetration skin depth delta_baro = sqrt( (2 * k_gas * P0) / (phi * mu * omega) ) (m)
+    const denom = phi * muCO2 * omegaDiurnal;
+    const deltaBaroM = Math.sqrt((2.0 * kGasM2 * P0) / Math.max(1e-20, denom));
+
+    // Diurnal atmospheric forced exchange volume per unit surface area V_pump = phi * delta_baro * (deltaP / P0) (m^3/m^2)
+    const vPumpM3M2 = phi * deltaBaroM * (deltaP / P0);
+
+    let regime = 'Moderate Gas Permeability & Diurnal Subsurface Breathing';
+    if (deltaBaroM > 15.0) {
+      regime = 'High-Permeability Coarse Megaregolith (Deep Gas Advection & Rapid Pore Flushing)';
+    } else if (deltaBaroM < 1.0) {
+      regime = 'Tight Fine-Grained Dust Seal (Diffusion-Dominated Subsurface)';
+    }
+
+    return {
+      intrinsicPermeabilityM2: parseFloat(kPermM2.toExponential(4)),
+      permeabilityInDarcies: parseFloat(kDarcies.toFixed(2)),
+      klinkenbergPermeabilityM2: parseFloat(kGasM2.toExponential(4)),
+      barometricSkinDepthMeters: parseFloat(deltaBaroM.toFixed(2)),
+      diurnalGasExchangeVolumeM3PerM2: parseFloat(vPumpM3M2.toFixed(4)),
+      regolithPoreVentilationRegime: regime
+    };
+  }
 }
 
 

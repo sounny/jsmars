@@ -3245,6 +3245,71 @@ export class TrajectoryEngine {
       radiativeHeatingRegime: rad
     };
   }
+
+  /**
+   * Calculate analytical peak aerodynamic deceleration, G-load, altitude of peak drag, and velocity using the Allen-Eggers entry solution.
+   * a_max = ( v_entry^2 * |sin(gamma)| ) / ( 2 * e * H_s )
+   * h_max = H_s * ln( ( rho_0 * H_s ) / ( 2 * beta * |sin(gamma)| ) )
+   * v(h_max) = v_entry / sqrt(e)
+   * Reference: Allen & Eggers (1958), Vinh et al. (1980), Braun & Manning (2007) for Mars Pathfinder, MER, MSL, and InSight EDL aerodynamics.
+   * @param {number} [entryVelocityKmS=5.7] - Atmospheric entry interface velocity in km/s (3.0 to 12.0 km/s)
+   * @param {number} [entryFlightPathAngleDeg=-12.5] - Entry flight path angle gamma in degrees (-5.0 to -30.0 deg)
+   * @param {number} [ballisticCoeffKgM2=120.0] - Spacecraft ballistic coefficient m / (Cd * A) in kg/m^2
+   * @param {number} [scaleHeightKm=11.1] - Atmospheric scale height in km
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{peakDecelerationMS2: number, peakDecelerationGs: number, altitudeOfPeakDecelerationKm: number, velocityAtPeakDecelerationKmS: number, structuralLoadRegime: string}}
+   */
+  static computeHypersonicEntryPeakDecelerationGLoad(entryVelocityKmS = 5.7, entryFlightPathAngleDeg = -12.5, ballisticCoeffKgM2 = 120.0, scaleHeightKm = 11.1, body = 'mars') {
+    const vEntryMS = Math.max(500.0, entryVelocityKmS * 1000.0);
+    const gammaRad = Math.abs(entryFlightPathAngleDeg) * (Math.PI / 180.0);
+    const sinGamma = Math.max(0.02, Math.sin(gammaRad));
+    const beta = Math.max(5.0, ballisticCoeffKgM2);
+    const HsM = Math.max(1000.0, scaleHeightKm * 1000.0);
+    const g0 = 9.80665; // m/s^2
+
+    const isEarth = body.toLowerCase() === 'earth';
+    const isVenus = body.toLowerCase() === 'venus';
+
+    let rho0 = 0.020; // kg/m^3 Mars surface ref density
+    if (isEarth) {
+      rho0 = 1.225;
+    } else if (isVenus) {
+      rho0 = 65.0;
+    }
+
+    // Peak deceleration a_max = ( v_entry^2 * sin(gamma) ) / ( 2 * e * Hs ) (m/s^2)
+    const eConst = Math.E;
+    const aMaxMS2 = (Math.pow(vEntryMS, 2.0) * sinGamma) / (2.0 * eConst * HsM);
+    const gMax = aMaxMS2 / g0;
+
+    // Velocity at peak deceleration v(h_max) = v_entry / sqrt(e) (m/s)
+    const vAtPeakMS = vEntryMS / Math.sqrt(eConst);
+    const vAtPeakKmS = vAtPeakMS / 1000.0;
+
+    // Altitude of peak deceleration h_max = Hs * ln( (rho0 * Hs) / (2 * beta * sin(gamma)) ) (m)
+    const denom = 2.0 * beta * sinGamma;
+    const arg = (rho0 * HsM) / Math.max(1e-6, denom);
+    let hMaxM = 0.0;
+    if (arg > 1.0) {
+      hMaxM = HsM * Math.log(arg);
+    }
+    const hMaxKm = hMaxM / 1000.0;
+
+    let regime = 'Nominal Robotic EDL Deceleration (< 15 Gs)';
+    if (gMax > 25.0) {
+      regime = 'Extreme High-G Ballistic Entry (Severe Structural & Avionics Inertial Stress)';
+    } else if (gMax <= 6.0) {
+      regime = 'Crew-Safe Shallow Gliding Entry (< 6 Gs)';
+    }
+
+    return {
+      peakDecelerationMS2: parseFloat(aMaxMS2.toFixed(2)),
+      peakDecelerationGs: parseFloat(gMax.toFixed(2)),
+      altitudeOfPeakDecelerationKm: parseFloat(hMaxKm.toFixed(2)),
+      velocityAtPeakDecelerationKmS: parseFloat(vAtPeakKmS.toFixed(3)),
+      structuralLoadRegime: regime
+    };
+  }
 }
 
 

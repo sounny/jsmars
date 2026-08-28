@@ -4097,6 +4097,50 @@ export class BandMathEngine {
       biosignaturePotential: bio
     };
   }
+
+  /**
+   * Detect Bassanite calcium sulfate hemihydrate and polyhydrated sulfates from CRISM 1.44 um, 1.78 um, 1.92 um, and 2.40 um absorption bands.
+   * Reference: Gendrin et al. (2005), Bishop et al. (2009), Vaniman et al. (2014), Rapin et al. (2019) for Gale Crater (Curiosity ChemMin) and Mawrth Vallis.
+   * @param {number} r1440 - Reflectance at 1.44 um diagnostic OH/H2O hemihydrate minimum
+   * @param {number} r1780 - Reflectance at 1.78 um sulfate overtone band
+   * @param {number} r1920 - Reflectance at 1.92 um primary H2O molecular combination
+   * @param {number} r2400 - Reflectance at 2.40 um secondary sulfate combination band
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1440: number, bd1780: number, bd1920: number, bd2400: number, isBassanitePresent: boolean, sulfatePhase: string, diageneticEnvironment: string}}
+   */
+  static computeCRISMBassaniteIndices(r1440, r1780, r1920, r2400 = 0.30, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1440 = Math.max(0.0, 1.0 - (r1440 / cont));
+    const bd1780 = Math.max(0.0, 1.0 - (r1780 / cont));
+    const bd1920 = Math.max(0.0, 1.0 - (r1920 / cont));
+    const bd2400 = Math.max(0.0, 1.0 - (r2400 / cont));
+
+    let phase = 'Unaltered Primary Basalt';
+    let isBassanite = false;
+    let env = 'Standard Igneous Setting';
+
+    if (bd1920 >= 0.025 && bd1440 >= 0.020 && bd2400 >= 0.015) {
+      isBassanite = true;
+      if (bd1780 >= 0.015) {
+        phase = 'Bassanite (CaSO4 * 0.5H2O) / Calcium Sulfate Hemihydrate';
+        env = 'Hyper-Arid Atmospheric Dehydration / Evaporative Groundwater Fracture Vein Diagenesis (Gale Crater / Curiosity ChemMin Analogue)';
+      } else {
+        phase = 'Polyhydrated Magnesium/Iron Sulfate (Starkeyite / Rozenite / Hexahydrite)';
+        env = 'Evaporitic Playa Basin / Salt Flat Drawdown';
+      }
+    }
+
+    return {
+      bd1440: parseFloat(bd1440.toFixed(4)),
+      bd1780: parseFloat(bd1780.toFixed(4)),
+      bd1920: parseFloat(bd1920.toFixed(4)),
+      bd2400: parseFloat(bd2400.toFixed(4)),
+      isBassanitePresent: isBassanite,
+      sulfatePhase: phase,
+      diageneticEnvironment: env
+    };
+  }
 }
 
 
