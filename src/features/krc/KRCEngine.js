@@ -3165,6 +3165,57 @@ export class KRCEngine {
       glacialFlowRegime: regime
     };
   }
+
+  /**
+   * Calculate 2-layer polar cap thermal stratigraphy, thermal insulation by CO2 dry ice slabs, and basal interface temperatures.
+   * dT_CO2/dz = Q_geo / k_CO2
+   * T_int = T_surf + (dT_CO2/dz) * L_CO2
+   * dT_H2O/dz = Q_geo / k_H2O
+   * T_bed = T_int + (dT_H2O/dz) * L_H2O
+   * Reference: Thomas et al. (2000), Byrne & Ingersoll (2003), Phillips et al. (2011) for SHARAD buried massive CO2 ice deposits.
+   * @param {number} surfaceTempK - Surface temperature at top of dry ice slab in Kelvin (140 to 160 K)
+   * @param {number} [co2SlabThicknessMeters=300.0] - Upper CO2 dry ice slab thickness in meters (1 to 1000 m)
+   * @param {number} [h2oIceThicknessMeters=1500.0] - Lower H2O polar layered deposit thickness in meters (100 to 3000 m)
+   * @param {number} [geothermalHeatFluxMWM2=25.0] - Geothermal heat flux in mW/m^2 (15 to 40 mW/m^2)
+   * @returns {{co2H2OInterfaceTempK: number, bedrockBasalTempK: number, co2LayerGradientKPerKm: number, h2oLayerGradientKPerKm: number, co2ThermalBlanketingDeltaTK: number, polarStratigraphyContext: string}}
+   */
+  static computeLayeredPolarCapThermalProfile(surfaceTempK, co2SlabThicknessMeters = 300.0, h2oIceThicknessMeters = 1500.0, geothermalHeatFluxMWM2 = 25.0) {
+    const Tsurf = Math.max(100.0, Math.min(180.0, surfaceTempK));
+    const Lco2 = Math.max(0.1, co2SlabThicknessMeters);
+    const Lh2o = Math.max(10.0, h2oIceThicknessMeters);
+    const QgeoW = Math.max(1.0, geothermalHeatFluxMWM2) * 1e-3; // W/m^2
+
+    // Thermal conductivities (W/(m*K))
+    const kCO2 = 0.50; // dry ice is 5x more insulating than water ice
+    const kH2O = 2.50;
+
+    // Thermal gradients (K/m -> K/km)
+    const gradCO2KPerM = QgeoW / kCO2;
+    const gradCO2KPerKm = gradCO2KPerM * 1000.0;
+
+    const gradH2OKPerM = QgeoW / kH2O;
+    const gradH2OKPerKm = gradH2OKPerM * 1000.0;
+
+    // Interface and bedrock temperatures (K)
+    const deltaTCO2 = gradCO2KPerM * Lco2;
+    const Tint = Tsurf + deltaTCO2;
+    const deltaTH2O = gradH2OKPerM * Lh2o;
+    const Tbed = Tint + deltaTH2O;
+
+    let context = 'Thin Seasonal CO2 Frost over Perennial H2O Polar Layered Deposits';
+    if (Lco2 >= 100.0) {
+      context = 'Massive Buried CO2 Ice Package with Strong Basal Thermal Blanketing (SHARAD SPLD Unit)';
+    }
+
+    return {
+      co2H2OInterfaceTempK: parseFloat(Tint.toFixed(2)),
+      bedrockBasalTempK: parseFloat(Tbed.toFixed(2)),
+      co2LayerGradientKPerKm: parseFloat(gradCO2KPerKm.toFixed(1)),
+      h2oLayerGradientKPerKm: parseFloat(gradH2OKPerKm.toFixed(1)),
+      co2ThermalBlanketingDeltaTK: parseFloat(deltaTCO2.toFixed(2)),
+      polarStratigraphyContext: context
+    };
+  }
 }
 
 

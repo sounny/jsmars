@@ -9501,6 +9501,41 @@ describe('Solar Radiation Pressure, Glacial Ice Flow & Prebiotic Borates/Nitrate
     });
 });
 
+describe('Solar Sail Propulsion, Layered Polar Cap Thermal Profile & Iron Sulfide Minerals', () => {
+    it('should calculate interplanetary solar sail characteristic acceleration, lightness number, and pitch thrust vector', () => {
+        // High-performance solar sail (A = 500 m^2, m = 50 kg -> sigma = 100 g/m^2, eta = 0.88 at 1 AU):
+        const sail = TrajectoryEngine.computeSolarSailHeliocentricAcceleration(500.0, 50.0, 0.88, 1.0, 35.264);
+        expect(sail.arealLoadingGM2).to.equal(100.0);
+        expect(sail.characteristicAccelerationMmS2).to.be.closeTo(0.08, 0.01);
+        expect(sail.lightnessNumberBeta).to.be.greaterThan(0.01);
+        expect(sail.optimalThrustPitchDeg).to.be.closeTo(35.264, 0.01);
+        expect(sail.propulsionRegime).to.include('Low-Thrust');
+    });
+
+    it('should calculate 2-layer polar cap thermal stratigraphy, CO2 dry ice thermal blanketing, and basal temperatures', () => {
+        // SPLD dry ice slab (L_CO2 = 300 m, k = 0.50 W/m/K) over water ice (L_H2O = 1500 m, k = 2.50 W/m/K, Q_geo = 25 mW/m^2, T_surf = 145 K):
+        const polarCap = KRCEngine.computeLayeredPolarCapThermalProfile(145.0, 300.0, 1500.0, 25.0);
+        expect(polarCap.co2LayerGradientKPerKm).to.equal(50.0); // 50 K/km in insulating CO2
+        expect(polarCap.h2oLayerGradientKPerKm).to.equal(10.0); // 10 K/km in conductive H2O
+        expect(polarCap.co2ThermalBlanketingDeltaTK).to.equal(15.0); // 15 K warming across dry ice slab
+        expect(polarCap.co2H2OInterfaceTempK).to.equal(160.0); // 160 K at CO2/H2O interface
+        expect(polarCap.bedrockBasalTempK).to.equal(175.0); // 175 K at bedrock
+        expect(polarCap.polarStratigraphyContext).to.include('Massive Buried CO2 Ice Package');
+    });
+
+    it('should discriminate opaque Iron(II) Sulfides (Pyrrhotite/Troilite) from iron oxides and silicates', () => {
+        // Pyrrhotite in magmatic sulfide segregations (low albedo ~0.10, steep red slope > 0.06 um^-1, no 860 nm oxide dip):
+        const sulfide = BandMathEngine.computeCRISMIronSulfideIndices(0.07, 0.09, 0.12, 0.14, 0.15);
+        expect(sulfide.isIronSulfidePresent).to.be.true;
+        expect(sulfide.sulfidePhase).to.include('Pyrrhotite');
+        expect(sulfide.petrogeneticOrigin).to.include('Magmatic Sulfide');
+
+        // Transparent basalt silicate (high albedo, flat slope):
+        const basalt = BandMathEngine.computeCRISMIronSulfideIndices(0.25, 0.25, 0.25, 0.25, 0.15);
+        expect(basalt.isIronSulfidePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -3631,6 +3631,51 @@ export class BandMathEngine {
       astrobiologySignificance: astro
     };
   }
+
+  /**
+   * Invert opaque Iron(II) Sulfide minerals (Pyrrhotite, Troilite, Pyrite) from CRISM steep red VNIR slopes and low reflectance.
+   * Reference: Bridges et al. (2001), Lorand et al. (2005), Cloutis et al. (2010) for SNC meteorite magmatic sulfides & hydrothermal vents.
+   * @param {number} r530 - Reflectance at 530 nm (VNIR blue wing)
+   * @param {number} r770 - Reflectance at 770 nm
+   * @param {number} r950 - Reflectance at 950 nm
+   * @param {number} r1300 - Reflectance at 1300 nm (VNIR red shoulder)
+   * @param {number} [continuumLevel=0.15] - Background continuum level
+   * @returns {{vnirRedSlopePerMicron: number, meanAlbedo: number, isIronSulfidePresent: boolean, sulfidePhase: string, petrogeneticOrigin: string}}
+   */
+  static computeCRISMIronSulfideIndices(r530, r770, r950, r1300, continuumLevel = 0.15) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const meanReflectance = (r530 + r770 + r950 + r1300) / 4.0;
+
+    // Steep positive slope in um^-1: (R1300 - R530) / 0.77 um
+    const redSlopePerMicron = (r1300 - r530) / 0.77;
+
+    // Check for absence of ferric 860 nm oxide band
+    const bd860Proxy = Math.max(0.0, 1.0 - (r950 / Math.max(1e-4, (r770 + r1300) / 2.0)));
+
+    let phase = 'Silicate Basalt / Transparent Mineral';
+    let isSulfide = false;
+    let origin = 'Standard Volcanic Matrix';
+
+    if (meanReflectance <= 0.18 && redSlopePerMicron >= 0.060 && bd860Proxy < 0.04) {
+      isSulfide = true;
+      if (r1300 > r530 * 1.5) {
+        phase = 'Pyrrhotite (Fe1-xS) / Troilite (FeS)';
+        origin = 'Deep Magmatic Sulfide Liquid Immiscibility / Reduced Hydrothermal Exhalative Deposit (SNC Chassigny / Shergottite Analogue)';
+      } else {
+        phase = 'Disseminated Pyrite (FeS2)';
+        origin = 'Subsurface Anoxic Hydrothermal Sulfidation';
+      }
+    }
+
+    return {
+      vnirRedSlopePerMicron: parseFloat(redSlopePerMicron.toFixed(4)),
+      meanAlbedo: parseFloat(meanReflectance.toFixed(4)),
+      isIronSulfidePresent: isSulfide,
+      sulfidePhase: phase,
+      petrogeneticOrigin: origin
+    };
+  }
 }
 
 

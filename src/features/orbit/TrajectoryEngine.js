@@ -2515,6 +2515,74 @@ export class TrajectoryEngine {
       perturbationSeverity: severity
     };
   }
+
+  /**
+   * Calculate interplanetary solar sail characteristic acceleration, lightness number, and force vector under variable pitch angle.
+   * a_0 = 2 * eta * P_srp0 / sigma
+   * a_r = a_0 * ( r_0 / r )^2 * cos^3(alpha)
+   * a_theta = a_0 * ( r_0 / r )^2 * cos^2(alpha) * sin(alpha)
+   * Reference: McInnes (1999), Wright (1992), Dachwald (2004) for IKAROS & LightSail interplanetary flight dynamics.
+   * @param {number} [sailAreaM2=500.0] - Total deployable sail reflective area in m^2
+   * @param {number} [totalMassKg=50.0] - Spacecraft wet/dry total mass in kg
+   * @param {number} [sailEfficiency=0.88] - Sail specular reflectivity efficiency eta (0.7 to 0.98)
+   * @param {number} [heliocentricDistanceAU=1.0] - Solar distance in AU
+   * @param {number} [sailPitchAngleDeg=35.264] - Sail sun-pointing pitch angle alpha in degrees (0 = normal to sun, 35.264 = max thrust)
+   * @returns {{arealLoadingGM2: number, characteristicAccelerationMmS2: number, lightnessNumberBeta: number, radialAccelerationMmS2: number, transverseAccelerationMmS2: number, netAccelerationMmS2: number, optimalThrustPitchDeg: number, propulsionRegime: string}}
+   */
+  static computeSolarSailHeliocentricAcceleration(sailAreaM2 = 500.0, totalMassKg = 50.0, sailEfficiency = 0.88, heliocentricDistanceAU = 1.0, sailPitchAngleDeg = 35.264) {
+    const A = Math.max(1.0, sailAreaM2);
+    const m = Math.max(0.1, totalMassKg);
+    const eta = Math.max(0.5, Math.min(1.0, sailEfficiency));
+    const rAU = Math.max(0.1, heliocentricDistanceAU);
+    const pitchRad = (Math.max(0.0, Math.min(89.0, sailPitchAngleDeg)) * Math.PI) / 180.0;
+
+    const S0 = 1361.0; // W/m^2
+    const c = 299792458.0; // m/s
+    const Psrp0 = S0 / c; // ~4.54e-6 N/m^2 at 1 AU
+    const gSun0 = 5.930e-3; // m/s^2 solar gravity at 1 AU
+
+    // Sail areal mass loading sigma = m / A (kg/m^2 and g/m^2)
+    const sigmaKgM2 = m / A;
+    const sigmaGM2 = sigmaKgM2 * 1000.0;
+
+    // Characteristic acceleration at 1 AU normal to sun (m/s^2 -> mm/s^2)
+    const a0MS2 = (2.0 * eta * Psrp0) / sigmaKgM2;
+    const a0MmS2 = a0MS2 * 1000.0;
+
+    // Lightness number beta = a0 / g_sun
+    const beta = a0MS2 / gSun0;
+
+    // Distance factor (1 / r_AU^2)
+    const distFactor = 1.0 / (rAU * rAU);
+
+    // Radial, transverse, and net acceleration components (mm/s^2)
+    const cosAlpha = Math.cos(pitchRad);
+    const sinAlpha = Math.sin(pitchRad);
+
+    const arMmS2 = a0MmS2 * distFactor * Math.pow(cosAlpha, 3.0);
+    const aThetaMmS2 = a0MmS2 * distFactor * Math.pow(cosAlpha, 2.0) * sinAlpha;
+    const aNetMmS2 = a0MmS2 * distFactor * Math.pow(cosAlpha, 2.0);
+
+    const alphaOptDeg = (Math.atan(1.0 / Math.sqrt(2.0)) * 180.0) / Math.PI; // 35.264 deg
+
+    let regime = 'Sub-Escape Low-Thrust Interplanetary Spiral';
+    if (beta >= 1.0) {
+      regime = 'Levitation / Solar Gravitational Repulsion (Hyperbolic Escape at Zero Fuel)';
+    } else if (a0MmS2 >= 0.5) {
+      regime = 'High-Performance Rapid Interplanetary Transit (Earth-Mars in < 200 Days)';
+    }
+
+    return {
+      arealLoadingGM2: parseFloat(sigmaGM2.toFixed(2)),
+      characteristicAccelerationMmS2: parseFloat(a0MmS2.toFixed(4)),
+      lightnessNumberBeta: parseFloat(beta.toFixed(5)),
+      radialAccelerationMmS2: parseFloat(arMmS2.toFixed(4)),
+      transverseAccelerationMmS2: parseFloat(aThetaMmS2.toFixed(4)),
+      netAccelerationMmS2: parseFloat(aNetMmS2.toFixed(4)),
+      optimalThrustPitchDeg: parseFloat(alphaOptDeg.toFixed(3)),
+      propulsionRegime: regime
+    };
+  }
 }
 
 
