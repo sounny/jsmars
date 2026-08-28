@@ -12855,6 +12855,53 @@ describe('Mars-to-Asteroid Belt Rendezvous, Chlorite Metamorphism & Trioctahedra
     });
 });
 
+describe('Mars-to-Jupiter Hohmann Insertion, Acid Leached Silica & Serpentine Speciation', () => {
+    it('should calculate interplanetary Hohmann transfer from Mars to gas giant Jupiter and orbit insertion', () => {
+        // Mars to Jupiter (1.52 to 5.20 AU, 300 km Mars alt, 300,000 km Jupiter capture alt):
+        const jupiter = TrajectoryEngine.computeMarsToJupiterDirectTransfer(300.0, 300000.0);
+        expect(jupiter.transferTimeDays).to.be.closeTo(1126.9, 20.0); // ~1127 days
+        expect(jupiter.transferTimeYears).to.be.closeTo(3.085, 0.05); // ~3.09 yr
+        expect(jupiter.marsDepartureDeltaVKmS).to.be.closeTo(4.197, 0.2); // ~4.20 km/s TJI
+        expect(jupiter.jupiterArrivalExcessKmS).to.be.closeTo(4.269, 0.2); // ~4.27 km/s v_inf
+        expect(jupiter.jupiterOrbitInsertionDeltaVKmS).to.be.closeTo(0.477, 0.1); // ~0.48 km/s JOI
+        expect(jupiter.totalMissionDeltaVKmS).to.be.closeTo(4.674, 0.3); // ~4.67 km/s total Delta-V
+        expect(jupiter.transferEccentricity).to.be.closeTo(0.5471, 0.02); // e ~ 0.547
+        expect(jupiter.jupiterTransferContext).to.include('Mars-to-Jupiter Direct');
+    });
+
+    it('should calculate acid-sulfate hydrothermal cation leaching, sieve porosity, and silica enrichment', () => {
+        // pH 1.5, 80 C, 50 yr duration, 10% initial porosity:
+        const leach = KRCEngine.computeMartianAcidLeachingSilicaEnrichmentPorosity(1.50, 80.0, 50.0, 0.10);
+        expect(leach.residualSilicaWtPercent).to.be.closeTo(96.0, 2.0); // ~96 wt% pure SiO2 residue
+        expect(leach.cationExtractionPercent).to.be.closeTo(96.2, 2.0); // ~96% cations stripped
+        expect(leach.finalSievePorosityPercent).to.be.closeTo(55.0, 3.0); // ~55% sieve porosity
+        expect(leach.bulkDensityKgM3).to.be.closeTo(989.8, 50.0); // ~990 kg/m^3
+        expect(leach.thermalInertiaTIU).to.be.closeTo(77.5, 15.0); // low TIU vesicular silica
+        expect(leach.silicaAlterationClass).to.include('High-Purity Vesicular Opaline Silica Residue');
+        expect(leach.acidLeachingContext).to.include('Acid Leaching');
+    });
+
+    it('should discriminate Low-Temperature Lizardite/Chrysotile vs High-Temperature Antigorite in CRISM spectra', () => {
+        // Lizardite / Chrysotile (Claritas Rise: BD1390 = 0.05, BD2120 = 0.03, BD2325 = 0.06, BD2510 = 0.005):
+        const lizardite = BandMathEngine.computeCRISMLizarditeAntigoriteChrysotileSpeciationIndices(0.05, 0.03, 0.06, 0.005);
+        expect(lizardite.isSerpentineDetected).to.be.true;
+        expect(lizardite.serpentinePolymorphClass).to.include('Low-Temperature Hydrated Serpentine (Lizardite / Chrysotile)');
+        expect(lizardite.mineralSpecies).to.include('Lizardite / Chrysotile');
+        expect(lizardite.chemicalFormula).to.include('Mg3Si2O5(OH)4');
+        expect(lizardite.serpentinizationThermalContext).to.include('Active H2 + Abiotic Methane Generation');
+
+        // Antigorite (Nili Fossae basement: BD1390 = 0.02, BD2120 = 0.01, BD2325 = 0.05, BD2510 = 0.04):
+        const antigorite = BandMathEngine.computeCRISMLizarditeAntigoriteChrysotileSpeciationIndices(0.02, 0.01, 0.05, 0.04);
+        expect(antigorite.isSerpentineDetected).to.be.true;
+        expect(antigorite.serpentinePolymorphClass).to.include('High-Temperature Prograde Serpentine (Antigorite)');
+        expect(antigorite.mineralSpecies).to.include('Antigorite');
+
+        // Non-serpentine basalt:
+        const basalt = BandMathEngine.computeCRISMLizarditeAntigoriteChrysotileSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSerpentineDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

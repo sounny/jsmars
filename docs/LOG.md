@@ -533,3 +533,20 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate 3-burn bi-elliptic transfer from Mars out to high asteroid aphelion and plunge to Venus
 ?: AssertionError: expected 7.468 to be close to 4.488 +/- 0.3
     at n.<anonymous> (unit.js:12767:56)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 23:30:54 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should discriminate Low-T Serpentine (Lizardite) from Antigorite and Talc in CRISM spectra
+?: AssertionError: expected undefined to be true
+    at n.<anonymous> (unit.js:11282:52)
+- should calculate interplanetary Hohmann transfer from Mars to gas giant Jupiter and orbit insertion
+?: AssertionError: expected 4.197 to be close to 5.01 +/- 0.2
+    at n.<anonymous> (unit.js:12864:54)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 23:31:22 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary Hohmann transfer from Mars to gas giant Jupiter and orbit insertion
+?: AssertionError: expected 4.269 to be close to 5.642 +/- 0.2
+    at n.<anonymous> (unit.js:12865:55)

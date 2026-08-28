@@ -7343,6 +7343,79 @@ export class TrajectoryEngine {
       asteroidTransferContext: `Mars-to-${targetName} (${tofsDays.toFixed(0)} d Transfer, e=${eTrans.toFixed(2)}, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
     };
   }
+
+  /**
+   * Calculate interplanetary Hohmann transfer from Mars to gas giant Jupiter and Jovian elliptical orbit insertion.
+   * a_trans = ( r_mars + r_jup ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Delta_V_tot = Delta_V_TJI + Delta_V_JOI
+   * Reference: Bate, Mueller & White (1971), Curtis (2013) for Outer Planet Transfers.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [jupiterPeriapsisAltitudeKm=300000.0] - Jupiter capture periapsis altitude in km (50000 to 2000000 km)
+   * @returns {{transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, jupiterArrivalExcessKmS: number, jupiterOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, jupiterTransferContext: string}}
+   */
+  static computeMarsToJupiterDirectTransfer(marsParkingAltitudeKm = 300.0, jupiterPeriapsisAltitudeKm = 300000.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpJKm = Math.max(50000.0, jupiterPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muJup = 1.26686534e8;
+    const rJupKm = 71492.0;
+
+    const rMarsAU = 1.52368;
+    const rJupAU = 5.2044;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rJupDistKm = rJupAU * AU_KM;
+
+    // Hohmann geometry
+    const aTransKm = (rMarsDistKm + rJupDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rJupDistKm - rMarsDistKm) / (rJupDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTjiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Jupiter arrival
+    const vJupCircKmS = Math.sqrt(muSun / rJupDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rJupDistKm) - (1.0 / aTransKm)));
+    const vInfJupKmS = Math.abs(vJupCircKmS - vArrKmS);
+
+    const rpJKm = rJupKm + hpJKm;
+    const eCap = 0.98; // Highly elliptical capture orbit
+    const aCapKm = rpJKm / (1.0 - eCap);
+
+    const vHypJKmS = Math.sqrt(Math.pow(vInfJupKmS, 2.0) + ((2.0 * muJup) / rpJKm));
+    const vCapJKmS = Math.sqrt(muJup * ((2.0 / rpJKm) - (1.0 / aCapKm)));
+    const dvJoiKmS = vHypJKmS - vCapJKmS;
+
+    const dvTotKmS = dvTjiKmS + dvJoiKmS;
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTjiKmS.toFixed(3)),
+      jupiterArrivalExcessKmS: parseFloat(vInfJupKmS.toFixed(3)),
+      jupiterOrbitInsertionDeltaVKmS: parseFloat(dvJoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      jupiterTransferContext: `Mars-to-Jupiter Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfJupKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

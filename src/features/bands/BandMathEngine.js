@@ -7191,6 +7191,56 @@ export class BandMathEngine {
       hydrothermalMetamorphicContext: context
     };
   }
+
+  /**
+   * Discriminate Low-Temperature Lizardite/Chrysotile vs High-Temperature Antigorite Serpentine from CRISM 1.39 um, 2.12 um, 2.325 um, and 2.51 um absorption bands.
+   * Reference: Ehlmann et al. (2010), Amador et al. (2018), Viviano-Beck et al. (2014) for Martian Serpentine Speciation.
+   * @param {number} [band1390OHDepth=0.05] - BD1390 sharp structural OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2120OverToneDepth=0.03] - BD2120 diagnostic Serpentine combination overtone depth (0.0 to 0.40)
+   * @param {number} [band2325MgOHDepth=0.06] - BD2325 fundamental Mg-OH stretching depth (0.0 to 0.40)
+   * @param {number} [band2510OverToneDepth=0.01] - BD2510 high-T Antigorite diagnostic band depth (0.0 to 0.40)
+   * @returns {{isSerpentineDetected: boolean, serpentinePolymorphClass: string, mineralSpecies: string, chemicalFormula: string, serpentinizationThermalContext: string}}
+   */
+  static computeCRISMLizarditeAntigoriteChrysotileSpeciationIndices(band1390OHDepth = 0.05, band2120OverToneDepth = 0.03, band2325MgOHDepth = 0.06, band2510OverToneDepth = 0.01) {
+    const d1390 = Math.max(0.0, band1390OHDepth);
+    const d2120 = Math.max(0.0, band2120OverToneDepth);
+    const d2325 = Math.max(0.0, band2325MgOHDepth);
+    const d2510 = Math.max(0.0, band2510OverToneDepth);
+
+    const isSerp = d2325 >= 0.030 && (d1390 >= 0.025 || d2120 >= 0.020 || d2510 >= 0.025);
+
+    let serpClass = 'Non-Serpentine Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Serpentine Absorption';
+
+    if (isSerp) {
+      if (d2510 >= 0.030) {
+        serpClass = 'High-Temperature Prograde Serpentine (Antigorite)';
+        species = 'Antigorite';
+        formula = '(Mg,Fe)3Si2O5(OH)4 (Wavy Polysomatic)';
+        context = 'High-Temperature Hydrothermal (> 350 C) / Deep Prograde Subduction-Tectonic Metamorphism (Nili Fossae Basement)';
+      } else if (d1390 >= 0.035 && d2325 >= 0.040) {
+        serpClass = 'Low-Temperature Hydrated Serpentine (Lizardite / Chrysotile)';
+        species = 'Lizardite / Chrysotile';
+        formula = 'Mg3Si2O5(OH)4 (Planar / Fibrous)';
+        context = 'Low-to-Moderate Temperature Hydrothermal Serpentinization (< 300 C) with Active H2 + Abiotic Methane Generation (Claritas Rise / Terra Sirenum)';
+      } else {
+        serpClass = 'Mixed Serpentine-Phyllosilicate Alteration';
+        species = 'Serpentine-Talcmix';
+        formula = 'Mg-Serpentine Assemblage';
+        context = 'Partially Serpentinized Ultramafic Crust';
+      }
+    }
+
+    return {
+      isSerpentineDetected: isSerp,
+      serpentinePolymorphClass: serpClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      serpentinizationThermalContext: context
+    };
+  }
 }
 
 

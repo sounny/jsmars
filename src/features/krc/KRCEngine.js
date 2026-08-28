@@ -7686,6 +7686,72 @@ export class KRCEngine {
       clayMetamorphismContext: `Chlorite Metamorphism at ${zKm.toFixed(1)}km (${TburialC.toFixed(0)} C, ${chloritePct.toFixed(0)}% Chlorite, ${gradeClass})`
     };
   }
+
+  /**
+   * Calculate extreme acid-sulfate hydrothermal leaching of basaltic cations, secondary sieve/vuggy porosity formation, residual silica enrichment, and thermal inertia drop.
+   * f_extract = 1 - exp( -k_leach * t )
+   * SiO2_wt% = SiO2_0 / ( SiO2_0 + Cations_0 * ( 1 - f_extract ) )
+   * phi_sieve = phi_0 + Cations_0 * f_extract * ( 1 - phi_0 )
+   * Reference: Squyres et al. (2008), Morris et al. (2008), Ruff et al. (2011), Tosca & McLennan (2006) for Home Plate Acid Leached Silica.
+   * @param {number} [fluidPH=1.50] - Hydrothermal fluid pH (0.5 to 5.0)
+   * @param {number} [hydrothermalTemperatureC=80.0] - Leaching fluid temperature in C (10 to 200 C)
+   * @param {number} [leachingDurationYr=50.0] - Acid circulation duration in yr (0.1 to 1000 yr)
+   * @param {number} [initialPorosity=0.10] - Unaltered basalt bedrock porosity (0.02 to 0.30)
+   * @returns {{residualSilicaWtPercent: number, cationExtractionPercent: number, finalSievePorosityPercent: number, bulkDensityKgM3: number, thermalInertiaTIU: number, silicaAlterationClass: string, acidLeachingContext: string}}
+   */
+  static computeMartianAcidLeachingSilicaEnrichmentPorosity(fluidPH = 1.50, hydrothermalTemperatureC = 80.0, leachingDurationYr = 50.0, initialPorosity = 0.10) {
+    const pH = Math.max(0.2, Math.min(6.0, fluidPH));
+    const TfluidC = Math.max(5.0, hydrothermalTemperatureC);
+    const tYr = Math.max(0.01, leachingDurationYr);
+    const phi0 = Math.max(0.01, Math.min(0.50, initialPorosity));
+
+    const TfluidK = TfluidC + 273.15;
+    const Rgas = 8.314;
+    const Ea = 5.5e4; // 55 kJ/mol
+    const k0 = 5.0e7; // yr^-1
+
+    const HplusMol = Math.pow(10.0, -pH);
+    const kLeachYr = k0 * Math.sqrt(HplusMol) * Math.exp(-Ea / (Rgas * TfluidK));
+
+    // Cation extraction fraction
+    const fExtract = 1.0 - Math.exp(-kLeachYr * tYr);
+    const fExtractPct = fExtract * 100.0;
+
+    // Basalt initial fractions: 48 wt% SiO2, 52 wt% cations
+    const wSiO2_0 = 0.48;
+    const wCations_0 = 0.52;
+    const wCationsRemaining = wCations_0 * (1.0 - fExtract);
+    const residualSiO2Pct = (wSiO2_0 / (wSiO2_0 + wCationsRemaining)) * 100.0;
+
+    // Sieve/vuggy porosity created by cation leaching
+    const deltaPhi = wCations_0 * fExtract * (1.0 - phi0);
+    const phiFinal = Math.min(0.85, phi0 + deltaPhi);
+    const phiFinalPct = phiFinal * 100.0;
+
+    // Bulk density & thermal inertia
+    const rhoMatrix = 2200.0; // kg/m^3
+    const rhoBulk = rhoMatrix * (1.0 - phiFinal);
+    const kTherm = 0.040 * Math.pow(1.0 - phiFinal, 2.0); // W/(m*K)
+    const Cspec = 750.0; // J/(kg*K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let alterClass = 'Unaltered Basalt / Incipient Cation Leaching';
+    if (residualSiO2Pct >= 90.0) {
+      alterClass = 'High-Purity Vesicular Opaline Silica Residue (Fumarolic Acid Fog Sieve)';
+    } else if (residualSiO2Pct >= 70.0) {
+      alterClass = 'Moderate Leached Basalt (Alunite-Kaolinite-Silica Horizon)';
+    }
+
+    return {
+      residualSilicaWtPercent: parseFloat(residualSiO2Pct.toFixed(1)),
+      cationExtractionPercent: parseFloat(fExtractPct.toFixed(1)),
+      finalSievePorosityPercent: parseFloat(phiFinalPct.toFixed(1)),
+      bulkDensityKgM3: parseFloat(rhoBulk.toFixed(1)),
+      thermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      silicaAlterationClass: alterClass,
+      acidLeachingContext: `Acid Leaching at pH ${pH.toFixed(1)} (${residualSiO2Pct.toFixed(1)}% SiO2, ${phiFinalPct.toFixed(1)}% Porosity, TIU=${TIU.toFixed(0)}, ${alterClass})`
+    };
+  }
 }
 
 
