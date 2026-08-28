@@ -3996,6 +3996,70 @@ export class TrajectoryEngine {
       lowThrustPropulsionContext: context
     };
   }
+
+  /**
+   * Calculate planetary frozen orbit parameters, J2/J3 zonal harmonic equilibrium, frozen eccentricity, and critical inclinations.
+   * e_frozen = - ( J3 * Rp ) / ( 2 * J2 * a ) * sin( i )
+   * i_crit = 63.435 deg / 116.565 deg ( stationary apsides )
+   * Reference: Cutting et al. (1978), Coffey et al. (1994), Vallado (2013) for Mars Global Surveyor / 2001 Mars Odyssey frozen orbits.
+   * @param {number} [meanAltitudeKm=400.0] - Mean orbit altitude in km
+   * @param {number} [orbitInclinationDeg=93.0] - Orbit inclination in degrees (93 deg for Mars Sun-synchronous)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{semiMajorAxisKm: number, frozenEccentricity: number, frozenArgumentOfPeriapsisDeg: number, periapsisAltitudeKm: number, apoapsisAltitudeKm: number, altitudeVariationRangeKm: number, criticalInclinationDeg: number, frozenOrbitStabilityContext: string}}
+   */
+  static computeFrozenOrbitEquilibriumAndAltitudeOscillation(meanAltitudeKm = 400.0, orbitInclinationDeg = 93.0, body = 'mars') {
+    const hMeanKm = Math.max(50.0, meanAltitudeKm);
+    const incDeg = Math.max(0.0, Math.min(180.0, orbitInclinationDeg));
+    const incRad = incDeg * (Math.PI / 180.0);
+
+    let RpKm = 3389.5;
+    let J2 = 1.96045e-3;
+    let J3 = -3.15e-5;
+
+    if (body.toLowerCase() === 'earth') {
+      RpKm = 6378.137;
+      J2 = 1.08263e-3;
+      J3 = -2.532e-6;
+    } else if (body.toLowerCase() === 'moon') {
+      RpKm = 1737.4;
+      J2 = 2.027e-4;
+      J3 = 6.0e-6;
+    }
+
+    const aKm = RpKm + hMeanKm;
+
+    // Frozen eccentricity balancing J2 and J3 drift: e_frozen = - ( J3 * Rp ) / ( 2 * J2 * a ) * sin( i )
+    const eFrozen = - (J3 * RpKm) / (2.0 * J2 * aKm) * Math.sin(incRad);
+    const eMag = Math.max(0.0, Math.abs(eFrozen));
+
+    // Argument of periapsis for frozen condition (270 deg for negative J3/Mars, 90 deg for positive J3)
+    const omegaFrozenDeg = J3 < 0 ? 270.0 : 90.0;
+
+    // Pericenter and apocenter altitudes
+    const hpKm = aKm * (1.0 - eMag) - RpKm;
+    const haKm = aKm * (1.0 + eMag) - RpKm;
+    const deltaHKm = haKm - hpKm;
+
+    const critIncDeg = 63.435;
+
+    let desc = 'Sun-Synchronous Mapping Frozen Orbit (Minimal Stationkeeping Propellant Budget)';
+    if (Math.abs(incDeg - 63.435) < 2.0 || Math.abs(incDeg - 116.565) < 2.0) {
+      desc = 'Critical Inclination Frozen Orbit (Zero Secular Apsidal Drift)';
+    } else if (eMag < 0.001) {
+      desc = 'Near-Circular Frozen Orbit Configuration';
+    }
+
+    return {
+      semiMajorAxisKm: parseFloat(aKm.toFixed(2)),
+      frozenEccentricity: parseFloat(eMag.toFixed(6)),
+      frozenArgumentOfPeriapsisDeg: omegaFrozenDeg,
+      periapsisAltitudeKm: parseFloat(hpKm.toFixed(2)),
+      apoapsisAltitudeKm: parseFloat(haKm.toFixed(2)),
+      altitudeVariationRangeKm: parseFloat(deltaHKm.toFixed(2)),
+      criticalInclinationDeg: critIncDeg,
+      frozenOrbitStabilityContext: desc
+    };
+  }
 }
 
 

@@ -4571,6 +4571,78 @@ export class KRCEngine {
       hydrothermalContactZoneMetamorphism: metaDesc
     };
   }
+
+  /**
+   * Calculate diurnal perchlorate/chloride salt deliquescence relative humidity threshold, efflorescence hysteresis, and liquid brine stability window.
+   * DRH(T) = DRH_eut * exp( -0.005 * ( T - T_eut ) )
+   * Reference: Gough et al. (2011), Nuding et al. (2014), Rivera-Valentín et al. (2020) for Phoenix / MSL Gale perchlorate deliquescence.
+   * @param {number} [relativeHumidityPercent=65.0] - Ambient surface boundary layer relative humidity in % (0 to 100%)
+   * @param {number} [regolithTempK=225.0] - Regolith temperature in K (150 to 300 K)
+   * @param {string} [saltPhase='ca_perchlorate'] - Salt chemistry ('ca_perchlorate', 'mg_perchlorate', 'nacl')
+   * @param {number} [saltWeightPercent=1.0] - Salt abundance in soil in wt% (0.1 to 10%)
+   * @returns {{saltType: string, eutecticTempK: number, deliquescenceHumidityThresholdPct: number, isDeliquescenceActive: boolean, adsorbedWaterMassGramsPerKgSoil: number, dailyLiquidBrineWindowHours: number, deliquescenceThermodynamicState: string}}
+   */
+  static computePerchlorateSaltDeliquescenceDiurnalKinetics(relativeHumidityPercent = 65.0, regolithTempK = 225.0, saltPhase = 'ca_perchlorate', saltWeightPercent = 1.0) {
+    const rh = Math.max(0.0, Math.min(100.0, relativeHumidityPercent));
+    const T = Math.max(120.0, Math.min(320.0, regolithTempK));
+    const wSalt = Math.max(0.01, Math.min(50.0, saltWeightPercent)) / 100.0;
+
+    let Teutc = 221.0; // Ca(ClO4)2 eutectic
+    let drhEutc = 50.0; // % at eutectic
+    let erhEutc = 20.0;
+    let name = 'Calcium Perchlorate (Ca(ClO4)2)';
+
+    const sKey = saltPhase.toLowerCase();
+    if (sKey.includes('mg') || sKey.includes('magnesium')) {
+      Teutc = 206.0;
+      drhEutc = 55.0;
+      erhEutc = 22.0;
+      name = 'Magnesium Perchlorate (Mg(ClO4)2)';
+    } else if (sKey.includes('nacl') || sKey.includes('halite')) {
+      Teutc = 252.0;
+      drhEutc = 75.0;
+      erhEutc = 45.0;
+      name = 'Sodium Chloride (NaCl)';
+    }
+
+    // Temperature-dependent DRH(T)
+    const drhT = Math.max(15.0, Math.min(95.0, drhEutc * Math.exp(-0.005 * (T - Teutc))));
+
+    // Deliquescence occurs when T >= Teutc AND RH >= DRH(T)
+    const isAboveEutectic = T >= Teutc;
+    const isDeliquescent = isAboveEutectic && rh >= drhT;
+
+    // Adsorbed / absorbed liquid water content (g H2O / kg soil)
+    let waterAdsorbedGramsPerKg = 0.0;
+    if (isDeliquescent) {
+      waterAdsorbedGramsPerKg = (wSalt * 1000.0) * (1.2 + (rh / drhT));
+    } else if (rh > erhEutc) {
+      waterAdsorbedGramsPerKg = (wSalt * 1000.0) * 0.25 * (rh / drhT);
+    }
+
+    // Estimated daily window in hours where conditions are met (empirical diurnal model)
+    let windowHours = 0.0;
+    if (isDeliquescent) {
+      windowHours = Math.min(8.0, 2.0 + (rh - drhT) * 0.15);
+    }
+
+    let state = 'Crystalline Anhydrous / Effloresced Dry Salt';
+    if (isDeliquescent) {
+      state = 'Active Liquid Aqueous Brine (Deliquesced Solution Layer)';
+    } else if (rh >= erhEutc) {
+      state = 'Metastable Hydrated Solid Solution (Hysteresis Efflorescence Regime)';
+    }
+
+    return {
+      saltType: name,
+      eutecticTempK: parseFloat(Teutc.toFixed(1)),
+      deliquescenceHumidityThresholdPct: parseFloat(drhT.toFixed(1)),
+      isDeliquescenceActive: isDeliquescent,
+      adsorbedWaterMassGramsPerKgSoil: parseFloat(waterAdsorbedGramsPerKg.toFixed(2)),
+      dailyLiquidBrineWindowHours: parseFloat(windowHours.toFixed(1)),
+      deliquescenceThermodynamicState: state
+    };
+  }
 }
 
 

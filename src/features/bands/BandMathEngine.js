@@ -4589,6 +4589,51 @@ export class BandMathEngine {
       petrogeneticEvolutionContext: context
     };
   }
+
+  /**
+   * Discriminate pure crystalline Anorthosite / Plagioclase Feldspar from basalt and phyllosilicates using CRISM 1.25 um (trace Fe2+), 0.95 um (pyroxene), and 1.90 um (H2O).
+   * Reference: Carter et al. (2013), Wray et al. (2013), Viviano-Beck et al. (2014) for primordial magma ocean plagioclase flotation crust in Valles Marineris.
+   * @param {number} r1250 - Reflectance at 1.25 um diagnostic plagioclase Fe2+ crystal field minimum
+   * @param {number} r950 - Reflectance at 0.95 um pyroxene Band 1 region
+   * @param {number} r1750 - Reflectance at 1.75 um continuum / pyroxene Band 2 region
+   * @param {number} [r1900=0.30] - Reflectance at 1.90 um molecular H2O band
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1250: number, bd950: number, bd1750: number, bd1900: number, isAnorthositePresent: boolean, plagioclaseMineralogy: string, primordialCrustContext: string}}
+   */
+  static computeCRISMAnorthositeMagmaOceanFlotationIndices(r1250, r950, r1750, r1900 = 0.30, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1250 = Math.max(0.0, 1.0 - (r1250 / cont));
+    const bd950 = Math.max(0.0, 1.0 - (r950 / cont));
+    const bd1750 = Math.max(0.0, 1.0 - (r1750 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1900 / cont));
+
+    let isAnorthosite = false;
+    let mineral = 'Unaltered Primary Igneous Silicate';
+    let context = 'Standard Basaltic Regolith';
+
+    if (bd1250 >= 0.020 && bd1900 < 0.015) {
+      if (bd950 < 0.020 && bd1750 < 0.020) {
+        isAnorthosite = true;
+        mineral = 'Pure Crystalline Anorthosite / Plagioclase Feldspar (Labradorite / Bytownite)';
+        context = 'Primordial Martian Magma Ocean Flotation Crust / Deep Ancient Noachian Feldspathic Cumulates';
+      } else {
+        isAnorthosite = true;
+        mineral = 'Feldspathic Basalt / Plagioclase-Bearing Basaltic Crust';
+        context = 'Mixed Plagioclase-Pyroxene Igneous Lithology';
+      }
+    }
+
+    return {
+      bd1250: parseFloat(bd1250.toFixed(4)),
+      bd950: parseFloat(bd950.toFixed(4)),
+      bd1750: parseFloat(bd1750.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      isAnorthositePresent: isAnorthosite,
+      plagioclaseMineralogy: mineral,
+      primordialCrustContext: context
+    };
+  }
 }
 
 

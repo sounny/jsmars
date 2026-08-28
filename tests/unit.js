@@ -10306,6 +10306,45 @@ describe('Continuous Low-Thrust Spiral, Magma Sill Solidification & Pyroxene HCP
     });
 });
 
+describe('Planetary Frozen Orbit Conditions, Diurnal Deliquescence & Plagioclase Anorthosite', () => {
+    it('should calculate planetary frozen orbit parameters, J2/J3 equilibrium, and frozen eccentricity', () => {
+        // Mars Sun-synchronous mapping orbit (mean altitude = 400 km, inc = 93.0 deg):
+        const frozen = TrajectoryEngine.computeFrozenOrbitEquilibriumAndAltitudeOscillation(400.0, 93.0, 'mars');
+        expect(frozen.semiMajorAxisKm).to.equal(3789.5);
+        expect(frozen.frozenEccentricity).to.be.closeTo(0.007176, 0.0005); // ~0.00718 frozen eccentricity
+        expect(frozen.frozenArgumentOfPeriapsisDeg).to.equal(270.0); // 270 deg south polar periapsis
+        expect(frozen.periapsisAltitudeKm).to.be.closeTo(372.8, 2.0); // ~373 km
+        expect(frozen.apoapsisAltitudeKm).to.be.closeTo(427.2, 2.0); // ~427 km
+        expect(frozen.altitudeVariationRangeKm).to.be.closeTo(54.4, 3.0); // ~54.4 km range
+        expect(frozen.criticalInclinationDeg).to.equal(63.435);
+        expect(frozen.frozenOrbitStabilityContext).to.include('Sun-Synchronous Mapping Frozen Orbit');
+    });
+
+    it('should calculate diurnal perchlorate salt deliquescence humidity threshold and transient liquid brine window', () => {
+        // Phoenix landing site morning soil (RH = 65%, T = 225 K, Ca(ClO4)2):
+        const del = KRCEngine.computePerchlorateSaltDeliquescenceDiurnalKinetics(65.0, 225.0, 'ca_perchlorate', 1.0);
+        expect(del.saltType).to.include('Calcium Perchlorate');
+        expect(del.eutecticTempK).to.equal(221.0);
+        expect(del.deliquescenceHumidityThresholdPct).to.be.closeTo(49.0, 2.0); // ~49% DRH threshold
+        expect(del.isDeliquescenceActive).to.be.true;
+        expect(del.adsorbedWaterMassGramsPerKgSoil).to.be.greaterThan(10.0);
+        expect(del.dailyLiquidBrineWindowHours).to.be.greaterThan(2.0); // > 2 hours/sol of active liquid brine
+        expect(del.deliquescenceThermodynamicState).to.include('Active Liquid Aqueous Brine');
+    });
+
+    it('should discriminate pure crystalline Plagioclase Anorthosite from basalt in CRISM spectra', () => {
+        // Pure Anorthosite in Valles Marineris central peak (broad 1.25 um Fe2+ minimum, absent 0.95/1.75/1.90 um):
+        const anorth = BandMathEngine.computeCRISMAnorthositeMagmaOceanFlotationIndices(0.24, 0.30, 0.30, 0.30, 0.30);
+        expect(anorth.isAnorthositePresent).to.be.true;
+        expect(anorth.plagioclaseMineralogy).to.include('Pure Crystalline Anorthosite');
+        expect(anorth.primordialCrustContext).to.include('Primordial Martian Magma Ocean');
+
+        // Basalt (no 1.25 um plagioclase band):
+        const basalt = BandMathEngine.computeCRISMAnorthositeMagmaOceanFlotationIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isAnorthositePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
