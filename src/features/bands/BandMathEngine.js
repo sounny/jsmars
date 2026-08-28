@@ -3446,6 +3446,57 @@ export class BandMathEngine {
       mantleOrigin: mantle
     };
   }
+
+  /**
+   * Discriminate Al-Smectite (Montmorillonite), Fe-Smectite (Nontronite), and Mg-Smectite (Saponite) phyllosilicates using CRISM metal-OH combination bands.
+   * Reference: Poulet et al. (2005), Bishop et al. (2008), Ehlmann et al. (2008) for Mawrth Vallis & Jezero delta clay stratigraphy.
+   * @param {number} r1410 - Reflectance at 1.41 um OH band
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2210 - Reflectance at 2.21 um Al-OH Montmorillonite minimum
+   * @param {number} r2290 - Reflectance at 2.29 um Fe-OH Nontronite minimum
+   * @param {number} r2315 - Reflectance at 2.315 um Mg-OH Saponite minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1900: number, bd2210: number, bd2290: number, bd2315: number, smectitePhase: string, clayOctahedralCation: string, aqueousEnvironment: string}}
+   */
+  static computeCRISMSmectiteSpeciationIndices(r1410, r1910, r2210, r2290, r2315, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1400 = Math.max(0.0, 1.0 - (r1410 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+    const bd2290 = Math.max(0.0, 1.0 - (r2290 / cont));
+    const bd2315 = Math.max(0.0, 1.0 - (r2315 / cont));
+
+    let phase = 'Unaltered Primary Igneous Silicate';
+    let cation = 'None';
+    let env = 'Dry Volcanic Setting';
+
+    if (bd1900 >= 0.025) {
+      if (bd2210 >= 0.025 && bd2210 > bd2290 && bd2210 > bd2315) {
+        phase = 'Al-Smectite Phyllosilicate (Montmorillonite / Beidellite)';
+        cation = 'Octahedral Al3+';
+        env = 'Top-Down Pedogenic Leaching Weathering under High Water/Rock Ratio (Mawrth Vallis Upper Unit)';
+      } else if (bd2290 >= 0.025 && bd2290 >= bd2210 && bd2290 > bd2315) {
+        phase = 'Fe-Smectite Phyllosilicate (Nontronite)';
+        cation = 'Octahedral Fe3+';
+        env = 'Alkaline to Reducing Hydrothermal Alteration of Basalt (Jezero Crater Delta / Mawrth Lower Unit)';
+      } else if (bd2315 >= 0.025 && bd2315 >= bd2210 && bd2315 >= bd2290) {
+        phase = 'Mg-Smectite Phyllosilicate (Saponite / Hectorite)';
+        cation = 'Octahedral Mg2+';
+        env = 'Closed-Basin Alkaline Lacustrine & Low-Temperature Ultramafic Alteration';
+      }
+    }
+
+    return {
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      bd2290: parseFloat(bd2290.toFixed(4)),
+      bd2315: parseFloat(bd2315.toFixed(4)),
+      smectitePhase: phase,
+      clayOctahedralCation: cation,
+      aqueousEnvironment: env
+    };
+  }
 }
 
 

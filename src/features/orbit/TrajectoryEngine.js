@@ -2254,6 +2254,84 @@ export class TrajectoryEngine {
       propellantSavedKg: parseFloat(propSavedKg.toFixed(1))
     };
   }
+
+  /**
+   * Calculate planetary frozen orbit parameters, critical inclination, and equilibrium J2/J3 eccentricity.
+   * i_crit = acos( 1 / sqrt(5) ) = 63.435 deg or 116.565 deg
+   * e_frozen = - ( J3 * R_p ) / ( 2 * J2 * a ) * ( sin(i) / sin(omega_0) )
+   * Reference: Vallado (2013), Curtis (2013) for MGS, MRO, and LRO frozen orbit mission planning.
+   * @param {number} [semiMajorAxisKm=3770.0] - Orbit semi-major axis in km (e.g. 3770 km for Mars, 1850 km for Moon)
+   * @param {number} [inclinationDeg=93.0] - Orbit inclination in degrees
+   * @param {string} [body='mars'] - Central body ('mars', 'moon', 'earth')
+   * @param {number} [targetArgumentOfPeriapsisDeg=270.0] - Target locked argument of periapsis (typically 270 deg for southern science)
+   * @returns {{frozenEccentricity: number, criticalInclinationProgradeDeg: number, criticalInclinationRetrogradeDeg: number, periapsisAltitudeKm: number, apoapsisAltitudeKm: number, altitudeVariationKm: number, orbitPeriodMinutes: number, stabilityState: string}}
+   */
+  static computePlanetaryFrozenOrbitParameters(semiMajorAxisKm = 3770.0, inclinationDeg = 93.0, body = 'mars', targetArgumentOfPeriapsisDeg = 270.0) {
+    const bKey = body.toLowerCase();
+    const isMoon = bKey === 'moon';
+    const isEarth = bKey === 'earth';
+
+    let mu = 42828.37;     // Mars
+    let Rp = 3396.19;
+    let J2 = 1.96045e-3;
+    let J3 = 3.15e-5;
+
+    if (isMoon) {
+      mu = 4902.80;
+      Rp = 1737.4;
+      J2 = 2.03e-4;
+      J3 = 8.5e-6;
+    } else if (isEarth) {
+      mu = 398600.4418;
+      Rp = 6378.137;
+      J2 = 1.08263e-3;
+      J3 = -2.532e-6;
+    }
+
+    const a = Math.max(Rp + 50.0, semiMajorAxisKm);
+    const incRad = (inclinationDeg * Math.PI) / 180.0;
+    const omega0Rad = (targetArgumentOfPeriapsisDeg * Math.PI) / 180.0;
+
+    // Critical inclination for zero apsidal secular precession
+    const iCritProgradeDeg = (Math.acos(1.0 / Math.sqrt(5.0)) * 180.0) / Math.PI; // 63.435 deg
+    const iCritRetrogradeDeg = (Math.acos(-1.0 / Math.sqrt(5.0)) * 180.0) / Math.PI; // 116.565 deg
+
+    // Equilibrium frozen eccentricity: e_frozen = - (J3 * Rp) / (2 * J2 * a) * (sin(i) / sin(omega0))
+    const sinOmega0 = Math.sin(omega0Rad);
+    let eFrozen = 0.005;
+    if (Math.abs(sinOmega0) > 1e-4) {
+      eFrozen = - (J3 * Rp) / (2.0 * J2 * a) * (Math.sin(incRad) / sinOmega0);
+    }
+    eFrozen = Math.abs(eFrozen); // ensure positive magnitude
+
+    const rp = a * (1.0 - eFrozen);
+    const ra = a * (1.0 + eFrozen);
+    const hp = rp - Rp;
+    const ha = ra - Rp;
+    const deltaH = ha - hp;
+
+    // Orbital period
+    const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(a, 3.0) / mu);
+    const periodMin = periodSec / 60.0;
+
+    const isApsidalStationary = Math.abs(inclinationDeg - iCritProgradeDeg) < 2.0 || Math.abs(inclinationDeg - iCritRetrogradeDeg) < 2.0;
+
+    let state = 'Frozen Eccentricity Locked (Fixed Periapsis Altitude)';
+    if (isApsidalStationary) {
+      state = 'Critically Inclined Frozen Orbit (Zero Apsidal Drift dOmega/dt = 0 & Constant Altitude)';
+    }
+
+    return {
+      frozenEccentricity: parseFloat(eFrozen.toFixed(6)),
+      criticalInclinationProgradeDeg: parseFloat(iCritProgradeDeg.toFixed(3)),
+      criticalInclinationRetrogradeDeg: parseFloat(iCritRetrogradeDeg.toFixed(3)),
+      periapsisAltitudeKm: parseFloat(hp.toFixed(2)),
+      apoapsisAltitudeKm: parseFloat(ha.toFixed(2)),
+      altitudeVariationKm: parseFloat(deltaH.toFixed(2)),
+      orbitPeriodMinutes: parseFloat(periodMin.toFixed(2)),
+      stabilityState: state
+    };
+  }
 }
 
 

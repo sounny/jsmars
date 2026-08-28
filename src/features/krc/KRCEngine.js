@@ -2953,6 +2953,62 @@ export class KRCEngine {
       thermalPenetrationHorizon: horizon
     };
   }
+
+  /**
+   * Calculate steady-state geothermal gradient, cryosphere thickness, and basal ice melting depth for pure water and perchlorate brines.
+   * dT/dz = Q_geo / k_th
+   * z_melt = ( T_melt - T_surf ) / ( dT/dz )
+   * Reference: Clifford (1993), Hanna & Phillips (2005), Orosei et al. (2018) for MARSIS South Polar subglacial liquid lake stability.
+   * @param {number} meanSurfaceTempK - Mean annual surface temperature in Kelvin (150 to 220 K)
+   * @param {number} [geothermalHeatFluxMWM2=25.0] - Basal geothermal heat flux in mW/m^2 (15 to 45 mW/m^2)
+   * @param {number} [thermalConductivityWMK=2.5] - Bulk rock/ice thermal conductivity in W/(m*K)
+   * @param {string} [poreFluidType='brine'] - Subsurface pore fluid ('pure_water', 'brine')
+   * @returns {{geothermalGradientKPerKm: number, cryosphereThicknessKm: number, cryosphereThicknessMeters: number, basalMeltingTemperatureK: number, isSubglacialBasalMeltingPossible: boolean, basalPorePressureMPa: number, subglacialSetting: string}}
+   */
+  static computeBasalMeltingAndCryosphereThickness(meanSurfaceTempK, geothermalHeatFluxMWM2 = 25.0, thermalConductivityWMK = 2.5, poreFluidType = 'brine') {
+    const Tsurf = Math.max(100.0, Math.min(260.0, meanSurfaceTempK));
+    const QgeoW = Math.max(1.0, geothermalHeatFluxMWM2) * 1e-3; // W/m^2
+    const kth = Math.max(0.1, thermalConductivityWMK);
+    const isBrine = poreFluidType.toLowerCase().includes('brine');
+
+    const T_MELT = isBrine ? 205.0 : 273.15; // K (Perchlorate eutectic vs Pure H2O)
+    const RHO_OVERBURDEN = 1800.0; // kg/m^3
+    const G_MARS = 3.72076; // m/s^2
+
+    // Geothermal gradient dT/dz (K/m and K/km)
+    const dTDzKPerM = QgeoW / kth;
+    const dTDzKPerKm = dTDzKPerM * 1000.0;
+
+    // Basal melting depth z_melt (m and km)
+    let zMeltMeters = (T_MELT - Tsurf) / dTDzKPerM;
+    zMeltMeters = Math.max(10.0, zMeltMeters);
+    const zMeltKm = zMeltMeters / 1000.0;
+
+    // Basal lithostatic/hydrostatic pressure (MPa)
+    const pBasePa = RHO_OVERBURDEN * G_MARS * zMeltMeters;
+    const pBaseMPa = pBasePa / 1e6;
+
+    let setting = 'Thick Permafrost Cryosphere (Solid Subsurface Ice)';
+    let isPossible = false;
+
+    if (isBrine && zMeltKm <= 5.0) {
+      setting = 'Subglacial Perchlorate Brine Horizon (MARSIS Ultimi Scopuli South Polar Liquid Body Analogue)';
+      isPossible = true;
+    } else if (!isBrine && zMeltKm <= 12.0) {
+      setting = 'Deep Basal Pure Water Cryosphere Melting Interface (Regional Hydrothermal Aquifer)';
+      isPossible = true;
+    }
+
+    return {
+      geothermalGradientKPerKm: parseFloat(dTDzKPerKm.toFixed(2)),
+      cryosphereThicknessKm: parseFloat(zMeltKm.toFixed(2)),
+      cryosphereThicknessMeters: parseFloat(zMeltMeters.toFixed(1)),
+      basalMeltingTemperatureK: parseFloat(T_MELT.toFixed(2)),
+      isSubglacialBasalMeltingPossible: isPossible,
+      basalPorePressureMPa: parseFloat(pBaseMPa.toFixed(2)),
+      subglacialSetting: setting
+    };
+  }
 }
 
 

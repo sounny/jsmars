@@ -9347,6 +9347,51 @@ describe('Aerobraking Orbit Lowering, Subsurface Thermal Waves & Olivine Solid S
     });
 });
 
+describe('Frozen Orbit Equilibrium, Basal Cryosphere Melting & Smectite Clay Speciation', () => {
+    it('should calculate planetary frozen orbit critical inclination and equilibrium J2/J3 eccentricity', () => {
+        // Mars frozen science mapping orbit (a = 3770 km, i = 93 deg, locked omega0 = 270 deg):
+        const frozen = TrajectoryEngine.computePlanetaryFrozenOrbitParameters(3770.0, 93.0, 'mars', 270.0);
+        expect(frozen.criticalInclinationProgradeDeg).to.be.closeTo(63.435, 0.01);
+        expect(frozen.criticalInclinationRetrogradeDeg).to.be.closeTo(116.565, 0.01);
+        expect(frozen.frozenEccentricity).to.be.closeTo(0.0072, 0.001); // ~0.0072 equilibrium eccentricity
+        expect(frozen.altitudeVariationKm).to.be.closeTo(54.5, 5.0); // ~55 km altitude variation between poles
+        expect(frozen.orbitPeriodMinutes).to.be.closeTo(117.0, 5.0);
+        expect(frozen.stabilityState).to.include('Frozen Eccentricity Locked');
+    });
+
+    it('should calculate steady-state geothermal gradient, cryosphere thickness, and basal melting depth', () => {
+        // South Pole Ultimi Scopuli perchlorate brine lake (T_surf = 160 K, Q_geo = 25 mW/m^2, k_th = 2.5 W/m/K):
+        const brineMelting = KRCEngine.computeBasalMeltingAndCryosphereThickness(160.0, 25.0, 2.5, 'brine');
+        expect(brineMelting.geothermalGradientKPerKm).to.equal(10.0); // 10 K/km geothermal gradient
+        expect(brineMelting.cryosphereThicknessKm).to.be.closeTo(4.5, 0.5); // ~4.5 km cryosphere thickness to brine eutectic (205 K)
+        expect(brineMelting.isSubglacialBasalMeltingPossible).to.be.true;
+        expect(brineMelting.subglacialSetting).to.include('MARSIS Ultimi Scopuli');
+
+        // Pure water ice cap (requires reaching 273.15 K -> deeper melting):
+        const pureMelting = KRCEngine.computeBasalMeltingAndCryosphereThickness(160.0, 25.0, 2.5, 'pure_water');
+        expect(pureMelting.cryosphereThicknessKm).to.be.closeTo(11.3, 0.5); // ~11.3 km to pure water melting
+    });
+
+    it('should discriminate Al-Smectite (Montmorillonite) from Fe-Smectite (Nontronite) and Mg-Smectite (Saponite)', () => {
+        // Al-Smectite (Montmorillonite) in Mawrth Vallis upper unit (strong 1.91 um and 2.21 um Al-OH):
+        const alClay = BandMathEngine.computeCRISMSmectiteSpeciationIndices(0.27, 0.26, 0.25, 0.30, 0.30, 0.30);
+        expect(alClay.smectitePhase).to.include('Al-Smectite');
+        expect(alClay.clayOctahedralCation).to.include('Al3+');
+        expect(alClay.aqueousEnvironment).to.include('Top-Down Pedogenic Leaching');
+
+        // Fe-Smectite (Nontronite) in Jezero delta floor (strong 1.91 um and 2.29 um Fe-OH):
+        const feClay = BandMathEngine.computeCRISMSmectiteSpeciationIndices(0.27, 0.26, 0.30, 0.25, 0.30, 0.30);
+        expect(feClay.smectitePhase).to.include('Fe-Smectite');
+        expect(feClay.clayOctahedralCation).to.include('Fe3+');
+        expect(feClay.aqueousEnvironment).to.include('Hydrothermal Alteration of Basalt');
+
+        // Mg-Smectite (Saponite) in alkaline closed-basin lake (strong 1.91 um and 2.315 um Mg-OH):
+        const mgClay = BandMathEngine.computeCRISMSmectiteSpeciationIndices(0.27, 0.26, 0.30, 0.30, 0.25, 0.30);
+        expect(mgClay.smectitePhase).to.include('Mg-Smectite');
+        expect(mgClay.clayOctahedralCation).to.include('Mg2+');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
