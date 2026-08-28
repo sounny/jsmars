@@ -10094,6 +10094,49 @@ describe('B-Plane Hyperbolic Flyby, Cryosphere Basal Melting & Serpentine Invers
     });
 });
 
+describe('Hohmann Interplanetary Transfer, Impact Hydrothermal Lifetime & Prehnite Facies', () => {
+    it('should calculate Earth-to-Mars heliocentric Hohmann transfer TOF, C3 energy, and TMI Delta-V', () => {
+        // Earth to Mars transfer from 200 km LEO parking orbit:
+        const hohmann = TrajectoryEngine.computeTransMarsInjectionDeltaVAndHohmannTrajectory('earth', 'mars', 200.0);
+        expect(hohmann.transferSemiMajorAxisAU).to.be.closeTo(1.2618, 0.01);
+        expect(hohmann.timeOfFlightDays).to.be.closeTo(258.9, 2.0); // ~259 days TOF
+        expect(hohmann.timeOfFlightMonths).to.be.closeTo(8.5, 0.2); // ~8.5 months
+        expect(hohmann.hyperbolicDepartureExcessKmS).to.be.closeTo(2.945, 0.1); // ~2.95 km/s v_inf
+        expect(hohmann.characteristicLaunchEnergyC3Km2S2).to.be.closeTo(8.67, 0.5); // ~8.67 km^2/s^2 C3
+        expect(hohmann.transInjectionDeltaVKmS).to.be.closeTo(3.612, 0.1); // ~3.61 km/s TMI burn
+        expect(hohmann.hyperbolicArrivalExcessKmS).to.be.closeTo(2.65, 0.1); // ~2.65 km/s Mars arrival excess
+        expect(hohmann.transferGeometryDescription).to.include('EARTH to MARS');
+    });
+
+    it('should calculate impact crater hydrothermal convective circulation lifetime and Rayleigh number', () => {
+        // 100 km diameter complex crater on Mars (e.g. Gale / Jezero analogue with 250 mD fractured permeability):
+        const hydro = KRCEngine.computeImpactHydrothermalSystemCoolingLifetime(100.0, 250.0, 1473.0);
+        expect(hydro.impactMeltVolumeKm3).to.be.closeTo(9141.8, 50.0); // ~9142 km^3 melt volume
+        expect(hydro.centralMeltThicknessMeters).to.equal(5000.0); // 5 km central uplift
+        expect(hydro.rayleighNumber).to.be.greaterThan(40.0); // convective regime active
+        expect(hydro.isConvectiveHydrothermalActive).to.be.true;
+        expect(hydro.activeHydrothermalLifetimeYears).to.be.greaterThan(10000); // sustained for > 10,000 years
+        expect(hydro.astrobiologicalHabitabilityWindow).to.include('Hydrothermal Habitable System');
+    });
+
+    it('should discriminate Prehnite from Pumpellyite and basalt in CRISM spectra', () => {
+        // Prehnite in Toro Crater central peak (strong 1.475 um, 2.35 um, weak 1.91 um water):
+        const prehnite = BandMathEngine.computeCRISMPrehnitePumpellyiteIndices(0.24, 0.298, 0.22, 0.30);
+        expect(prehnite.isPrehniteFaciesPresent).to.be.true;
+        expect(prehnite.metamorphicFaciesSpecies).to.include('Prehnite');
+        expect(prehnite.hydrothermalPTPressureTemperatureContext).to.include('Prehnite-Pumpellyite Metamorphic Facies');
+
+        // Pumpellyite (strong 1.91 um water):
+        const pumpellyite = BandMathEngine.computeCRISMPrehnitePumpellyiteIndices(0.24, 0.22, 0.22, 0.30);
+        expect(pumpellyite.isPrehniteFaciesPresent).to.be.true;
+        expect(pumpellyite.metamorphicFaciesSpecies).to.include('Pumpellyite');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMPrehnitePumpellyiteIndices(0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isPrehniteFaciesPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -4373,6 +4373,48 @@ export class BandMathEngine {
       serpentinizationEnergyContext: context
     };
   }
+
+  /**
+   * Discriminate Prehnite from Pumpellyite and zeolites using CRISM 1.475 um (Al-OH), 1.91 um (H2O), and 2.35 um (Al-OH) combination bands.
+   * Reference: Ehlmann et al. (2009, 2011), Sun & Milliken (2015), Viviano-Beck et al. (2014) for Prehnite-Pumpellyite facies in Toro & Argyre central peaks.
+   * @param {number} r1475 - Reflectance at 1.475 um diagnostic Prehnite structural Al-OH minimum
+   * @param {number} r1910 - Reflectance at 1.91 um molecular H2O absorption
+   * @param {number} r2350 - Reflectance at 2.35 um primary Prehnite Al-OH combination minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1475: number, bd1910: number, bd2350: number, isPrehniteFaciesPresent: boolean, metamorphicFaciesSpecies: string, hydrothermalPTPressureTemperatureContext: string}}
+   */
+  static computeCRISMPrehnitePumpellyiteIndices(r1475, r1910, r2350, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1475 = Math.max(0.0, 1.0 - (r1475 / cont));
+    const bd1910 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2350 = Math.max(0.0, 1.0 - (r2350 / cont));
+
+    let species = 'Unaltered Primary Igneous Silicate';
+    let isFacies = false;
+    let context = 'Standard Crustal Setting';
+
+    if (bd2350 >= 0.025) {
+      if (bd1475 >= 0.020 && bd1910 < 0.020) {
+        isFacies = true;
+        species = 'Prehnite (Ca2Al2Si3O10(OH)2)';
+        context = 'Prehnite-Pumpellyite Metamorphic Facies (200-350 C, 1-3 kbar) / Deep Hydrothermal Metamorphism Exposed in Crater Central Peaks';
+      } else if (bd1910 >= 0.025) {
+        isFacies = true;
+        species = 'Pumpellyite (Ca2MgAl2(SiO4)(Si2O7)(OH)2 * H2O)';
+        context = 'Hydrated Sub-Greenschist Metamorphism / Low-Grade Hydrothermal Basalt Alteration';
+      }
+    }
+
+    return {
+      bd1475: parseFloat(bd1475.toFixed(4)),
+      bd1910: parseFloat(bd1910.toFixed(4)),
+      bd2350: parseFloat(bd2350.toFixed(4)),
+      isPrehniteFaciesPresent: isFacies,
+      metamorphicFaciesSpecies: species,
+      hydrothermalPTPressureTemperatureContext: context
+    };
+  }
 }
 
 

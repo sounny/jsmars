@@ -3636,6 +3636,84 @@ export class TrajectoryEngine {
       flybyRegime: regime
     };
   }
+
+  /**
+   * Calculate heliocentric Hohmann transfer orbit parameters, time-of-flight, hyperbolic excess velocity, and Trans-Mars Injection (TMI) Delta-V.
+   * a_t = ( r_1 + r_2 ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * v_inf = | v_t1 - v_p1 |
+   * Delta_V_TMI = sqrt( v_inf^2 + 2*mu_1 / r_park ) - sqrt( mu_1 / r_park )
+   * Reference: Bate, Mueller & White (1971), Curtis (2013), Vallado (2013) for interplanetary patched-conics mission design.
+   * @param {string} [departurePlanet='earth'] - Departure planetary body
+   * @param {string} [arrivalPlanet='mars'] - Arrival destination body
+   * @param {number} [parkingAltitudeKm=200.0] - Circular parking orbit altitude at departure in km (150 to 1000 km)
+   * @returns {{transferSemiMajorAxisAU: number, timeOfFlightDays: number, timeOfFlightMonths: number, hyperbolicDepartureExcessKmS: number, characteristicLaunchEnergyC3Km2S2: number, transInjectionDeltaVKmS: number, hyperbolicArrivalExcessKmS: number, transferGeometryDescription: string}}
+   */
+  static computeTransMarsInjectionDeltaVAndHohmannTrajectory(departurePlanet = 'earth', arrivalPlanet = 'mars', parkingAltitudeKm = 200.0) {
+    const muSun = 1.32712440018e20; // m^3/s^2
+    const AU_METERS = 1.495978707e11; // meters
+
+    // Planetary heliocentric orbital radii (meters)
+    let r1 = 1.0 * AU_METERS; // Earth
+    let r2 = 1.523662 * AU_METERS; // Mars
+    let muDep = 3.986004418e14; // Earth mu
+    let rPlanetDepKm = 6378.137;
+
+    if (departurePlanet.toLowerCase() === 'mars') {
+      r1 = 1.523662 * AU_METERS;
+      muDep = 4.282837e13;
+      rPlanetDepKm = 3389.5;
+    }
+    if (arrivalPlanet.toLowerCase() === 'earth') {
+      r2 = 1.0 * AU_METERS;
+    } else if (arrivalPlanet.toLowerCase() === 'jupiter') {
+      r2 = 5.2044 * AU_METERS;
+    } else if (arrivalPlanet.toLowerCase() === 'venus') {
+      r2 = 0.723332 * AU_METERS;
+    }
+
+    // Transfer semi-major axis (meters and AU)
+    const atM = (r1 + r2) / 2.0;
+    const atAU = atM / AU_METERS;
+
+    // Time of flight TOF = pi * sqrt( at^3 / muSun ) (seconds, days, months)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(atM, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofMonths = tofDays / 30.4375;
+
+    // Heliocentric speeds
+    const vt1 = Math.sqrt(muSun * ((2.0 / r1) - (1.0 / atM)));
+    const vp1 = Math.sqrt(muSun / r1);
+    const vInf1MS = Math.abs(vt1 - vp1);
+    const vInf1KmS = vInf1MS / 1000.0;
+
+    // Characteristic launch energy C3 = v_inf^2 (km^2/s^2)
+    const c3Km2S2 = Math.pow(vInf1KmS, 2.0);
+
+    // Parking orbit and TMI Delta-V
+    const rParkM = (rPlanetDepKm + Math.max(50.0, parkingAltitudeKm)) * 1000.0;
+    const vPark = Math.sqrt(muDep / rParkM);
+    const vInj = Math.sqrt(Math.pow(vInf1MS, 2.0) + (2.0 * muDep / rParkM));
+    const deltaVInjKmS = (vInj - vPark) / 1000.0;
+
+    // Arrival excess speed
+    const vt2 = Math.sqrt(muSun * ((2.0 / r2) - (1.0 / atM)));
+    const vp2 = Math.sqrt(muSun / r2);
+    const vInf2KmS = Math.abs(vt2 - vp2) / 1000.0;
+
+    const desc = `${departurePlanet.toUpperCase()} to ${arrivalPlanet.toUpperCase()} Heliocentric Hohmann Transfer (~${tofDays.toFixed(1)} Days / ${tofMonths.toFixed(1)} Months)`;
+
+    return {
+      transferSemiMajorAxisAU: parseFloat(atAU.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightMonths: parseFloat(tofMonths.toFixed(1)),
+      hyperbolicDepartureExcessKmS: parseFloat(vInf1KmS.toFixed(3)),
+      characteristicLaunchEnergyC3Km2S2: parseFloat(c3Km2S2.toFixed(2)),
+      transInjectionDeltaVKmS: parseFloat(deltaVInjKmS.toFixed(3)),
+      hyperbolicArrivalExcessKmS: parseFloat(vInf2KmS.toFixed(3)),
+      transferGeometryDescription: desc
+    };
+  }
 }
 
 

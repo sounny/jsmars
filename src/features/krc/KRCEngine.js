@@ -4234,6 +4234,76 @@ export class KRCEngine {
       subsurfaceAquiferStatus: status
     };
   }
+
+  /**
+   * Calculate impact crater hydrothermal system convective circulation lifetime, Rayleigh number, and mineral alteration duration.
+   * V_melt = 0.0002 * D^3.83
+   * Ra = ( rho^2 * c_p * g * alpha * deltaT * k_perm * L ) / ( mu_fluid * k_m )
+   * t_hydro = tau_cond / Nu
+   * Reference: Abramov & Kring (2005), Schwenzer & Kring (2009), Rathbun & Squyres (2002), Barnhart et al. (2010) for Gale/Jezero impact hydrothermal systems.
+   * @param {number} [craterDiameterKm=100.0] - Impact crater rim-to-rim diameter in km (10 to 500 km)
+   * @param {number} [hostRockPermeabilityMilliDarcies=10.0] - Fractured basement permeability in mD (0.1 to 1000 mD)
+   * @param {number} [initialMeltTempK=1473.0] - Initial impact melt pool temperature in K (1000 to 1800 K)
+   * @returns {{impactMeltVolumeKm3: number, centralMeltThicknessMeters: number, rayleighNumber: number, isConvectiveHydrothermalActive: boolean, conductiveDiffusiveLifetimeYears: number, activeHydrothermalLifetimeYears: number, astrobiologicalHabitabilityWindow: string}}
+   */
+  static computeImpactHydrothermalSystemCoolingLifetime(craterDiameterKm = 100.0, hostRockPermeabilityMilliDarcies = 10.0, initialMeltTempK = 1473.0) {
+    const Dkm = Math.max(5.0, craterDiameterKm);
+    const kMilliDarcies = Math.max(0.01, hostRockPermeabilityMilliDarcies);
+    const Tmelt = Math.max(800.0, initialMeltTempK);
+    const Tambient = 220.0; // K
+
+    // Impact melt volume V_melt (km^3)
+    const vMeltKm3 = 0.0002 * Math.pow(Dkm, 3.83);
+
+    // Central melt sheet / uplift thickness L (meters)
+    const Lm = Math.min(15000.0, Math.max(500.0, 0.05 * Dkm * 1000.0));
+
+    // Permeability in m^2 (1 Darcy = 9.869233e-13 m^2 -> 1 mD = 9.869e-16 m^2)
+    const kPermM2 = kMilliDarcies * 9.869233e-16;
+
+    // Fluid & rock properties for hydrothermal water
+    const rhoFluid = 950.0; // kg/m^3
+    const cpFluid = 4200.0; // J/(kg*K)
+    const gMars = 3.72076; // m/s^2
+    const alphaExp = 1e-3; // 1/K thermal expansivity
+    const deltaT = Math.max(50.0, Tmelt - Tambient);
+    const muFluid = 2e-4; // Pa*s dynamic viscosity of hydrothermal fluid
+    const kmBulk = 2.5; // W/(m*K) thermal conductivity
+    const kappaDiff = 1e-6; // m^2/s thermal diffusivity
+
+    // Rayleigh number Ra = ( rho * cp * g * alpha * deltaT * k_perm * L ) / ( mu * kappa_diff )
+    const ra = (rhoFluid * cpFluid * gMars * alphaExp * deltaT * kPermM2 * Lm) / (muFluid * kmBulk);
+
+    const isConvective = ra > 40.0; // Critical Rayleigh number for porous convection
+
+    // Nusselt number Nu
+    const nu = isConvective ? Math.max(1.0, 0.04 * Math.pow(ra, 0.7) + 1.0) : 1.0;
+
+    // Pure conductive timescale tau_cond = L^2 / ( 4 * kappa ) (seconds & years)
+    const SECS_PER_YEAR = 3.15576e7;
+    const tauCondSec = Math.pow(Lm, 2.0) / (4.0 * kappaDiff);
+    const tauCondYears = tauCondSec / SECS_PER_YEAR;
+
+    // Active convective hydrothermal lifetime
+    const tHydroYears = tauCondYears / nu;
+
+    let habitability = 'Long-Lived Post-Impact Hydrothermal Habitable System (> 100,000 Years)';
+    if (tHydroYears < 10000.0) {
+      habitability = 'Short-Lived Ephemeral Hydrothermal Venting (< 10,000 Years)';
+    } else if (tHydroYears > 300000.0) {
+      habitability = 'Giant Basin Hydrothermal Province (Mega-Crater Prolonged Geothermal Bioreactor)';
+    }
+
+    return {
+      impactMeltVolumeKm3: parseFloat(vMeltKm3.toFixed(1)),
+      centralMeltThicknessMeters: parseFloat(Lm.toFixed(1)),
+      rayleighNumber: parseFloat(ra.toFixed(1)),
+      isConvectiveHydrothermalActive: isConvective,
+      conductiveDiffusiveLifetimeYears: parseFloat(tauCondYears.toFixed(0)),
+      activeHydrothermalLifetimeYears: parseFloat(tHydroYears.toFixed(0)),
+      astrobiologicalHabitabilityWindow: habitability
+    };
+  }
 }
 
 
