@@ -4600,6 +4600,75 @@ export class TrajectoryEngine {
       aerocaptureMissionContext: 'Hypersonic Mars Aerocapture Direct Insertion (Propellantless Orbital Capture)'
     };
   }
+
+  /**
+   * Calculate multi-pass Mars aerobraking orbital decay, total atmospheric passes, campaign duration, and propulsive Delta-V savings.
+   * Delta_v_pass = sqrt( 2 * pi * H_scale * rp ) * ( C_D * A / m ) * rho(hp) * v_p
+   * N_passes = ( r_a_initial - r_a_target ) / Delta_r_a_mean
+   * Reference: Lyons et al. (1999), Johnston et al. (2007), Curtis (2013) for Mars Global Surveyor & Odyssey aerobraking campaigns.
+   * @param {number} [initialApoapsisAltitudeKm=35000.0] - High elliptic capture apoapsis altitude in km (10000 to 70000 km)
+   * @param {number} [corridorPeriapsisAltitudeKm=115.0] - Aerobraking drag pass periapsis altitude in km (95 to 135 km)
+   * @param {number} [targetScienceApoapsisKm=450.0] - Target circularized science orbit apoapsis in km (200 to 1000 km)
+   * @param {number} [vehicleAreaToMassM2Kg=0.015] - Spacecraft drag area to mass ratio in m^2/kg (0.005 to 0.05 m^2/kg)
+   * @returns {{initialApoapsisKm: number, corridorPeriapsisKm: number, targetApoapsisKm: number, estimatedAerobrakingPasses: number, campaignDurationSols: number, campaignDurationMonths: number, totalPropulsiveDeltaVSavedKmS: number, aerobrakingMissionContext: string}}
+   */
+  static computeMarsAerobrakingOrbitDecayPasses(initialApoapsisAltitudeKm = 35000.0, corridorPeriapsisAltitudeKm = 115.0, targetScienceApoapsisKm = 450.0, vehicleAreaToMassM2Kg = 0.015) {
+    const haInit = Math.max(1000.0, initialApoapsisAltitudeKm);
+    const hp = Math.max(90.0, Math.min(140.0, corridorPeriapsisAltitudeKm));
+    const haTarget = Math.max(150.0, targetScienceApoapsisKm);
+    const areaToMass = Math.max(0.001, vehicleAreaToMassM2Kg);
+
+    const rMarsKm = 3389.5;
+    const muMars = 42828.37; // km^3/s^2
+    const HscaleKm = 11.1;
+
+    // Atmospheric density at aerobraking corridor (kg/m^3)
+    const rho0 = 0.020;
+    const rhoPeri = rho0 * Math.exp(-hp / HscaleKm);
+
+    // Initial and target orbital elements
+    const rpKm = rMarsKm + hp;
+    const raInitKm = rMarsKm + haInit;
+    const aInitKm = (rpKm + raInitKm) / 2.0;
+
+    const raTargKm = rMarsKm + haTarget;
+    const aTargKm = (rpKm + raTargKm) / 2.0;
+
+    // Mean velocity at periapsis (m/s)
+    const vpInitMS = Math.sqrt(muMars * 1e9 * ((2.0 / (rpKm * 1000.0)) - (1.0 / (aInitKm * 1000.0))));
+
+    // Velocity depletion per pass (m/s)
+    const CD = 2.2;
+    const factor = Math.sqrt(2.0 * Math.PI * (HscaleKm * 1000.0) * (rpKm * 1000.0));
+    const dvPassMS = factor * (CD * areaToMass) * rhoPeri * vpInitMS;
+
+    // Mean apoapsis reduction per pass (km)
+    const draMeanKm = (4.0 * Math.pow(raInitKm, 1.2) / muMars) * (vpInitMS / 1000.0) * (dvPassMS / 1000.0);
+    const totalPasses = Math.max(10, Math.round((haInit - haTarget) / Math.max(5.0, draMeanKm)));
+
+    // Total campaign duration in sols (summing orbital periods)
+    const pInitHours = (2.0 * Math.PI * Math.sqrt(Math.pow(aInitKm, 3.0) / muMars)) / 3600.0;
+    const pTargHours = (2.0 * Math.PI * Math.sqrt(Math.pow(aTargKm, 3.0) / muMars)) / 3600.0;
+    const pMeanHours = (pInitHours + pTargHours) / 2.0;
+    const durationSols = (totalPasses * pMeanHours) / 24.6229;
+    const durationMonths = durationSols / 30.4;
+
+    // Total propulsive Delta-V saved
+    const vApoInit = Math.sqrt(muMars * ((2.0 / raInitKm) - (1.0 / aInitKm)));
+    const vCircTarg = Math.sqrt(muMars / aTargKm);
+    const dvSavedKmS = Math.abs(vCircTarg - vApoInit) + 0.45;
+
+    return {
+      initialApoapsisKm: parseFloat(haInit.toFixed(1)),
+      corridorPeriapsisKm: parseFloat(hp.toFixed(1)),
+      targetApoapsisKm: parseFloat(haTarget.toFixed(1)),
+      estimatedAerobrakingPasses: totalPasses,
+      campaignDurationSols: parseFloat(durationSols.toFixed(1)),
+      campaignDurationMonths: parseFloat(durationMonths.toFixed(1)),
+      totalPropulsiveDeltaVSavedKmS: parseFloat(dvSavedKmS.toFixed(3)),
+      aerobrakingMissionContext: `Multi-Pass Mars Aerobraking Campaign (${totalPasses} Drag Passes in ~${durationMonths.toFixed(1)} Months)`
+    };
+  }
 }
 
 

@@ -5039,6 +5039,50 @@ export class BandMathEngine {
       crustalProvenanceContext: context
     };
   }
+
+  /**
+   * Discriminate Dioctahedral Fe3+-Smectite (Nontronite 2.29 um) from Trioctahedral Mg-Smectite (Saponite 2.31 um) solid solutions in CRISM spectra.
+   * Reference: Poulet et al. (2005), Mustard et al. (2008), Ehlmann et al. (2011), Viviano-Beck et al. (2014) for Mawrth Vallis & Nili Fossae phyllosilicates.
+   * @param {number} band2300CenterUm - Wavelength of metal-OH vibrational overtone in um (2.27 to 2.33 um)
+   * @param {number} [band2300Depth=0.06] - D2300 / MIN2295_2360 band depth (0.0 to 1.0)
+   * @param {number} [band1900Depth=0.08] - BD1900 molecular H2O band depth (0.0 to 1.0)
+   * @returns {{band2300CenterUm: number, isSmectitePresent: boolean, smectiteMineralSpecies: string, dominantOctahedralCation: string, aqueousWeatheringRegime: string}}
+   */
+  static computeCRISMFeMgSmectiteNontroniteSaponiteIndices(band2300CenterUm, band2300Depth = 0.06, band1900Depth = 0.08) {
+    const l2300 = Math.max(2.26, Math.min(2.34, band2300CenterUm));
+    const d2300 = Math.max(0.0, band2300Depth);
+    const d1900 = Math.max(0.0, band1900Depth);
+
+    let isSmect = false;
+    let species = 'Anhydrous Silicate or Non-Phyllosilicate';
+    let cation = 'None';
+    let regime = 'Unaltered Basaltic Crust';
+
+    if (d1900 >= 0.020 && d2300 >= 0.020) {
+      isSmect = true;
+      if (l2300 <= 2.295) {
+        species = 'Nontronite (Dioctahedral Fe3+-Smectite Fe2Si4O10(OH)2)';
+        cation = 'Fe3+ (Ferric Iron)';
+        regime = 'Oxidizing Subaerial Weathering / Leached Pedogenic Paleosol (Mawrth Vallis Type)';
+      } else if (l2300 >= 2.310) {
+        species = 'Saponite (Trioctahedral Mg-Smectite Mg3Si4O10(OH)2)';
+        cation = 'Mg2+ (Magnesium)';
+        regime = 'Alkaline Closed-System Subsurface Hydrothermal / Lacustrine Alteration (Nili Fossae Type)';
+      } else {
+        species = 'Mixed Fe/Mg Smectite Solid Solution';
+        cation = 'Fe3+ / Mg2+ Intermediate';
+        regime = 'Stratified Neutral-to-Alkaline Clay Horizon';
+      }
+    }
+
+    return {
+      band2300CenterUm: parseFloat(l2300.toFixed(3)),
+      isSmectitePresent: isSmect,
+      smectiteMineralSpecies: species,
+      dominantOctahedralCation: cation,
+      aqueousWeatheringRegime: regime
+    };
+  }
 }
 
 

@@ -10747,6 +10747,51 @@ describe('Mars Aerocapture Hypersonics, Impact Melt Solidification & Low-Ca Pyro
     });
 });
 
+describe('Mars Aerobraking Campaigns, Valley Runoff Hydraulics & Fe/Mg Smectites', () => {
+    it('should calculate Mars multi-pass aerobraking orbital circularization, drag passes, and Delta-V savings', () => {
+        // MGS / Odyssey capture orbit (35,000 km apoapsis, 115 km periapsis, 450 km target science orbit):
+        const aero = TrajectoryEngine.computeMarsAerobrakingOrbitDecayPasses(35000.0, 115.0, 450.0, 0.015);
+        expect(aero.initialApoapsisKm).to.equal(35000.0);
+        expect(aero.corridorPeriapsisKm).to.equal(115.0);
+        expect(aero.targetApoapsisKm).to.equal(450.0);
+        expect(aero.estimatedAerobrakingPasses).to.be.greaterThan(100); // > 100 atmospheric drag passes
+        expect(aero.campaignDurationMonths).to.be.greaterThan(1.0); // Multi-month operational campaign
+        expect(aero.totalPropulsiveDeltaVSavedKmS).to.be.greaterThan(1.0); // > 1.0 km/s propellant savings
+        expect(aero.aerobrakingMissionContext).to.include('Multi-Pass Mars Aerobraking Campaign');
+    });
+
+    it('should calculate ancient Martian valley network fluvial runoff, peak discharge, and sediment competency', () => {
+        // Nanedi / Nirgal Vallis watershed (5000 km^2 basin, 15 mm/day rain/melt, 0.0035 slope):
+        const valley = KRCEngine.computeAncientMartianValleyNetworkRunoffAndDischarge(5000.0, 15.0, 0.0035, 0.040);
+        expect(valley.drainageBasinAreaKm2).to.equal(5000.0);
+        expect(valley.peakFluvialDischargeM3S).to.be.closeTo(303.8, 5.0); // ~304 m^3/s peak discharge
+        expect(valley.meanChannelFlowVelocityMS).to.be.greaterThan(1.0); // > 1 m/s channel velocity
+        expect(valley.basalBedShearStressPa).to.be.greaterThan(10.0); // Sustained bed shear stress
+        expect(valley.maxTransportableGrainDiameterCm).to.be.greaterThan(5.0); // Cobble competency (> 5 cm)
+        expect(valley.paleohydrologyFluvialContext).to.include('Perennial Cobble-Gravel Bedload Stream');
+    });
+
+    it('should discriminate Dioctahedral Fe-Smectite (Nontronite) from Trioctahedral Mg-Smectite (Saponite) in CRISM spectra', () => {
+        // Nontronite (Fe3+-smectite) in Mawrth Vallis weathered paleosols (Band center = 2.290 um):
+        const nontronite = BandMathEngine.computeCRISMFeMgSmectiteNontroniteSaponiteIndices(2.290, 0.08, 0.09);
+        expect(nontronite.isSmectitePresent).to.be.true;
+        expect(nontronite.smectiteMineralSpecies).to.include('Nontronite (Dioctahedral Fe3+-Smectite');
+        expect(nontronite.dominantOctahedralCation).to.include('Fe3+');
+        expect(nontronite.aqueousWeatheringRegime).to.include('Oxidizing Subaerial Weathering');
+
+        // Saponite (Mg-smectite) in Nili Fossae alkaline hydrothermal strata (Band center = 2.315 um):
+        const saponite = BandMathEngine.computeCRISMFeMgSmectiteNontroniteSaponiteIndices(2.315, 0.08, 0.09);
+        expect(saponite.isSmectitePresent).to.be.true;
+        expect(saponite.smectiteMineralSpecies).to.include('Saponite (Trioctahedral Mg-Smectite');
+        expect(saponite.dominantOctahedralCation).to.include('Mg2+');
+        expect(saponite.aqueousWeatheringRegime).to.include('Alkaline Closed-System');
+
+        // Flat spectrum:
+        const basalt = BandMathEngine.computeCRISMFeMgSmectiteNontroniteSaponiteIndices(2.290, 0.01, 0.01);
+        expect(basalt.isSmectitePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

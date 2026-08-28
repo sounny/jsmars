@@ -5164,6 +5164,66 @@ export class KRCEngine {
       impactMeltPetrogeneticContext: context
     };
   }
+
+  /**
+   * Calculate ancient Martian valley network precipitation runoff, peak fluvial discharge, Manning flow velocity, and bedload sediment competency.
+   * Q_peak = ( C_runoff * I * A ) / 3.6
+   * u_channel = ( 1 / n ) * R_h^(2/3) * S_0^(1/2)
+   * tau_b = rho_water * g_mars * d_flow * S_0
+   * Reference: Irwin et al. (2005), Fassett & Head (2008), Howard (2009) for Noachian/Hesperian valley network paleohydrology.
+   * @param {number} [drainageBasinAreaKm2=5000.0] - Watershed catchment area in km^2 (50 to 500,000 km^2)
+   * @param {number} [precipitationRateMmDay=15.0] - Effective rain/snowmelt precipitation intensity in mm/day (1 to 100 mm/day)
+   * @param {number} [channelBedSlope=0.0035] - Longitudinal stream bed slope (0.0001 to 0.05)
+   * @param {number} [manningRoughness=0.040] - Manning hydraulic roughness coefficient (0.025 to 0.080)
+   * @returns {{drainageBasinAreaKm2: number, peakFluvialDischargeM3S: number, meanChannelFlowVelocityMS: number, basalBedShearStressPa: number, maxTransportableGrainDiameterCm: number, paleohydrologyFluvialContext: string}}
+   */
+  static computeAncientMartianValleyNetworkRunoffAndDischarge(drainageBasinAreaKm2 = 5000.0, precipitationRateMmDay = 15.0, channelBedSlope = 0.0035, manningRoughness = 0.040) {
+    const Abasin = Math.max(10.0, drainageBasinAreaKm2);
+    const ImmDay = Math.max(0.5, precipitationRateMmDay);
+    const S0 = Math.max(0.0001, Math.min(0.10, channelBedSlope));
+    const nRough = Math.max(0.015, Math.min(0.12, manningRoughness));
+
+    const gMars = 3.72076; // m/s^2
+    const rhoWater = 1000.0; // kg/m^3
+    const rhoSed = 2800.0; // kg/m^3
+    const Crunoff = 0.35; // Runoff fraction
+
+    // Peak discharge Q (m^3/s)
+    const ImmHr = ImmDay / 24.0;
+    const QpeakM3S = (Crunoff * ImmHr * Abasin) / 3.6;
+
+    // Channel geometry scaling from discharge (Leopold & Maddock empirical hydraulic geometry)
+    const WchanM = 2.5 * Math.pow(Math.max(1.0, QpeakM3S), 0.48);
+    const dFlowM = 0.35 * Math.pow(Math.max(1.0, QpeakM3S), 0.34);
+    const RhM = (WchanM * dFlowM) / (WchanM + 2.0 * dFlowM);
+
+    // Manning velocity (m/s)
+    const uFlowMS = (1.0 / nRough) * Math.pow(RhM, 2.0 / 3.0) * Math.sqrt(S0);
+
+    // Basal bed shear stress (Pa = N/m^2)
+    const tauBPa = rhoWater * gMars * dFlowM * S0;
+
+    // Shields maximum transportable grain diameter (cm)
+    const thetaCrit = 0.045;
+    const DgrainMaxM = tauBPa / (thetaCrit * (rhoSed - rhoWater) * gMars);
+    const DgrainMaxCm = DgrainMaxM * 100.0;
+
+    let regime = 'Perennial Cobble-Gravel Bedload Stream (Sustained Fluvial Valley Incision)';
+    if (DgrainMaxCm > 30.0) {
+      regime = 'High-Energy Megaflood Catastrophic Outflow (Boulder-Carrying Torrential Breaching)';
+    } else if (DgrainMaxCm < 2.0) {
+      regime = 'Low-Energy Silt/Sand Suspended-Load Meandering Channel';
+    }
+
+    return {
+      drainageBasinAreaKm2: parseFloat(Abasin.toFixed(1)),
+      peakFluvialDischargeM3S: parseFloat(QpeakM3S.toFixed(1)),
+      meanChannelFlowVelocityMS: parseFloat(uFlowMS.toFixed(2)),
+      basalBedShearStressPa: parseFloat(tauBPa.toFixed(2)),
+      maxTransportableGrainDiameterCm: parseFloat(DgrainMaxCm.toFixed(1)),
+      paleohydrologyFluvialContext: regime
+    };
+  }
 }
 
 
