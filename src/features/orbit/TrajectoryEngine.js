@@ -2398,6 +2398,64 @@ export class TrajectoryEngine {
       nearestStableLongitudeDegW: parseFloat(nearestStable.toFixed(1))
     };
   }
+
+  /**
+   * Calculate 3rd-body tidal gravitational perturbations, nodal precession drift, and resonance ratios from Phobos or Deimos on a Mars orbiter.
+   * a_tide = 2 * mu_moon * r_orb / a_moon^3
+   * dOmega/dt = - 3/4 * ( mu_moon / mu_mars ) * ( a_orb / a_moon )^3 * n_orb * cos(i_orb)
+   * Reference: Jacobson (2010), Lemoine et al. (2001) for MGS, MRO, and Phobos/Deimos ephemeris tidal models.
+   * @param {number} [orbiterSemiMajorAxisKm=3770.0] - Spacecraft semi-major axis in km
+   * @param {number} [orbiterInclinationDeg=93.0] - Spacecraft inclination in degrees
+   * @param {string} [moonName='phobos'] - Perturbing moon ('phobos', 'deimos')
+   * @returns {{moonSemiMajorAxisKm: number, moonPeriodHours: number, orbiterPeriodHours: number, resonanceRatio: number, maxTidalAccelerationUMSS: number, secularNodalDriftDegPerYear: number, resonanceClassification: string}}
+   */
+  static computeMoonGravitationalPerturbationsOnMarsOrbit(orbiterSemiMajorAxisKm = 3770.0, orbiterInclinationDeg = 93.0, moonName = 'phobos') {
+    const isDeimos = moonName.toLowerCase() === 'deimos';
+    const muMars = 42828.37; // km^3/s^2
+
+    // Moon parameters
+    const aMoonKm = isDeimos ? 23463.2 : 9376.0;
+    const muMoonKm3S2 = isDeimos ? 9.85e-5 : 7.087e-4; // km^3/s^2
+    const pMoonSec = isDeimos ? 109125.4 : 27553.7;
+    const pMoonHours = pMoonSec / 3600.0;
+
+    const aOrb = Math.max(3450.0, orbiterSemiMajorAxisKm);
+    const incRad = (orbiterInclinationDeg * Math.PI) / 180.0;
+
+    // Orbiter period and mean motion
+    const pOrbSec = 2.0 * Math.PI * Math.sqrt(Math.pow(aOrb, 3.0) / muMars);
+    const pOrbHours = pOrbSec / 3600.0;
+    const nOrbRadS = (2.0 * Math.PI) / pOrbSec;
+
+    // Peak tidal perturbing acceleration (converted to um/s^2)
+    const aTideMS2 = (2.0 * (muMoonKm3S2 * 1e9) * (aOrb * 1000.0)) / Math.pow(aMoonKm * 1000.0, 3.0);
+    const aTideUMSS = aTideMS2 * 1e6; // um/s^2
+
+    // Secular nodal precession drift (rad/s -> deg/year)
+    const dOmegaRadS = -0.75 * (muMoonKm3S2 / muMars) * Math.pow(aOrb / aMoonKm, 3.0) * nOrbRadS * Math.cos(incRad);
+    const secPerYear = 365.25 * 86400.0;
+    const dOmegaDegYr = (dOmegaRadS * secPerYear * 180.0) / Math.PI;
+
+    // Resonance ratio (e.g. 4.0 for 4:1 resonance)
+    const ratio = pMoonHours / pOrbHours;
+    const nearestInt = Math.round(ratio);
+    const resonanceDiff = Math.abs(ratio - nearestInt);
+
+    let classification = `Non-Resonant Perturbation Regime (${ratio.toFixed(2)}:1)`;
+    if (resonanceDiff < 0.05) {
+      classification = `Strong ${nearestInt}:1 Mean-Motion Resonance with ${isDeimos ? 'Deimos' : 'Phobos'}`;
+    }
+
+    return {
+      moonSemiMajorAxisKm: parseFloat(aMoonKm.toFixed(1)),
+      moonPeriodHours: parseFloat(pMoonHours.toFixed(3)),
+      orbiterPeriodHours: parseFloat(pOrbHours.toFixed(3)),
+      resonanceRatio: parseFloat(ratio.toFixed(3)),
+      maxTidalAccelerationUMSS: parseFloat(aTideUMSS.toFixed(6)),
+      secularNodalDriftDegPerYear: parseFloat(dOmegaDegYr.toFixed(6)),
+      resonanceClassification: classification
+    };
+  }
 }
 
 

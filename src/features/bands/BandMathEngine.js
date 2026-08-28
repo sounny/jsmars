@@ -3547,6 +3547,50 @@ export class BandMathEngine {
       carbonSequestrationContext: context
     };
   }
+
+  /**
+   * Discriminate Zeolite group authigenic minerals (Analcime, Clinoptilolite) from clays and sulphates using CRISM 2.46-2.52 um extra-framework vibrational bands.
+   * Reference: Ehlmann et al. (2009), Ruff et al. (2011), Carter et al. (2013) for Columbus Crater & Gale Crater alkaline paleolake diagenesis.
+   * @param {number} r1420 - Reflectance at 1.42 um H2O band
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2460 - Reflectance at 2.46 um Analcime framework minimum
+   * @param {number} r2520 - Reflectance at 2.52 um Clinoptilolite framework minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1900: number, bd2460: number, bd2520: number, isZeolite: boolean, zeolitePhase: string, paleolakeEnvironment: string}}
+   */
+  static computeCRISMZeoliteAnalcimeIndices(r1420, r1910, r2460, r2520, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1400 = Math.max(0.0, 1.0 - (r1420 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2460 = Math.max(0.0, 1.0 - (r2460 / cont));
+    const bd2520 = Math.max(0.0, 1.0 - (r2520 / cont));
+
+    let phase = 'Non-Zeolitic Silicate';
+    let isZeo = false;
+    let env = 'Standard Volcanic Crust';
+
+    if (bd1900 >= 0.025) {
+      if (bd2460 >= 0.030 && bd2460 >= bd2520) {
+        phase = 'Analcime (Na-Zeolite)';
+        isZeo = true;
+        env = 'High-pH Alkaline Saline Paleolake Diagenesis of Volcanic Ash (Columbus / Gale Crater Closed Basins)';
+      } else if (bd2520 >= 0.030 && bd2520 > bd2460) {
+        phase = 'Clinoptilolite / Chabazite (Ca/K-Zeolite)';
+        isZeo = true;
+        env = 'Moderate Alkaline Low-Temperature Hydrothermal Tuff Alteration';
+      }
+    }
+
+    return {
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2460: parseFloat(bd2460.toFixed(4)),
+      bd2520: parseFloat(bd2520.toFixed(4)),
+      isZeolite: isZeo,
+      zeolitePhase: phase,
+      paleolakeEnvironment: env
+    };
+  }
 }
 
 

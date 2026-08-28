@@ -9434,6 +9434,40 @@ describe('Areostationary Synchronous Orbit, Subsurface Ice Table Retreat & Carbo
     });
 });
 
+describe('Phobos Gravitational Perturbations, Stratified Thermal Regolith & Zeolite Minerals', () => {
+    it('should calculate Phobos tidal perturbations, resonance ratio, and secular nodal drift on Mars orbiter', () => {
+        // Mars mapping orbiter (a = 3770 km, i = 93 deg) perturbed by Phobos:
+        const phobosTide = TrajectoryEngine.computeMoonGravitationalPerturbationsOnMarsOrbit(3770.0, 93.0, 'phobos');
+        expect(phobosTide.moonSemiMajorAxisKm).to.equal(9376.0);
+        expect(phobosTide.moonPeriodHours).to.be.closeTo(7.654, 0.01);
+        expect(phobosTide.orbiterPeriodHours).to.be.closeTo(1.95, 0.05);
+        expect(phobosTide.resonanceRatio).to.be.closeTo(3.92, 0.1); // ~4:1 mean-motion resonance
+        expect(phobosTide.maxTidalAccelerationUMSS).to.be.greaterThan(1e-4); // ~0.0065 um/s^2
+    });
+
+    it('should calculate 2-layer stratified regolith thermal profile and interface temperatures', () => {
+        // Loose dust lag (5 cm, k = 0.03 W/m/K) over dense basalt (k = 2.0 W/m/K, Q_geo = 25 mW/m^2, T_surf = 200 K):
+        const strat = KRCEngine.computeStratifiedRegolithThermalProfile(200.0, 0.05, 0.03, 2.0, 0.50, 25.0);
+        expect(strat.interfaceTempK).to.be.closeTo(200.042, 0.005);
+        expect(strat.topLayerGradientKPerKm).to.be.closeTo(833.3, 5.0); // high thermal gradient across insulation mantle
+        expect(strat.bottomLayerGradientKPerKm).to.be.closeTo(12.5, 1.0); // low thermal gradient in bedrock
+        expect(strat.totalThermalResistanceM2KW).to.be.greaterThan(1.5);
+        expect(strat.stratigraphyContext).to.include('High-Insulation Dust Mantle');
+    });
+
+    it('should discriminate Analcime Zeolite from other minerals using CRISM 2.46/2.52 um bands', () => {
+        // Analcime (Na-zeolite) in Columbus Crater paleolake (strong 1.91 um and 2.46 um framework band):
+        const analcime = BandMathEngine.computeCRISMZeoliteAnalcimeIndices(0.28, 0.25, 0.24, 0.30, 0.30);
+        expect(analcime.isZeolite).to.be.true;
+        expect(analcime.zeolitePhase).to.include('Analcime');
+        expect(analcime.paleolakeEnvironment).to.include('Alkaline Saline Paleolake');
+
+        // Non-zeolitic primary crust:
+        const primary = BandMathEngine.computeCRISMZeoliteAnalcimeIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(primary.isZeolite).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

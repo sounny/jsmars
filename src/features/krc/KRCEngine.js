@@ -3060,6 +3060,56 @@ export class KRCEngine {
       vaporEquilibriumStatus: status
     };
   }
+
+  /**
+   * Calculate 2-layer stratified regolith thermal conduction, interface temperatures, and thermal resistance across dust mantle/bedrock boundaries.
+   * dT1/dz = Q_geo / k1
+   * T_int = T_surf + (dT1/dz) * L
+   * dT2/dz = Q_geo / k2
+   * Reference: Putzig & Mellon (2007), Bandfield (2007), Kieffer (2013) for THEMIS multi-layer thermal inertia inversions.
+   * @param {number} surfaceTempK - Surface temperature in Kelvin (150 to 260 K)
+   * @param {number} [topLayerThicknessMeters=0.05] - Top dry dust lag mantle thickness L in meters
+   * @param {number} [topThermalConductivityWMK=0.03] - Top fine regolith thermal conductivity k1 in W/(m*K)
+   * @param {number} [bottomThermalConductivityWMK=2.0] - Bottom bedrock/ice thermal conductivity k2 in W/(m*K)
+   * @param {number} [targetDepthMeters=0.50] - Evaluation depth z in meters
+   * @param {number} [geothermalHeatFluxMWM2=25.0] - Geothermal heat flux in mW/m^2
+   * @returns {{interfaceTempK: number, targetDepthTempK: number, topLayerGradientKPerKm: number, bottomLayerGradientKPerKm: number, totalThermalResistanceM2KW: number, stratigraphyContext: string}}
+   */
+  static computeStratifiedRegolithThermalProfile(surfaceTempK, topLayerThicknessMeters = 0.05, topThermalConductivityWMK = 0.03, bottomThermalConductivityWMK = 2.0, targetDepthMeters = 0.50, geothermalHeatFluxMWM2 = 25.0) {
+    const Tsurf = Math.max(100.0, Math.min(300.0, surfaceTempK));
+    const L = Math.max(0.001, topLayerThicknessMeters);
+    const k1 = Math.max(0.005, topThermalConductivityWMK);
+    const k2 = Math.max(0.05, bottomThermalConductivityWMK);
+    const z = Math.max(L, targetDepthMeters);
+    const QgeoW = Math.max(1.0, geothermalHeatFluxMWM2) * 1e-3; // W/m^2
+
+    // Upper layer gradient and interface temperature
+    const grad1KPerM = QgeoW / k1;
+    const grad1KPerKm = grad1KPerM * 1000.0;
+    const Tint = Tsurf + grad1KPerM * L;
+
+    // Lower substrate gradient and target depth temperature
+    const grad2KPerM = QgeoW / k2;
+    const grad2KPerKm = grad2KPerM * 1000.0;
+    const Tz = Tint + grad2KPerM * (z - L);
+
+    // Thermal resistance in series: R = L/k1 + (z-L)/k2
+    const rTh = (L / k1) + ((z - L) / k2);
+
+    let context = 'Thin High-Insulation Dust Mantle over Conductive Basalt Bedrock';
+    if (k2 >= 2.5) {
+      context = 'Loose Regolith Mantle over Massive Subsurface Pore-Filling Ground Ice';
+    }
+
+    return {
+      interfaceTempK: parseFloat(Tint.toFixed(3)),
+      targetDepthTempK: parseFloat(Tz.toFixed(3)),
+      topLayerGradientKPerKm: parseFloat(grad1KPerKm.toFixed(1)),
+      bottomLayerGradientKPerKm: parseFloat(grad2KPerKm.toFixed(1)),
+      totalThermalResistanceM2KW: parseFloat(rTh.toFixed(3)),
+      stratigraphyContext: context
+    };
+  }
 }
 
 
