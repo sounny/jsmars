@@ -5801,6 +5801,69 @@ export class TrajectoryEngine {
       solarDiveContext: `Mars to Sun Coronal Dive (${tofDays.toFixed(0)} d TOF, ${dvTsiKmS.toFixed(2)} km/s TSI, ${vPeriKmS.toFixed(1)} km/s at ${rPeriSolarRad.toFixed(1)} R_sun Perihelion)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Jupiter Trojan Asteroid System (L4 Greek / L5 Trojan Swarms) Hohmann transfer, Trans-Trojan Injection (TTI), and rendezvous Delta-V.
+   * a_t = ( r_mars + r_trojan ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Reference: Levison et al. (2021) for Lucy Mission, Bate et al. (1971), Curtis (2013).
+   * @param {string} [targetTrojanCluster='L4 Greek Camp (Eurybates/Polymele)'] - Target Trojan cluster name
+   * @param {number} [jupiterSemiMajorAxisAU=5.2044] - Jupiter/Trojan distance in AU (5.0 to 5.5 AU)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{targetCluster: string, trojanDistanceAU: number, timeOfFlightDays: number, timeOfFlightYears: number, transTrojanInjectionDeltaVKmS: number, trojanArrivalExcessKmS: number, totalMissionDeltaVKmS: number, trojanTransferContext: string}}
+   */
+  static computeMarsToJupiterTrojanHohmannTransfer(targetTrojanCluster = 'L4 Greek Camp (Eurybates/Polymele)', jupiterSemiMajorAxisAU = 5.2044, marsParkingAltitudeKm = 300.0) {
+    const rTrojAU = Math.max(4.8, Math.min(5.6, jupiterSemiMajorAxisAU));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rTrojDistKm = rTrojAU * AU_KM;
+
+    // Transfer ellipse
+    const aTransferAU = (rMarsAU + rTrojAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight (days & years)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = Math.abs(vPeriTransferKmS - vMarsKmS);
+
+    // Trans-Trojan Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTtiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Speeds at Trojan arrival
+    const vTrojCircKmS = Math.sqrt(muSun / rTrojDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rTrojDistKm) - (1.0 / aTransferKm)));
+    const vInfArrTrojKmS = Math.abs(vTrojCircKmS - vApoTransferKmS);
+
+    // Total mission Delta-V for rendezvous
+    const dvTotKmS = dvTtiKmS + vInfArrTrojKmS;
+
+    return {
+      targetCluster: targetTrojanCluster,
+      trojanDistanceAU: parseFloat(rTrojAU.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      transTrojanInjectionDeltaVKmS: parseFloat(dvTtiKmS.toFixed(3)),
+      trojanArrivalExcessKmS: parseFloat(vInfArrTrojKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      trojanTransferContext: `Mars to ${targetTrojanCluster} Transfer (${tofYrs.toFixed(1)} yr TOF, ${dvTtiKmS.toFixed(2)} km/s TTI, ${vInfArrTrojKmS.toFixed(2)} km/s Rendezvous, Total ${dvTotKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

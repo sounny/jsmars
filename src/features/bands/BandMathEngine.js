@@ -6013,6 +6013,57 @@ export class BandMathEngine {
       petrogeneticCrustalContext: context
     };
   }
+
+  /**
+   * Discriminate Swellable Smectite Clay vs Non-Swellable Hydrothermal Illite/Mica vs Metamorphic Chlorite from CRISM BD1400, BD1900, BD2200, and BD2350 band indices.
+   * Reference: Ehlmann et al. (2011), Michalski et al. (2017), Viviano-Beck et al. (2014) for Martian phyllosilicate stratigraphy.
+   * @param {number} [band1400OHDepth=0.05] - BD1400 OH overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.08] - BD1900 molecular H2O depth (0.0 to 0.50)
+   * @param {number} [band2200AlOHDepth=0.07] - BD2200 Al-OH metal-OH stretch depth (0.0 to 0.40)
+   * @param {number} [band2350FeMgOHDepth=0.01] - BD2350 Fe/Mg-OH combination depth (0.0 to 0.40)
+   * @returns {{isPhyllosilicateDetected: boolean, clayFamilyClass: string, mineralSpecies: string, interlayerHydrationRatio: number, thermalAlterationContext: string}}
+   */
+  static computeCRISMIlliteSmectiteChloriteIndices(band1400OHDepth = 0.05, band1900WaterDepth = 0.08, band2200AlOHDepth = 0.07, band2350FeMgOHDepth = 0.01) {
+    const d1400 = Math.max(0.0, band1400OHDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2200 = Math.max(0.0, band2200AlOHDepth);
+    const d2350 = Math.max(0.0, band2350FeMgOHDepth);
+
+    const hydRatio = d2200 > 0.005 ? d1900 / d2200 : 0.0;
+    let isPhyllo = false;
+    let clayClass = 'Non-Clay Silicate Matrix';
+    let species = 'Basalt';
+    let context = 'Standard Unaltered Silicate Matrix';
+
+    if (d2200 >= 0.025 || d2350 >= 0.025 || (d1900 >= 0.035 && d1400 >= 0.025)) {
+      isPhyllo = true;
+      if (d2350 >= 0.035 && d2350 > d2200) {
+        clayClass = 'Chlorite / Fe-Mg Smectite (Clinochlore / Chamosite)';
+        species = 'Chlorite ((Mg,Fe)5Al(Si3Al)O10(OH)8)';
+        context = 'Subsurface Deep Crustal Metamorphism / Hydrothermal Seafloor Alteration (Eridania Basin / Nili Fossae Basement)';
+      } else if (d2200 >= 0.030 && hydRatio < 0.45 && d1900 < 0.025) {
+        clayClass = 'Non-Swellable Illite / Mica / Sericite';
+        species = 'Illite / Muscovite (KAl2(Si3Al)O10(OH)2)';
+        context = 'High-Temperature Hydrothermal Alteration / Deep Burial Diagenesis (> 150 C Illitization Regime)';
+      } else if (d2200 >= 0.025 && d1900 >= 0.035) {
+        clayClass = 'Hydrated Swellable Smectite (Montmorillonite / Beidellite)';
+        species = 'Al-Smectite / Montmorillonite';
+        context = 'Low-Temperature Pedogenic Weathering / Lacustrine Authigenic Clay (Mawrth Vallis Layered Clays)';
+      } else {
+        clayClass = 'Mixed-Layer Illite-Smectite Clay';
+        species = 'Illite-Smectite Mixed Complex';
+        context = 'Progressive Diagenetic Burial Horizon';
+      }
+    }
+
+    return {
+      isPhyllosilicateDetected: isPhyllo,
+      clayFamilyClass: clayClass,
+      mineralSpecies: species,
+      interlayerHydrationRatio: parseFloat(hydRatio.toFixed(2)),
+      thermalAlterationContext: context
+    };
+  }
 }
 
 

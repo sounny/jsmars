@@ -6316,6 +6316,65 @@ export class KRCEngine {
       basinHydrothermalContext: `Basin Hydrothermal System (${tauHydroKyr.toFixed(1)} kyr Active Circulation, Ra=${Ra.toFixed(0)}, ${MH2Tg.toFixed(0)} Tg H2 Produced)`
     };
   }
+
+  /**
+   * Calculate crustal magma chamber crystallization timescale, Stefan phase front propagation, latent heat release, and metamorphic aureole thickness.
+   * Ste = c_p * ( T_sol - T_host ) / L_c
+   * t_solid = ( H_ch / 2 )^2 / ( 4 * lambda_stefan^2 * kappa )
+   * Q_latent = rho_magma * V_ch * L_c
+   * Reference: Jaeger (1968), Marsh (1989), Ghiorso & Sack (1995) for Crustal Pluton Solidification.
+   * @param {number} [chamberThicknessKm=3.0] - Magma sill / chamber vertical thickness in km (0.5 to 15.0 km)
+   * @param {number} [chamberDepthKm=8.0] - Pluton emplacement depth in crust in km (2.0 to 30.0 km)
+   * @param {number} [chamberRadiusKm=10.0] - Pluton horizontal radius in km (2.0 to 50.0 km)
+   * @param {number} [magmaLiquidTempC=1200.0] - Magma liquidus intrusion temperature in deg C (900 to 1400 C)
+   * @returns {{solidificationTimescaleKyr: number, stefanNumber: number, latentHeatEnergyExajoules: number, metamorphicAureoleThicknessKm: number, hostRockTempC: number, magmaSolidificationContext: string}}
+   */
+  static computeMartianMagmaChamberSolidificationAndCooling(chamberThicknessKm = 3.0, chamberDepthKm = 8.0, chamberRadiusKm = 10.0, magmaLiquidTempC = 1200.0) {
+    const HchKm = Math.max(0.2, chamberThicknessKm);
+    const DchKm = Math.max(1.0, chamberDepthKm);
+    const RchKm = Math.max(0.5, chamberRadiusKm);
+    const TliqC = Math.max(800.0, magmaLiquidTempC);
+
+    const kappa = 1.0e-6; // Rock thermal diffusivity (m^2/s)
+    const cp = 1200.0; // J/(kg*K)
+    const Lc = 4.0e5; // Latent heat of crystallization (J/kg)
+    const rhoM = 2800.0; // kg/m^3
+    const geothermGrad = 15.0; // K/km geothermal gradient
+    const TsurfC = -50.0; // Mean Martian surface temp (C)
+
+    const HchM = HchKm * 1000.0;
+    const bM = HchM / 2.0;
+    const RchM = RchKm * 1000.0;
+
+    // Host rock initial temperature at depth
+    const ThostC = TsurfC + (DchKm * geothermGrad);
+    const TsolC = TliqC - 200.0; // Solidus temperature
+
+    // Stefan number
+    const Ste = (cp * (TsolC - ThostC)) / Lc;
+    const lambdaStefan = Math.sqrt(Ste / (2.0 * (1.0 + Ste / 3.0)));
+
+    // Solidification timescale (Kyr)
+    const tSolidSec = Math.pow(bM, 2.0) / (4.0 * Math.pow(lambdaStefan, 2.0) * kappa);
+    const tSolidKyr = tSolidSec / (3.15576e7 * 1000.0);
+
+    // Chamber volume & Latent heat release (EJ = 10^18 J)
+    const VchM3 = Math.PI * Math.pow(RchM, 2.0) * HchM;
+    const QlatentJ = rhoM * VchM3 * Lc;
+    const QlatentEJ = QlatentJ / 1e18;
+
+    // Contact metamorphic baking aureole thickness (km)
+    const wAureoleKm = 0.6 * HchKm;
+
+    return {
+      solidificationTimescaleKyr: parseFloat(tSolidKyr.toFixed(1)),
+      stefanNumber: parseFloat(Ste.toFixed(2)),
+      latentHeatEnergyExajoules: parseFloat(QlatentEJ.toFixed(1)),
+      metamorphicAureoleThicknessKm: parseFloat(wAureoleKm.toFixed(2)),
+      hostRockTempC: parseFloat(ThostC.toFixed(1)),
+      magmaSolidificationContext: `Magma Chamber Solidification (${tSolidKyr.toFixed(1)} kyr Solidification, ${QlatentEJ.toFixed(0)} EJ Latent Heat, ${wAureoleKm.toFixed(1)} km Aureole)`
+    };
+  }
 }
 
 

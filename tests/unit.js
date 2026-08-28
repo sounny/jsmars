@@ -11715,6 +11715,60 @@ describe('Mars-to-Sun Coronal Dive, Basin Hydrothermal Cooling & Pyroxene Discri
     });
 });
 
+describe('Mars-to-Jupiter Trojan Transfer, Magma Chamber Solidification & Illite-Smectite Inversion', () => {
+    it('should calculate Mars-to-Jupiter Trojan (L4/L5) Hohmann transfer trajectory and rendezvous Delta-V', () => {
+        // Transfer to L4 Greek Camp (5.2044 AU, 300 km Mars parking orbit):
+        const trojan = TrajectoryEngine.computeMarsToJupiterTrojanHohmannTransfer('L4 Greek Camp (Eurybates/Polymele)', 5.2044, 300.0);
+        expect(trojan.targetCluster).to.equal('L4 Greek Camp (Eurybates/Polymele)');
+        expect(trojan.trojanDistanceAU).to.equal(5.2044);
+        expect(trojan.timeOfFlightDays).to.be.closeTo(1126.9, 20.0); // ~1127 days TOF
+        expect(trojan.timeOfFlightYears).to.be.closeTo(3.085, 0.1); // ~3.09 years
+        expect(trojan.transTrojanInjectionDeltaVKmS).to.be.closeTo(4.197, 0.2); // ~4.20 km/s TTI
+        expect(trojan.trojanArrivalExcessKmS).to.be.closeTo(4.107, 0.2); // ~4.11 km/s arrival excess
+        expect(trojan.totalMissionDeltaVKmS).to.be.closeTo(8.304, 0.3); // ~8.30 km/s total rendezvous
+        expect(trojan.trojanTransferContext).to.include('Mars to L4 Greek Camp');
+    });
+
+    it('should calculate crustal magma chamber crystallization, Stefan phase front, and metamorphic aureole', () => {
+        // 3 km thick magma sill at 8 km depth (10 km radius, 1200 C basalt intrusion):
+        const pluton = KRCEngine.computeMartianMagmaChamberSolidificationAndCooling(3.0, 8.0, 10.0, 1200.0);
+        expect(pluton.stefanNumber).to.be.closeTo(2.79, 0.2); // Ste ~ 2.79
+        expect(pluton.solidificationTimescaleKyr).to.be.closeTo(24.4, 2.0); // ~24.4 kyr complete solidification
+        expect(pluton.latentHeatEnergyExajoules).to.be.closeTo(1055.6, 50.0); // ~1056 EJ latent heat
+        expect(pluton.metamorphicAureoleThicknessKm).to.be.closeTo(1.8, 0.2); // ~1.8 km baking aureole
+        expect(pluton.hostRockTempC).to.be.closeTo(70.0, 5.0); // ~70 C host temp
+        expect(pluton.magmaSolidificationContext).to.include('Magma Chamber Solidification');
+    });
+
+    it('should discriminate Swellable Smectite, Hydrothermal Illite, and Chlorite in CRISM spectra', () => {
+        // Swellable Smectite (Montmorillonite: strong 1.90 um water & 2.20 um Al-OH in Mawrth: BD1400 = 0.05, BD1900 = 0.08, BD2200 = 0.07, BD2350 = 0.01):
+        const smectite = BandMathEngine.computeCRISMIlliteSmectiteChloriteIndices(0.05, 0.08, 0.07, 0.01);
+        expect(smectite.isPhyllosilicateDetected).to.be.true;
+        expect(smectite.clayFamilyClass).to.include('Hydrated Swellable Smectite');
+        expect(smectite.mineralSpecies).to.include('Al-Smectite / Montmorillonite');
+        expect(smectite.interlayerHydrationRatio).to.be.closeTo(1.14, 0.1);
+        expect(smectite.thermalAlterationContext).to.include('Pedogenic Weathering / Lacustrine Authigenic Clay');
+
+        // Hydrothermal Illite / Sericite (sharp 2.20 um Al-OH with weak 1.90 um water: BD1400 = 0.03, BD1900 = 0.01, BD2200 = 0.08, BD2350 = 0.01):
+        const illite = BandMathEngine.computeCRISMIlliteSmectiteChloriteIndices(0.03, 0.01, 0.08, 0.01);
+        expect(illite.isPhyllosilicateDetected).to.be.true;
+        expect(illite.clayFamilyClass).to.include('Non-Swellable Illite / Mica');
+        expect(illite.mineralSpecies).to.include('Illite / Muscovite');
+        expect(illite.thermalAlterationContext).to.include('High-Temperature Hydrothermal Alteration');
+
+        // Chlorite (strong 2.35 um Fe/Mg-OH band in Eridania basement: BD1400 = 0.04, BD1900 = 0.02, BD2200 = 0.01, BD2350 = 0.08):
+        const chlorite = BandMathEngine.computeCRISMIlliteSmectiteChloriteIndices(0.04, 0.02, 0.01, 0.08);
+        expect(chlorite.isPhyllosilicateDetected).to.be.true;
+        expect(chlorite.clayFamilyClass).to.include('Chlorite / Fe-Mg Smectite');
+        expect(chlorite.mineralSpecies).to.include('Chlorite');
+        expect(chlorite.thermalAlterationContext).to.include('Subsurface Deep Crustal Metamorphism');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMIlliteSmectiteChloriteIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isPhyllosilicateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
