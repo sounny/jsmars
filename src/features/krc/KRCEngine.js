@@ -2367,6 +2367,62 @@ export class KRCEngine {
       thermalConductivityWmK: parseFloat(k.toFixed(4))
     };
   }
+
+  /**
+   * Calculate porous regolith dry lag vapor diffusion resistance, ice sublimation loss rate, and ice sheet preservation timescale.
+   * J = ( D_eff * M / ( R * T * L_lag ) ) * ( P_sat(T_ice) - P_atm )
+   * Reference: Schorghofer (2007), Mellon et al. (2004, 2008), Hudson et al. (2009) for buried ground ice stability.
+   * @param {number} lagThicknessCm - Thickness of desiccated porous regolith lag mantle in cm (e.g. 5 to 50 cm)
+   * @param {number} [meanSubsurfaceTempK=200.0] - Mean annual ground ice interface temperature in Kelvin
+   * @param {number} [atmosphericVaporPressurePa=0.030] - Ambient atmospheric water vapor partial pressure in Pa (~10 pr-um)
+   * @param {number} [regolithPorosity=0.40] - Regolith volume porosity fraction (0 to 1)
+   * @param {number} [poreRadiusMicrons=5.0] - Mean regolith pore radius in microns
+   * @returns {{sublimationFluxKgM2S: number, annualIceRetreatMmPerYear: number, iceSheetPreservationMyr: number, vaporSaturationPressurePa: number, lagDiffusionResistanceCoeff: number}}
+   */
+  static computePorousRegolithIceSublimationLagRetardation(lagThicknessCm, meanSubsurfaceTempK = 200.0, atmosphericVaporPressurePa = 0.030, regolithPorosity = 0.40, poreRadiusMicrons = 5.0) {
+    const L = Math.max(0.1, lagThicknessCm) * 1e-2; // meters
+    const T = Math.max(100.0, meanSubsurfaceTempK);
+    const Patm = Math.max(0.0, atmosphericVaporPressurePa);
+    const eps = Math.min(0.9, Math.max(0.1, regolithPorosity));
+    const rp = Math.max(0.1, poreRadiusMicrons) * 1e-6; // meters
+
+    const R = 8.314;     // J / (mol * K)
+    const M = 0.018015;  // kg / mol for H2O
+    const rhoIce = 920.0; // kg / m^3
+    const tau = 2.5;     // tortuosity
+
+    // Saturation vapor pressure over ice (Clausius-Clapeyron Pa)
+    const pSat = Math.exp(28.868 - 6132.9 / T);
+    const deltaP = Math.max(0.0, pSat - Patm);
+
+    // Knudsen diffusion coefficient: D_K = (2/3) * r_p * sqrt( 8*R*T / (pi * M) )
+    const meanThermalSpeed = Math.sqrt((8.0 * R * T) / (Math.PI * M));
+    const Dk = (2.0 / 3.0) * rp * meanThermalSpeed;
+
+    // Effective porous diffusion coefficient D_eff = (eps / tau) * D_k
+    const Deff = (eps / tau) * Dk;
+
+    // Sublimation mass flux J = (Deff * M / (R * T * L)) * deltaP (kg / (m^2 * s))
+    const J = (Deff * M / (R * T * L)) * deltaP;
+
+    // Annual ice table retreat rate (mm / Mars year, 687 days * 86400 s)
+    const secPerMarsYear = 687.0 * 86400.0;
+    const annualMassLossKg = J * secPerMarsYear;
+    const retreatRateMPerYear = annualMassLossKg / rhoIce;
+    const retreatRateMmPerYear = retreatRateMPerYear * 1000.0;
+
+    // Time to sublimate a 5-meter ice layer in Million Years (Myr)
+    const timeFor5MetersYears = retreatRateMPerYear > 1e-15 ? (5.0 / retreatRateMPerYear) : 1e12;
+    const timeFor5MetersMyr = timeFor5MetersYears / 1e6;
+
+    return {
+      sublimationFluxKgM2S: parseFloat(J.toExponential(4)),
+      annualIceRetreatMmPerYear: parseFloat(retreatRateMmPerYear.toExponential(4)),
+      iceSheetPreservationMyr: parseFloat(timeFor5MetersMyr.toFixed(2)),
+      vaporSaturationPressurePa: parseFloat(pSat.toFixed(4)),
+      lagDiffusionResistanceCoeff: parseFloat((L / Deff).toFixed(1))
+    };
+  }
 }
 
 

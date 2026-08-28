@@ -8930,6 +8930,42 @@ describe('Allen-Eggers Hypersonic EDL, Polarimetric Radar & CRISM Anorthosite Cr
     });
 });
 
+describe('Mars Orbit Insertion Delta-V, Porous Regolith Ice Lag & Zeolite Discrimination', () => {
+    it('should calculate interplanetary Mars Orbit Insertion (MOI) braking Delta-V and propellant fraction', () => {
+        // Typical Mars arrival (v_inf = 3.0 km/s, h_p = 300 km, h_a = 40000 km, Isp = 315 s):
+        const moiBurn = TrajectoryEngine.computeMarsOrbitInsertionDeltaV(3.0, 300.0, 40000.0, 315.0, 'mars');
+        expect(moiBurn.deltaVKmS).to.be.closeTo(1.051, 0.05); // ~1.05 km/s braking burn
+        expect(moiBurn.deltaVMS).to.be.closeTo(1051.0, 50.0);
+        expect(moiBurn.hyperbolicArrivalSpeedKmS).to.be.closeTo(5.672, 0.05);
+        expect(moiBurn.propellantMassFractionPct).to.be.closeTo(28.84, 1.5);
+        expect(moiBurn.targetOrbitPeriodHours).to.be.greaterThan(30.0);
+    });
+
+    it('should calculate porous regolith dry lag vapor diffusion resistance and ice sheet preservation timescale', () => {
+        // 10 cm dry dust lag over subsurface ice at 200 K (Patm = 0.030 Pa, eps = 0.40):
+        const lagRetardation = KRCEngine.computePorousRegolithIceSublimationLagRetardation(10.0, 200.0, 0.030, 0.40, 5.0);
+        expect(lagRetardation.sublimationFluxKgM2S).to.be.greaterThan(1e-12);
+        expect(lagRetardation.annualIceRetreatMmPerYear).to.be.greaterThan(0.0);
+        expect(lagRetardation.iceSheetPreservationMyr).to.be.greaterThan(0.01);
+        expect(lagRetardation.vaporSaturationPressurePa).to.be.closeTo(0.165, 0.02);
+    });
+
+    it('should discriminate hydrous alkaline Zeolites from Smectite Clays with CRISM band ratios', () => {
+        // Hydrous Zeolite (Analcime / Chabazite): strong 1.92 um (r = 0.26 vs cont = 0.30 -> BD1900 = 0.133), weak 2.30 um (r = 0.298 -> BD2300 = 0.0067)
+        const zeolite = BandMathEngine.computeCRISMZeolitePhyllosilicateDiscrimination(0.28, 0.26, 0.298, 0.30);
+        expect(zeolite.isZeolite).to.be.true;
+        expect(zeolite.isSmectiteClay).to.be.false;
+        expect(zeolite.mineralFamily).to.include('Zeolite');
+        expect(zeolite.geologicalSetting).to.include('Alkaline Closed-Basin Paleolake');
+
+        // Fe/Mg-Smectite Phyllosilicate (Saponite / Nontronite): strong 1.92 um (BD1900 = 0.10) and sharp 2.30 um (BD2300 = 0.08)
+        const smectite = BandMathEngine.computeCRISMZeolitePhyllosilicateDiscrimination(0.28, 0.27, 0.276, 0.30);
+        expect(smectite.isZeolite).to.be.false;
+        expect(smectite.isSmectiteClay).to.be.true;
+        expect(smectite.mineralFamily).to.include('Smectite Phyllosilicate');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

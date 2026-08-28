@@ -1606,6 +1606,64 @@ export class TrajectoryEngine {
       atmosphericDensityAtPeakKgM3: parseFloat(rhoPeak.toExponential(4))
     };
   }
+
+  /**
+   * Calculate interplanetary Mars Orbit Insertion (MOI) braking Delta-V and propellant mass fraction.
+   * v_hyp = sqrt( v_inf^2 + 2*mu / r_p )
+   * v_cap = sqrt( mu * ( 2/r_p - 1/a_cap ) )
+   * Delta_V = v_hyp - v_cap
+   * Reference: Battin (1999), Vallado (2013), Curtis (2013) for interplanetary orbital transfer.
+   * @param {number} hyperbolicExcessSpeedKmS - Interplanetary arrival excess speed v_infinity in km/s (typically 2.5 to 4.0 km/s)
+   * @param {number} [periapsisAltitudeKm=300.0] - Target insertion periapsis altitude in km
+   * @param {number} [targetApoapsisAltitudeKm=40000.0] - Target capture orbit apoapsis altitude in km (e.g. 40,000 km for elliptical capture, 400 km for circular)
+   * @param {number} [specificImpulseSec=315.0] - Rocket engine specific impulse Isp in seconds (315 s for N2O4/MMH bipropellant)
+   * @param {string} [body='mars'] - Planetary body ('mars', 'earth')
+   * @returns {{deltaVKmS: number, deltaVMS: number, hyperbolicArrivalSpeedKmS: number, capturePeriapsisSpeedKmS: number, propellantMassFractionPct: number, targetOrbitPeriodHours: number}}
+   */
+  static computeMarsOrbitInsertionDeltaV(hyperbolicExcessSpeedKmS, periapsisAltitudeKm = 300.0, targetApoapsisAltitudeKm = 40000.0, specificImpulseSec = 315.0, body = 'mars') {
+    const bKey = body.toLowerCase();
+    const isEarth = bKey === 'earth';
+
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const Rp = isEarth ? 6378.137 : 3396.19;    // km
+    const g0 = 9.80665;                          // m/s^2
+
+    const vInf = Math.max(0.1, hyperbolicExcessSpeedKmS);
+    const hp = Math.max(50.0, periapsisAltitudeKm);
+    const ha = Math.max(hp, targetApoapsisAltitudeKm);
+    const Isp = Math.max(50.0, specificImpulseSec);
+
+    const rp = Rp + hp;
+    const ra = Rp + ha;
+    const aCap = (rp + ra) / 2.0;
+
+    // Hyperbolic arrival velocity at periapsis
+    const vHyp = Math.sqrt(vInf * vInf + (2.0 * mu) / rp);
+
+    // Target capture orbit velocity at periapsis
+    const vCap = Math.sqrt(mu * (2.0 / rp - 1.0 / aCap));
+
+    // Braking Delta-V
+    const deltaV = vHyp - vCap;
+    const deltaVMS = deltaV * 1000.0;
+
+    // Tsiolkovsky propellant mass fraction: Delta_m / m0 = 1 - exp( -Delta_V / (Isp * g0) )
+    const massFrac = 1.0 - Math.exp(-deltaVMS / (Isp * g0));
+    const massFracPct = massFrac * 100.0;
+
+    // Orbital period of target capture orbit in hours
+    const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(aCap, 3.0) / mu);
+    const periodHours = periodSec / 3600.0;
+
+    return {
+      deltaVKmS: parseFloat(deltaV.toFixed(3)),
+      deltaVMS: parseFloat(deltaVMS.toFixed(1)),
+      hyperbolicArrivalSpeedKmS: parseFloat(vHyp.toFixed(3)),
+      capturePeriapsisSpeedKmS: parseFloat(vCap.toFixed(3)),
+      propellantMassFractionPct: parseFloat(massFracPct.toFixed(2)),
+      targetOrbitPeriodHours: parseFloat(periodHours.toFixed(2))
+    };
+  }
 }
 
 

@@ -2960,6 +2960,52 @@ export class BandMathEngine {
       isAnorthositeCrustOutcrop: isAnorthosite
     };
   }
+
+  /**
+   * Discriminate hydrous alkaline Zeolites (Analcime / Chabazite) from Smectite Phyllosilicates (Saponite / Nontronite).
+   * BD1900 = 1.0 - ( 2 * R_1920 ) / ( R_1815 + R_2130 )
+   * BD2300 = 1.0 - ( 2 * R_2300 ) / ( R_2140 + R_2390 )
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013) for Martian alkaline lacustrine & hydrothermal minerals.
+   * @param {number} r1420 - Reflectance at 1.42 um H2O/OH band
+   * @param {number} r1920 - Reflectance at 1.92 um structural H2O band
+   * @param {number} r2300 - Reflectance at 2.30 um Fe/Mg-OH vibrational band
+   * @param {number} [continuumLevel=0.30] - Mean background continuum reflectance
+   * @returns {{bd1900: number, bd2300: number, bd1400: number, mineralFamily: string, isZeolite: boolean, isSmectiteClay: boolean, geologicalSetting: string}}
+   */
+  static computeCRISMZeolitePhyllosilicateDiscrimination(r1420, r1920, r2300, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+    const bd1400 = Math.max(0.0, 1.0 - (r1420 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1920 / cont));
+    const bd2300 = Math.max(0.0, 1.0 - (r2300 / cont));
+
+    let family = 'Unaltered Primary Basalt / Dust';
+    let isZeo = false;
+    let isClay = false;
+    let setting = 'Dry Volcanic Plains';
+
+    if (bd1900 >= 0.035 && bd2300 < 0.015) {
+      family = 'Hydrous Zeolite (Analcime / Chabazite / Clinoptilolite)';
+      isZeo = true;
+      setting = 'Alkaline Closed-Basin Paleolake or Low-T Hydrothermal Alteration';
+    } else if (bd1900 >= 0.025 && bd2300 >= 0.020) {
+      family = 'Fe/Mg-Smectite Phyllosilicate (Saponite / Nontronite)';
+      isClay = true;
+      setting = 'Circum-Neutral Aqueous Weathering / Noachian Fluvial System';
+    } else if (bd1900 >= 0.025) {
+      family = 'Hydrated Silica / Opal / Glass';
+      setting = 'Fumarolic Acid Leaching / Hydrothermal Sinter';
+    }
+
+    return {
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2300: parseFloat(bd2300.toFixed(4)),
+      bd1400: parseFloat(bd1400.toFixed(4)),
+      mineralFamily: family,
+      isZeolite: isZeo,
+      isSmectiteClay: isClay,
+      geologicalSetting: setting
+    };
+  }
 }
 
 
