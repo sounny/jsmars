@@ -9267,6 +9267,47 @@ describe('Low-Thrust Continuous Spirals, Seasonal CO2 Geysers & Chloride Evapori
     });
 });
 
+describe('Aerocapture Entry Corridor, Frost Albedo Feedback & Pyroxene Speciation', () => {
+    it('should calculate single-pass Mars aerocapture atmospheric braking Delta-V and peak dynamic pressure', () => {
+        // Mars aerocapture entry (v_entry = 6.0 km/s at 125 km interface, target apoapsis = 1000 km, atmospheric periapsis = 50 km):
+        const aero = TrajectoryEngine.computeAerocaptureCorridorAndDynamicPressure(6.0, 1000.0, 50.0, 0.30, 'mars');
+        expect(aero.aeroBrakingDeltaVKmS).to.be.greaterThan(1.0); // > 1.0 km/s aerodynamic velocity braking
+        expect(aero.peakDynamicPressureKPa).to.be.greaterThan(0.05); // aerodynamic dynamic pressure (~0.11 kPa at 50 km)
+        expect(aero.propellantFractionSavedPct).to.be.greaterThan(30.0); // saves > 30% of spacecraft wet mass
+        expect(aero.entryCorridorWidthDeg).to.be.greaterThan(0.05); // ~0.11 degree entry corridor width
+    });
+
+    it('should calculate microscale surface frost condensation, optical albedo brightening, and thermal radiative feedback', () => {
+        // Early morning H2O frost film (L = 10 um, bare albedo = 0.20):
+        const frost = KRCEngine.computeTransientFrostCondensationAndAlbedoFeedback(10.0, 0.20, 'H2O', 350.0);
+        expect(frost.effectiveAlbedo).to.be.closeTo(0.365, 0.05); // albedo brightens from 0.20 to ~0.37
+        expect(frost.albedoIncreasePct).to.be.greaterThan(70.0);
+        expect(frost.effectiveEmissivity).to.be.greaterThan(0.93);
+        expect(frost.frostCoverState).to.include('Optically Thick H2O Frost Mantle');
+
+        // Bare dry afternoon regolith (L = 0 um):
+        const bare = KRCEngine.computeTransientFrostCondensationAndAlbedoFeedback(0.0, 0.20, 'H2O', 350.0);
+        expect(bare.effectiveAlbedo).to.equal(0.20);
+        expect(bare.frostCoverState).to.include('Bare Regolith');
+    });
+
+    it('should discriminate High-Calcium Clinopyroxene (Augite HCP) from Low-Calcium Orthopyroxene (Enstatite LCP)', () => {
+        // High-Calcium Clinopyroxene in Syrtis Major lava flow (deep 1050 nm and 2200 nm HCP bands):
+        const cpx = BandMathEngine.computeCRISMPyroxeneSpeciationIndices(0.25, 0.21, 0.25, 0.21, 0.25);
+        expect(cpx.isHighCalciumPyroxene).to.be.true;
+        expect(cpx.isLowCalciumPyroxene).to.be.false;
+        expect(cpx.pyroxeneType).to.include('Clinopyroxene');
+        expect(cpx.volcanicContext).to.include('Syrtis Major Type');
+
+        // Low-Calcium Orthopyroxene in Noachian crater central peak (deep 920 nm and 1850 nm LCP bands):
+        const opx = BandMathEngine.computeCRISMPyroxeneSpeciationIndices(0.21, 0.25, 0.21, 0.25, 0.25);
+        expect(opx.isHighCalciumPyroxene).to.be.false;
+        expect(opx.isLowCalciumPyroxene).to.be.true;
+        expect(opx.pyroxeneType).to.include('Orthopyroxene');
+        expect(opx.volcanicContext).to.include('Noachian Primitive Crust');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -2120,6 +2120,71 @@ export class TrajectoryEngine {
       spiralRevolutions: parseFloat(revs.toFixed(1))
     };
   }
+
+  /**
+   * Calculate single-pass planetary aerocapture atmospheric braking Delta-V, peak dynamic pressure, and propellant mass saved.
+   * v_cap = sqrt( mu * ( 2/r_p - 1/a_target ) )
+   * Delta_V_aero = v_hyp_p - v_cap_p
+   * q_max = 0.5 * rho(h_peri) * v_hyp^2
+   * Reference: Cruz et al. (2006), Braun & Manning (2007) for Mars aerocapture flight mechanics.
+   * @param {number} entrySpeedKmS - Atmospheric entry velocity at 125 km interface in km/s (5.5 to 7.5 km/s)
+   * @param {number} [targetApoapsisAltitudeKm=1000.0] - Target post-capture apoapsis altitude in km
+   * @param {number} [atmosphericPeriapsisKm=50.0] - Trajectory minimum atmospheric altitude in km (40 to 60 km)
+   * @param {number} [liftToDragRatio=0.30] - Spacecraft hypersonic L/D ratio
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{aeroBrakingDeltaVKmS: number, aeroBrakingDeltaVMS: number, peakDynamicPressureKPa: number, propellantFractionSavedPct: number, targetSemiMajorAxisKm: number, entryCorridorWidthDeg: number}}
+   */
+  static computeAerocaptureCorridorAndDynamicPressure(entrySpeedKmS, targetApoapsisAltitudeKm = 1000.0, atmosphericPeriapsisKm = 50.0, liftToDragRatio = 0.30, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const Rp = isEarth ? 6378.137 : 3396.19;     // km
+    const hAtm = isEarth ? 120.0 : 125.0;        // km
+    const rAtm = Rp + hAtm;
+    const H = isEarth ? 8.5 : 11.1;              // atmospheric scale height km
+    const rho0 = isEarth ? 1.225 : 0.020;        // kg/m^3
+    const g0 = 9.80665;
+    const ispChemical = 320.0; // s
+
+    const ventry = Math.max(1.0, entrySpeedKmS);
+    const hp = Math.max(20.0, Math.min(hAtm - 5.0, atmosphericPeriapsisKm));
+    const ha = Math.max(hp + 50.0, targetApoapsisAltitudeKm);
+
+    const rp = Rp + hp;
+    const ra = Rp + ha;
+
+    // Target captured orbit semi-major axis and periapsis velocity
+    const aCap = (rp + ra) / 2.0;
+    const vCapP = Math.sqrt(mu * (2.0 / rp - 1.0 / aCap));
+
+    // Hyperbolic speed at atmospheric periapsis
+    const vHypP = Math.sqrt(ventry * ventry + 2.0 * mu * (1.0 / rp - 1.0 / rAtm));
+
+    // Aerodynamic Delta-V dissipated by atmosphere
+    const deltaVAeroKmS = Math.max(0.0, vHypP - vCapP);
+    const deltaVAeroMS = deltaVAeroKmS * 1000.0;
+
+    // Peak dynamic pressure q_max = 0.5 * rho * v^2
+    const rhoPeri = rho0 * Math.exp(-hp / H);
+    const vHypPMS = vHypP * 1000.0;
+    const qMaxPa = 0.5 * rhoPeri * (vHypPMS * vHypPMS);
+    const qMaxKPa = qMaxPa / 1000.0;
+
+    // Propellant mass fraction saved vs chemical rocket burn
+    const propFractionSaved = (1.0 - Math.exp(-deltaVAeroMS / (ispChemical * g0))) * 100.0;
+
+    // Entry corridor width (degrees)
+    const corridorRad = (2.0 * Math.max(0.05, liftToDragRatio) * H) / rp;
+    const corridorDeg = (corridorRad * 180.0) / Math.PI;
+
+    return {
+      aeroBrakingDeltaVKmS: parseFloat(deltaVAeroKmS.toFixed(3)),
+      aeroBrakingDeltaVMS: parseFloat(deltaVAeroMS.toFixed(1)),
+      peakDynamicPressureKPa: parseFloat(qMaxKPa.toFixed(2)),
+      propellantFractionSavedPct: parseFloat(propFractionSaved.toFixed(1)),
+      targetSemiMajorAxisKm: parseFloat(aCap.toFixed(1)),
+      entryCorridorWidthDeg: parseFloat(corridorDeg.toFixed(2))
+    };
+  }
 }
 
 

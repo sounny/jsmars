@@ -2841,6 +2841,62 @@ export class KRCEngine {
       timeToRuptureHours: parseFloat(timeToRuptureHours.toFixed(2))
     };
   }
+
+  /**
+   * Calculate microscale surface frost condensation, optical albedo brightening, and thermal radiative feedback.
+   * A_eff = A_bare + ( A_frost - A_bare ) * ( 1 - exp( -mu * L_frost ) )
+   * eps_eff = eps_bare + ( eps_frost - eps_bare ) * ( 1 - exp( -kappa * L_frost ) )
+   * Reference: Kieffer et al. (2000), Vincendon et al. (2010) for Phoenix & Viking early morning frost dynamics.
+   * @param {number} frostThicknessMicrons - Surface condensed frost thickness in microns (0.1 to 100 um)
+   * @param {number} [bareGroundAlbedo=0.20] - Uncoated background basaltic regolith albedo
+   * @param {string} [frostType='H2O'] - Condensed volatile type ('H2O', 'CO2')
+   * @param {number} [solarInsolationWM2=350.0] - Morning solar irradiance in W/m^2
+   * @returns {{effectiveAlbedo: number, effectiveEmissivity: number, albedoIncreasePct: number, absorbedSolarFluxWM2: number, frostBurnoffMinutes: number, frostCoverState: string}}
+   */
+  static computeTransientFrostCondensationAndAlbedoFeedback(frostThicknessMicrons, bareGroundAlbedo = 0.20, frostType = 'H2O', solarInsolationWM2 = 350.0) {
+    const L = Math.max(0.0, frostThicknessMicrons);
+    const Abare = Math.max(0.05, Math.min(0.40, bareGroundAlbedo));
+    const isCO2 = frostType.toUpperCase() === 'CO2';
+
+    const Afrost = isCO2 ? 0.72 : 0.62;
+    const epsBare = 0.92;
+    const epsFrost = isCO2 ? 0.99 : 0.97;
+    const L_sub = isCO2 ? 5.9e5 : 2.83e6; // J/kg
+    const rhoFrost = isCO2 ? 1500.0 : 900.0; // kg/m^3
+
+    // Effective visual albedo via Beer-Lambert scattering
+    const muOptical = isCO2 ? 0.08 : 0.05; // um^-1
+    const Aeff = Abare + (Afrost - Abare) * (1.0 - Math.exp(-muOptical * L));
+
+    // Effective infrared thermal emissivity
+    const epsEff = epsBare + (epsFrost - epsBare) * (1.0 - Math.exp(-0.03 * L));
+
+    const albedoInc = ((Aeff - Abare) / Abare) * 100.0;
+    const absorbedSolar = Math.max(0.0, solarInsolationWM2 * (1.0 - Aeff));
+
+    // Frost mass per unit area: m = rho * L (kg/m^2)
+    const frostMassKgM2 = rhoFrost * (L * 1e-6);
+    const burnoffSec = absorbedSolar > 1.0 ? (frostMassKgM2 * L_sub) / absorbedSolar : 9999.0;
+    const burnoffMin = burnoffSec / 60.0;
+
+    let state = 'Bare Regolith (No Condensate)';
+    if (L > 0.1 && L < 5.0) {
+      state = `Sub-Micron Transient Morning ${frostType} Frost Film (High Evaporation)`;
+    } else if (L >= 5.0 && L < 30.0) {
+      state = `Bright Optically Thick ${frostType} Frost Mantle`;
+    } else if (L >= 30.0) {
+      state = `Continuous Seasonal ${frostType} Snow / Perennial Ice Slab`;
+    }
+
+    return {
+      effectiveAlbedo: parseFloat(Aeff.toFixed(4)),
+      effectiveEmissivity: parseFloat(epsEff.toFixed(4)),
+      albedoIncreasePct: parseFloat(albedoInc.toFixed(1)),
+      absorbedSolarFluxWM2: parseFloat(absorbedSolar.toFixed(1)),
+      frostBurnoffMinutes: parseFloat(burnoffMin.toFixed(1)),
+      frostCoverState: state
+    };
+  }
 }
 
 

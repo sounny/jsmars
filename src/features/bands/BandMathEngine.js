@@ -3343,6 +3343,54 @@ export class BandMathEngine {
       evaporiteSetting: setting
     };
   }
+
+  /**
+   * Discriminate High-Calcium Clinopyroxene (Augite/Diopside HCP) from Low-Calcium Orthopyroxene (Enstatite/Pigeonite LCP) from CRISM 1 um and 2 um crystal field bands.
+   * Reference: Clenet et al. (2011), Mustard et al. (2005), Skok et al. (2010) for Noachian vs Hesperian volcanic stratigraphy.
+   * @param {number} r920 - Reflectance at 920 nm LCP Band 1 minimum
+   * @param {number} r1050 - Reflectance at 1050 nm HCP Band 1 minimum
+   * @param {number} r1850 - Reflectance at 1850 nm LCP Band 2 minimum
+   * @param {number} r2200 - Reflectance at 2200 nm HCP Band 2 minimum
+   * @param {number} [continuumLevel=0.25] - Mean background continuum level
+   * @returns {{bd920: number, bd1050: number, bd1850: number, bd2200: number, pyroxeneType: string, isHighCalciumPyroxene: boolean, isLowCalciumPyroxene: boolean, volcanicContext: string}}
+   */
+  static computeCRISMPyroxeneSpeciationIndices(r920, r1050, r1850, r2200, continuumLevel = 0.25) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd920 = Math.max(0.0, 1.0 - (r920 / cont));
+    const bd1050 = Math.max(0.0, 1.0 - (r1050 / cont));
+    const bd1850 = Math.max(0.0, 1.0 - (r1850 / cont));
+    const bd2200 = Math.max(0.0, 1.0 - (r2200 / cont));
+
+    const lcpScore = bd920 + bd1850;
+    const hcpScore = bd1050 + bd2200;
+
+    let type = 'Unaltered Basalt / Intermediate Pyroxene Mixture';
+    let isHcp = false;
+    let isLcp = false;
+    let context = 'Standard Martian Volcanic Crust';
+
+    if (hcpScore >= 0.040 && hcpScore > lcpScore * 1.2) {
+      type = 'High-Calcium Clinopyroxene (Augite / Diopside HCP)';
+      isHcp = true;
+      context = 'Hesperian/Amazonian Evolved Basaltic Volcanism (Syrtis Major Type Lava Flows)';
+    } else if (lcpScore >= 0.040 && lcpScore > hcpScore * 1.2) {
+      type = 'Low-Calcium Orthopyroxene (Enstatite / Pigeonite LCP / Norite)';
+      isLcp = true;
+      context = 'Ancient Noachian Primitive Crust / Impact Basin Central Uplifts';
+    }
+
+    return {
+      bd920: parseFloat(bd920.toFixed(4)),
+      bd1050: parseFloat(bd1050.toFixed(4)),
+      bd1850: parseFloat(bd1850.toFixed(4)),
+      bd2200: parseFloat(bd2200.toFixed(4)),
+      pyroxeneType: type,
+      isHighCalciumPyroxene: isHcp,
+      isLowCalciumPyroxene: isLcp,
+      volcanicContext: context
+    };
+  }
 }
 
 
