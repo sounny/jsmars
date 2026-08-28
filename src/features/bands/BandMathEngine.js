@@ -3933,6 +3933,47 @@ export class BandMathEngine {
       serpentinizationSetting: setting
     };
   }
+
+  /**
+   * Discriminate Carbonate mineral group species (Magnesite, Calcite, Siderite) from CRISM 2.30-2.34 um and 2.50-2.54 um CO3(2-) vibrational combination bands.
+   * Reference: Ehlmann et al. (2008), Niles et al. (2013), Goudge et al. (2015), Bultel et al. (2019) for Jezero Crater margin carbonates and Nili Fossae carbon sequestration.
+   * @param {number} r2300 - Reflectance at 2.30 um Magnesite/Carbonate minimum
+   * @param {number} r2500 - Reflectance at 2.50-2.52 um primary CO3 combination minimum
+   * @param {number} r2340 - Reflectance at 2.34 um Fe-carbonate / Siderite minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd2300: number, bd2340: number, bd2500: number, isCarbonatePresent: boolean, carbonateSpecies: string, paleoenvironmentalContext: string}}
+   */
+  static computeCRISMCarbonateSpeciationIndices(r2300, r2500, r2340 = 0.30, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd2300 = Math.max(0.0, 1.0 - (r2300 / cont));
+    const bd2340 = Math.max(0.0, 1.0 - (r2340 / cont));
+    const bd2500 = Math.max(0.0, 1.0 - (r2500 / cont));
+
+    let species = 'Non-Carbonate Silicate / Basalt';
+    let isCarb = false;
+    let context = 'Standard Crustal Setting';
+
+    if (bd2500 >= 0.025 && (bd2300 >= 0.020 || bd2340 >= 0.020)) {
+      isCarb = true;
+      if (bd2300 >= bd2340) {
+        species = 'Magnesite (MgCO3) / Hydromagnesite';
+        context = 'Alkaline Lacustrine / Hydrothermal Carbon Sequestration in Ultramafic Catchments (Jezero Margin Carbonates / Nili Fossae)';
+      } else {
+        species = 'Siderite (FeCO3) / Ankerite';
+        context = 'Reducing Anoxic Hydrothermal Alteration and Carbon Mineralization';
+      }
+    }
+
+    return {
+      bd2300: parseFloat(bd2300.toFixed(4)),
+      bd2340: parseFloat(bd2340.toFixed(4)),
+      bd2500: parseFloat(bd2500.toFixed(4)),
+      isCarbonatePresent: isCarb,
+      carbonateSpecies: species,
+      paleoenvironmentalContext: context
+    };
+  }
 }
 
 

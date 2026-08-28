@@ -2953,6 +2953,77 @@ export class TrajectoryEngine {
       lensStatus: status
     };
   }
+
+  /**
+   * Calculate planetary gravity assist / swingby hyperbolic deflection angle, asymptotic Delta-V gain, and impact parameter.
+   * e = 1 + ( r_p * v_inf^2 ) / mu_p
+   * delta = 2 * arcsin( 1 / e )
+   * Delta_V_max = 2 * v_inf * sin( delta / 2 ) = 2 * v_inf / e
+   * b = r_p * sqrt( 1 + 2 * mu_p / ( r_p * v_inf^2 ) )
+   * Reference: Battin (1999), Vallado (2013), Curtis (2013) for interplanetary gravity assist mission trajectories.
+   * @param {number} [hyperbolicExcessVelocityKmS=4.5] - Incoming hyperbolic excess velocity v_infinity in km/s (0.5 to 25 km/s)
+   * @param {number} [periapsisAltitudeKm=300.0] - Flyby closest approach altitude h_p in km (50 to 50000 km)
+   * @param {string} [bodyFlyby='mars'] - Flyby planetary body (mars, earth, jupiter, venus, moon)
+   * @returns {{hyperbolicEccentricity: number, deflectionAngleDeg: number, maxAsymptoticDeltaVKmS: number, impactParameterKm: number, periapsisVelocityKmS: number, swingbyFeasibility: string}}
+   */
+  static computePlanetaryGravityAssistDeflectionAndDeltaV(hyperbolicExcessVelocityKmS = 4.5, periapsisAltitudeKm = 300.0, bodyFlyby = 'mars') {
+    const vInf = Math.max(0.1, hyperbolicExcessVelocityKmS);
+    const hp = Math.max(20.0, periapsisAltitudeKm);
+    const bodyLower = (bodyFlyby || 'mars').toLowerCase();
+
+    let muP = 42828.37;
+    let Rp = 3396.19;
+
+    if (bodyLower === 'earth') {
+      muP = 398600.4418;
+      Rp = 6378.137;
+    } else if (bodyLower === 'jupiter') {
+      muP = 126686534.0;
+      Rp = 71492.0;
+    } else if (bodyLower === 'venus') {
+      muP = 324859.0;
+      Rp = 6051.8;
+    } else if (bodyLower === 'moon') {
+      muP = 4902.80;
+      Rp = 1737.4;
+    }
+
+    // Periapsis radius r_p = Rp + hp (km)
+    const rpKm = Rp + hp;
+
+    // Hyperbolic eccentricity e = 1 + (rp * vInf^2) / muP
+    const vInfSq = Math.pow(vInf, 2.0);
+    const e = 1.0 + (rpKm * vInfSq) / muP;
+
+    // Deflection angle delta = 2 * arcsin(1 / e) in radians and degrees
+    const deltaRad = 2.0 * Math.asin(1.0 / e);
+    const deltaDeg = (deltaRad * 180.0) / Math.PI;
+
+    // Maximum asymptotic velocity change Delta_V_max = 2 * vInf / e (km/s)
+    const maxDeltaVKmS = (2.0 * vInf) / e;
+
+    // Impact parameter b = rp * sqrt( 1 + 2*muP / (rp * vInf^2) ) (km)
+    const bKm = rpKm * Math.sqrt(1.0 + (2.0 * muP) / (rpKm * vInfSq));
+
+    // Periapsis velocity v_p = sqrt( vInf^2 + 2*muP/rp ) (km/s)
+    const vpKmS = Math.sqrt(vInfSq + (2.0 * muP) / rpKm);
+
+    let feasibility = 'High-Efficiency Interplanetary Gravity Assist Deflection';
+    if (deltaDeg < 15.0) {
+      feasibility = 'Low-Deflection Flyby (High Hyperbolic Speed / Weak Gravitational Bending)';
+    } else if (deltaDeg > 90.0) {
+      feasibility = 'Extreme Deep-Gravity Well Turnaround Maneuver';
+    }
+
+    return {
+      hyperbolicEccentricity: parseFloat(e.toFixed(4)),
+      deflectionAngleDeg: parseFloat(deltaDeg.toFixed(2)),
+      maxAsymptoticDeltaVKmS: parseFloat(maxDeltaVKmS.toFixed(3)),
+      impactParameterKm: parseFloat(bKm.toFixed(1)),
+      periapsisVelocityKmS: parseFloat(vpKmS.toFixed(3)),
+      swingbyFeasibility: feasibility
+    };
+  }
 }
 
 

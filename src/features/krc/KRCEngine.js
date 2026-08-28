@@ -3557,6 +3557,75 @@ export class KRCEngine {
       lithosphereMediumContext: medium
     };
   }
+
+  /**
+   * Calculate subsurface Methane Clathrate Hydrate Stability Zone (MHSZ) upper and lower depth boundaries and reservoir thickness.
+   * ln( P_eq / 1 MPa ) = 38.980 - 8533.80 / T
+   * P(z) = P_surf + rho_reg * g_mars * z
+   * T(z) = T_surf + ( Q_geo / k_reg ) * z
+   * Reference: Sloan (1998), Max & Clifford (2000), Chastain & Chevrier (2007), Mousis et al. (2013) for Martian cryosphere gas hydrates.
+   * @param {number} [surfaceTempK=180.0] - Mean annual surface ground temperature in K (150 to 220 K)
+   * @param {number} [surfacePressurePa=610.0] - Atmospheric surface pressure in Pa (400 to 1200 Pa)
+   * @param {number} [geothermalHeatFluxMWM2=25.0] - Geothermal heat flux in mW/m^2 (15 to 40 mW/m^2)
+   * @param {number} [regolithThermalConductivityWMK=2.0] - Bulk thermal conductivity in W/(m*K)
+   * @param {number} [regolithBulkDensityKgM3=1800.0] - Cryosphere bulk density in kg/m^3
+   * @returns {{topDepthMeters: number, bottomDepthMeters: number, mhszThicknessMeters: number, maxStabilityTempK: number, clathrateTrappingPotential: string}}
+   */
+  static computeMethaneClathrateHydrateStabilityZone(surfaceTempK = 180.0, surfacePressurePa = 610.0, geothermalHeatFluxMWM2 = 25.0, regolithThermalConductivityWMK = 2.0, regolithBulkDensityKgM3 = 1800.0) {
+    const Tsurf = Math.max(120.0, Math.min(240.0, surfaceTempK));
+    const Psurf = Math.max(100.0, surfacePressurePa);
+    const Qgeo = Math.max(1.0, geothermalHeatFluxMWM2) * 1e-3; // W/m^2
+    const kReg = Math.max(0.1, regolithThermalConductivityWMK);
+    const rho = Math.max(500.0, regolithBulkDensityKgM3);
+
+    const gMars = 3.72076; // m/s^2
+    const thermalGradKPerM = Qgeo / kReg;
+
+    // Search for upper stability boundary z_top and lower boundary z_bottom (0 to 10000 m in 5m steps)
+    let zTop = -1;
+    let zBottom = -1;
+    let maxT = Tsurf;
+
+    for (let z = 1; z <= 10000; z += 5) {
+      const PzPa = Psurf + rho * gMars * z;
+      const PzMPa = PzPa / 1e6;
+      const TzK = Tsurf + thermalGradKPerM * z;
+
+      // Phase equilibrium temperature Teq(P): Teq = 8533.80 / ( 38.980 - ln(P_MPa) )
+      const denom = 38.980 - Math.log(PzMPa);
+      const TeqK = denom > 0.0 ? 8533.80 / denom : 0.0;
+
+      // Hydrate is stable when actual temperature Tz <= Teq(P) and pressure >= equilibrium pressure
+      const isStable = (TzK <= TeqK) && (TzK < 273.15);
+
+      if (isStable) {
+        if (zTop < 0) {
+          zTop = z;
+        }
+        zBottom = z;
+        if (TzK > maxT) {
+          maxT = TzK;
+        }
+      }
+    }
+
+    const topMeters = zTop > 0 ? zTop : 0;
+    const bottomMeters = zBottom > 0 ? zBottom : 0;
+    const thicknessM = Math.max(0, bottomMeters - topMeters);
+
+    let potential = 'Massive Planetary Methane & Trace Gas Clathrate Reservoir';
+    if (thicknessM < 500) {
+      potential = 'Marginal Shallow Hydrate Stability Zone (Restricted to High-Latitude Permafrost)';
+    }
+
+    return {
+      topDepthMeters: topMeters,
+      bottomDepthMeters: bottomMeters,
+      mhszThicknessMeters: thicknessM,
+      maxStabilityTempK: parseFloat(maxT.toFixed(2)),
+      clathrateTrappingPotential: potential
+    };
+  }
 }
 
 

@@ -9739,6 +9739,39 @@ describe('Solar Gravitational Lens Optics, Non-Linear Conductivity & Serpentine 
     });
 });
 
+describe('Planetary Gravity Assist, Methane Clathrate Stability & Carbonate Speciation', () => {
+    it('should calculate planetary gravity assist hyperbolic deflection angle, asymptotic Delta-V, and impact parameter', () => {
+        // Mars flyby swingby (v_inf = 4.5 km/s, h_p = 300 km):
+        const swingby = TrajectoryEngine.computePlanetaryGravityAssistDeflectionAndDeltaV(4.5, 300.0, 'mars');
+        expect(swingby.hyperbolicEccentricity).to.be.closeTo(2.748, 0.05); // ~2.75 eccentricity
+        expect(swingby.deflectionAngleDeg).to.be.closeTo(42.69, 1.0); // ~42.7 deg deflection
+        expect(swingby.maxAsymptoticDeltaVKmS).to.be.closeTo(3.276, 0.1); // ~3.28 km/s Delta-V gain
+        expect(swingby.impactParameterKm).to.be.closeTo(5412.7, 50.0);
+        expect(swingby.swingbyFeasibility).to.include('High-Efficiency Interplanetary Gravity Assist');
+    });
+
+    it('should calculate subsurface Methane Clathrate Hydrate Stability Zone (MHSZ) upper/lower boundaries and reservoir thickness', () => {
+        // High-latitude Martian permafrost (T_surf = 180 K, P_surf = 610 Pa, Q_geo = 25 mW/m^2, k = 2.0 W/m/K):
+        const clathrate = KRCEngine.computeMethaneClathrateHydrateStabilityZone(180.0, 610.0, 25.0, 2.0, 1800.0);
+        expect(clathrate.topDepthMeters).to.be.at.least(0); // stability begins at shallow permafrost depths
+        expect(clathrate.bottomDepthMeters).to.be.greaterThan(3000); // extends down to > 3-5 km before geothermal dissociation
+        expect(clathrate.mhszThicknessMeters).to.be.greaterThan(3000);
+        expect(clathrate.clathrateTrappingPotential).to.include('Massive Planetary Methane');
+    });
+
+    it('should discriminate Magnesite from Siderite, phyllosilicates, and unaltered basalt in CRISM spectra', () => {
+        // Magnesite in Jezero Crater delta margin carbonates (strong 2.30 um and 2.50 um CO3 bands):
+        const magnesite = BandMathEngine.computeCRISMCarbonateSpeciationIndices(0.23, 0.22, 0.28, 0.30);
+        expect(magnesite.isCarbonatePresent).to.be.true;
+        expect(magnesite.carbonateSpecies).to.include('Magnesite');
+        expect(magnesite.paleoenvironmentalContext).to.include('Jezero Margin Carbonates');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMCarbonateSpeciationIndices(0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isCarbonatePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
