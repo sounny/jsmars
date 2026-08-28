@@ -5631,6 +5631,65 @@ export class TrajectoryEngine {
       iceGiantTransferContext: `Mars to ${targetPlanetName} Transfer (${tofYrs.toFixed(1)} yr TOF, ${dvTigiKmS.toFixed(2)} km/s Injection, ${vInfArrKmS.toFixed(2)} km/s Arrival Excess)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Kuiper Belt Object (Pluto / Arrokoth / Eris / Makemake) deep solar system transfer trajectory, Trans-KBO Injection, and flyby excess.
+   * a_t = ( r_mars + r_kbo ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Reference: Stern et al. (2015), Bate et al. (1971), Curtis (2013) for New Horizons Kuiper Belt Exploration.
+   * @param {string} [targetKboName='Dwarf Planet Pluto'] - Target KBO name
+   * @param {number} [targetSemiMajorAxisAU=39.48] - Target KBO distance from Sun in AU (30.0 to 100.0 AU)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{targetBody: string, targetDistanceAU: number, timeOfFlightDays: number, timeOfFlightYears: number, transKboInjectionDeltaVKmS: number, kboHyperbolicExcessKmS: number, kboTransferContext: string}}
+   */
+  static computeMarsToKuiperBeltTransferTrajectory(targetKboName = 'Dwarf Planet Pluto', targetSemiMajorAxisAU = 39.48, marsParkingAltitudeKm = 300.0) {
+    const rKboAU = Math.max(30.0, Math.min(150.0, targetSemiMajorAxisAU));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rKboDistKm = rKboAU * AU_KM;
+
+    // Transfer ellipse
+    const aTransferAU = (rMarsAU + rKboAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight (days & years)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = Math.abs(vPeriTransferKmS - vMarsKmS);
+
+    // Trans-KBO Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTkboKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Speeds at KBO arrival
+    const vKboCircKmS = Math.sqrt(muSun / rKboDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rKboDistKm) - (1.0 / aTransferKm)));
+    const vInfArrKmS = Math.abs(vKboCircKmS - vApoTransferKmS);
+
+    return {
+      targetBody: targetKboName,
+      targetDistanceAU: parseFloat(rKboAU.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      transKboInjectionDeltaVKmS: parseFloat(dvTkboKmS.toFixed(3)),
+      kboHyperbolicExcessKmS: parseFloat(vInfArrKmS.toFixed(3)),
+      kboTransferContext: `Mars to ${targetKboName} Transfer (${tofYrs.toFixed(1)} yr TOF, ${dvTkboKmS.toFixed(2)} km/s Injection, ${vInfArrKmS.toFixed(2)} km/s Flyby Excess)`
+    };
+  }
 }
 
 

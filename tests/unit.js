@@ -11560,6 +11560,64 @@ describe('Mars-to-Ice Giant Transfer, Core Dynamo Convection & Hydrated Silica I
     });
 });
 
+describe('Mars-to-Kuiper Belt Transfer, Mantle Plume Flexure & Olivine Fo# Inversion', () => {
+    it('should calculate Mars-to-Kuiper Belt Object (Pluto / Arrokoth) deep solar system Hohmann transfer and Delta-V', () => {
+        // Mars to Pluto transfer (39.48 AU, 300 km Mars parking orbit):
+        const pluto = TrajectoryEngine.computeMarsToKuiperBeltTransferTrajectory('Dwarf Planet Pluto', 39.48, 300.0);
+        expect(pluto.targetBody).to.equal('Dwarf Planet Pluto');
+        expect(pluto.targetDistanceAU).to.equal(39.48);
+        expect(pluto.timeOfFlightDays).to.be.closeTo(16954.0, 300.0); // ~16954 days TOF
+        expect(pluto.timeOfFlightYears).to.be.closeTo(46.42, 1.0); // ~46.4 years
+        expect(pluto.transKboInjectionDeltaVKmS).to.be.closeTo(7.08, 0.6); // ~7.08 km/s injection
+        expect(pluto.kboHyperbolicExcessKmS).to.be.closeTo(3.448, 0.4); // ~3.45 km/s flyby excess
+        expect(pluto.kboTransferContext).to.include('Mars to Dwarf Planet Pluto Transfer');
+
+        // Mars to Cold Classical KBO Arrokoth (44.6 AU):
+        const arrokoth = TrajectoryEngine.computeMarsToKuiperBeltTransferTrajectory('KBO Arrokoth', 44.6, 300.0);
+        expect(arrokoth.targetBody).to.equal('KBO Arrokoth');
+        expect(arrokoth.timeOfFlightYears).to.be.closeTo(55.37, 1.5); // ~55.4 years
+    });
+
+    it('should calculate volcanic construct lithospheric flexure, rigidity, and peripheral moat depression', () => {
+        // Olympus Mons shield volcano (600 km diameter, 21 km height, 80 km elastic lithosphere):
+        const flex = KRCEngine.computeMartianMantlePlumeLithosphericFlexure(600.0, 21.0, 80.0);
+        expect(flex.flexuralRigidityN_m).to.be.closeTo(4.55e24, 0.3e24); // ~4.55e24 N*m rigidity
+        expect(flex.flexuralParameterKm).to.be.closeTo(193.4, 10.0); // ~193.4 km alpha
+        expect(flex.centralDeflectionKm).to.be.closeTo(16.68, 2.0); // ~16.7 km central crustal sag
+        expect(flex.peripheralBulgeRadiusKm).to.be.closeTo(607.7, 30.0); // ~608 km bulge radius
+        expect(flex.peripheralMoatDepthKm).to.be.closeTo(0.07, 0.05); // peripheral moat
+        expect(flex.flexureContext).to.include('Lithospheric Flexure');
+    });
+
+    it('should invert Olivine Forsterite Fo# vs Fayalite Fa# solid solution ratio from CRISM 1.05 um band shift', () => {
+        // Magnesian Forsterite (1.042 um minimum in Nili Fossae mantle peridotite: Fo ~ 86%):
+        const forsterite = BandMathEngine.computeCRISMOlivineSolidSolutionFoFaIndices(1.042, 0.14, 0.09, 0.07);
+        expect(forsterite.isOlivineDetected).to.be.true;
+        expect(forsterite.forsteriteNumberFo).to.be.closeTo(86.0, 3.0); // Fo ~ 86%
+        expect(forsterite.fayaliteNumberFa).to.be.closeTo(14.0, 3.0); // Fa ~ 14%
+        expect(forsterite.olivineClass).to.include('Magnesian Olivine (Forsterite');
+        expect(forsterite.petrologicContext).to.include('Primitive Upper Mantle Melting');
+
+        // Intermediate Olivine (1.058 um minimum in Ganges Chasma basalt: Fo ~ 54%):
+        const inter = BandMathEngine.computeCRISMOlivineSolidSolutionFoFaIndices(1.058, 0.12, 0.08, 0.06);
+        expect(inter.isOlivineDetected).to.be.true;
+        expect(inter.forsteriteNumberFo).to.be.closeTo(54.0, 3.0); // Fo ~ 54%
+        expect(inter.olivineClass).to.include('Intermediate Olivine');
+        expect(inter.petrologicContext).to.include('Basaltic Volcanism');
+
+        // Ferroan Fayalite (1.080 um minimum in Argyre evolved pluton: Fo ~ 10%):
+        const fayalite = BandMathEngine.computeCRISMOlivineSolidSolutionFoFaIndices(1.080, 0.10, 0.07, 0.05);
+        expect(fayalite.isOlivineDetected).to.be.true;
+        expect(fayalite.forsteriteNumberFo).to.be.closeTo(10.0, 3.0); // Fo ~ 10%
+        expect(fayalite.fayaliteNumberFa).to.be.closeTo(90.0, 3.0); // Fa ~ 90%
+        expect(fayalite.olivineClass).to.include('Ferroan Olivine (Fayalite');
+
+        // Non-olivine matrix:
+        const basalt = BandMathEngine.computeCRISMOlivineSolidSolutionFoFaIndices(1.050, 0.01, 0.01, 0.01);
+        expect(basalt.isOlivineDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

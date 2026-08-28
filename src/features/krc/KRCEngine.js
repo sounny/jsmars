@@ -6147,6 +6147,65 @@ export class KRCEngine {
       coreDynamoContext: context
     };
   }
+
+  /**
+   * Calculate thin-plate lithospheric flexure, flexural rigidity, central crustal deflection, and peripheral moat surrounding giant Martian volcanoes.
+   * D_e = E * T_e^3 / ( 12 * ( 1 - nu^2 ) )
+   * alpha = ( 4 * D_e / ( rho_mantle * g_mars ) )^(1/4)
+   * w_0 = q_0 / ( rho_mantle * g_mars + D_e / R_volc^4 )
+   * Reference: Turcotte & Schubert (2002), McGovern et al. (2002), Zuber et al. (2000), Belleguic et al. (2005) for Olympus Mons & Tharsis Lithosphere.
+   * @param {number} [volcanoDiameterKm=600.0] - Shield volcano base diameter in km (50 to 1000 km, e.g. Olympus Mons)
+   * @param {number} [volcanoHeightKm=21.0] - Volcano edifice height above datum in km (2 to 25 km)
+   * @param {number} [lithosphericElasticThicknessKm=80.0] - Elastic lithosphere thickness Te in km (20 to 150 km)
+   * @returns {{flexuralRigidityN_m: number, flexuralParameterKm: number, centralDeflectionKm: number, peripheralBulgeRadiusKm: number, peripheralMoatDepthKm: number, flexureContext: string}}
+   */
+  static computeMartianMantlePlumeLithosphericFlexure(volcanoDiameterKm = 600.0, volcanoHeightKm = 21.0, lithosphericElasticThicknessKm = 80.0) {
+    const DvolcKm = Math.max(10.0, volcanoDiameterKm);
+    const HvolcKm = Math.max(0.5, volcanoHeightKm);
+    const TeKm = Math.max(5.0, lithosphericElasticThicknessKm);
+
+    const gMars = 3.72076;
+    const E = 1.0e11; // Young's modulus (Pa)
+    const nu = 0.25; // Poisson's ratio
+    const rhoVolc = 2900.0; // Basalt density (kg/m^3)
+    const rhoMantle = 3500.0; // Mantle density (kg/m^3)
+
+    const TeM = TeKm * 1000.0;
+    const RvolcM = (DvolcKm * 1000.0) / 2.0;
+    const HvolcM = HvolcKm * 1000.0;
+
+    // Flexural rigidity D_e (N*m)
+    const De = (E * Math.pow(TeM, 3.0)) / (12.0 * (1.0 - Math.pow(nu, 2.0)));
+
+    // Flexural parameter alpha (m & km)
+    const alphaM = Math.pow((4.0 * De) / (rhoMantle * gMars), 0.25);
+    const alphaKm = alphaM / 1000.0;
+
+    // Peak vertical load q_0 (Pa)
+    const q0 = rhoVolc * gMars * HvolcM;
+
+    // Central deflection w_0 (m & km)
+    const kEffective = (rhoMantle * gMars) + (De / Math.pow(RvolcM, 4.0));
+    const w0M = q0 / kEffective;
+    const w0Km = w0M / 1000.0;
+
+    // Peripheral flexural bulge radius (km)
+    const rBulgeKm = Math.PI * alphaKm;
+
+    // Peripheral annular depression moat depth (km)
+    const xMoat = RvolcM / alphaM;
+    const wMoatM = w0M * Math.exp(-xMoat) * Math.cos(xMoat);
+    const wMoatKm = Math.abs(wMoatM / 1000.0);
+
+    return {
+      flexuralRigidityN_m: parseFloat(De.toExponential(3)),
+      flexuralParameterKm: parseFloat(alphaKm.toFixed(1)),
+      centralDeflectionKm: parseFloat(w0Km.toFixed(2)),
+      peripheralBulgeRadiusKm: parseFloat(rBulgeKm.toFixed(1)),
+      peripheralMoatDepthKm: parseFloat(wMoatKm.toFixed(2)),
+      flexureContext: `Lithospheric Flexure (Te=${TeKm.toFixed(0)} km, w0=${w0Km.toFixed(1)} km Crustal Sag, alpha=${alphaKm.toFixed(0)} km)`
+    };
+  }
 }
 
 

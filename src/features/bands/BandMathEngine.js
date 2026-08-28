@@ -5863,6 +5863,56 @@ export class BandMathEngine {
       depositionalEnvironmentContext: context
     };
   }
+
+  /**
+   * Invert Olivine Solid Solution Chemistry (Forsterite Fo# vs Fayalite Fa#) from CRISM 1.05 um composite absorption band minimum shift and 3-band complex.
+   * Reference: Sunshine & Pieters (1998), King & Ridley (1987), Mustard et al. (2005), Ody et al. (2013), Viviano-Beck et al. (2014) for Nili Fossae and Argyre olivine.
+   * @param {number} [band1050CenterUm=1.042] - 1.05 um composite Fe2+ absorption band center in micrometers (1.030 to 1.095 um)
+   * @param {number} [band1050AreaDepth=0.12] - OLINDEX3 / BD1050 broad composite olivine band depth (0.0 to 0.50)
+   * @param {number} [band1250Depth=0.08] - 1.25 um M2 site crystal field transition depth (0.0 to 0.40)
+   * @param {number} [band850Depth=0.06] - 0.85 um M1 site crystal field transition depth (0.0 to 0.40)
+   * @returns {{isOlivineDetected: boolean, forsteriteNumberFo: number, fayaliteNumberFa: number, olivineClass: string, petrologicContext: string}}
+   */
+  static computeCRISMOlivineSolidSolutionFoFaIndices(band1050CenterUm = 1.042, band1050AreaDepth = 0.12, band1250Depth = 0.08, band850Depth = 0.06) {
+    const centerUm = Math.max(1.025, Math.min(1.100, band1050CenterUm));
+    const d1050 = Math.max(0.0, band1050AreaDepth);
+    const d1250 = Math.max(0.0, band1250Depth);
+    const d850 = Math.max(0.0, band850Depth);
+
+    let isOl = false;
+    let foNum = 0.0;
+    let faNum = 0.0;
+    let olClass = 'Non-Olivine Silicate Matrix';
+    let context = 'Standard Pyroxene/Basalt Matrix without Dominant Olivine';
+
+    if (d1050 >= 0.035 && (d1250 >= 0.020 || d850 >= 0.020)) {
+      isOl = true;
+
+      // Linear empirical calibration of 1.05 um band center vs Forsterite molar %:
+      // Center ranges from ~1.035 um (Fo100) to ~1.085 um (Fo0)
+      foNum = Math.max(0.0, Math.min(100.0, 100.0 - ((centerUm - 1.035) / (1.085 - 1.035)) * 100.0));
+      faNum = 100.0 - foNum;
+
+      if (foNum >= 75.0) {
+        olClass = `Magnesian Olivine (Forsterite Fo${foNum.toFixed(0)})`;
+        context = 'Primitive Upper Mantle Melting / Ultramafic Cumulate (Nili Fossae / Isidis Basin Rim Type)';
+      } else if (foNum >= 40.0) {
+        olClass = `Intermediate Olivine (Fo${foNum.toFixed(0)}Fa${faNum.toFixed(0)})`;
+        context = 'Basaltic Volcanism / Fractional Crystallization Phenocrysts (Syrtis Major / Ganges Chasma)';
+      } else {
+        olClass = `Ferroan Olivine (Fayalite Fa${faNum.toFixed(0)})`;
+        context = 'Late-Stage Magmatic Differentiation / Fe-Enriched Evolved Pluton (Argyre Basin Dike Complex)';
+      }
+    }
+
+    return {
+      isOlivineDetected: isOl,
+      forsteriteNumberFo: parseFloat(foNum.toFixed(1)),
+      fayaliteNumberFa: parseFloat(faNum.toFixed(1)),
+      olivineClass: olClass,
+      petrologicContext: context
+    };
+  }
 }
 
 
