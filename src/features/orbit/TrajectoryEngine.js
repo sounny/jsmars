@@ -2583,6 +2583,84 @@ export class TrajectoryEngine {
       propulsionRegime: regime
     };
   }
+
+  /**
+   * Calculate planetary orbit eclipse geometry, solar beta angle threshold, and umbra shadow duration.
+   * beta_crit = asin( R_p / r_p )
+   * theta_shadow = acos( sqrt( r^2 - R_p^2 * cos^2(beta) ) / ( r * cos(beta) ) )
+   * t_eclipse = ( theta_shadow / pi ) * P_orb
+   * Reference: Wertz (1999), Vallado (2013), Curtis (2013) for MGS, MRO, and Odyssey solar array eclipse thermal sizing.
+   * @param {number} [semiMajorAxisKm=3770.0] - Orbit semi-major axis in km
+   * @param {number} [eccentricity=0.005] - Orbit eccentricity
+   * @param {number} [solarBetaAngleDeg=0.0] - Solar beta angle between orbit plane and Sun vector (-90 to +90 deg)
+   * @param {string} [body='mars'] - Central planetary body
+   * @returns {{orbitPeriodMinutes: number, criticalBetaAngleDeg: number, isOrbitInFullSunlight: boolean, eclipseShadowFractionPct: number, eclipseDurationMinutes: number, daylightDurationMinutes: number, thermalShadowRegime: string}}
+   */
+  static computeEllipticOrbitEclipseGeometryAndShadowDuration(semiMajorAxisKm = 3770.0, eccentricity = 0.005, solarBetaAngleDeg = 0.0, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const isMoon = body.toLowerCase() === 'moon';
+
+    let mu = 42828.37;
+    let Rp = 3396.19;
+
+    if (isEarth) {
+      mu = 398600.4418;
+      Rp = 6378.137;
+    } else if (isMoon) {
+      mu = 4902.80;
+      Rp = 1737.4;
+    }
+
+    const a = Math.max(Rp + 50.0, semiMajorAxisKm);
+    const e = Math.max(0.0, Math.min(0.85, eccentricity));
+    const rp = a * (1.0 - e);
+    const betaDeg = Math.max(-89.9, Math.min(89.9, solarBetaAngleDeg));
+    const betaRad = (Math.abs(betaDeg) * Math.PI) / 180.0;
+
+    // Orbital period (minutes)
+    const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(a, 3.0) / mu);
+    const periodMin = periodSec / 60.0;
+
+    // Critical beta angle for 100% full sunlight (no eclipse)
+    const sinBetaCrit = Math.min(1.0, Rp / rp);
+    const betaCritRad = Math.asin(sinBetaCrit);
+    const betaCritDeg = (betaCritRad * 180.0) / Math.PI;
+
+    const inFullSun = Math.abs(betaDeg) >= betaCritDeg;
+
+    let shadowFrac = 0.0;
+    let eclipseMin = 0.0;
+    let regime = 'Full Sunlight Orbit (Zero Shadow - Continuous Solar Power Generation)';
+
+    if (!inFullSun) {
+      const cosBeta = Math.cos(betaRad);
+      const rEff = a * (1.0 - e * e); // semilatus rectum / mean radius
+      const underSqrt = Math.max(0.0, rEff * rEff - Rp * Rp * cosBeta * cosBeta);
+      const arg = Math.min(1.0, Math.max(-1.0, Math.sqrt(underSqrt) / (rEff * cosBeta)));
+      const thetaShadowRad = Math.acos(arg);
+
+      shadowFrac = thetaShadowRad / Math.PI;
+      eclipseMin = shadowFrac * periodMin;
+
+      if (shadowFrac >= 0.30) {
+        regime = 'Deep Equatorial Umbra Shadow (Maximum Battery Discharge & Solar Panel Cooling)';
+      } else {
+        regime = 'Grazing Penumbra/Partial Shadow Corridor';
+      }
+    }
+
+    const daylightMin = periodMin - eclipseMin;
+
+    return {
+      orbitPeriodMinutes: parseFloat(periodMin.toFixed(2)),
+      criticalBetaAngleDeg: parseFloat(betaCritDeg.toFixed(2)),
+      isOrbitInFullSunlight: inFullSun,
+      eclipseShadowFractionPct: parseFloat((shadowFrac * 100.0).toFixed(2)),
+      eclipseDurationMinutes: parseFloat(eclipseMin.toFixed(2)),
+      daylightDurationMinutes: parseFloat(daylightMin.toFixed(2)),
+      thermalShadowRegime: regime
+    };
+  }
 }
 
 

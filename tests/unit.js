@@ -9536,6 +9536,45 @@ describe('Solar Sail Propulsion, Layered Polar Cap Thermal Profile & Iron Sulfid
     });
 });
 
+describe('Orbit Eclipse Shadow Geometry, Permafrost Bedrock Discontinuity & Apatite Phosphates', () => {
+    it('should calculate planetary orbit eclipse shadow fraction, duration, and critical beta angle', () => {
+        // Low Mars Orbit (a = 3770 km, e = 0.005, beta = 0 deg maximum eclipse):
+        const eclipse = TrajectoryEngine.computeEllipticOrbitEclipseGeometryAndShadowDuration(3770.0, 0.005, 0.0, 'mars');
+        expect(eclipse.criticalBetaAngleDeg).to.be.closeTo(64.5, 1.0); // ~64.5 deg critical beta threshold
+        expect(eclipse.isOrbitInFullSunlight).to.be.false;
+        expect(eclipse.eclipseShadowFractionPct).to.be.closeTo(35.7, 2.0); // ~35.7% of orbit in shadow
+        expect(eclipse.eclipseDurationMinutes).to.be.closeTo(41.8, 2.0); // ~41.8 min eclipse duration
+        expect(eclipse.thermalShadowRegime).to.include('Deep Equatorial Umbra Shadow');
+
+        // High beta angle (> 65 deg) orbit in full continuous sunlight:
+        const fullSun = TrajectoryEngine.computeEllipticOrbitEclipseGeometryAndShadowDuration(3770.0, 0.005, 70.0, 'mars');
+        expect(fullSun.isOrbitInFullSunlight).to.be.true;
+        expect(fullSun.eclipseDurationMinutes).to.equal(0.0);
+    });
+
+    it('should calculate permafrost ground ice to fractured basalt bedrock conductive discontinuity and geothermal profile', () => {
+        // High-latitude permafrost (L_ice = 50 m, k_ice = 2.5 W/m/K) over basalt (k_rock = 1.8 W/m/K, Q_geo = 25 mW/m^2, T_surf = 190 K):
+        const perma = KRCEngine.computePermafrostBedrockThermalDiscontinuity(190.0, 50.0, 500.0, 25.0);
+        expect(perma.iceLayerGradientKPerKm).to.equal(10.0); // 10 K/km in permafrost ice
+        expect(perma.bedrockLayerGradientKPerKm).to.be.closeTo(13.89, 0.1); // ~13.89 K/km in basalt basement
+        expect(perma.bedrockInterfaceTempK).to.equal(190.50); // 190.50 K at 50 m bedrock contact
+        expect(perma.targetDepthTempK).to.be.closeTo(196.75, 0.1); // 196.75 K at 500 m probe depth
+        expect(perma.permafrostContext).to.include('Shallow Permafrost Table');
+    });
+
+    it('should discriminate igneous Apatite Phosphates from clays and silicates in CRISM spectra', () => {
+        // Hydroxyapatite / (Cl,F,OH)-Apatite in SNC-type volcanic bedrock (strong 2.16 um phosphate and 1.47 um OH):
+        const apatite = BandMathEngine.computeCRISMApatitePhosphateIndices(0.24, 0.30, 0.24, 0.30, 0.30);
+        expect(apatite.isApatitePhosphate).to.be.true;
+        expect(apatite.phosphatePhase).to.include('Apatite');
+        expect(apatite.petrologicalContext).to.include('Bioessential Phosphorus');
+
+        // Basalt silicate lacking phosphate combinations:
+        const basalt = BandMathEngine.computeCRISMApatitePhosphateIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isApatitePhosphate).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -3676,6 +3676,49 @@ export class BandMathEngine {
       petrogeneticOrigin: origin
     };
   }
+
+  /**
+   * Detect Apatite group igneous phosphate minerals (Fluorapatite, Chlorapatite, Hydroxyapatite) from CRISM 1.47 um OH and 2.16 um phosphate combination bands.
+   * Reference: Greenwood et al. (2008), McCubbin et al. (2010), Adcock et al. (2013) for Martian crustal phosphorus enrichment & magmatic volatile budget.
+   * @param {number} r1470 - Reflectance at 1.47 um Apatite structural OH minimum
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2160 - Reflectance at 2.16 um Phosphate combination minimum
+   * @param {number} r2210 - Reflectance at 2.21 um Al-OH clay minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1470: number, bd1900: number, bd2160: number, isApatitePhosphate: boolean, phosphatePhase: string, petrologicalContext: string}}
+   */
+  static computeCRISMApatitePhosphateIndices(r1470, r1910, r2160, r2210, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1470 = Math.max(0.0, 1.0 - (r1470 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2160 = Math.max(0.0, 1.0 - (r2160 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+
+    let phase = 'Phosphate-Poor Silicate Crust';
+    let isApatite = false;
+    let context = 'Standard Martian Volcanic Matrix';
+
+    if (bd2160 >= 0.025 && bd2160 > bd2210 * 1.10) {
+      isApatite = true;
+      if (bd1470 >= 0.020 && bd1900 < 0.025) {
+        phase = 'Hydroxyapatite / Mixed (Cl,F,OH)-Apatite';
+        context = 'Late-Stage Magmatic Fractionation / Hydrothermal Volatile Degassing (High Bioessential Phosphorus Reservoir)';
+      } else {
+        phase = 'Chlorapatite / Fluorapatite';
+        context = 'Anhydrous Halogen-Rich Basaltic Accessory Mineral (SNC Shergottite / Nakhlite Type)';
+      }
+    }
+
+    return {
+      bd1470: parseFloat(bd1470.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2160: parseFloat(bd2160.toFixed(4)),
+      isApatitePhosphate: isApatite,
+      phosphatePhase: phase,
+      petrologicalContext: context
+    };
+  }
 }
 
 

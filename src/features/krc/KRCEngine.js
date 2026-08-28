@@ -3216,6 +3216,55 @@ export class KRCEngine {
       polarStratigraphyContext: context
     };
   }
+
+  /**
+   * Calculate 2-layer permafrost ground ice to fractured basalt bedrock conductive thermal discontinuity and geothermal profile.
+   * dT_ice/dz = Q_geo / k_ice
+   * T_bed = T_surf + (dT_ice/dz) * L_ice
+   * dT_rock/dz = Q_geo / k_rock
+   * T(z) = T_bed + (dT_rock/dz) * ( z - L_ice )
+   * Reference: Mellon et al. (2004), Clifford et al. (2010), Kieffer (2013) for Martian sub-permafrost hydrothermal gradients.
+   * @param {number} meanSurfaceTempK - Mean annual ground surface temperature in K (150 to 220 K)
+   * @param {number} [iceLayerThicknessMeters=50.0] - Permafrost / massive ice sheet thickness L_ice in meters (5 to 1000 m)
+   * @param {number} [targetDepthMeters=500.0] - Deep crustal evaluation depth in meters (z >= L_ice)
+   * @param {number} [geothermalHeatFluxMWM2=25.0] - Basal geothermal heat flux in mW/m^2
+   * @returns {{bedrockInterfaceTempK: number, targetDepthTempK: number, iceLayerGradientKPerKm: number, bedrockLayerGradientKPerKm: number, thermalConductivityRatio: number, permafrostContext: string}}
+   */
+  static computePermafrostBedrockThermalDiscontinuity(meanSurfaceTempK, iceLayerThicknessMeters = 50.0, targetDepthMeters = 500.0, geothermalHeatFluxMWM2 = 25.0) {
+    const Tsurf = Math.max(100.0, Math.min(260.0, meanSurfaceTempK));
+    const Lice = Math.max(1.0, iceLayerThicknessMeters);
+    const zTarget = Math.max(Lice, targetDepthMeters);
+    const QgeoW = Math.max(1.0, geothermalHeatFluxMWM2) * 1e-3; // W/m^2
+
+    // Thermal conductivities
+    const kIce = 2.50; // W/(m*K)
+    const kRock = 1.80; // W/(m*K) fractured basalt bedrock
+
+    const gradIceKPerM = QgeoW / kIce;
+    const gradIceKPerKm = gradIceKPerM * 1000.0;
+
+    const gradRockKPerM = QgeoW / kRock;
+    const gradRockKPerKm = gradRockKPerM * 1000.0;
+
+    const Tbed = Tsurf + gradIceKPerM * Lice;
+    const Tz = Tbed + gradRockKPerM * (zTarget - Lice);
+
+    const ratioK = kIce / kRock;
+
+    let context = 'Shallow Permafrost Table over Fractured Basaltic Basement';
+    if (Lice >= 200.0) {
+      context = 'Thick Glacial Ice Sheet / Lobate Debris Apron over Crystalline Bedrock Contact';
+    }
+
+    return {
+      bedrockInterfaceTempK: parseFloat(Tbed.toFixed(2)),
+      targetDepthTempK: parseFloat(Tz.toFixed(2)),
+      iceLayerGradientKPerKm: parseFloat(gradIceKPerKm.toFixed(1)),
+      bedrockLayerGradientKPerKm: parseFloat(gradRockKPerKm.toFixed(2)),
+      thermalConductivityRatio: parseFloat(ratioK.toFixed(2)),
+      permafrostContext: context
+    };
+  }
 }
 
 
