@@ -6052,6 +6052,54 @@ export class TrajectoryEngine {
       gravityAssistContext: `Mars to Venus Gravity Assist (${tofDays.toFixed(0)} d TOF, ${dvTviKmS.toFixed(2)} km/s TVI, ${deltaDeg.toFixed(1)} deg Turn, +${dvBoostKmS.toFixed(2)} km/s Boost)`
     };
   }
+
+  /**
+   * Calculate Mars Gravity Assist (MGA) flyby trajectory for Jupiter/Outer Planet orbit pumping, hyperbolic turning angle, and heliocentric velocity boost.
+   * e = 1 + r_p * v_inf^2 / mu_mars
+   * delta = 2 * arcsin( 1 / e )
+   * Delta_V_assist = 2 * v_inf * sin( delta / 2 )
+   * Reference: Bate et al. (1971), Broucke (1988), Curtis (2013) for Rosetta/Psyche/Europa Clipper Mars Gravity Assist.
+   * @param {number} [marsFlybyAltitudeKm=250.0] - Mars closest approach periapsis altitude in km (150 to 5000 km)
+   * @param {number} [approachHyperbolicSpeedKmS=5.60] - Interplanetary hyperbolic arrival speed v_inf in km/s (2.0 to 12.0 km/s)
+   * @returns {{marsFlybyAltitudeKm: number, approachHyperbolicSpeedKmS: number, flybyEccentricity: number, turningAngleDeg: number, heliocentricVelocityBoostKmS: number, postFlybyAphelionAU: number, mgaContext: string}}
+   */
+  static computeEarthToJupiterMarsGravityAssistFlyby(marsFlybyAltitudeKm = 250.0, approachHyperbolicSpeedKmS = 5.60) {
+    const hpKm = Math.max(150.0, marsFlybyAltitudeKm);
+    const vInfKmS = Math.max(1.0, Math.min(15.0, approachHyperbolicSpeedKmS));
+
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muSun = 1.32712440018e11;
+    const AU_KM = 1.495978707e8;
+    const rMarsDistKm = 1.52368 * AU_KM;
+
+    // Mars flyby geometry
+    const rpKm = rMarsKm + hpKm;
+    const eHyp = 1.0 + ((rpKm * Math.pow(vInfKmS, 2.0)) / muMars);
+    const deltaRad = 2.0 * Math.asin(1.0 / eHyp);
+    const deltaDeg = deltaRad * (180.0 / Math.PI);
+
+    // Heliocentric velocity boost (km/s)
+    const dvBoostKmS = 2.0 * vInfKmS * Math.sin(deltaRad / 2.0);
+
+    // Post-flyby heliocentric orbital pumping (aphelion distance in AU)
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPostFlybyKmS = vMarsCircKmS + (dvBoostKmS * 0.707); // prograde pumping component
+    const energyPost = (Math.pow(vPostFlybyKmS, 2.0) / 2.0) - (muSun / rMarsDistKm);
+    const aPostKm = -muSun / (2.0 * energyPost);
+    const rApoPostKm = (2.0 * aPostKm) - rMarsDistKm;
+    const rApoPostAU = Math.max(1.6, rApoPostKm / AU_KM);
+
+    return {
+      marsFlybyAltitudeKm: parseFloat(hpKm.toFixed(1)),
+      approachHyperbolicSpeedKmS: parseFloat(vInfKmS.toFixed(2)),
+      flybyEccentricity: parseFloat(eHyp.toFixed(3)),
+      turningAngleDeg: parseFloat(deltaDeg.toFixed(2)),
+      heliocentricVelocityBoostKmS: parseFloat(dvBoostKmS.toFixed(3)),
+      postFlybyAphelionAU: parseFloat(rApoPostAU.toFixed(2)),
+      mgaContext: `Mars Gravity Assist (${deltaDeg.toFixed(1)} deg Deflection, +${dvBoostKmS.toFixed(2)} km/s Boost, Aphelion pumped to ${rApoPostAU.toFixed(1)} AU)`
+    };
+  }
 }
 
 

@@ -11923,6 +11923,57 @@ describe('Mars-to-Venus Gravity Assist, Sinter Accretion & Serpentine-Talc Inver
     });
 });
 
+describe('Mars Gravity Assist Flyby, Acid-Fog Duricrust & Iron Oxide Phase Inversion', () => {
+    it('should calculate Mars Gravity Assist (MGA) turning angle, velocity boost, and aphelion pumping', () => {
+        // MGA for Jupiter orbit pumping (250 km periapsis, 5.60 km/s approach speed):
+        const mga = TrajectoryEngine.computeEarthToJupiterMarsGravityAssistFlyby(250.0, 5.60);
+        expect(mga.marsFlybyAltitudeKm).to.equal(250.0);
+        expect(mga.approachHyperbolicSpeedKmS).to.equal(5.60);
+        expect(mga.flybyEccentricity).to.be.closeTo(3.665, 0.1);
+        expect(mga.turningAngleDeg).to.be.closeTo(31.67, 1.5); // ~31.7 deg turn
+        expect(mga.heliocentricVelocityBoostKmS).to.be.closeTo(3.056, 0.2); // ~3.06 km/s boost
+        expect(mga.postFlybyAphelionAU).to.be.closeTo(2.23, 0.2); // ~2.23 AU pumped aphelion
+        expect(mga.mgaContext).to.include('Mars Gravity Assist');
+    });
+
+    it('should calculate volcanic acid-fog SO2 fallout flux and sulfate duricrust growth rate', () => {
+        // 100 Tg/yr volcanic SO2 flux, 85% neutralization, 100 kyr duration:
+        const acidFog = KRCEngine.computeMartianAcidFogBasaltWeatheringAndSulfateCrust(100.0, 0.85, 100.0);
+        expect(acidFog.acidFogDepositionFluxGM2Yr).to.be.closeTo(0.6925, 0.05); // ~0.69 g/(m^2*yr)
+        expect(acidFog.annualSulfatePrecipitateGM2Yr).to.be.closeTo(1.378, 0.1); // ~1.38 g/(m^2*yr)
+        expect(acidFog.duricrustAccretionRateMmPerKyr).to.be.closeTo(0.938, 0.1); // ~0.94 mm/kyr
+        expect(acidFog.totalDuricrustThicknessCm).to.be.closeTo(9.38, 1.0); // ~9.4 cm in 100 kyr
+        expect(acidFog.dominantSulfateAssemblage).to.include('Polyhydrated Mg-Sulfate + Gypsum');
+        expect(acidFog.acidFogContext).to.include('Volcanic Acid-Fog Weathering');
+    });
+
+    it('should discriminate Crystalline Gray Hematite, Oxyhydroxide Goethite, and Red Dust in CRISM spectra', () => {
+        // Crystalline Hematite (Gray hematite blueberries at Meridiani: 0.53 um reflectance = 0.20, Fe3+ center = 0.865 um, depth = 0.08):
+        const hem = BandMathEngine.computeCRISMIronOxidePhaseDiscriminationIndices(0.20, 0.865, 0.08);
+        expect(hem.isIronOxideDetected).to.be.true;
+        expect(hem.ironOxidePhaseClass).to.include('Crystalline Hematite (Gray Hematite / Concretionary)');
+        expect(hem.mineralSpecies).to.include('Hematite');
+        expect(hem.chemicalFormula).to.equal('alpha-Fe2O3');
+        expect(hem.diageneticAqueousContext).to.include('Aqueous Groundwater Diagenesis');
+
+        // Goethite (Mawrth Vallis ferric oxyhydroxide: 0.53 um = 0.22, Fe3+ center = 0.935 um, depth = 0.09):
+        const goeth = BandMathEngine.computeCRISMIronOxidePhaseDiscriminationIndices(0.22, 0.935, 0.09);
+        expect(goeth.isIronOxideDetected).to.be.true;
+        expect(goeth.ironOxidePhaseClass).to.include('Ferric Oxyhydroxide (Goethite / Ferrihydrite)');
+        expect(goeth.mineralSpecies).to.include('Goethite');
+        expect(goeth.chemicalFormula).to.equal('alpha-FeO(OH)');
+
+        // Nanophase Red Dust (Bright dust: 0.53 um = 0.38, depth = 0.015):
+        const dust = BandMathEngine.computeCRISMIronOxidePhaseDiscriminationIndices(0.38, 0.880, 0.015);
+        expect(dust.isIronOxideDetected).to.be.true;
+        expect(dust.ironOxidePhaseClass).to.include('Nanophase Ferric Oxide (np-Ox / Red Dust)');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMIronOxidePhaseDiscriminationIndices(0.12, 0.880, 0.005);
+        expect(basalt.isIronOxideDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

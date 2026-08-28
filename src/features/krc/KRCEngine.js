@@ -6543,6 +6543,67 @@ export class KRCEngine {
       sinterDepositContext: `Siliceous Sinter Mound (${hDotMmYr.toFixed(2)} mm/yr Accretion, ${MdotYrTons.toFixed(1)} t/yr SiO2, ${tAccreteYrs.toFixed(0)} yr for ${HtargetM.toFixed(1)}m Mound)`
     };
   }
+
+  /**
+   * Calculate volcanic acid-fog SO2 atmospheric fallout flux, top-down basaltic glass neutralization, and sulfate duricrust accretion rate.
+   * J_SO2 = F_SO2 / ( 4 * pi * R_mars^2 )
+   * M_dot_sulfate = n_dot_H2SO4 * eta * M_w
+   * h_dot_crust = M_dot_sulfate / ( rho_crust * ( 1 - phi ) )
+   * Reference: Tosca et al. (2004), Settle (1979), Zolotov & Mironenko (2007), Niles et al. (2017) for Burns Formation Sulfate Duricrust.
+   * @param {number} [volcanicSo2FluxTgPerYr=100.0] - Global volcanic SO2 outgassing flux in Tg/yr (1.0 to 1000.0 Tg/yr)
+   * @param {number} [neutralizationEfficiency=0.85] - Acid-basalt cation neutralization efficiency (0.1 to 1.0)
+   * @param {number} [exposureDurationKyr=100.0] - Acid-fog episodic exposure duration in kyr (1.0 to 1000.0 kyr)
+   * @returns {{acidFogDepositionFluxGM2Yr: number, annualSulfatePrecipitateGM2Yr: number, duricrustAccretionRateMmPerKyr: number, totalDuricrustThicknessCm: number, dominantSulfateAssemblage: string, acidFogContext: string}}
+   */
+  static computeMartianAcidFogBasaltWeatheringAndSulfateCrust(volcanicSo2FluxTgPerYr = 100.0, neutralizationEfficiency = 0.85, exposureDurationKyr = 100.0) {
+    const FSo2Tg = Math.max(0.1, volcanicSo2FluxTgPerYr);
+    const eta = Math.max(0.05, Math.min(1.0, neutralizationEfficiency));
+    const tKyr = Math.max(0.1, exposureDurationKyr);
+
+    const RmarsM = 3389.5 * 1000.0;
+    const AmarsM2 = 4.0 * Math.PI * Math.pow(RmarsM, 2.0);
+    const FSo2KgYr = FSo2Tg * 1e9; // 1 Tg = 10^9 kg
+
+    // Global acid-fog deposition flux (kg/(m^2*yr) and g/(m^2*yr))
+    const JSo2KgM2Yr = FSo2KgYr / AmarsM2;
+    const JSo2GM2Yr = JSo2KgM2Yr * 1000.0;
+
+    // Equivalent H2SO4 molar flux (mol/(m^2*yr))
+    const nH2SO4MolM2Yr = JSo2KgM2Yr / 0.064066;
+
+    // Sulfate salt precipitate mass flux (kg/(m^2*yr) and g/(m^2*yr))
+    const MwSulfate = 0.150; // kg/mol (mean kieserite-gypsum)
+    const MdotSulfateKgM2Yr = nH2SO4MolM2Yr * eta * MwSulfate;
+    const MdotSulfateGM2Yr = MdotSulfateKgM2Yr * 1000.0;
+
+    // Duricrust growth rate (mm/kyr)
+    const rhoCrust = 2100.0; // kg/m^3
+    const porosity = 0.30;
+    const rhoEff = rhoCrust * (1.0 - porosity);
+    const hDotMYr = MdotSulfateKgM2Yr / rhoEff;
+    const hDotMmKyr = hDotMYr * 1000.0 * 1000.0; // mm per 1000 yr
+
+    // Total duricrust thickness (cm)
+    const hTotMm = hDotMmKyr * (tKyr / 1.0);
+    const hTotCm = hTotMm / 10.0;
+
+    // Mineralogical assemblage
+    let sulfateClass = 'Mg-Fe-Ca Sulfate Duricrust (Kieserite + Jarosite + Gypsum)';
+    if (eta >= 0.75) {
+      sulfateClass = 'Polyhydrated Mg-Sulfate + Gypsum + Fe-Oxyhydroxide Duricrust';
+    } else {
+      sulfateClass = 'Acidic Jarosite + Alunite + Amorphous Silica Residue';
+    }
+
+    return {
+      acidFogDepositionFluxGM2Yr: parseFloat(JSo2GM2Yr.toFixed(4)),
+      annualSulfatePrecipitateGM2Yr: parseFloat(MdotSulfateGM2Yr.toFixed(4)),
+      duricrustAccretionRateMmPerKyr: parseFloat(hDotMmKyr.toFixed(3)),
+      totalDuricrustThicknessCm: parseFloat(hTotCm.toFixed(2)),
+      dominantSulfateAssemblage: sulfateClass,
+      acidFogContext: `Volcanic Acid-Fog Weathering (${hDotMmKyr.toFixed(2)} mm/kyr Duricrust Growth, ${hTotCm.toFixed(1)} cm Crust in ${tKyr.toFixed(0)} kyr)`
+    };
+  }
 }
 
 

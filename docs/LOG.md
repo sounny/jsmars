@@ -415,3 +415,13 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate Mars-to-Venus inward transfer trajectory, gravity assist deflection, and heliocentric boost
 ?: AssertionError: expected 5.763 to be close to 7.019 +/- 0.3
     at n.<anonymous> (unit.js:11883:57)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 18:46:02 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate Mars Gravity Assist (MGA) turning angle, velocity boost, and aphelion pumping
+?: AssertionError: expected 2.23 to be above 4.5
+    at n.<anonymous> (unit.js:11935:47)
+- should discriminate Crystalline Gray Hematite, Oxyhydroxide Goethite, and Red Dust in CRISM spectra
+?: AssertionError: expected false to be true
+    at n.<anonymous> (unit.js:11968:47)

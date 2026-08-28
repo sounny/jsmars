@@ -6216,6 +6216,59 @@ export class BandMathEngine {
       metasomaticPaleoenvironment: context
     };
   }
+
+  /**
+   * Discriminate Crystalline Gray Hematite vs Oxyhydroxide Goethite vs Nanophase Red Dust from CRISM VNIR band center minima, 0.53 um slope, and 0.86/0.92 um Fe3+ crystal field absorptions.
+   * Reference: Christensen et al. (2000), Morris et al. (2000), Bibring et al. (2006), Viviano-Beck et al. (2014) for Martian Iron Oxides.
+   * @param {number} [band530Reflectance=0.20] - Reflectance at 0.53 um (0.05 to 0.60)
+   * @param {number} [bandFe3CenterUm=0.865] - VNIR Fe3+ crystal field minimum wavelength in micrometers (0.80 to 1.05 um)
+   * @param {number} [band900Depth=0.08] - BD860/BD920 Fe3+ absorption band depth (0.0 to 0.40)
+   * @returns {{isIronOxideDetected: boolean, ironOxidePhaseClass: string, mineralSpecies: string, chemicalFormula: string, diageneticAqueousContext: string}}
+   */
+  static computeCRISMIronOxidePhaseDiscriminationIndices(band530Reflectance = 0.20, bandFe3CenterUm = 0.865, band900Depth = 0.08) {
+    const r530 = Math.max(0.01, band530Reflectance);
+    const cFe3 = Math.max(0.75, Math.min(1.10, bandFe3CenterUm));
+    const d900 = Math.max(0.0, band900Depth);
+
+    let isOx = false;
+    let oxClass = 'Non-Ferric Oxide Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Regolith Matrix without Distinctive Crystalline Fe3+ Absorption';
+
+    if (d900 >= 0.035 || r530 >= 0.30) {
+      isOx = true;
+      if (cFe3 <= 0.885 && d900 >= 0.035) {
+        oxClass = 'Crystalline Hematite (Gray Hematite / Concretionary)';
+        species = 'Hematite';
+        formula = 'alpha-Fe2O3';
+        context = 'Aqueous Groundwater Diagenesis / Hydrothermal Fluid Precipitation (Meridiani Planum / Aram Chaos Blueberries)';
+      } else if (cFe3 >= 0.915 && d900 >= 0.035) {
+        oxClass = 'Ferric Oxyhydroxide (Goethite / Ferrihydrite)';
+        species = 'Goethite';
+        formula = 'alpha-FeO(OH)';
+        context = 'Low-Temperature Oxidizing Aqueous Alteration / Acid Sulfate Drainage Residue (Mawrth Vallis / Columbia Hills)';
+      } else if (r530 >= 0.28) {
+        oxClass = 'Nanophase Ferric Oxide (np-Ox / Red Dust)';
+        species = 'Nanophase Hematite / Palagonite Dust';
+        formula = 'Fe3+ Oxide Nanoparticles';
+        context = 'Atmospheric Photochemical Oxidation / Global Bright Dust Cover';
+      } else {
+        oxClass = 'Mixed Ferric Oxide Assemblage';
+        species = 'Fe3+ Oxide Complex';
+        formula = 'Fe2O3-FeO(OH)';
+        context = 'Partially Weathered Ferruginous Regolith';
+      }
+    }
+
+    return {
+      isIronOxideDetected: isOx,
+      ironOxidePhaseClass: oxClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      diageneticAqueousContext: context
+    };
+  }
 }
 
 
