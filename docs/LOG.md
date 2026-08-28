@@ -446,3 +446,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate Mars-to-Mercury inward interplanetary transfer trajectory and insertion Delta-V
 ?: AssertionError: expected 12.584 to be close to 25.411 +/- 1
     at n.<anonymous> (unit.js:12031:57)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 19:31:10 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Mercury multi-gravity assist trajectory (M-V-M) and reduced MOI Delta-V
+?: AssertionError: expected 293 to be close to 323.2 +/- 3
+    at n.<anonymous> (unit.js:12081:49)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 19:31:27 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Mercury multi-gravity assist trajectory (M-V-M) and reduced MOI Delta-V
+?: AssertionError: expected 6.769 to be close to 8.529 +/- 0.5
+    at n.<anonymous> (unit.js:12085:51)

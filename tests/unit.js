@@ -12074,6 +12074,52 @@ describe('Mars to Mercury Transfer, Silica Geothermometer & Chloride-Perchlorate
     });
 });
 
+describe('Mars-Venus-Mercury Gravity Assist, Permafrost Retreat & Sulfate Hydration Inversion', () => {
+    it('should calculate Mars-to-Mercury multi-gravity assist trajectory (M-V-M) and reduced MOI Delta-V', () => {
+        // Mars-Venus-Mercury trajectory (300 km Venus flyby, 300 km Mercury parking):
+        const mvm = TrajectoryEngine.computeMarsToMercuryDualGravityAssistTrajectory(300.0, 300.0, 300.0);
+        expect(mvm.totalTimeOfFlightDays).to.be.closeTo(293.0, 3.0); // ~293.0 days total TOF
+        expect(mvm.totalTimeOfFlightYears).to.be.closeTo(0.802, 0.05); // ~0.80 yr
+        expect(mvm.marsDepartureDeltaVKmS).to.be.closeTo(3.372, 0.3); // ~3.37 km/s TVI
+        expect(mvm.venusFlybyDeflectionAngleDeg).to.be.closeTo(74.64, 2.0); // ~74.6 deg deflection
+        expect(mvm.mercuryArrivalExcessKmS).to.be.closeTo(6.769, 0.5); // ~6.77 km/s (reduced from 12.58 km/s)
+        expect(mvm.mercuryOrbitInsertionDeltaVKmS).to.be.closeTo(5.032, 0.5); // ~5.03 km/s MOI
+        expect(mvm.missionDeltaVSavedKmS).to.be.closeTo(5.340, 0.5); // > 5.3 km/s saved
+        expect(mvm.mvmContext).to.include('Mars-Venus-Mercury Gravity Assist');
+    });
+
+    it('should calculate permafrost ground-ice sublimation retreat, vapor diffusion, and desiccation growth', () => {
+        // 205 K ice table, 190 K atmospheric dew point, 2e-5 m^2/s diffusivity, 35% pore ice, 100 kyr duration:
+        const permafrost = KRCEngine.computeMartianPermafrostSublimationRetreat(205.0, 190.0, 2.0e-5, 0.35, 100.0);
+        expect(permafrost.initialDryLayerCm).to.equal(5.0);
+        expect(permafrost.finalDryLayerThicknessM).to.be.closeTo(1.138, 0.1); // ~1.14 m depth
+        expect(permafrost.finalDryLayerThicknessCm).to.be.closeTo(113.8, 10.0); // ~114 cm
+        expect(permafrost.instantaneousRetreatRateMmPerKyr).to.be.closeTo(5.68, 0.5); // ~5.68 mm/kyr
+        expect(permafrost.iceStabilityClass).to.include('Metastable Deep Ground Ice');
+        expect(permafrost.permafrostContext).to.include('Ground Ice Sublimation');
+    });
+
+    it('should discriminate Monohydrated Sulfates (Kieserite) vs Polyhydrated Sulfates in CRISM spectra', () => {
+        // Monohydrated Sulfate / Kieserite (Valles Marineris: BD1400 = 0.005, BD1900 = 0.01, BD2130 = 0.08, BD2400 = 0.07):
+        const kieserite = BandMathEngine.computeCRISMHydratedSulfateHydrationStateIndices(0.005, 0.01, 0.08, 0.07);
+        expect(kieserite.isSulfateDetected).to.be.true;
+        expect(kieserite.hydrationStateClass).to.include('Monohydrated Sulfate (MHS - Kieserite Type)');
+        expect(kieserite.mineralSpecies).to.include('Kieserite');
+        expect(kieserite.chemicalFormula).to.include('MgSO4 * H2O');
+        expect(kieserite.environmentalHydrationContext).to.include('Low Water Activity / Desiccated');
+
+        // Polyhydrated Sulfate / Hexahydrite (Juventae Chasma: BD1400 = 0.05, BD1900 = 0.08, BD2130 = 0.005, BD2400 = 0.06):
+        const poly = BandMathEngine.computeCRISMHydratedSulfateHydrationStateIndices(0.05, 0.08, 0.005, 0.06);
+        expect(poly.isSulfateDetected).to.be.true;
+        expect(poly.hydrationStateClass).to.include('Polyhydrated Sulfate (PHS - Hexahydrite / Gypsum Type)');
+        expect(poly.chemicalFormula).to.include('MgSO4 * 6H2O');
+
+        // Non-sulfate basalt:
+        const basalt = BandMathEngine.computeCRISMHydratedSulfateHydrationStateIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

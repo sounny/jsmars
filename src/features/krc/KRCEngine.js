@@ -6719,6 +6719,70 @@ export class KRCEngine {
       geothermometerContext: `Silica Geothermometer (${polyName}: ${tempC.toFixed(0)} C / ${enthalpyKjKg.toFixed(0)} kJ/kg at ${Cppm.toFixed(0)} ppm SiO2 - ${regime})`
     };
   }
+
+  /**
+   * Calculate subsurface ground-ice permafrost sublimation retreat, Fickian vapor diffusion, and desiccation layer growth over orbital timescales.
+   * z_dry(t) = sqrt( z_0^2 + 2 * D_eff * delta_rho_v * t / ( rho_ice * phi ) )
+   * z_dot = D_eff * delta_rho_v / ( z_dry * rho_ice * phi )
+   * Reference: Mellon & Phillips (2001), Schorghofer & Aharonson (2005), Dundas et al. (2014) for Martian Ground Ice Table Stability.
+   * @param {number} [iceTableTemperatureK=205.0] - Mean subsurface ice table temperature in Kelvin (160 to 240 K)
+   * @param {number} [atmosphericTemperatureK=190.0] - Mean atmospheric frost point temperature in Kelvin (150 to 220 K)
+   * @param {number} [regolithDiffusivityM2S=2.0e-5] - Effective porous regolith vapor diffusivity in m^2/s (1e-6 to 1e-4 m^2/s)
+   * @param {number} [icePoreFraction=0.35] - Volumetric ice pore fraction (0.10 to 0.90)
+   * @param {number} [durationKyr=100.0] - Sublimation duration in kyr (1.0 to 1000.0 kyr)
+   * @returns {{initialDryLayerCm: number, finalDryLayerThicknessM: number, finalDryLayerThicknessCm: number, instantaneousRetreatRateMmPerKyr: number, iceStabilityClass: string, permafrostContext: string}}
+   */
+  static computeMartianPermafrostSublimationRetreat(iceTableTemperatureK = 205.0, atmosphericTemperatureK = 190.0, regolithDiffusivityM2S = 2.0e-5, icePoreFraction = 0.35, durationKyr = 100.0) {
+    const TiceK = Math.max(150.0, Math.min(250.0, iceTableTemperatureK));
+    const TatmK = Math.max(140.0, Math.min(TiceK, atmosphericTemperatureK));
+    const DeffM2S = Math.max(1e-7, regolithDiffusivityM2S);
+    const phi = Math.max(0.05, Math.min(1.0, icePoreFraction));
+    const tKyr = Math.max(0.1, durationKyr);
+
+    const Rv = 461.5; // J/(kg*K)
+    const Lsub = 2.834e6; // J/kg
+    const rhoIce = 920.0; // kg/m^3
+    const z0M = 0.05; // 5 cm initial protective lag
+
+    // Clausius-Clapeyron saturation vapor pressures (Pa)
+    const esatIce = 611.2 * Math.exp((Lsub / Rv) * ((1.0 / 273.15) - (1.0 / TiceK)));
+    const esatAtm = 611.2 * Math.exp((Lsub / Rv) * ((1.0 / 273.15) - (1.0 / TatmK)));
+
+    // Vapor densities (kg/m^3)
+    const rhoVIce = esatIce / (Rv * TiceK);
+    const rhoVAtm = esatAtm / (Rv * TatmK);
+    const deltaRhoV = Math.max(1e-10, rhoVIce - rhoVAtm);
+
+    // Diffusivity in m^2/yr
+    const DeffM2Yr = DeffM2S * 3.15576e7;
+    const tYr = tKyr * 1000.0;
+
+    // Desiccation front depth (m)
+    const rhoEffIce = rhoIce * phi;
+    const zDrySq = Math.pow(z0M, 2.0) + ((2.0 * DeffM2Yr * deltaRhoV * tYr) / rhoEffIce);
+    const zDryM = Math.sqrt(zDrySq);
+    const zDryCm = zDryM * 100.0;
+
+    // Instantaneous retreat rate (mm/kyr)
+    const zDotMYr = (DeffM2Yr * deltaRhoV) / (zDryM * rhoEffIce);
+    const zDotMmKyr = zDotMYr * 1000.0 * 1000.0;
+
+    let stabClass = 'Metastable Deep Ground Ice (Lag-Protected)';
+    if (zDryM <= 0.20) {
+      stabClass = 'Shallow Stable Permafrost Table (Phoenix Landing Site Type)';
+    } else if (zDryM >= 2.5) {
+      stabClass = 'Deeply Desiccated Dry Regolith Column';
+    }
+
+    return {
+      initialDryLayerCm: 5.0,
+      finalDryLayerThicknessM: parseFloat(zDryM.toFixed(3)),
+      finalDryLayerThicknessCm: parseFloat(zDryCm.toFixed(1)),
+      instantaneousRetreatRateMmPerKyr: parseFloat(zDotMmKyr.toFixed(2)),
+      iceStabilityClass: stabClass,
+      permafrostContext: `Ground Ice Sublimation (${zDryCm.toFixed(0)} cm Desiccated Overburden in ${tKyr.toFixed(0)} kyr, ${zDotMmKyr.toFixed(1)} mm/kyr Retreat Rate)`
+    };
+  }
 }
 
 

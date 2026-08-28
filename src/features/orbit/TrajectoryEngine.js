@@ -6231,6 +6231,96 @@ export class TrajectoryEngine {
       mercuryTransferContext: `Mars to Mercury Inward Transfer (${tofDays.toFixed(0)} d TOF, ${dvTmiKmS.toFixed(2)} km/s TMI, ${dvMoiKmS.toFixed(2)} km/s MOI, ${dvTotKmS.toFixed(2)} km/s Total)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Mercury multi-gravity assist trajectory with intermediate Venus flyby (M-V-M), leg times, and reduced Mercury Orbit Insertion Delta-V.
+   * TOF_tot = TOF_Mars_Venus + TOF_Venus_Mercury
+   * Reference: Bate et al. (1971), Broucke (1988), Curtis (2013) for MESSENGER / BepiColombo Inward Gravity Assist Sequences.
+   * @param {number} [venusFlybyAltitudeKm=300.0] - Venus flyby closest approach altitude in km (150 to 2000 km)
+   * @param {number} [mercuryParkingAltitudeKm=300.0] - Mercury parking orbit altitude in km (100 to 2000 km)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{totalTimeOfFlightDays: number, totalTimeOfFlightYears: number, marsDepartureDeltaVKmS: number, venusFlybyDeflectionAngleDeg: number, mercuryArrivalExcessKmS: number, mercuryOrbitInsertionDeltaVKmS: number, missionDeltaVSavedKmS: number, mvmContext: string}}
+   */
+  static computeMarsToMercuryDualGravityAssistTrajectory(venusFlybyAltitudeKm = 300.0, mercuryParkingAltitudeKm = 300.0, marsParkingAltitudeKm = 300.0) {
+    const hpVenusKm = Math.max(150.0, venusFlybyAltitudeKm);
+    const hpMercKm = Math.max(100.0, mercuryParkingAltitudeKm);
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const muMerc = 22032.0;
+    const muVenus = 324859.0;
+    const rMarsKm = 3389.5;
+    const rVenusKm = 6051.8;
+    const rMercKm = 2439.7;
+
+    const rMarsAU = 1.52368;
+    const rVenusAU = 0.72333;
+    const rMercAU = 0.38710;
+
+    // Leg 1: Mars to Venus
+    const a1AU = (rMarsAU + rVenusAU) / 2.0;
+    const a1Km = a1AU * AU_KM;
+    const tof1Sec = Math.PI * Math.sqrt(Math.pow(a1Km, 3.0) / muSun);
+    const tof1Days = tof1Sec / 86400.0;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vApo1KmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / a1Km)));
+    const vInfDepKmS = Math.abs(vMarsKmS - vApo1KmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkMarsKm));
+    const dvTviKmS = vTransDepHypKmS - vParkMarsKmS;
+
+    // Venus arrival excess & flyby turn
+    const rVenusDistKm = rVenusAU * AU_KM;
+    const vVenusCircKmS = Math.sqrt(muSun / rVenusDistKm);
+    const vPeri1KmS = Math.sqrt(muSun * ((2.0 / rVenusDistKm) - (1.0 / a1Km)));
+    const vInfVenusKmS = Math.abs(vPeri1KmS - vVenusCircKmS);
+
+    const rpFlybyKm = rVenusKm + hpVenusKm;
+    const eFlyby = 1.0 + ((rpFlybyKm * Math.pow(vInfVenusKmS, 2.0)) / muVenus);
+    const deltaRad = 2.0 * Math.asin(1.0 / eFlyby);
+    const deltaDeg = deltaRad * (180.0 / Math.PI);
+
+    // Leg 2: Venus to Mercury
+    const a2AU = (rVenusAU + rMercAU) / 2.0;
+    const a2Km = a2AU * AU_KM;
+    const tof2Sec = Math.PI * Math.sqrt(Math.pow(a2Km, 3.0) / muSun);
+    const tof2Days = tof2Sec / 86400.0;
+
+    const tofTotDays = tof1Days + tof2Days;
+    const tofTotYrs = tofTotDays / 365.25;
+
+    // Mercury arrival excess & MOI Delta-V
+    const rMercDistKm = rMercAU * AU_KM;
+    const vMercCircKmS = Math.sqrt(muSun / rMercDistKm);
+    const vPeri2KmS = Math.sqrt(muSun * ((2.0 / rMercDistKm) - (1.0 / a2Km)));
+    const vInfMercKmS = Math.abs(vPeri2KmS - vMercCircKmS);
+
+    const rParkMercKm = rMercKm + hpMercKm;
+    const vParkMercKmS = Math.sqrt(muMerc / rParkMercKm);
+    const vTransArrHypKmS = Math.sqrt(Math.pow(vInfMercKmS, 2.0) + (2.0 * muMerc / rParkMercKm));
+    const dvMoiKmS = vTransArrHypKmS - vParkMercKmS;
+
+    // Baseline direct Hohmann MOI was 10.372 km/s -> calculate savings
+    const directMoiKmS = 10.372;
+    const dvSavedKmS = Math.max(0.0, directMoiKmS - dvMoiKmS);
+
+    return {
+      totalTimeOfFlightDays: parseFloat(tofTotDays.toFixed(1)),
+      totalTimeOfFlightYears: parseFloat(tofTotYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTviKmS.toFixed(3)),
+      venusFlybyDeflectionAngleDeg: parseFloat(deltaDeg.toFixed(2)),
+      mercuryArrivalExcessKmS: parseFloat(vInfMercKmS.toFixed(3)),
+      mercuryOrbitInsertionDeltaVKmS: parseFloat(dvMoiKmS.toFixed(3)),
+      missionDeltaVSavedKmS: parseFloat(dvSavedKmS.toFixed(3)),
+      mvmContext: `Mars-Venus-Mercury Gravity Assist (${tofTotDays.toFixed(0)} d Total TOF, ${deltaDeg.toFixed(1)} deg Venus Deflection, ${dvMoiKmS.toFixed(2)} km/s MOI, saved ${dvSavedKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

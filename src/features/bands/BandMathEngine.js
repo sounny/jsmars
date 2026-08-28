@@ -6378,6 +6378,61 @@ export class BandMathEngine {
       habitabilityImplication: habit
     };
   }
+
+  /**
+   * Discriminate Monohydrated Sulfates (MHS - Kieserite/Szomolnokite) vs Polyhydrated Sulfates (PHS - Starkeyite/Hexahydrite/Gypsum) from CRISM 1.4 um, 1.9 um, 2.13 um, and 2.40 um band depths.
+   * Reference: Gendrin et al. (2005), Roach et al. (2010), Viviano-Beck et al. (2014) for Martian Layered Sulfate Deposits.
+   * @param {number} [band1400WaterDepth=0.01] - BD1400 molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 fundamental H2O band depth (0.0 to 0.50)
+   * @param {number} [band2130KieseriteDepth=0.08] - BD2130 diagnostic monohydrated sulfate band depth (0.0 to 0.30)
+   * @param {number} [band2400SulfateDepth=0.07] - BD2400 sulfate overtone absorption depth (0.0 to 0.40)
+   * @returns {{isSulfateDetected: boolean, hydrationStateClass: string, mineralSpecies: string, chemicalFormula: string, environmentalHydrationContext: string}}
+   */
+  static computeCRISMHydratedSulfateHydrationStateIndices(band1400WaterDepth = 0.01, band1900WaterDepth = 0.01, band2130KieseriteDepth = 0.08, band2400SulfateDepth = 0.07) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2130 = Math.max(0.0, band2130KieseriteDepth);
+    const d2400 = Math.max(0.0, band2400SulfateDepth);
+
+    let isSulf = false;
+    let hydClass = 'Non-Sulfate Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Sulfate Absorption';
+
+    if (d2400 >= 0.035 || d2130 >= 0.030 || (d1900 >= 0.040 && d2400 >= 0.025)) {
+      isSulf = true;
+      if (d2130 >= 0.035 && d1900 < 0.035) {
+        hydClass = 'Monohydrated Sulfate (MHS - Kieserite Type)';
+        species = 'Kieserite / Szomolnokite';
+        formula = 'MgSO4 * H2O / FeSO4 * H2O';
+        context = 'Low Water Activity / Desiccated Martian Atmospheric Equilibrium (Valles Marineris Interior Layered Deposits / Aram Chaos)';
+      } else if (d1900 >= 0.045 && d1400 >= 0.030 && d2130 < 0.025) {
+        hydClass = 'Polyhydrated Sulfate (PHS - Hexahydrite / Gypsum Type)';
+        species = 'Hexahydrite / Starkeyite / Gypsum';
+        formula = 'MgSO4 * 6H2O / CaSO4 * 2H2O';
+        context = 'High Water Activity / Hydrated Lacustrine or Subsurface Brine Environment (Juventae Chasma / Meridiani Planum)';
+      } else if (d2130 >= 0.025 && d1900 >= 0.030) {
+        hydClass = 'Mixed Monohydrated-Polyhydrated Sulfate Assemblage';
+        species = 'Kieserite + Polyhydrated Sulfate Mixture';
+        formula = 'MgSO4 * nH2O (n = 1-6)';
+        context = 'Transitional Hydration Boundary Layer';
+      } else {
+        hydClass = 'Hydrated Sulfate Complex';
+        species = 'Sulfate Salt Mixture';
+        formula = 'Hydrated Sulfate';
+        context = 'Partially Weathered Sulfate Matrix';
+      }
+    }
+
+    return {
+      isSulfateDetected: isSulf,
+      hydrationStateClass: hydClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      environmentalHydrationContext: context
+    };
+  }
 }
 
 
