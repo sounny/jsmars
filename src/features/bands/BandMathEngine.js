@@ -6979,6 +6979,56 @@ export class BandMathEngine {
       rslAstrobiologyContext: context
     };
   }
+
+  /**
+   * Discriminate Monohydrated Iron Sulfate (Szomolnokite) vs Polyhydrated Iron Sulfates (Rozenite/Melanterite) from CRISM 1.0 um, 1.90 um, 2.10 um, and 2.40 um absorption bands.
+   * Reference: Bishop et al. (2009), Wang et al. (2006), Viviano-Beck et al. (2014) for Martian Iron Sulfate Hydration States.
+   * @param {number} [band1000Fe2Depth=0.06] - BD1000 broad Fe2+ spin-allowed crystal field band depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.07] - BD1900 molecular H2O band depth (0.0 to 0.50)
+   * @param {number} [band2100MonohydrateDepth=0.05] - BD2100 diagnostic monohydrated sulfate overtone depth (0.0 to 0.40)
+   * @param {number} [band2400SulfateDepth=0.06] - BD2400 fundamental SO4 structural vibration depth (0.0 to 0.40)
+   * @returns {{isIronSulfateDetected: boolean, sulfateHydrationClass: string, mineralSpecies: string, chemicalFormula: string, environmentalHumidityContext: string}}
+   */
+  static computeCRISMIronSulfateHydrationStateIndices(band1000Fe2Depth = 0.06, band1900WaterDepth = 0.07, band2100MonohydrateDepth = 0.05, band2400SulfateDepth = 0.06) {
+    const d1000 = Math.max(0.0, band1000Fe2Depth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2100 = Math.max(0.0, band2100MonohydrateDepth);
+    const d2400 = Math.max(0.0, band2400SulfateDepth);
+
+    const isSulfate = d2400 >= 0.025 && (d2100 >= 0.025 || d1900 >= 0.030);
+
+    let hydClass = 'Non-Sulfate Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Sulfate Absorption';
+
+    if (isSulfate) {
+      if (d2100 >= 0.035 && d1900 < 0.030) {
+        hydClass = 'Monohydrated Ferrous Sulfate (Szomolnokite)';
+        species = 'Szomolnokite';
+        formula = 'FeSO4 * H2O';
+        context = 'Hyper-Arid Low-Humidity Surface Desiccation / Acidic Evaporite Mound (Juventae / Candor Chasma)';
+      } else if (d1900 >= 0.035 && d1000 >= 0.035) {
+        hydClass = 'Polyhydrated Ferrous Sulfate (Rozenite / Melanterite)';
+        species = 'Rozenite / Melanterite';
+        formula = 'FeSO4 * 4H2O / FeSO4 * 7H2O';
+        context = 'Subaqueous / High-Humidity Acidic Saline Lake Evaporation (Mawrth Vallis / Valles Marineris)';
+      } else {
+        hydClass = 'Mixed Hydration Iron Sulfate Assemblage';
+        species = 'Hydrated Iron Sulfate';
+        formula = 'FeSO4 * nH2O';
+        context = 'Transitional Hydration Sulfate Crust';
+      }
+    }
+
+    return {
+      isIronSulfateDetected: isSulfate,
+      sulfateHydrationClass: hydClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      environmentalHumidityContext: context
+    };
+  }
 }
 
 

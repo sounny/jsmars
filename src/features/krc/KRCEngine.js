@@ -7458,6 +7458,60 @@ export class KRCEngine {
       serpentinizationContext: `Serpentinization at ${zKm.toFixed(1)}km (${TcrustC.toFixed(0)} C, ${MH2Tons.toFixed(1)} t H2, ${MCH4Tons.toFixed(1)} t CH4 Abiotic Outgassing, ${regimeClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal mineral vein precipitation, fracture aperture narrowing, cubic-law permeability decay, and crack-seal timescale.
+   * v_growth = k_0 * exp( -E_a / ( R * T ) ) * ( Omega - 1 )^2
+   * w(t) = w_0 - 2 * v_growth * t
+   * k / k_0 = ( w(t) / w_0 )^3
+   * Reference: Rimstidt & Barnes (1980), Lowell et al. (1993), Schwenzer & Kring (2009) for Hydrothermal Vein Sealing.
+   * @param {number} [initialApertureMm=5.0] - Initial fracture opening in mm (0.5 to 50.0 mm)
+   * @param {number} [silicaSupersaturationRatio=3.5] - Fluid saturation ratio Omega (1.1 to 10.0)
+   * @param {number} [hydrothermalTemperatureC=150.0] - Vein fluid temperature in C (50 to 350 C)
+   * @param {number} [elapsedDurationYr=25.0] - Hydrothermal active precipitation time in yr (0.1 to 1000 yr)
+   * @returns {{finalApertureMm: number, inwardGrowthVelocityMmPerYr: number, completeSealingTimescaleYr: number, residualPermeabilityPercent: number, veinPrecipitationStageClass: string, veinSealingContext: string}}
+   */
+  static computeMartianHydrothermalVeinCloggingKinetics(initialApertureMm = 5.0, silicaSupersaturationRatio = 3.5, hydrothermalTemperatureC = 150.0, elapsedDurationYr = 25.0) {
+    const w0Mm = Math.max(0.1, initialApertureMm);
+    const Omega = Math.max(1.05, silicaSupersaturationRatio);
+    const TfluidC = Math.max(10.0, hydrothermalTemperatureC);
+    const tYr = Math.max(0.01, elapsedDurationYr);
+
+    const TfluidK = TfluidC + 273.15;
+    const Rgas = 8.314;
+    const Ea = 7.5e4; // 75 kJ/mol
+    const k0 = 1.20e4; // m/yr
+
+    // Inward crystal growth velocity (m/yr and mm/yr)
+    const vGrowthMYr = k0 * Math.exp(-Ea / (Rgas * TfluidK)) * Math.pow(Omega - 1.0, 2.0);
+    const vGrowthMmYr = vGrowthMYr * 1000.0;
+
+    // Sealing timescale (yr)
+    const tSealYr = w0Mm / (2.0 * Math.max(1e-6, vGrowthMmYr));
+
+    // Remaining aperture (mm)
+    const wFinalMm = Math.max(0.0, w0Mm - (2.0 * vGrowthMmYr * tYr));
+
+    // Residual permeability fraction (Cubic Law)
+    const kRatio = Math.pow(wFinalMm / w0Mm, 3.0);
+    const kRatioPct = kRatio * 100.0;
+
+    let stageClass = 'Partially Occluded Conduit (Active Hydrothermal Fracture)';
+    if (wFinalMm === 0.0 || kRatioPct < 1.0) {
+      stageClass = 'Completely Sealed Mineral Vein (Fibrous Crack-Seal Microtexture)';
+    } else if (kRatioPct >= 75.0) {
+      stageClass = 'Open Highly Permeable Hydrothermal Flow Channel';
+    }
+
+    return {
+      finalApertureMm: parseFloat(wFinalMm.toFixed(2)),
+      inwardGrowthVelocityMmPerYr: parseFloat(vGrowthMmYr.toFixed(4)),
+      completeSealingTimescaleYr: parseFloat(tSealYr.toFixed(1)),
+      residualPermeabilityPercent: parseFloat(kRatioPct.toFixed(1)),
+      veinPrecipitationStageClass: stageClass,
+      veinSealingContext: `Vein Clogging at ${TfluidC.toFixed(0)} C (${wFinalMm.toFixed(2)} mm Aperture, ${tSealYr.toFixed(0)} yr Sealing, ${kRatioPct.toFixed(1)}% Permeability, ${stageClass})`
+    };
+  }
 }
 
 

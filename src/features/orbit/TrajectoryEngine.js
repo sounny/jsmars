@@ -7062,6 +7062,65 @@ export class TrajectoryEngine {
       directTransferContext: `Mars-to-Mercury Direct (${tofsDays.toFixed(0)} d Transfer, e=${eTrans.toFixed(2)}, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
     };
   }
+
+  /**
+   * Calculate inward Mars-to-Venus low-thrust continuous ion spiral trajectory with optimal thrust pitch steering angle modulation.
+   * Delta_V_opt = Delta_V_tang / sqrt( eta_steer )
+   * m_f = m_0 * exp( -Delta_V_opt / c )
+   * t_burn = delta_m / m_dot
+   * Reference: Petropoulos & Longuski (2004), Betts (2010), Curtis (2013) for Optimal Low-Thrust Trajectories.
+   * @param {number} [initialMassKg=1500.0] - Initial wet mass in kg (100 to 50000 kg)
+   * @param {number} [thrustMN=300.0] - Continuous thruster thrust in mN (10 to 5000 mN)
+   * @param {number} [specificImpulseSec=3500.0] - Thruster Isp in seconds (1000 to 10000 s)
+   * @returns {{optimalLowThrustDeltaVKmS: number, propellantConsumedKg: number, spiralDurationDays: number, spiralDurationYears: number, meanPitchSteeringAngleDeg: number, steeringEfficiencyPercent: number, optimalSteeringContext: string}}
+   */
+  static computeMarsToVenusOptimumSteeringAngleIonSpiral(initialMassKg = 1500.0, thrustMN = 300.0, specificImpulseSec = 3500.0) {
+    const m0Kg = Math.max(10.0, initialMassKg);
+    const ThrustN = Math.max(0.001, thrustMN / 1000.0);
+    const Isp = Math.max(100.0, specificImpulseSec);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const g0 = 9.80665;
+    const cMs = g0 * Isp;
+    const mdotKgS = ThrustN / cMs;
+
+    const rMarsAU = 1.52368;
+    const rVenusAU = 0.72333;
+    const rMarsKm = rMarsAU * AU_KM;
+    const rVenusKm = rVenusAU * AU_KM;
+
+    const vMarsKmS = Math.sqrt(muSun / rMarsKm);
+    const vVenusKmS = Math.sqrt(muSun / rVenusKm);
+    const dvTangKmS = Math.abs(vVenusKmS - vMarsKmS);
+
+    // Optimal steering parameterization
+    const etaSteer = 0.945;
+    const dvOptKmS = dvTangKmS / Math.sqrt(etaSteer);
+    const dvOptMs = dvOptKmS * 1000.0;
+
+    // Mass depletion
+    const mfKg = m0Kg * Math.exp(-dvOptMs / cMs);
+    const deltaMKg = m0Kg - mfKg;
+
+    // Burn duration
+    const tBurnSec = deltaMKg / mdotKgS;
+    const tBurnDays = tBurnSec / 86400.0;
+    const tBurnYrs = tBurnDays / 365.25;
+
+    // Mean optimal pitch angle (deg)
+    const betaMeanDeg = Math.acos(Math.sqrt(etaSteer)) * (180.0 / Math.PI);
+
+    return {
+      optimalLowThrustDeltaVKmS: parseFloat(dvOptKmS.toFixed(3)),
+      propellantConsumedKg: parseFloat(deltaMKg.toFixed(2)),
+      spiralDurationDays: parseFloat(tBurnDays.toFixed(1)),
+      spiralDurationYears: parseFloat(tBurnYrs.toFixed(2)),
+      meanPitchSteeringAngleDeg: parseFloat(betaMeanDeg.toFixed(1)),
+      steeringEfficiencyPercent: parseFloat((etaSteer * 100.0).toFixed(1)),
+      optimalSteeringContext: `Optimal-Steering SEP Spiral (${tBurnDays.toFixed(0)} d to Venus, ${deltaMKg.toFixed(1)} kg Xe, beta_mean=${betaMeanDeg.toFixed(1)} deg, ${dvOptKmS.toFixed(2)} km/s Delta-V)`
+    };
+  }
 }
 
 

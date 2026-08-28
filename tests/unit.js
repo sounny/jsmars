@@ -12662,6 +12662,53 @@ describe('Mars-to-Mercury Hohmann Plunge, Serpentinization H2/CH4 & Oxychlorines
     });
 });
 
+describe('Optimal-Steering SEP Spiral, Hydrothermal Vein Clogging & Iron Sulfates', () => {
+    it('should calculate inward Mars-to-Venus low-thrust ion spiral with optimal pitch steering angle modulation', () => {
+        // Mars to Venus (1500 kg, 300 mN, 3500 s Isp):
+        const optSpiral = TrajectoryEngine.computeMarsToVenusOptimumSteeringAngleIonSpiral(1500.0, 300.0, 3500.0);
+        expect(optSpiral.optimalLowThrustDeltaVKmS).to.be.closeTo(11.205, 0.2); // ~11.21 km/s Delta-V
+        expect(optSpiral.propellantConsumedKg).to.be.closeTo(418.0, 10.0); // ~418 kg Xe
+        expect(optSpiral.spiralDurationDays).to.be.closeTo(553.5, 15.0); // ~554 days
+        expect(optSpiral.spiralDurationYears).to.be.closeTo(1.515, 0.05); // ~1.52 yr
+        expect(optSpiral.meanPitchSteeringAngleDeg).to.be.closeTo(13.6, 2.0); // ~13.6 deg
+        expect(optSpiral.steeringEfficiencyPercent).to.equal(94.5);
+        expect(optSpiral.optimalSteeringContext).to.include('Optimal-Steering SEP Spiral');
+    });
+
+    it('should calculate hydrothermal mineral vein sealing, aperture narrowing, and cubic-law permeability decay', () => {
+        // 5 mm fracture aperture, Omega = 3.5, 150 C fluid, 25 yr elapsed duration:
+        const vein = KRCEngine.computeMartianHydrothermalVeinCloggingKinetics(5.0, 3.5, 150.0, 25.0);
+        expect(vein.inwardGrowthVelocityMmPerYr).to.be.closeTo(0.0414, 0.005); // ~0.041 mm/yr
+        expect(vein.completeSealingTimescaleYr).to.be.closeTo(60.4, 5.0); // ~60 yr sealing time
+        expect(vein.finalApertureMm).to.be.closeTo(2.93, 0.2); // ~2.93 mm aperture left
+        expect(vein.residualPermeabilityPercent).to.be.closeTo(20.1, 3.0); // ~20.1% permeability
+        expect(vein.veinPrecipitationStageClass).to.include('Partially Occluded Conduit');
+        expect(vein.veinSealingContext).to.include('Vein Clogging');
+    });
+
+    it('should discriminate Monohydrated Szomolnokite vs Polyhydrated Rozenite/Melanterite in CRISM spectra', () => {
+        // Monohydrated Szomolnokite (Juventae Chasma mound: BD1000 = 0.04, BD1900 = 0.01, BD2100 = 0.05, BD2400 = 0.06):
+        const szomolnokite = BandMathEngine.computeCRISMIronSulfateHydrationStateIndices(0.04, 0.01, 0.05, 0.06);
+        expect(szomolnokite.isIronSulfateDetected).to.be.true;
+        expect(szomolnokite.sulfateHydrationClass).to.include('Monohydrated Ferrous Sulfate (Szomolnokite)');
+        expect(szomolnokite.mineralSpecies).to.include('Szomolnokite');
+        expect(szomolnokite.chemicalFormula).to.include('FeSO4 * H2O');
+        expect(szomolnokite.environmentalHumidityContext).to.include('Hyper-Arid Low-Humidity Surface Desiccation');
+
+        // Polyhydrated Rozenite / Melanterite (Mawrth Vallis: BD1000 = 0.06, BD1900 = 0.07, BD2100 = 0.02, BD2400 = 0.05):
+        const rozenite = BandMathEngine.computeCRISMIronSulfateHydrationStateIndices(0.06, 0.07, 0.02, 0.05);
+        expect(rozenite.isIronSulfateDetected).to.be.true;
+        expect(rozenite.sulfateHydrationClass).to.include('Polyhydrated Ferrous Sulfate (Rozenite / Melanterite)');
+        expect(rozenite.mineralSpecies).to.include('Rozenite');
+        expect(rozenite.chemicalFormula).to.include('FeSO4 * 4H2O');
+        expect(rozenite.environmentalHumidityContext).to.include('Subaqueous / High-Humidity');
+
+        // Non-sulfate basalt:
+        const basalt = BandMathEngine.computeCRISMIronSulfateHydrationStateIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isIronSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
