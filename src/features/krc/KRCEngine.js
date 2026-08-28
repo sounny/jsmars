@@ -5115,6 +5115,55 @@ export class KRCEngine {
       cavernHabitatShelterContext: context
     };
   }
+
+  /**
+   * Calculate impact crater melt pool sheet thickness, Stefan phase-change crystallization time, and post-impact hydrothermal thermal lifetime.
+   * h_melt = 0.025 * D_crater^1.3
+   * t_solid = h_melt^2 / ( 4 * kappa * lambda_stefan^2 )
+   * Reference: Turcotte & Schubert (2002), Abramov & Kring (2005), Keil (2012) for Gale & Jezero impact melt sheets.
+   * @param {number} [craterDiameterKm=150.0] - Complex impact crater diameter in km (10 to 2000 km)
+   * @param {number} [initialMeltTempC=1350.0] - Superheated impact melt pool temperature in Celsius (1100 to 2000 C)
+   * @returns {{craterDiameterKm: number, meltSheetThicknessMeters: number, crystallizationTimeYears: number, hydrothermalActiveLifespanYears: number, impactMeltPetrogeneticContext: string}}
+   */
+  static computeImpactMeltPoolSolidificationAndGeothermalCooling(craterDiameterKm = 150.0, initialMeltTempC = 1350.0) {
+    const Dkm = Math.max(5.0, Math.min(2500.0, craterDiameterKm));
+    const Tinit = Math.max(1050.0, initialMeltTempC);
+
+    // Complex crater melt sheet thickness (m): h = 0.25 * D^1.3
+    const hMeltM = 0.25 * Math.pow(Dkm, 1.3);
+
+    // Thermal properties
+    const kMelt = 2.2; // W/(m*K)
+    const rhoMelt = 2800.0; // kg/m^3
+    const cpMelt = 1000.0; // J/(kg*K)
+    const kappa = kMelt / (rhoMelt * cpMelt); // m^2/s (~7.857e-7)
+
+    // Latent heat of crystallization & Stefan parameter
+    const Lcryst = 4.0e5; // J/kg
+    const Tsolidus = 1000.0;
+    const deltaT = Tinit - Tsolidus;
+    const lambdaStefan2 = (cpMelt * deltaT) / (2.0 * Lcryst);
+
+    // Solidification time (seconds and years)
+    const tSolidSec = Math.pow(hMeltM, 2.0) / (4.0 * kappa * Math.max(0.1, lambdaStefan2));
+    const tSolidYears = tSolidSec / 3.15576e7;
+
+    // Hydrothermal circulation lifespan (cooling to 100 C)
+    const tHydroYears = tSolidYears * 5.0;
+
+    let context = 'Major Basin-Scale Melt Pool (Differentiated Cumulate Melt Sheet & Long-Lived Hydrothermal System)';
+    if (Dkm < 30.0) {
+      context = 'Minor Impact Crater Melt Veneer / Rapid Glass Quenching';
+    }
+
+    return {
+      craterDiameterKm: parseFloat(Dkm.toFixed(1)),
+      meltSheetThicknessMeters: parseFloat(hMeltM.toFixed(1)),
+      crystallizationTimeYears: parseFloat(tSolidYears.toFixed(1)),
+      hydrothermalActiveLifespanYears: parseFloat(tHydroYears.toFixed(0)),
+      impactMeltPetrogeneticContext: context
+    };
+  }
 }
 
 

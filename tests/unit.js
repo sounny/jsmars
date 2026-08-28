@@ -10704,6 +10704,49 @@ describe('Mars-Jupiter Hohmann Transfers, Lava Tube Shelters & Pyroxene Band Are
     });
 });
 
+describe('Mars Aerocapture Hypersonics, Impact Melt Solidification & Low-Ca Pyroxenes', () => {
+    it('should calculate Mars aerocapture corridor, Sutton-Graves stagnation heat flux, and propulsive Delta-V savings', () => {
+        // Mars atmospheric entry at 6.0 km/s (corridor periapsis 52 km, nose radius 0.75 m):
+        const aero = TrajectoryEngine.computeMarsAerocaptureCorridorAndPeakStagnationHeatFlux(6.0, 52.0, 0.75);
+        expect(aero.entryVelocityKmS).to.equal(6.0);
+        expect(aero.corridorPeriapsisAltitudeKm).to.equal(52.0);
+        expect(aero.peakStagnationHeatFluxKWm2).to.be.closeTo(598.1, 50.0); // ~598 kW/m^2 (~60 W/cm^2) peak stagnation heat flux
+        expect(aero.atmosphericExitSpeedKmS).to.be.closeTo(4.065, 0.5); // ~4.07 km/s exit speed
+        expect(aero.propulsiveDeltaVSavedKmS).to.be.greaterThan(1.5); // > 1.5 km/s Delta-V savings
+        expect(aero.aerocaptureMissionContext).to.include('Hypersonic Mars Aerocapture Direct Insertion');
+    });
+
+    it('should calculate impact melt pool crystallization time and post-impact hydrothermal lifetime', () => {
+        // Gale crater scale melt pool (D = 150 km, initial melt temp = 1350 C):
+        const melt = KRCEngine.computeImpactMeltPoolSolidificationAndGeothermalCooling(150.0, 1350.0);
+        expect(melt.craterDiameterKm).to.equal(150.0);
+        expect(melt.meltSheetThicknessMeters).to.be.closeTo(168.7, 5.0); // ~169 m thick impact melt sheet
+        expect(melt.crystallizationTimeYears).to.be.closeTo(655.1, 50.0); // ~655 years solidification time
+        expect(melt.hydrothermalActiveLifespanYears).to.be.greaterThan(1000); // > 1,000 years hydrothermal circulation
+        expect(melt.impactMeltPetrogeneticContext).to.include('Major Basin-Scale Melt Pool');
+    });
+
+    it('should discriminate Ferrosilite (Fs) vs Enstatite (En) in CRISM Low-Calcium Orthopyroxenes', () => {
+        // ALH84001 analogue Hypersthene (Fs36 En64) in Tyrrhena Terra (Band 1 = 0.918 um, Band 2 = 1.878 um):
+        const hyp = BandMathEngine.computeCRISMLowCalciumPyroxeneFerrosiliteEnstatiteIndices(0.918, 1.878, 0.08);
+        expect(hyp.isLowCaPyroxenePresent).to.be.true;
+        expect(hyp.pyroxeneEndmemberSpecies).to.include('Hypersthene (Intermediate Low-Calcium');
+        expect(hyp.estimatedFerrosiliteMolePct).to.be.closeTo(36.0, 2.0); // ~Fs36
+        expect(hyp.estimatedEnstatiteMolePct).to.be.closeTo(64.0, 2.0); // ~En64
+        expect(hyp.crustalProvenanceContext).to.include('Typical Ancient Noachian Crustal Basement');
+
+        // Primitive Enstatite/Bronzite (Fs16 En84) (Band 1 = 0.908 um, Band 2 = 1.846 um):
+        const en = BandMathEngine.computeCRISMLowCalciumPyroxeneFerrosiliteEnstatiteIndices(0.908, 1.846, 0.08);
+        expect(en.isLowCaPyroxenePresent).to.be.true;
+        expect(en.pyroxeneEndmemberSpecies).to.include('Enstatite / Bronzite');
+        expect(en.estimatedFerrosiliteMolePct).to.be.closeTo(16.0, 2.0); // ~Fs16
+
+        // Flat spectrum:
+        const basalt = BandMathEngine.computeCRISMLowCalciumPyroxeneFerrosiliteEnstatiteIndices(0.918, 1.878, 0.01);
+        expect(basalt.isLowCaPyroxenePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

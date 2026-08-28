@@ -4541,6 +4541,65 @@ export class TrajectoryEngine {
       asteroidBeltTransitContext: 'Main Belt Asteroid Crossing (Ceres 2.77 AU, Vesta 2.36 AU) & Outer Gas Giant Transfer'
     };
   }
+
+  /**
+   * Calculate Mars single-pass hypersonic aerocapture corridor, Sutton-Graves peak stagnation convective heat flux, post-capture apoapsis, and propulsive Delta-V savings.
+   * q_stag = k_SG * sqrt( rho / R_N ) * v^3
+   * epsilon_exit = v_exit^2 / 2 - mu_mars / r_EI < 0 (bound captured orbit)
+   * Reference: Sutton & Graves (1971), Cruz et al. (2006), Braun & Manning (2007) for Mars robotic & crewed aerocapture missions.
+   * @param {number} [entryVelocityKmS=6.0] - Atmospheric interface entry speed in km/s (5.5 to 8.5 km/s)
+   * @param {number} [corridorPeriapsisAltitudeKm=52.0] - Target periapsis atmospheric pass altitude in km (40 to 70 km)
+   * @param {number} [vehicleNoseRadiusMeters=0.75] - Aeroshell nose bluntness radius in meters (0.2 to 3.0 m)
+   * @returns {{entryVelocityKmS: number, corridorPeriapsisAltitudeKm: number, peakStagnationHeatFluxKWm2: number, peakStagnationHeatFluxWcm2: number, atmosphericExitSpeedKmS: number, capturedOrbitApoapsisKm: number, propulsiveDeltaVSavedKmS: number, aerocaptureMissionContext: string}}
+   */
+  static computeMarsAerocaptureCorridorAndPeakStagnationHeatFlux(entryVelocityKmS = 6.0, corridorPeriapsisAltitudeKm = 52.0, vehicleNoseRadiusMeters = 0.75) {
+    const vEntry = Math.max(5.0, Math.min(10.0, entryVelocityKmS));
+    const hPeri = Math.max(35.0, Math.min(80.0, corridorPeriapsisAltitudeKm));
+    const Rn = Math.max(0.1, vehicleNoseRadiusMeters);
+
+    const rMarsKm = 3389.5;
+    const muMars = 42828.37; // km^3/s^2
+    const hEIKm = 125.0; // Mars atmospheric interface
+    const rEIKm = rMarsKm + hEIKm;
+
+    // Mars atmospheric density profile: rho(z) = rho0 * exp( - z / H_scale )
+    const rho0 = 0.020; // kg/m^3 at datum
+    const Hscale = 11.1; // km
+    const rhoPeri = rho0 * Math.exp(-hPeri / Hscale); // kg/m^3
+
+    // Velocity at atmospheric periapsis (m/s)
+    const vPeriMS = (vEntry * 1000.0) * 0.975;
+
+    // Sutton-Graves convective stagnation heat flux (k_SG = 1.9027e-4 for Mars CO2)
+    const kSG = 1.9027e-4;
+    const qStagWm2 = kSG * Math.sqrt(rhoPeri / Rn) * Math.pow(vPeriMS, 3.0);
+    const qStagKWm2 = qStagWm2 / 1000.0;
+    const qStagWcm2 = qStagWm2 / 10000.0;
+
+    // Atmospheric velocity depletion Delta-V (energy loss during pass)
+    const dvAeroKmS = 1.35 + (65.0 - hPeri) * 0.045;
+    const vExitKmS = vEntry - dvAeroKmS;
+
+    // Specific orbital energy at atmospheric exit
+    const epsExit = (Math.pow(vExitKmS, 2.0) / 2.0) - (muMars / rEIKm);
+    let apoapsisAltKm = 3000.0;
+    if (epsExit < 0) {
+      const aCapturedKm = -muMars / (2.0 * epsExit);
+      const rApoKm = (2.0 * aCapturedKm) - (rMarsKm + hPeri);
+      apoapsisAltKm = rApoKm - rMarsKm;
+    }
+
+    return {
+      entryVelocityKmS: parseFloat(vEntry.toFixed(2)),
+      corridorPeriapsisAltitudeKm: parseFloat(hPeri.toFixed(1)),
+      peakStagnationHeatFluxKWm2: parseFloat(qStagKWm2.toFixed(1)),
+      peakStagnationHeatFluxWcm2: parseFloat(qStagWcm2.toFixed(2)),
+      atmosphericExitSpeedKmS: parseFloat(vExitKmS.toFixed(3)),
+      capturedOrbitApoapsisKm: parseFloat(Math.max(150.0, apoapsisAltKm).toFixed(1)),
+      propulsiveDeltaVSavedKmS: parseFloat(dvAeroKmS.toFixed(3)),
+      aerocaptureMissionContext: 'Hypersonic Mars Aerocapture Direct Insertion (Propellantless Orbital Capture)'
+    };
+  }
 }
 
 

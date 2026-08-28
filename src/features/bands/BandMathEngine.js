@@ -4991,6 +4991,54 @@ export class BandMathEngine {
       maficPetrogeneticContext: context
     };
   }
+
+  /**
+   * Discriminate Ferrosilite (Fs, Fe-rich) vs Enstatite (En, Mg-rich) solid solutions in Low-Calcium Orthopyroxenes using CRISM Band 1 (0.90-0.95 um) and Band 2 (1.82-1.98 um) centers.
+   * Reference: Adams (1974), Cloutis & Gaffey (1991), Viviano-Beck et al. (2014) for Noachian crustal basement in Tyrrhena Terra.
+   * @param {number} band1CenterUm - Wavelength of Band 1 Fe2+ (M2) absorption in um (0.88 to 0.97 um)
+   * @param {number} band2CenterUm - Wavelength of Band 2 Fe2+ (M2) absorption in um (1.80 to 2.05 um)
+   * @param {number} [lcpIndexDepth=0.06] - LCPINDEX integrated band depth (0.0 to 1.0)
+   * @returns {{band1CenterUm: number, band2CenterUm: number, isLowCaPyroxenePresent: boolean, pyroxeneEndmemberSpecies: string, estimatedFerrosiliteMolePct: number, estimatedEnstatiteMolePct: number, crustalProvenanceContext: string}}
+   */
+  static computeCRISMLowCalciumPyroxeneFerrosiliteEnstatiteIndices(band1CenterUm, band2CenterUm, lcpIndexDepth = 0.06) {
+    const l1 = Math.max(0.88, Math.min(0.98, band1CenterUm));
+    const l2 = Math.max(1.78, Math.min(2.10, band2CenterUm));
+    const depth = Math.max(0.0, lcpIndexDepth);
+
+    let isLcp = false;
+    let name = 'Clinopyroxene or Olivine Matrix';
+    let fs = 0.0;
+    let en = 100.0;
+    let context = 'Standard Basaltic Regolith';
+
+    if (depth >= 0.025) {
+      isLcp = true;
+      // Invert Fs from Band 1 center: Fs = (l1 - 0.90) / 0.0005
+      fs = Math.max(0.0, Math.min(100.0, (l1 - 0.900) * 2000.0));
+      en = 100.0 - fs;
+
+      if (fs < 30.0) {
+        name = 'Enstatite / Bronzite (Mg-Rich Orthopyroxene Fs10-Fs30 En70-En90)';
+        context = 'Primitive Upper Mantle / Ancient Magma Ocean Cumulate';
+      } else if (fs < 50.0) {
+        name = 'Hypersthene (Intermediate Low-Calcium Pyroxene Fs30-Fs50)';
+        context = 'Typical Ancient Noachian Crustal Basement (ALH84001 Martian Meteorite Analogue)';
+      } else {
+        name = 'Ferrosilite / Eulite (Fe-Rich Orthopyroxene Fs50-Fs90)';
+        context = 'Highly Evolved / Fractionated Iron-Rich Plutonic Body';
+      }
+    }
+
+    return {
+      band1CenterUm: parseFloat(l1.toFixed(3)),
+      band2CenterUm: parseFloat(l2.toFixed(3)),
+      isLowCaPyroxenePresent: isLcp,
+      pyroxeneEndmemberSpecies: name,
+      estimatedFerrosiliteMolePct: parseFloat(fs.toFixed(1)),
+      estimatedEnstatiteMolePct: parseFloat(en.toFixed(1)),
+      crustalProvenanceContext: context
+    };
+  }
 }
 
 
