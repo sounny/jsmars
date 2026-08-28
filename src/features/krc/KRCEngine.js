@@ -5958,6 +5958,62 @@ export class KRCEngine {
       shockMetamorphismContext: `Impact Shock Melt (${P0GPa.toFixed(0)} GPa Peak Shock, ${VmeltKm3.toFixed(1)} km^3 Melt, ~${tSolidYears.toFixed(0)} yr Crystallization)`
     };
   }
+
+  /**
+   * Calculate subglacial volcanic basal ice melting rate, subglacial cavity hydrostatic overpressure, and catastrophic outburst flood (Jokulhlaup) peak discharge.
+   * h_dot_melt = q_volc / ( rho_ice * ( L_f + c_ice * Delta_T ) )
+   * Delta_P_over = ( rho_w - rho_ice ) * g_mars * H_ice
+   * Q_peak = 75.0 * ( V_cavity_m3 / 1e6 )^0.75
+   * Reference: Head & Wilson (2002), Chapman et al. (2000), Burr et al. (2002) for Martian Subglacial Volcanism & Outflow Channel Megafloods.
+   * @param {number} [iceCapThicknessKm=2.0] - Glacial ice sheet thickness in km (0.2 to 5.0 km)
+   * @param {number} [subglacialVolcanicHeatFluxWM2=2500.0] - Volcanic fissure basal heat flux in W/m^2 (500 to 10000 W/m^2)
+   * @param {number} [subglacialCavityVolumeKm3=25.0] - Subglacial melted water reservoir volume in km^3 (0.5 to 200 km^3)
+   * @param {number} [iceTemperatureK=210.0] - Mean ice sheet temperature in K (150 to 260 K)
+   * @returns {{basalIceMeltRateMYr: number, subglacialHydrostaticOverpressureKPa: number, peakJokulhlaupDischargeM3S: number, unitStreamPowerKWm: number, subglacialVolcanismContext: string}}
+   */
+  static computeMartianSubglacialVolcanicBasalMeltingAndJokulhlaup(iceCapThicknessKm = 2.0, subglacialVolcanicHeatFluxWM2 = 2500.0, subglacialCavityVolumeKm3 = 25.0, iceTemperatureK = 210.0) {
+    const HiceKm = Math.max(0.1, iceCapThicknessKm);
+    const qVolcW = Math.max(100.0, subglacialVolcanicHeatFluxWM2);
+    const VcavityKm3 = Math.max(0.1, subglacialCavityVolumeKm3);
+    const TiceK = Math.max(140.0, Math.min(270.0, iceTemperatureK));
+
+    const gMars = 3.72076;
+    const rhoIce = 920.0; // kg/m^3
+    const rhoW = 1000.0; // kg/m^3
+    const Lf = 3.34e5; // J/kg
+    const cIce = 2090.0; // J/(kg*K)
+    const TmeltK = 273.15;
+
+    // Enthalpy to melt ice (J/kg)
+    const deltaH = Lf + (cIce * (TmeltK - TiceK));
+
+    // Basal melt rate (m/yr)
+    const hDotMS = qVolcW / (rhoIce * deltaH);
+    const hDotMYr = hDotMS * 3.15576e7;
+
+    // Hydrostatic overpressure (kPa)
+    const HiceM = HiceKm * 1000.0;
+    const deltaPPa = (rhoW - rhoIce) * gMars * HiceM;
+    const deltaPKPa = deltaPPa / 1000.0;
+
+    // Peak jökulhlaup discharge (m^3/s)
+    const VcavityM3 = VcavityKm3 * 1e9;
+    const VmilM3 = VcavityM3 / 1e6;
+    const QpeakM3S = 75.0 * Math.pow(VmilM3, 0.75);
+
+    // Unit stream power (kW/m) at 0.005 regional slope
+    const slope = 0.005;
+    const omegaW = rhoW * gMars * QpeakM3S * slope;
+    const omegaKW = omegaW / 1000.0;
+
+    return {
+      basalIceMeltRateMYr: parseFloat(hDotMYr.toFixed(1)),
+      subglacialHydrostaticOverpressureKPa: parseFloat(deltaPKPa.toFixed(1)),
+      peakJokulhlaupDischargeM3S: parseFloat(QpeakM3S.toFixed(0)),
+      unitStreamPowerKWm: parseFloat(omegaKW.toFixed(1)),
+      subglacialVolcanismContext: `Subglacial Jokulhlaup (${hDotMYr.toFixed(0)} m/yr Basal Melt, ${QpeakM3S.toFixed(0)} m^3/s Peak Megaflood Discharge)`
+    };
+  }
 }
 
 

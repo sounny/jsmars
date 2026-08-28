@@ -5719,6 +5719,58 @@ export class BandMathEngine {
       acidDrainagePaleoenvironmentContext: context
     };
   }
+
+  /**
+   * Discriminate Martian Carbonate Polymorphs (Magnesite vs Siderite vs Calcite/Dolomite) from CRISM 2.3 um (3*nu_3) and 2.5 um (nu_1 + nu_3) vibrational overtones.
+   * Reference: Ehlmann et al. (2008), Morris et al. (2010), Michalski & Niles (2010), Viviano-Beck et al. (2014) for Nili Fossae, Jezero Crater rim, and Comanche outcrop.
+   * @param {number} [band2300MagnesiteDepth=0.06] - BD2300 magnesite 3*nu_3 band depth (0.0 to 0.40)
+   * @param {number} [band2500MagnesiteDepth=0.09] - BD2500 magnesite nu_1+nu_3 band depth (0.0 to 0.50)
+   * @param {number} [band2335SideriteDepth=0.01] - BD2335 siderite / calcite shifted band depth (0.0 to 0.40)
+   * @param {number} [band2535SideriteDepth=0.01] - BD2535 siderite / calcite shifted band depth (0.0 to 0.50)
+   * @param {number} [band1000Fe2Depth=0.01] - BD1000 ferrous electronic transition depth (0.0 to 0.50)
+   * @returns {{isCarbonatePresent: boolean, carbonateClass: string, mineralSpecies: string, mineralFormula: string, co2SequestrationPaleoenvironmentContext: string}}
+   */
+  static computeCRISMCarbonatePolymorphIndices(band2300MagnesiteDepth = 0.06, band2500MagnesiteDepth = 0.09, band2335SideriteDepth = 0.01, band2535SideriteDepth = 0.01, band1000Fe2Depth = 0.01) {
+    const d2300 = Math.max(0.0, band2300MagnesiteDepth);
+    const d2500 = Math.max(0.0, band2500MagnesiteDepth);
+    const d2335 = Math.max(0.0, band2335SideriteDepth);
+    const d2535 = Math.max(0.0, band2535SideriteDepth);
+    const d1000 = Math.max(0.0, band1000Fe2Depth);
+
+    let isCarb = false;
+    let carbClass = 'Non-Carbonate Silicate Matrix';
+    let species = 'Basalt';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Volcanic Matrix without CO2 Sequestration';
+
+    if ((d2300 >= 0.025 && d2500 >= 0.035) || (d2335 >= 0.025 && d2535 >= 0.035)) {
+      isCarb = true;
+      if (d2300 > d2335 && d2500 > d2535) {
+        carbClass = 'Magnesium Carbonate (Magnesite)';
+        species = 'Magnesite (Mg-Carbonate)';
+        formula = 'MgCO3';
+        context = 'Alkaline Aqueous Alteration / Carbonation of Ultramafic Olivine (Nili Fossae / Jezero Margin Carbonates)';
+      } else if (d1000 >= 0.040) {
+        carbClass = 'Iron Carbonate (Siderite)';
+        species = 'Siderite (Fe-Carbonate)';
+        formula = 'FeCO3';
+        context = 'Low-pH Anoxic Hydrothermal Fluid Carbonation (Comanche Outcrop / Columbia Hills Gusev Type)';
+      } else {
+        carbClass = 'Calcium / Calcium-Magnesium Carbonate (Calcite / Dolomite)';
+        species = 'Calcite / Dolomite';
+        formula = 'CaCO3 / CaMg(CO3)2';
+        context = 'Neutral-to-Alkaline Lacustrine / Hydrothermal Carbonate Precipitation (Mawrth / Huygens Crater Basin)';
+      }
+    }
+
+    return {
+      isCarbonatePresent: isCarb,
+      carbonateClass: carbClass,
+      mineralSpecies: species,
+      mineralFormula: formula,
+      co2SequestrationPaleoenvironmentContext: context
+    };
+  }
 }
 
 

@@ -5447,6 +5447,72 @@ export class TrajectoryEngine {
       inwardTransferContext: `Mars-Venus Inward Transfer (${tofDays.toFixed(0)} Days TOF, ${dvTviKmS.toFixed(2)} km/s TVI, ${dvAssistKmS.toFixed(2)} km/s Venus Gravity Assist)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Main Asteroid Belt (Ceres / Vesta / Pallas) Hohmann transfer trajectory, Trans-Asteroid Injection (TAI), and rendezvous Delta-V.
+   * a_t = ( r_mars + r_asteroid ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Delta_V_TAI = sqrt( v_inf_dep^2 + 2 * mu_mars / r_park ) - sqrt( mu_mars / r_park )
+   * Reference: Russell & Raymond (2011), Bate et al. (1971) for Dawn Mission Main Asteroid Belt Rendezvous.
+   * @param {number} [targetAsteroidSemiMajorAxisAU=2.7675] - Target asteroid distance from Sun in AU (2.0 to 3.5 AU, default 2.7675 AU for Ceres)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{targetBody: string, asteroidDistanceAU: number, timeOfFlightDays: number, timeOfFlightYears: number, transAsteroidInjectionDeltaVKmS: number, rendezvousDeltaVKmS: number, totalMissionDeltaVKmS: number, asteroidTransferContext: string}}
+   */
+  static computeMarsToMainBeltAsteroidHohmannTransfer(targetAsteroidSemiMajorAxisAU = 2.7675, marsParkingAltitudeKm = 300.0) {
+    const rAstAU = Math.max(1.8, Math.min(4.5, targetAsteroidSemiMajorAxisAU));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rAstDistKm = rAstAU * AU_KM;
+
+    // Transfer ellipse
+    const aTransferAU = (rMarsAU + rAstAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight (days & years)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = Math.abs(vPeriTransferKmS - vMarsKmS);
+
+    // Trans-Asteroid Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTaiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Speeds at Asteroid arrival
+    const vAstCircKmS = Math.sqrt(muSun / rAstDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rAstDistKm) - (1.0 / aTransferKm)));
+    const dvRendKmS = Math.abs(vAstCircKmS - vApoTransferKmS);
+
+    const dvTotKmS = dvTaiKmS + dvRendKmS;
+
+    let targetName = 'Main Belt Asteroid';
+    if (Math.abs(rAstAU - 2.7675) < 0.05) targetName = 'Dwarf Planet Ceres';
+    else if (Math.abs(rAstAU - 2.3618) < 0.05) targetName = 'Proto-Planet Vesta';
+
+    return {
+      targetBody: targetName,
+      asteroidDistanceAU: parseFloat(rAstAU.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      transAsteroidInjectionDeltaVKmS: parseFloat(dvTaiKmS.toFixed(3)),
+      rendezvousDeltaVKmS: parseFloat(dvRendKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      asteroidTransferContext: `Mars to ${targetName} Transfer (${tofDays.toFixed(0)} Days TOF, ${dvTaiKmS.toFixed(2)} km/s TAI, ${dvRendKmS.toFixed(2)} km/s Rendezvous)`
+    };
+  }
 }
 
 

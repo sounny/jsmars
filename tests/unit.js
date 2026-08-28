@@ -11399,6 +11399,60 @@ describe('Mars-Venus Gravity Assist, Impact Shock Melt & Acid Drainage Ferric Su
     });
 });
 
+describe('Mars-to-Asteroid Transfer, Subglacial Volcano Jokulhlaup & Carbonate Polymorph Inversion', () => {
+    it('should calculate Mars-to-Main Asteroid Belt (Ceres / Vesta) Hohmann transfer and Delta-V', () => {
+        // Mars to Ceres transfer (2.7675 AU, 300 km Mars parking orbit):
+        const ceres = TrajectoryEngine.computeMarsToMainBeltAsteroidHohmannTransfer(2.7675, 300.0);
+        expect(ceres.targetBody).to.equal('Dwarf Planet Ceres');
+        expect(ceres.asteroidDistanceAU).to.equal(2.7675);
+        expect(ceres.timeOfFlightDays).to.be.closeTo(573.7, 10.0); // ~574 days TOF
+        expect(ceres.timeOfFlightYears).to.be.closeTo(1.57, 0.1); // ~1.57 years
+        expect(ceres.transAsteroidInjectionDeltaVKmS).to.be.closeTo(2.419, 0.2); // ~2.42 km/s TAI
+        expect(ceres.rendezvousDeltaVKmS).to.be.closeTo(2.816, 0.2); // ~2.82 km/s rendezvous
+        expect(ceres.totalMissionDeltaVKmS).to.be.closeTo(5.235, 0.3); // ~5.24 km/s total
+        expect(ceres.asteroidTransferContext).to.include('Dwarf Planet Ceres');
+
+        // Mars to Vesta transfer (2.3618 AU):
+        const vesta = TrajectoryEngine.computeMarsToMainBeltAsteroidHohmannTransfer(2.3618, 300.0);
+        expect(vesta.targetBody).to.equal('Proto-Planet Vesta');
+    });
+
+    it('should calculate subglacial volcanic basal melting, cavity overpressure, and jokulhlaup megaflood discharge', () => {
+        // Subglacial volcanic fissure (2 km ice cap, 2500 W/m^2 heat flux, 25 km^3 water cavity):
+        const jokul = KRCEngine.computeMartianSubglacialVolcanicBasalMeltingAndJokulhlaup(2.0, 2500.0, 25.0, 210.0);
+        expect(jokul.basalIceMeltRateMYr).to.be.closeTo(184.0, 10.0); // ~184 m/yr melt rate
+        expect(jokul.subglacialHydrostaticOverpressureKPa).to.be.closeTo(595.3, 20.0); // ~595 kPa overpressure
+        expect(jokul.peakJokulhlaupDischargeM3S).to.be.closeTo(149129.0, 5000.0); // ~1.49e5 m^3/s peak flood
+        expect(jokul.unitStreamPowerKWm).to.be.closeTo(2774.3, 100.0); // ~2.77 MW/m canyon power
+        expect(jokul.subglacialVolcanismContext).to.include('Subglacial Jokulhlaup');
+    });
+
+    it('should discriminate Magnesite, Siderite, and Calcite/Dolomite carbonate polymorphs in CRISM spectra', () => {
+        // Magnesite (2.30 um & 2.50 um Mg-carbonate in Nili Fossae / Jezero margin: BD2300 = 0.07, BD2500 = 0.10):
+        const magnesite = BandMathEngine.computeCRISMCarbonatePolymorphIndices(0.07, 0.10, 0.01, 0.01, 0.01);
+        expect(magnesite.isCarbonatePresent).to.be.true;
+        expect(magnesite.carbonateClass).to.include('Magnesium Carbonate (Magnesite)');
+        expect(magnesite.mineralFormula).to.equal('MgCO3');
+        expect(magnesite.co2SequestrationPaleoenvironmentContext).to.include('Jezero Margin Carbonates');
+
+        // Siderite (shifted 2.335 & 2.535 um bands + broad 1.0 um Fe2+ band in Comanche / Columbia Hills: BD2335 = 0.06, BD2535 = 0.08, BD1000 = 0.12):
+        const siderite = BandMathEngine.computeCRISMCarbonatePolymorphIndices(0.01, 0.01, 0.06, 0.08, 0.12);
+        expect(siderite.isCarbonatePresent).to.be.true;
+        expect(siderite.carbonateClass).to.include('Iron Carbonate (Siderite)');
+        expect(siderite.mineralFormula).to.equal('FeCO3');
+        expect(siderite.co2SequestrationPaleoenvironmentContext).to.include('Comanche Outcrop');
+
+        // Calcite / Dolomite (shifted 2.34 & 2.54 um bands without 1.0 um Fe2+ band: BD2335 = 0.05, BD2535 = 0.07, BD1000 = 0.01):
+        const calcite = BandMathEngine.computeCRISMCarbonatePolymorphIndices(0.01, 0.01, 0.05, 0.07, 0.01);
+        expect(calcite.isCarbonatePresent).to.be.true;
+        expect(calcite.carbonateClass).to.include('Calcite / Dolomite');
+
+        // Non-carbonate matrix:
+        const basalt = BandMathEngine.computeCRISMCarbonatePolymorphIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isCarbonatePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
