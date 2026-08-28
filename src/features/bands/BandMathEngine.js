@@ -5132,6 +5132,46 @@ export class BandMathEngine {
       mantlePetrogeneticContext: context
     };
   }
+
+  /**
+   * Discriminate pure crystalline Plagioclase Feldspar / Anorthosite (subtle Fe2+ substitution at 1.25-1.30 um) from Mafic Silicates in CRISM spectra.
+   * Reference: Carter et al. (2013), Wray et al. (2013), Viviano-Beck et al. (2014) for crater central peaks & primary Martian flotation crust.
+   * @param {number} r1250 - Reflectance at 1.25-1.30 um (Plagioclase Fe2+ absorption center)
+   * @param {number} r1000 - Reflectance at 1.00 um (Olivine/Pyroxene band)
+   * @param {number} r2000 - Reflectance at 2.00 um (Pyroxene band)
+   * @param {number} [continuumLevel=0.30] - Background continuum reflectance
+   * @returns {{bd1250: number, bd1000: number, bd2000: number, isPlagioclasePresent: boolean, plagioclaseLithology: string, crustalPetrogenesisContext: string}}
+   */
+  static computeCRISMPlagioclaseVsMaficDiagnosticIndices(r1250, r1000, r2000, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1250 = Math.max(0.0, 1.0 - (r1250 / cont));
+    const bd1000 = Math.max(0.0, 1.0 - (r1000 / cont));
+    const bd2000 = Math.max(0.0, 1.0 - (r2000 / cont));
+
+    let isPlag = false;
+    let lith = 'Mafic Basalt / Pyroxene-Olivine Matrix';
+    let context = 'Standard Volcanic Surface Crust';
+
+    if (bd1250 >= 0.015 && bd1000 < 0.018 && bd2000 < 0.018) {
+      isPlag = true;
+      lith = 'Anorthosite (Pure Calcic Plagioclase Feldspar >90% Anorthite)';
+      context = 'Primary Magma Ocean Flotation Crust / Deep Plutonic Layered Intrusion (Central Peak Uplift)';
+    } else if (bd1250 >= 0.012 && (bd1000 >= 0.018 || bd2000 >= 0.018)) {
+      isPlag = true;
+      lith = 'Anorthositic Norite / Gabbroic Troctolite (Feldspar-Mafic Mix)';
+      context = 'Evolved Differentiated Crustal Complex';
+    }
+
+    return {
+      bd1250: parseFloat(bd1250.toFixed(4)),
+      bd1000: parseFloat(bd1000.toFixed(4)),
+      bd2000: parseFloat(bd2000.toFixed(4)),
+      isPlagioclasePresent: isPlag,
+      plagioclaseLithology: lith,
+      crustalPetrogenesisContext: context
+    };
+  }
 }
 
 

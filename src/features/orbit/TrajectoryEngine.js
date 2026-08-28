@@ -4711,6 +4711,54 @@ export class TrajectoryEngine {
       gravityAssistMissionContext: `Venus Gravity Assist Slingshot (${deltaDeg.toFixed(1)} deg Turn Angle, +${dvHelKmS.toFixed(2)} km/s Heliocentric Boost)`
     };
   }
+
+  /**
+   * Calculate Solar Electric Propulsion (SEP) low-thrust spiral transfer, continuous burn duration, and Xenon propellant budget.
+   * dot_m = T / ( g_0 * I_sp )
+   * m_p = m_0 * ( 1 - exp( - Delta_V / ( g_0 * I_sp ) ) )
+   * t_burn = m_p / dot_m
+   * Reference: Edelbaum (1961), Petropoulos & Longuski (2004), Curtis (2013) for Dawn & Mars Sample Return SEP trajectories.
+   * @param {number} [spacecraftInitialMassKg=1200.0] - Wet launch mass in kg (200 to 10000 kg)
+   * @param {number} [thrustNewtons=0.25] - Ion thruster total thrust in Newtons (0.05 to 5.0 N)
+   * @param {number} [specificImpulseSec=3500.0] - Ion engine specific impulse in seconds (1500 to 5000 s)
+   * @param {number} [targetDeltaVKmS=5.65] - Total heliocentric transfer Delta-V in km/s (1.0 to 15.0 km/s)
+   * @returns {{initialMassKg: number, finalMassKg: number, xenonPropellantConsumedKg: number, continuousBurnTimeDays: number, meanThrustAccelerationMmS2: number, ionPropulsionContext: string}}
+   */
+  static computeLowThrustSEPMarsEarthTrajectory(spacecraftInitialMassKg = 1200.0, thrustNewtons = 0.25, specificImpulseSec = 3500.0, targetDeltaVKmS = 5.65) {
+    const m0 = Math.max(50.0, spacecraftInitialMassKg);
+    const T = Math.max(0.01, thrustNewtons);
+    const Isp = Math.max(500.0, specificImpulseSec);
+    const dvKmS = Math.max(0.1, targetDeltaVKmS);
+
+    const g0 = 9.80665; // m/s^2
+    const ceMS = g0 * Isp; // Effective exhaust velocity (m/s)
+    const ceKmS = ceMS / 1000.0;
+
+    // Mass flow rate (kg/s and kg/day)
+    const mdotKgS = T / ceMS;
+
+    // Propellant mass consumed: mp = m0 * (1 - exp(-dv / ce))
+    const massRatio = Math.exp(- (dvKmS * 1000.0) / ceMS);
+    const mpKg = m0 * (1.0 - massRatio);
+    const mfKg = m0 - mpKg;
+
+    // Continuous burn time (seconds and days)
+    const tBurnSec = mpKg / mdotKgS;
+    const tBurnDays = tBurnSec / 86400.0;
+
+    // Mean acceleration (mm/s^2)
+    const mMean = (m0 + mfKg) / 2.0;
+    const aMeanMmS2 = (T / mMean) * 1000.0;
+
+    return {
+      initialMassKg: parseFloat(m0.toFixed(1)),
+      finalMassKg: parseFloat(mfKg.toFixed(1)),
+      xenonPropellantConsumedKg: parseFloat(mpKg.toFixed(2)),
+      continuousBurnTimeDays: parseFloat(tBurnDays.toFixed(1)),
+      meanThrustAccelerationMmS2: parseFloat(aMeanMmS2.toFixed(3)),
+      ionPropulsionContext: `Solar Electric Low-Thrust Spiral (Isp ${Isp.toFixed(0)}s, ${mpKg.toFixed(1)} kg Xenon consumed over ${tBurnDays.toFixed(0)} Days)`
+    };
+  }
 }
 
 

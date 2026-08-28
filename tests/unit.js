@@ -10832,6 +10832,41 @@ describe('Mars-Venus Gravity Assists, Ocean Tsunami Megafloods & Spinel Mineralo
     });
 });
 
+describe('SEP Low-Thrust Heliocentric Spirals, Polar Firn Compaction & Plagioclase Anorthosite', () => {
+    it('should calculate Solar Electric Propulsion (SEP) low-thrust spiral burn duration and Xenon propellant mass', () => {
+        // Dawn-scale Mars-Earth return (1200 kg initial wet mass, 0.25 N thrust, 3500 s Isp, 5.65 km/s Delta-V):
+        const sep = TrajectoryEngine.computeLowThrustSEPMarsEarthTrajectory(1200.0, 0.25, 3500.0, 5.65);
+        expect(sep.initialMassKg).to.equal(1200.0);
+        expect(sep.finalMassKg).to.be.closeTo(1017.8, 5.0); // ~1018 kg dry/burnout mass
+        expect(sep.xenonPropellantConsumedKg).to.be.closeTo(182.2, 5.0); // ~182 kg Xenon consumed
+        expect(sep.continuousBurnTimeDays).to.be.closeTo(289.5, 10.0); // ~290 days continuous ion thrust
+        expect(sep.meanThrustAccelerationMmS2).to.be.greaterThan(0.20); // > 0.20 mm/s^2 micro-thrust acceleration
+        expect(sep.ionPropulsionContext).to.include('Solar Electric Low-Thrust Spiral');
+    });
+
+    it('should calculate Martian North Polar Layered Deposits (NPLD) firn compaction and gas-ice age offset', () => {
+        // NPLD Planum Boreum (0.55 mm/yr ice accumulation, 165 K surface temp, 5% dust):
+        const firn = KRCEngine.computeMartianPolarFirnCompactionAndGasAgeTrap(0.55, 165.0, 5.0);
+        expect(firn.iceAccumulationRateMmYr).to.equal(0.55);
+        expect(firn.poreCloseOffDepthMeters).to.be.greaterThan(10.0); // > 10 m bubble close-off depth
+        expect(firn.gasIceAgeOffsetYears).to.be.greaterThan(10000); // > 10,000 years gas-ice chronological offset
+        expect(firn.firnColumnBulkDensityKgM3).to.be.closeTo(700.5, 50.0); // ~700 kg/m^3 bulk firn density
+        expect(firn.polarPaleoclimateContext).to.include('High-Resolution Orbital Paleoclimatic Ice Core Stratigraphy');
+    });
+
+    it('should discriminate pure Plagioclase Anorthosite from Mafic Silicates in CRISM NIR spectra', () => {
+        // Pure Anorthosite (>90% calcic plagioclase) with 1.25 um band and NO 1.0/2.0 um pyroxene bands:
+        const anorth = BandMathEngine.computeCRISMPlagioclaseVsMaficDiagnosticIndices(0.294, 0.300, 0.300, 0.300);
+        expect(anorth.isPlagioclasePresent).to.be.true;
+        expect(anorth.plagioclaseLithology).to.include('Anorthosite (Pure Calcic Plagioclase Feldspar');
+        expect(anorth.crustalPetrogenesisContext).to.include('Primary Magma Ocean Flotation Crust');
+
+        // Mafic basalt with flat 1.25 um:
+        const basalt = BandMathEngine.computeCRISMPlagioclaseVsMaficDiagnosticIndices(0.300, 0.280, 0.270, 0.300);
+        expect(basalt.isPlagioclasePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

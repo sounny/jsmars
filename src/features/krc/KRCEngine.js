@@ -5279,6 +5279,61 @@ export class KRCEngine {
       tsunamiGeomorphologyContext: context
     };
   }
+
+  /**
+   * Calculate Martian North Polar Layered Deposits (NPLD) firn compaction, pore close-off bubble sealing depth, and Delta-age gas-ice chronological offset.
+   * z_close = ( 1 / ( rho_ice * k_0 ) ) * ln( ( rho_crit / (rho_ice - rho_crit) ) / ( rho_0 / (rho_ice - rho_0) ) ) * sqrt( b_ice )
+   * Delta_age = z_close / b_ice
+   * Reference: Herron & Langway (1980), Sori et al. (2016), Becerra et al. (2021) for Martian polar paleoclimatic ice core stratigraphy.
+   * @param {number} [iceAccumulationRateMmYr=0.55] - Polar water ice annual accumulation rate in mm/year (0.05 to 5.0 mm/yr)
+   * @param {number} [meanSurfaceTempK=165.0] - Mean annual polar surface temperature in K (140 to 190 K)
+   * @param {number} [dustVolumetricFractionPct=5.0] - Refractory silicate dust volume percentage in firn (0 to 30%)
+   * @returns {{iceAccumulationRateMmYr: number, poreCloseOffDepthMeters: number, gasIceAgeOffsetYears: number, gasIceAgeOffsetKyr: number, firnColumnBulkDensityKgM3: number, polarPaleoclimateContext: string}}
+   */
+  static computeMartianPolarFirnCompactionAndGasAgeTrap(iceAccumulationRateMmYr = 0.55, meanSurfaceTempK = 165.0, dustVolumetricFractionPct = 5.0) {
+    const bMmYr = Math.max(0.01, iceAccumulationRateMmYr);
+    const Tsurf = Math.max(120.0, Math.min(220.0, meanSurfaceTempK));
+    const dustPct = Math.max(0.0, Math.min(50.0, dustVolumetricFractionPct));
+
+    const bMYr = bMmYr / 1000.0;
+    const rho0 = 350.0; // Surface snow density (kg/m^3)
+    const rhoCrit = 830.0; // Bubble close-off density (kg/m^3)
+    const rhoIce = 920.0; // Pure solid ice density (kg/m^3)
+
+    // Herron-Langway rate constant adapted for Mars gravity (g_mars/g_earth = 0.379)
+    const R_GAS = 8.314;
+    const Eact = 10160.0; // J/mol activation energy
+    const gRatio = 0.379;
+    const k0 = 11.0 * Math.exp(-Eact / (R_GAS * Tsurf)) * gRatio;
+
+    // Pore close-off depth z_close (m)
+    const term1 = Math.log(rhoCrit / (rhoIce - rhoCrit));
+    const term2 = Math.log(rho0 / (rhoIce - rho0));
+    const zCloseM = (1.0 / (rhoIce * Math.max(1e-6, k0))) * (term1 - term2) / Math.sqrt(bMYr);
+
+    // Delta-Age gas-ice chronological offset
+    const deltaAgeYears = zCloseM / bMYr;
+    const deltaAgeKyr = deltaAgeYears / 1000.0;
+
+    // Bulk firn density accounting for dust loading
+    const rhoDust = 2800.0;
+    const dustFrac = dustPct / 100.0;
+    const rhoBulk = ((1.0 - dustFrac) * ((rho0 + rhoCrit) / 2.0)) + (dustFrac * rhoDust);
+
+    let context = 'High-Resolution Orbital Paleoclimatic Ice Core Stratigraphy (NPLD Planum Boreum)';
+    if (deltaAgeKyr > 100.0) {
+      context = 'Ultra-Slow Accumulation Cold Desert Horizon (Large Gas-Ice Age Decoupling)';
+    }
+
+    return {
+      iceAccumulationRateMmYr: parseFloat(bMmYr.toFixed(2)),
+      poreCloseOffDepthMeters: parseFloat(zCloseM.toFixed(1)),
+      gasIceAgeOffsetYears: parseFloat(deltaAgeYears.toFixed(0)),
+      gasIceAgeOffsetKyr: parseFloat(deltaAgeKyr.toFixed(1)),
+      firnColumnBulkDensityKgM3: parseFloat(rhoBulk.toFixed(1)),
+      polarPaleoclimateContext: context
+    };
+  }
 }
 
 
