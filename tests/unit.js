@@ -12276,6 +12276,51 @@ describe('Bi-Elliptic Solar Drop, Ice-Covered Paleolake Convection & Alunite-Jar
     });
 });
 
+describe('Trans-Pluto Deep Space Transfer, Cryovolcanic Overpressure & Anorthosite Inversion', () => {
+    it('should calculate Mars-to-Pluto / KBO deep space interplanetary transfer trajectory and flyby mechanics', () => {
+        // Pluto transfer (39.482 AU, 300 km Mars parking, 1000 km Pluto flyby):
+        const pluto = TrajectoryEngine.computeMarsToPlutoDeepSpaceTransferTrajectory(39.482, 300.0, 1000.0);
+        expect(pluto.transferSemiMajorAxisAU).to.be.closeTo(20.503, 0.05); // ~20.50 AU
+        expect(pluto.trajectoryEccentricity).to.be.closeTo(0.9257, 0.01); // ~0.926
+        expect(pluto.timeOfFlightYears).to.be.closeTo(46.42, 0.5); // ~46.4 yr TOF
+        expect(pluto.transPlutoInjectionDeltaVKmS).to.be.closeTo(7.040, 0.3); // ~7.04 km/s TPI
+        expect(pluto.plutoArrivalExcessKmS).to.be.closeTo(3.454, 0.3); // ~3.45 km/s arrival excess
+        expect(pluto.plutoFlybyDeflectionAngleDeg).to.be.closeTo(3.69, 0.3); // ~3.69 deg deflection
+        expect(pluto.plutoTransferContext).to.include('Trans-Pluto Transfer');
+    });
+
+    it('should calculate subsurface cryovolcanic brine chamber freezing expansion, tensile fracture, and exit velocity', () => {
+        // 5 km depth, 2000 m chamber radius, 30% frozen, 3.5 GPa shear modulus:
+        const cryo = KRCEngine.computeMartianCryovolcanicEruptionOverpressure(5.0, 2000.0, 0.30, 3.5);
+        expect(cryo.lithostaticPressureMPa).to.be.closeTo(46.50, 1.0); // ~46.5 MPa lithostatic
+        expect(cryo.chamberOverpressureMPa).to.be.closeTo(126.00, 2.0); // ~126.0 MPa overpressure
+        expect(cryo.totalChamberPressureMPa).to.be.closeTo(172.50, 2.0); // ~172.5 MPa total
+        expect(cryo.isTensileFractureInitiated).to.be.true; // Exceeds 10 MPa tensile strength
+        expect(cryo.cryolavaVentExitVelocityMs).to.be.closeTo(449.1, 5.0); // ~449 m/s exit speed
+        expect(cryo.eruptionMechanismClass).to.include('Explosive Sub-Surface Cryovolcanic Venting');
+        expect(cryo.cryovolcanismContext).to.include('Cryovolcanic Chamber');
+    });
+
+    it('should discriminate pristine Anorthosite Plagioclase Crust vs Mafic Silicates in CRISM spectra', () => {
+        // Pure Anorthosite (Valles Marineris wall: BD1250 = 0.05, BD1050 = 0.005, BD2000 = 0.005, BD1900 = 0.005):
+        const anorthosite = BandMathEngine.computeCRISMAnorthositePlagioclaseIndices(0.05, 0.005, 0.005, 0.005);
+        expect(anorthosite.isPlagioclaseDetected).to.be.true;
+        expect(anorthosite.plagioclasePurityPercent).to.be.greaterThan(75.0);
+        expect(anorthosite.petrologicClass).to.include('Pristine Anorthosite / Pure Plagioclase Crust');
+        expect(anorthosite.mineralSpecies).to.include('Anorthite');
+        expect(anorthosite.crustalEvolutionContext).to.include('Primordial Felsic / Anorthositic Crustal Flotation');
+
+        // Mixed Anorthositic Norite (BD1250 = 0.03, BD1050 = 0.015, BD2000 = 0.010):
+        const norite = BandMathEngine.computeCRISMAnorthositePlagioclaseIndices(0.03, 0.015, 0.010, 0.005);
+        expect(norite.isPlagioclaseDetected).to.be.true;
+        expect(norite.petrologicClass).to.include('Anorthositic Norite / Troctolite');
+
+        // Standard pyroxene/olivine basalt (BD1250 = 0.005, BD1050 = 0.08, BD2000 = 0.07):
+        const basalt = BandMathEngine.computeCRISMAnorthositePlagioclaseIndices(0.005, 0.08, 0.07, 0.005);
+        expect(basalt.isPlagioclaseDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

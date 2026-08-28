@@ -467,3 +467,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate volcanic lava tube subsurface thermal attenuation and cave microclimate stability
 ?: AssertionError: expected 'Isothermal Cave Interior (Ultra-Stabl?' to include 'Thermally Buffered Subsurface Cavity'
     at n.<anonymous> (unit.js:12145:47)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 20:30:49 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Pluto / KBO deep space interplanetary transfer trajectory and flyby mechanics
+?: AssertionError: expected 46.42 to be close to 45.61 +/- 0.5
+    at n.<anonymous> (unit.js:12285:47)

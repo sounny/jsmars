@@ -6958,6 +6958,65 @@ export class KRCEngine {
       paleolakeContext: `Ice-Covered Paleolake (${HiceM.toFixed(0)}m Ice Lid, ${HwaterM.toFixed(0)}m Sub-Ice Water at 4.0 C, q_cond=${qCondWM2.toFixed(2)} W/m2, ${regime})`
     };
   }
+
+  /**
+   * Calculate subsurface cryovolcanic brine chamber freezing expansion, tensile rupture overpressure, and cryolava vent exit velocity.
+   * P_lith = rho_crust * g * z
+   * Delta_P_over = (4/3) * mu_crust * ( Delta_V / V ) * X_ice
+   * v_exit = sqrt( 2 * Delta_P_drive / rho_brine )
+   * Reference: Fagents (2003), Quick et al. (2019), Bowling et al. (2019) for Martian & Cerian Cryovolcanic Conduit Mechanics.
+   * @param {number} [brineChamberDepthKm=5.0] - Cryomagma chamber depth in km (1.0 to 30.0 km)
+   * @param {number} [chamberRadiusM=2000.0] - Spherical chamber radius in meters (100 to 10000 m)
+   * @param {number} [frozenFraction=0.30] - Crystallized ice fraction in chamber (0.05 to 0.90)
+   * @param {number} [crustShearModulusGPa=3.5] - Host crust shear modulus in GPa (1.0 to 15.0 GPa)
+   * @returns {{lithostaticPressureMPa: number, chamberOverpressureMPa: number, totalChamberPressureMPa: number, isTensileFractureInitiated: boolean, cryolavaVentExitVelocityMs: number, eruptionMechanismClass: string, cryovolcanismContext: string}}
+   */
+  static computeMartianCryovolcanicEruptionOverpressure(brineChamberDepthKm = 5.0, chamberRadiusM = 2000.0, frozenFraction = 0.30, crustShearModulusGPa = 3.5) {
+    const zKm = Math.max(0.5, brineChamberDepthKm);
+    const zM = zKm * 1000.0;
+    const RchM = Math.max(50.0, chamberRadiusM);
+    const Xice = Math.max(0.01, Math.min(0.95, frozenFraction));
+    const muGPa = Math.max(0.5, crustShearModulusGPa);
+    const muPa = muGPa * 1.0e9;
+
+    const gMars = 3.72; // m/s^2
+    const rhoCrust = 2500.0; // kg/m^3
+    const rhoBrine = 1150.0; // kg/m^3
+    const sigmaTensile = 10.0e6; // 10 MPa rock tensile strength
+    const deltaVFrac = 0.09; // +9% water-ice volume expansion
+
+    // Lithostatic pressure (Pa & MPa)
+    const PlithPa = rhoCrust * gMars * zM;
+    const PlithMPa = PlithPa / 1.0e6;
+
+    // Overpressure from crystallization expansion (Pa & MPa)
+    const PoverPa = (4.0 / 3.0) * muPa * deltaVFrac * Xice;
+    const PoverMPa = PoverPa / 1.0e6;
+
+    const PtotMPa = PlithMPa + PoverMPa;
+    const isFracture = PoverPa >= sigmaTensile;
+
+    // Driving pressure for ascent and vent eruption (Pa)
+    const PdrivePa = Math.max(0.0, PoverPa - sigmaTensile);
+    const vExitMs = isFracture ? Math.sqrt((2.0 * PdrivePa) / rhoBrine) : 0.0;
+
+    let mechClass = 'Explosive Sub-Surface Cryovolcanic Venting (Vigorous Effusion)';
+    if (!isFracture) {
+      mechClass = 'Confined Cryomagma Intrusion (Sub-Tensile Elastic Storage)';
+    } else if (vExitMs >= 500.0) {
+      mechClass = 'Supersonic Cryomagma Plume Eruption (Ballistic Dome Building)';
+    }
+
+    return {
+      lithostaticPressureMPa: parseFloat(PlithMPa.toFixed(2)),
+      chamberOverpressureMPa: parseFloat(PoverMPa.toFixed(2)),
+      totalChamberPressureMPa: parseFloat(PtotMPa.toFixed(2)),
+      isTensileFractureInitiated: isFracture,
+      cryolavaVentExitVelocityMs: parseFloat(vExitMs.toFixed(1)),
+      eruptionMechanismClass: mechClass,
+      cryovolcanismContext: `Cryovolcanic Chamber at ${zKm.toFixed(1)}km (${PoverMPa.toFixed(0)} MPa Overpressure, ${(Xice * 100).toFixed(0)}% Frozen, ${vExitMs.toFixed(0)} m/s Vent Speed, ${mechClass})`
+    };
+  }
 }
 
 

@@ -6585,6 +6585,54 @@ export class BandMathEngine {
       phGeochemicalRegime: phRegime
     };
   }
+
+  /**
+   * Discriminate pristine Anorthositic Plagioclase Feldspar vs Mafic Basalt / Impact Glass from CRISM 1.25 um, 1.05 um, 1.90 um, and 2.0 um band depths.
+   * Reference: Carter et al. (2013), Wray et al. (2013), Viviano-Beck et al. (2014) for Martian Anorthosite Crustal Megabreccia.
+   * @param {number} [band1250PlagioclaseDepth=0.045] - BD1250 diagnostic plagioclase lattice Fe2+ absorption depth (0.0 to 0.30)
+   * @param {number} [band1050MaficDepth=0.010] - OLINDEX/BD1050 mafic olivine/pyroxene absorption depth (0.0 to 0.40)
+   * @param {number} [band2000PyroxeneDepth=0.010] - HCPINDEX/LCPINDEX 2.0 um pyroxene absorption depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.010] - BD1900 molecular H2O absorption depth (0.0 to 0.40)
+   * @returns {{isPlagioclaseDetected: boolean, plagioclasePurityPercent: number, petrologicClass: string, mineralSpecies: string, crustalEvolutionContext: string}}
+   */
+  static computeCRISMAnorthositePlagioclaseIndices(band1250PlagioclaseDepth = 0.045, band1050MaficDepth = 0.010, band2000PyroxeneDepth = 0.010, band1900WaterDepth = 0.010) {
+    const d1250 = Math.max(0.0, band1250PlagioclaseDepth);
+    const d1050 = Math.max(0.0, band1050MaficDepth);
+    const d2000 = Math.max(0.0, band2000PyroxeneDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+
+    const isPlag = d1250 >= 0.020 && d1050 < 0.035 && d2000 < 0.035;
+
+    let petClass = 'Standard Mafic Basalt / Regolith';
+    let species = 'Pyroxene + Olivine Basalt';
+    let purity = 0.0;
+    let context = 'Mafic Crust dominated by Pyroxene and Olivine Crystal Field Absorptions';
+
+    if (isPlag) {
+      purity = Math.min(100.0, (d1250 / (d1250 + d1050 + d2000 + 1e-4)) * 100.0);
+      if (purity >= 75.0 && d1900 < 0.020) {
+        petClass = 'Pristine Anorthosite / Pure Plagioclase Crust (>85% Plagioclase)';
+        species = 'Anorthite / Labradorite (CaAl2Si2O8 - (Ca,Na)Al(Al,Si)Si2O8)';
+        context = 'Primordial Felsic / Anorthositic Crustal Flotation or Differentiated Layered Complex (Valles Marineris Wall / Isidis Peak Ring)';
+      } else if (purity >= 50.0) {
+        petClass = 'Anorthositic Norite / Troctolite';
+        species = 'Plagioclase-Rich Gabbroic Cumulate';
+        context = 'Evolved Crustal Pluton with Minor Mafic Silicates';
+      } else {
+        petClass = 'Feldspathic Basalt';
+        species = 'Plagioclase-Bearing Volcanic Unit';
+        context = 'Intermediate Volcanic Lava Flow';
+      }
+    }
+
+    return {
+      isPlagioclaseDetected: isPlag,
+      plagioclasePurityPercent: parseFloat(purity.toFixed(1)),
+      petrologicClass: petClass,
+      mineralSpecies: species,
+      crustalEvolutionContext: context
+    };
+  }
 }
 
 
