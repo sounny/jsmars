@@ -6014,6 +6014,70 @@ export class KRCEngine {
       subglacialVolcanismContext: `Subglacial Jokulhlaup (${hDotMYr.toFixed(0)} m/yr Basal Melt, ${QpeakM3S.toFixed(0)} m^3/s Peak Megaflood Discharge)`
     };
   }
+
+  /**
+   * Calculate primordial Martian magma ocean volatile degassing, runaway steam atmosphere surface pressure, condensed ocean Global Equivalent Layer (GEL), and radiative cooling collapse timescale.
+   * M_magma = 4/3 * pi * ( R_M^3 - ( R_M - d_magma )^3 ) * rho_sil
+   * P_surf = ( M_degas * g_mars ) / ( 4 * pi * R_M^2 )
+   * d_GEL = M_H2O / ( rho_w * A_surf )
+   * t_collapse = Q_cryst / ( A_surf * F_simpson )
+   * Reference: Elkins-Tanton (2008), Abe & Matsui (1988), Zahnle et al. (2007), Lammer et al. (2018) for Early Martian Magma Ocean Solidification.
+   * @param {number} [magmaOceanDepthKm=1000.0] - Basal depth of primordial magma ocean in km (200 to 2000 km)
+   * @param {number} [mantleWaterPpm=500.0] - Dissolved mantle water volatile concentration in ppm (100 to 2000 ppm)
+   * @param {number} [mantleCo2Ppm=200.0] - Dissolved mantle carbon dioxide concentration in ppm (50 to 1000 ppm)
+   * @returns {{magmaOceanMassKg: number, steamSurfacePressureBar: number, co2SurfacePressureBar: number, totalPrimordialPressureBar: number, oceanGELMeters: number, oceanCondensationTimescaleMyr: number, primordialClimateContext: string}}
+   */
+  static computeMartianMagmaOceanDegassingAndAtmosphereCollapse(magmaOceanDepthKm = 1000.0, mantleWaterPpm = 500.0, mantleCo2Ppm = 200.0) {
+    const dMagmaKm = Math.max(50.0, Math.min(2500.0, magmaOceanDepthKm));
+    const cH2O = Math.max(10.0, mantleWaterPpm) * 1e-6;
+    const cCO2 = Math.max(10.0, mantleCo2Ppm) * 1e-6;
+
+    const gMars = 3.72076;
+    const RM = 3.3895e6; // Mars volumetric mean radius (m)
+    const rhoSil = 3500.0; // kg/m^3
+    const rhoW = 1000.0;
+    const dMagmaM = dMagmaKm * 1000.0;
+
+    // Magma volume & mass
+    const rCoreM = Math.max(0.0, RM - dMagmaM);
+    const vMagmaM3 = (4.0 / 3.0) * Math.PI * (Math.pow(RM, 3.0) - Math.pow(rCoreM, 3.0));
+    const mMagmaKg = vMagmaM3 * rhoSil;
+
+    // Degassed volatile masses (80% degassing efficiency)
+    const etaDegas = 0.80;
+    const mH2OKg = mMagmaKg * cH2O * etaDegas;
+    const mCO2Kg = mMagmaKg * cCO2 * etaDegas;
+
+    // Surface area
+    const AsurfM2 = 4.0 * Math.PI * Math.pow(RM, 2.0);
+
+    // Surface partial pressures (bar)
+    const pH2OPa = (mH2OKg * gMars) / AsurfM2;
+    const pCO2Pa = (mCO2Kg * gMars) / AsurfM2;
+    const pH2OBar = pH2OPa / 1e5;
+    const pCO2Bar = pCO2Pa / 1e5;
+    const pTotBar = pH2OBar + pCO2Bar;
+
+    // Global Equivalent Layer of condensed water (m)
+    const dGELM = mH2OKg / (rhoW * AsurfM2);
+
+    // Radiative cooling timescale (Myr)
+    const Flimit = 280.0; // W/m^2 Simpson-Nakajima limit
+    const enthCryst = (1200.0 * 800.0) + 4.0e5; // sensible + latent heat (J/kg)
+    const QcrystJ = mMagmaKg * enthCryst;
+    const tCondSec = QcrystJ / (AsurfM2 * Flimit);
+    const tCondMyr = tCondSec / (3.15576e7 * 1e6);
+
+    return {
+      magmaOceanMassKg: parseFloat(mMagmaKg.toExponential(3)),
+      steamSurfacePressureBar: parseFloat(pH2OBar.toFixed(1)),
+      co2SurfacePressureBar: parseFloat(pCO2Bar.toFixed(1)),
+      totalPrimordialPressureBar: parseFloat(pTotBar.toFixed(1)),
+      oceanGELMeters: parseFloat(dGELM.toFixed(1)),
+      oceanCondensationTimescaleMyr: parseFloat(tCondMyr.toFixed(2)),
+      primordialClimateContext: `Magma Ocean Degassing (${pTotBar.toFixed(0)} bar Atmosphere, ${dGELM.toFixed(0)} m GEL Ocean, ~${tCondMyr.toFixed(2)} Myr Solidification)`
+    };
+  }
 }
 
 

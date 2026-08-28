@@ -5513,6 +5513,65 @@ export class TrajectoryEngine {
       asteroidTransferContext: `Mars to ${targetName} Transfer (${tofDays.toFixed(0)} Days TOF, ${dvTaiKmS.toFixed(2)} km/s TAI, ${dvRendKmS.toFixed(2)} km/s Rendezvous)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Saturn / Titan deep solar system Hohmann transfer trajectory, Trans-Saturn Injection (TSI), and hyperbolic arrival excess.
+   * a_t = ( r_mars + r_saturn ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Delta_V_TSI = sqrt( v_inf_dep^2 + 2 * mu_mars / r_park ) - sqrt( mu_mars / r_park )
+   * Reference: Bate et al. (1971), Curtis (2013) for Outer Solar System Interplanetary Transfers.
+   * @param {number} [saturnSemiMajorAxisAU=9.5826] - Saturn distance from Sun in AU (8.0 to 11.0 AU)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{targetPlanet: string, saturnDistanceAU: number, timeOfFlightDays: number, timeOfFlightYears: number, transSaturnInjectionDeltaVKmS: number, saturnHyperbolicExcessKmS: number, outerTransferContext: string}}
+   */
+  static computeMarsToSaturnTitanTransferTrajectory(saturnSemiMajorAxisAU = 9.5826, marsParkingAltitudeKm = 300.0) {
+    const rSatAU = Math.max(8.0, Math.min(12.0, saturnSemiMajorAxisAU));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rSatDistKm = rSatAU * AU_KM;
+
+    // Transfer ellipse
+    const aTransferAU = (rMarsAU + rSatAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight (days & years)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = Math.abs(vPeriTransferKmS - vMarsKmS);
+
+    // Trans-Saturn Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTsiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Speeds at Saturn arrival
+    const vSatCircKmS = Math.sqrt(muSun / rSatDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rSatDistKm) - (1.0 / aTransferKm)));
+    const vInfArrSatKmS = Math.abs(vSatCircKmS - vApoTransferKmS);
+
+    return {
+      targetPlanet: 'Saturn / Titan System',
+      saturnDistanceAU: parseFloat(rSatAU.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      transSaturnInjectionDeltaVKmS: parseFloat(dvTsiKmS.toFixed(3)),
+      saturnHyperbolicExcessKmS: parseFloat(vInfArrSatKmS.toFixed(3)),
+      outerTransferContext: `Mars to Saturn Transfer (${tofYrs.toFixed(1)} yr TOF, ${dvTsiKmS.toFixed(2)} km/s TSI, ${vInfArrSatKmS.toFixed(2)} km/s Saturn Arrival Excess)`
+    };
+  }
 }
 
 

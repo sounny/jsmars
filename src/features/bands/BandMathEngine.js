@@ -5771,6 +5771,51 @@ export class BandMathEngine {
       co2SequestrationPaleoenvironmentContext: context
     };
   }
+
+  /**
+   * Discriminate Hyper-Arid Playa Evaporite Salts (Nitrates vs Perchlorates vs Borates) from CRISM VIS-NIR overtone band parameters.
+   * Reference: Stern et al. (2015), Hecht et al. (2009), Thomas-Keprta et al. (2014), Viviano-Beck et al. (2014) for Gale Crater and Phoenix soils.
+   * @param {number} [band2150NitrateDepth=0.05] - BD2150 nitrate N-O overtone band depth (0.0 to 0.40)
+   * @param {number} [band1750PerchlorateDepth=0.01] - BD1750 perchlorate Cl-O band depth (0.0 to 0.40)
+   * @param {number} [band2480BorateDepth=0.01] - BD2480 borate B-O overtone band depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.05] - BD1900 molecular hydration band depth (0.0 to 0.50)
+   * @returns {{isEvaporiteSaltPresent: boolean, evaporiteSaltClass: string, chemicalSpecies: string, prebioticAstrobiologicalContext: string}}
+   */
+  static computeCRISMEvaporiteNitratePerchlorateBorateIndices(band2150NitrateDepth = 0.05, band1750PerchlorateDepth = 0.01, band2480BorateDepth = 0.01, band1900WaterDepth = 0.05) {
+    const d2150 = Math.max(0.0, band2150NitrateDepth);
+    const d1750 = Math.max(0.0, band1750PerchlorateDepth);
+    const d2480 = Math.max(0.0, band2480BorateDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+
+    let isSalt = false;
+    let saltClass = 'Non-Evaporite Soil Matrix';
+    let species = 'Basaltic Regolith';
+    let context = 'Standard Unaltered Silicate Regolith';
+
+    if (d2150 >= 0.025 || d1750 >= 0.025 || d2480 >= 0.025) {
+      isSalt = true;
+      if (d2150 >= 0.030 && d2150 > d1750 && d2150 > d2480) {
+        saltClass = 'Nitrate Salt (Sodium / Calcium Nitrate)';
+        species = 'Nitratine / Nitrocalcite (NaNO3 / Ca(NO3)2)';
+        context = 'Fixed Atmospheric Nitrogen / Hyper-Arid Playa Evaporite (Gale Crater Curiosity Mudstone Type)';
+      } else if (d1750 >= 0.025 && d1900 >= 0.030) {
+        saltClass = 'Perchlorate / Chlorate Salt (Hydrated Magnesium Perchlorate)';
+        species = 'Hydrated Perchlorate (Mg(ClO4)2 * 6H2O)';
+        context = 'Photochemical Atmospheric Oxidation / Extreme Eutectic Brine Antifreeze (Phoenix Polar Soil Type)';
+      } else if (d2480 >= 0.025) {
+        saltClass = 'Borate Salt (Hydrated Calcium-Sodium Borate)';
+        species = 'Borax / Ulexite (NaCaB5O6(OH)6 * 5H2O)';
+        context = 'Alkaline Closed-Basin Playa Evaporite / Prebiotic Ribose Sugar Stabilization Matrix';
+      }
+    }
+
+    return {
+      isEvaporiteSaltPresent: isSalt,
+      evaporiteSaltClass: saltClass,
+      chemicalSpecies: species,
+      prebioticAstrobiologicalContext: context
+    };
+  }
 }
 
 

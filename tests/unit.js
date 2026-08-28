@@ -11453,6 +11453,57 @@ describe('Mars-to-Asteroid Transfer, Subglacial Volcano Jokulhlaup & Carbonate P
     });
 });
 
+describe('Mars-to-Saturn Transfer, Magma Ocean Degassing & Playa Evaporite Inversion', () => {
+    it('should calculate Mars-to-Saturn/Titan deep space Hohmann transfer and Delta-V', () => {
+        // Mars to Saturn transfer (9.5826 AU, 300 km Mars parking orbit):
+        const saturn = TrajectoryEngine.computeMarsToSaturnTitanTransferTrajectory(9.5826, 300.0);
+        expect(saturn.targetPlanet).to.equal('Saturn / Titan System');
+        expect(saturn.saturnDistanceAU).to.equal(9.5826);
+        expect(saturn.timeOfFlightDays).to.be.closeTo(2389.0, 50.0); // ~2389 days TOF
+        expect(saturn.timeOfFlightYears).to.be.closeTo(6.54, 0.2); // ~6.54 years
+        expect(saturn.transSaturnInjectionDeltaVKmS).to.be.closeTo(5.564, 0.3); // ~5.56 km/s TSI
+        expect(saturn.saturnHyperbolicExcessKmS).to.be.closeTo(4.582, 0.3); // ~4.58 km/s excess
+        expect(saturn.outerTransferContext).to.include('Mars to Saturn Transfer');
+    });
+
+    it('should calculate primordial magma ocean degassing, steam greenhouse pressure, and ocean condensation', () => {
+        // 1000 km magma ocean (500 ppm H2O, 200 ppm CO2):
+        const ocean = KRCEngine.computeMartianMagmaOceanDegassingAndAtmosphereCollapse(1000.0, 500.0, 200.0);
+        expect(ocean.magmaOceanMassKg).to.be.closeTo(3.71e23, 0.2e23); // ~3.71e23 kg magma
+        expect(ocean.steamSurfacePressureBar).to.be.closeTo(38.2, 3.0); // ~38 bar steam
+        expect(ocean.co2SurfacePressureBar).to.be.closeTo(15.3, 2.0); // ~15 bar CO2
+        expect(ocean.totalPrimordialPressureBar).to.be.closeTo(53.5, 5.0); // ~54 bar atmosphere
+        expect(ocean.oceanGELMeters).to.be.closeTo(1027.7, 50.0); // ~1028 m Global Equivalent Layer
+        expect(ocean.oceanCondensationTimescaleMyr).to.be.closeTo(0.40, 0.05); // ~0.40 Myr condensation
+        expect(ocean.primordialClimateContext).to.include('Magma Ocean Degassing');
+    });
+
+    it('should discriminate Nitrate, Perchlorate, and Borate evaporite salts in CRISM spectra', () => {
+        // Nitrate salt (2.15 um N-O overtone in Gale Crater playa: BD2150 = 0.06, BD1750 = 0.01, BD2480 = 0.01):
+        const nitrate = BandMathEngine.computeCRISMEvaporiteNitratePerchlorateBorateIndices(0.06, 0.01, 0.01, 0.04);
+        expect(nitrate.isEvaporiteSaltPresent).to.be.true;
+        expect(nitrate.evaporiteSaltClass).to.include('Nitrate Salt');
+        expect(nitrate.chemicalSpecies).to.include('Nitratine / Nitrocalcite');
+        expect(nitrate.prebioticAstrobiologicalContext).to.include('Fixed Atmospheric Nitrogen');
+
+        // Hydrated Perchlorate salt (1.75 um Cl-O + 1.90 um hydration in Phoenix soils: BD2150 = 0.01, BD1750 = 0.05, BD1900 = 0.08):
+        const perchlorate = BandMathEngine.computeCRISMEvaporiteNitratePerchlorateBorateIndices(0.01, 0.05, 0.01, 0.08);
+        expect(perchlorate.isEvaporiteSaltPresent).to.be.true;
+        expect(perchlorate.evaporiteSaltClass).to.include('Perchlorate / Chlorate Salt');
+        expect(perchlorate.prebioticAstrobiologicalContext).to.include('Extreme Eutectic Brine Antifreeze');
+
+        // Borate salt (2.48 um B-O overtone: BD2150 = 0.01, BD1750 = 0.01, BD2480 = 0.06):
+        const borate = BandMathEngine.computeCRISMEvaporiteNitratePerchlorateBorateIndices(0.01, 0.01, 0.06, 0.04);
+        expect(borate.isEvaporiteSaltPresent).to.be.true;
+        expect(borate.evaporiteSaltClass).to.include('Borate Salt');
+        expect(borate.prebioticAstrobiologicalContext).to.include('Prebiotic Ribose Sugar Stabilization');
+
+        // Non-evaporite soil:
+        const soil = BandMathEngine.computeCRISMEvaporiteNitratePerchlorateBorateIndices(0.005, 0.005, 0.005, 0.005);
+        expect(soil.isEvaporiteSaltPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
