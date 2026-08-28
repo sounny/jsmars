@@ -11824,6 +11824,55 @@ describe('Mars EDL Entry Deceleration, Basalt Weathering Kinetics & Carbonate Ca
     });
 });
 
+describe('Ice Giant Aerocapture, Smectite Illitization & Silica Phase Inversion', () => {
+    it('should calculate Ice Giant (Uranus/Neptune) atmospheric aerocapture trajectory and Delta-V savings', () => {
+        // Uranus aerocapture (4.20 km/s arrival v_inf, 250 km periapsis, L/D = 0.25, 100,000 km capture apoapsis):
+        const aero = TrajectoryEngine.computeIceGiantAtmosphericAerocaptureTrajectory('Uranus', 4.20, 250.0, 0.25, 100000.0);
+        expect(aero.targetPlanet).to.equal('Uranus');
+        expect(aero.hyperbolicArrivalSpeedKmS).to.equal(4.20);
+        expect(aero.atmosphericPeriapsisSpeedKmS).to.be.closeTo(21.68, 0.2); // ~21.68 km/s periapsis speed
+        expect(aero.aerocaptureDeltaVSavedKmS).to.be.closeTo(2.30, 0.2); // ~2.30 km/s Delta-V saved
+        expect(aero.propellantMassFractionSavedPercent).to.be.closeTo(51.9, 3.0); // ~52% propellant saved
+        expect(aero.aerocaptureCorridorWidthDeg).to.be.closeTo(0.94, 0.1); // ~0.94 deg flight path corridor
+        expect(aero.aerocaptureContext).to.include('Uranus Aerocapture');
+    });
+
+    it('should calculate Smectite-to-Illite diagenetic transformation kinetics and Reichweite ordering', () => {
+        // 4 km burial depth, 30 K/km gradient (70 C in-situ temp), 50 Myr duration:
+        const illiteKinetics = KRCEngine.computeMartianSmectiteToIlliteTransformationKinetics(4.0, 30.0, 50.0, 0.010);
+        expect(illiteKinetics.burialDepthKm).to.equal(4.0);
+        expect(illiteKinetics.inSituTempC).to.equal(70.0);
+        expect(illiteKinetics.illiteFractionPercent).to.be.greaterThan(80.0); // High illite conversion
+        expect(illiteKinetics.orderingStructureClass).to.include('High-Grade Illite / Muscovite');
+        expect(illiteKinetics.isIlliteDominated).to.be.true;
+        expect(illiteKinetics.smectiteIllitizationContext).to.include('Smectite Illitization');
+    });
+
+    it('should discriminate Hydrated Opal-A, Paracrystalline Opal-CT, and Chalcedony/Quartz in CRISM spectra', () => {
+        // Opal-A (Hydrated amorphous silica at Home Plate: BD1400 = 0.06, BD2200 = 0.09, 2.26 um shoulder = 0.055 -> ratio = 0.61 >= 0.55):
+        const opalA = BandMathEngine.computeCRISMSilicaHydrationStateAndPhaseIndices(0.06, 0.09, 0.055);
+        expect(opalA.isSilicaDetected).to.be.true;
+        expect(opalA.silicaPhaseClass).to.include('Hydrated Amorphous Silica (Opal-A)');
+        expect(opalA.crystallinityGrade).to.include('Amorphous Opal-A');
+        expect(opalA.shoulderRatio).to.be.closeTo(0.61, 0.05);
+        expect(opalA.hydrothermalDepositContext).to.include('Hydrothermal Spring Sinter / Acid-Sulfate Fumarolic');
+
+        // Opal-CT (Paracrystalline: BD1400 = 0.04, BD2200 = 0.08, shoulder = 0.032 -> ratio = 0.40):
+        const opalCT = BandMathEngine.computeCRISMSilicaHydrationStateAndPhaseIndices(0.04, 0.08, 0.032);
+        expect(opalCT.isSilicaDetected).to.be.true;
+        expect(opalCT.silicaPhaseClass).to.include('Paracrystalline Silica (Opal-CT)');
+
+        // Chalcedony / Quartz (Sharp Si-OH without shoulder: BD1400 = 0.01, BD2200 = 0.06, shoulder = 0.005 -> ratio = 0.08):
+        const quartz = BandMathEngine.computeCRISMSilicaHydrationStateAndPhaseIndices(0.01, 0.06, 0.005);
+        expect(quartz.isSilicaDetected).to.be.true;
+        expect(quartz.silicaPhaseClass).to.include('Microcrystalline Silica (Chalcedony / Quartz)');
+
+        // Non-silica basalt:
+        const basalt = BandMathEngine.computeCRISMSilicaHydrationStateAndPhaseIndices(0.005, 0.005, 0.001);
+        expect(basalt.isSilicaDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

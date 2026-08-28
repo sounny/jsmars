@@ -5925,6 +5925,62 @@ export class TrajectoryEngine {
       edlContext: `Mars EDL Entry (${Gmax.toFixed(1)} g Peak Load at ${hGmaxKm.toFixed(1)} km, ${qDotStagWCm2.toFixed(0)} W/cm^2 Peak Heat Flux, ${qDynKPa.toFixed(1)} kPa Dynamic Pressure)`
     };
   }
+
+  /**
+   * Calculate Ice Giant (Uranus / Neptune) atmospheric aerocapture trajectory, single-pass orbital insertion Delta-V, propellant mass fraction saved, and aerocapture entry corridor width.
+   * v_p = sqrt( v_inf^2 + 2 * mu / r_p )
+   * Delta_V_aero = v_p - sqrt( mu * ( 2 / r_p - 1 / a_target ) )
+   * Reference: Cruz (1993), Spilker et al. (2019), Girija et al. (2020) for Ice Giant Aerocapture.
+   * @param {string} [targetPlanetName='Uranus'] - Target Ice Giant ('Uranus' or 'Neptune')
+   * @param {number} [hyperbolicArrivalSpeedKmS=4.20] - Hyperbolic arrival excess speed v_inf in km/s (2.0 to 10.0 km/s)
+   * @param {number} [targetPeriapsisAltitudeKm=250.0] - Atmospheric entry periapsis altitude in km (100 to 600 km)
+   * @param {number} [liftToDragRatio=0.25] - Aeroshell hypersonic lift-to-drag ratio L/D (0.1 to 0.6)
+   * @param {number} [targetApoapsisAltitudeKm=100000.0] - Target capture orbit apoapsis altitude in km (50000 to 500000 km)
+   * @returns {{targetPlanet: string, hyperbolicArrivalSpeedKmS: number, atmosphericPeriapsisSpeedKmS: number, aerocaptureDeltaVSavedKmS: number, propellantMassFractionSavedPercent: number, aerocaptureCorridorWidthDeg: number, aerocaptureContext: string}}
+   */
+  static computeIceGiantAtmosphericAerocaptureTrajectory(targetPlanetName = 'Uranus', hyperbolicArrivalSpeedKmS = 4.20, targetPeriapsisAltitudeKm = 250.0, liftToDragRatio = 0.25, targetApoapsisAltitudeKm = 100000.0) {
+    const isNeptune = targetPlanetName.toLowerCase().includes('neptune');
+    const planetName = isNeptune ? 'Neptune' : 'Uranus';
+
+    const muPlanet = isNeptune ? 6836527.0 : 5793939.0;
+    const rPlanetKm = isNeptune ? 24622.0 : 25362.0;
+    const HScaleKm = isNeptune ? 20.0 : 27.7;
+
+    const vInfKmS = Math.max(1.0, Math.min(15.0, hyperbolicArrivalSpeedKmS));
+    const hpKm = Math.max(50.0, Math.min(1000.0, targetPeriapsisAltitudeKm));
+    const haKm = Math.max(20000.0, targetApoapsisAltitudeKm);
+    const ld = Math.max(0.05, Math.min(0.8, liftToDragRatio));
+
+    const rpKm = rPlanetKm + hpKm;
+    const raKm = rPlanetKm + haKm;
+    const aTargetKm = (rpKm + raKm) / 2.0;
+
+    // Atmospheric entry periapsis speed
+    const vpAtmKmS = Math.sqrt(Math.pow(vInfKmS, 2.0) + (2.0 * muPlanet / rpKm));
+
+    // Target orbit speed at periapsis
+    const vpTargetKmS = Math.sqrt(muPlanet * ((2.0 / rpKm) - (1.0 / aTargetKm)));
+
+    // Delta-V saved by aerocapture pass
+    const dvAeroKmS = Math.max(0.0, vpAtmKmS - vpTargetKmS);
+
+    // Propellant mass fraction saved (assuming Isp = 320 s, ve = 3.138 km/s)
+    const veKmS = 3.138;
+    const propSavedPct = (1.0 - Math.exp(-dvAeroKmS / veKmS)) * 100.0;
+
+    // Aerocapture entry flight path angle corridor width (deg)
+    const gammaCorrDeg = ((2.0 * ld) / Math.sqrt(rpKm / HScaleKm)) * (180.0 / Math.PI);
+
+    return {
+      targetPlanet: planetName,
+      hyperbolicArrivalSpeedKmS: parseFloat(vInfKmS.toFixed(2)),
+      atmosphericPeriapsisSpeedKmS: parseFloat(vpAtmKmS.toFixed(2)),
+      aerocaptureDeltaVSavedKmS: parseFloat(dvAeroKmS.toFixed(3)),
+      propellantMassFractionSavedPercent: parseFloat(propSavedPct.toFixed(1)),
+      aerocaptureCorridorWidthDeg: parseFloat(gammaCorrDeg.toFixed(2)),
+      aerocaptureContext: `${planetName} Aerocapture (${dvAeroKmS.toFixed(2)} km/s Aero Delta-V, ${propSavedPct.toFixed(0)}% Propellant Saved, ${gammaCorrDeg.toFixed(2)} deg Corridor)`
+    };
+  }
 }
 
 

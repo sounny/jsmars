@@ -6114,6 +6114,51 @@ export class BandMathEngine {
       paleoenvironmentalContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrated Amorphous Silica (Opal-A) vs Paracrystalline Opal-CT vs Chalcedony/Microcrystalline Quartz from CRISM 2.21 um Si-OH depth, 2.26 um shoulder, and 1.41 um hydration.
+   * Reference: Squyres et al. (2008), Rice et al. (2013), Sun & Milliken (2015), Viviano-Beck et al. (2014) for Martian Silica Deposits.
+   * @param {number} [band1400WaterDepth=0.06] - BD1400 H2O/OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2200SiOHDepth=0.09] - BD2200 Si-OH fundamental absorption depth (0.0 to 0.50)
+   * @param {number} [band2260ShoulderDepth=0.055] - 2.26 um asymmetric shoulder absorption depth (0.0 to 0.40)
+   * @returns {{isSilicaDetected: boolean, silicaPhaseClass: string, crystallinityGrade: string, shoulderRatio: number, hydrothermalDepositContext: string}}
+   */
+  static computeCRISMSilicaHydrationStateAndPhaseIndices(band1400WaterDepth = 0.06, band2200SiOHDepth = 0.09, band2260ShoulderDepth = 0.055) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d2200 = Math.max(0.0, band2200SiOHDepth);
+    const d2260 = Math.max(0.0, band2260ShoulderDepth);
+
+    const shRatio = d2200 > 0.005 ? d2260 / d2200 : 0.0;
+    let isSil = false;
+    let silClass = 'Non-Silica Matrix';
+    let cryst = 'Unaltered Basalt';
+    let context = 'Standard Regolith Matrix without Diagnostic Si-OH Absorption';
+
+    if (d2200 >= 0.030) {
+      isSil = true;
+      if (shRatio >= 0.55 && d1400 >= 0.030) {
+        silClass = 'Hydrated Amorphous Silica (Opal-A)';
+        cryst = 'Amorphous Opal-A (Sinter / Fumarolic Silica)';
+        context = 'Low-Temperature Hydrothermal Spring Sinter / Acid-Sulfate Fumarolic Leaching (Gusev Crater Home Plate / Nili Fossae)';
+      } else if (shRatio >= 0.30) {
+        silClass = 'Paracrystalline Silica (Opal-CT)';
+        cryst = 'Disordered Cristobalite-Tridymite (Opal-CT)';
+        context = 'Diagenetically Matured / Hydrothermally Altered Silica Horizon';
+      } else {
+        silClass = 'Microcrystalline Silica (Chalcedony / Quartz)';
+        cryst = 'Microcrystalline Quartz / Chalcedony';
+        context = 'High-Temperature Hydrothermal Quartz Veins / Metamorphic Crystallization';
+      }
+    }
+
+    return {
+      isSilicaDetected: isSil,
+      silicaPhaseClass: silClass,
+      crystallinityGrade: cryst,
+      shoulderRatio: parseFloat(shRatio.toFixed(2)),
+      hydrothermalDepositContext: context
+    };
+  }
 }
 
 

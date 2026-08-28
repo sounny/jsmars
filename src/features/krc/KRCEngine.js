@@ -6431,6 +6431,60 @@ export class KRCEngine {
       weatheringKineticsContext: `Aqueous Weathering (${tWeatherKyr.toFixed(0)} kyr/m Alteration Rate, ${clayMineral}, ${regime})`
     };
   }
+
+  /**
+   * Calculate Smectite-to-Illite diagenetic transformation kinetics, illite fraction in mixed-layer I/S, and Reichweite ordering in deep crustal basins.
+   * T_depth = T_surf + ( d * dT_dz )
+   * k_ill = A * exp( -E_a / ( R * T ) ) * [K+]^0.5
+   * X_ill = 1 - exp( -k_ill * t )
+   * Reference: Hower et al. (1976), Pytte & Reynolds (1989), Michalski et al. (2017) for Martian Burial Diagenesis & Clay Dehydration.
+   * @param {number} [burialDepthKm=4.0] - Crustal basin burial depth in km (0.5 to 15.0 km)
+   * @param {number} [geothermalGradientKPerKm=30.0] - Geothermal gradient in K/km (10 to 60 K/km)
+   * @param {number} [durationMyr=50.0] - Diagenetic hydrothermal reaction duration in Myr (1 to 500 Myr)
+   * @param {number} [potassiumConcentrationMolar=0.010] - Porewater [K+] concentration in mol/L (0.001 to 0.5 mol/L)
+   * @returns {{burialDepthKm: number, inSituTempC: number, illiteFractionPercent: number, orderingStructureClass: string, isIlliteDominated: boolean, smectiteIllitizationContext: string}}
+   */
+  static computeMartianSmectiteToIlliteTransformationKinetics(burialDepthKm = 4.0, geothermalGradientKPerKm = 30.0, durationMyr = 50.0, potassiumConcentrationMolar = 0.010) {
+    const dKm = Math.max(0.2, burialDepthKm);
+    const grad = Math.max(5.0, geothermalGradientKPerKm);
+    const tMyr = Math.max(0.1, durationMyr);
+    const concK = Math.max(1e-4, potassiumConcentrationMolar);
+
+    const TsurfC = -50.0;
+    const ThostC = TsurfC + (dKm * grad);
+    const TK = 273.15 + ThostC;
+
+    const R = 8.31446;
+    const Ea = 110000.0; // J/mol activation energy
+    const A = 5.0e7; // s^-1 pre-exponential factor
+
+    // Reaction rate constant (s^-1 & Myr^-1)
+    const kIllSec = A * Math.exp(-Ea / (R * TK)) * Math.sqrt(concK);
+    const kIllMyr = kIllSec * (3.15576e7 * 1e6);
+
+    // Illite fraction (0.0 to 1.0)
+    const Xill = 1.0 - Math.exp(-kIllMyr * tMyr);
+    const XillPct = Math.min(100.0, Math.max(0.0, Xill * 100.0));
+
+    // Structural Reichweite ordering
+    let orderClass = 'Randomly Interstratified I/S (R=0 Smectite Dominant)';
+    if (XillPct >= 85.0) {
+      orderClass = 'High-Grade Illite / Muscovite (R>=3 Reichweite Ordered)';
+    } else if (XillPct >= 65.0) {
+      orderClass = 'Ordered I/S (R=1 Kalkberg-Type Ordering)';
+    } else if (XillPct >= 20.0) {
+      orderClass = 'Interstratified Mixed-Layer I/S (R=0 Partial Illitization)';
+    }
+
+    return {
+      burialDepthKm: parseFloat(dKm.toFixed(2)),
+      inSituTempC: parseFloat(ThostC.toFixed(1)),
+      illiteFractionPercent: parseFloat(XillPct.toFixed(1)),
+      orderingStructureClass: orderClass,
+      isIlliteDominated: XillPct >= 50.0,
+      smectiteIllitizationContext: `Smectite Illitization (${XillPct.toFixed(0)}% Illite at ${ThostC.toFixed(0)} C / ${dKm.toFixed(1)} km Depth, ${orderClass})`
+    };
+  }
 }
 
 
