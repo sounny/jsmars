@@ -6433,6 +6433,53 @@ export class BandMathEngine {
       environmentalHydrationContext: context
     };
   }
+
+  /**
+   * Determine Olivine Forsterite (Fo#) vs Fayalite (Fa#) Mg/Fe solid solution cation ratio and magmatic petrogenesis from CRISM 1 um composite absorption band center.
+   * Fo# = 100 - ( ( lambda_center - 1.030 ) / ( 1.085 - 1.030 ) ) * 100
+   * Reference: King & Ridley (1987), Sunshine & Pieters (1998), Ody et al. (2013), Viviano-Beck et al. (2014) for Martian Olivine Solid Solution.
+   * @param {number} [band1050CenterUm=1.040] - CRISM composite olivine absorption center wavelength in micrometers (1.020 to 1.100 um)
+   * @param {number} [band1050Depth=0.12] - OLINDEX3 broad 1 um absorption band depth (0.0 to 0.50)
+   * @returns {{isOlivineDetected: boolean, forsteriteNumberPercent: number, fayaliteNumberPercent: number, olivineCompositionClass: string, petrogeneticEvolutionContext: string}}
+   */
+  static computeCRISMOlivineFoFaCompositionIndices(band1050CenterUm = 1.040, band1050Depth = 0.12) {
+    const lamC = Math.max(1.020, Math.min(1.100, band1050CenterUm));
+    const dol = Math.max(0.0, band1050Depth);
+
+    if (dol < 0.025) {
+      return {
+        isOlivineDetected: false,
+        forsteriteNumberPercent: 0.0,
+        fayaliteNumberPercent: 0.0,
+        olivineCompositionClass: 'Non-Olivine Regolith',
+        petrogeneticEvolutionContext: 'Silicate / Dust Matrix without Detectable Olivine 1 um Crystal Field Absorption'
+      };
+    }
+
+    // Fo# calculation
+    const foRaw = 100.0 - (((lamC - 1.030) / (1.085 - 1.030)) * 100.0);
+    const fo = Math.max(0.0, Math.min(100.0, foRaw));
+    const fa = 100.0 - fo;
+
+    let olClass = 'Intermediate Olivine (Fo50-Fo75)';
+    let petro = 'Standard Tholeiitic Basaltic Magma / Shield Volcano Lava Flow (Gusev Crater / Hesperia Planum)';
+
+    if (fo >= 75.0) {
+      olClass = `Forsteritic High-Mg Olivine (Fo${fo.toFixed(0)})`;
+      petro = 'Primitive Upper Mantle Peridotite / Ancient Noachian Ultramafic Cumulate (Nili Fossae / Isidis Rim)';
+    } else if (fo < 45.0) {
+      olClass = `Fayalitic Fe-Rich Olivine (Fo${fo.toFixed(0)})`;
+      petro = 'Highly Fractionated / Evolved Intrusive Magma Chamber Cumulate (Syrtis Major / Terra Meridiani)';
+    }
+
+    return {
+      isOlivineDetected: true,
+      forsteriteNumberPercent: parseFloat(fo.toFixed(1)),
+      fayaliteNumberPercent: parseFloat(fa.toFixed(1)),
+      olivineCompositionClass: olClass,
+      petrogeneticEvolutionContext: `${olClass}: Fo${fo.toFixed(0)} Fa${fa.toFixed(0)} (Band Center: ${lamC.toFixed(3)} um - ${petro})`
+    };
+  }
 }
 
 

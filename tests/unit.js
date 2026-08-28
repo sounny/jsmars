@@ -12120,6 +12120,59 @@ describe('Mars-Venus-Mercury Gravity Assist, Permafrost Retreat & Sulfate Hydrat
     });
 });
 
+describe('Low-Thrust Continuous Spiral, Lava Tube Microclimate & Olivine Fo-Fa Inversion', () => {
+    it('should calculate Mars continuous low-thrust ion spiral trajectory, burn duration, and fuel mass', () => {
+        // Mars to Earth 1.0 AU spiral (1500 kg spacecraft, 250 mN thrust, 3500 s Isp):
+        const spiral = TrajectoryEngine.computeMarsLowThrustContinuousSpiralTrajectory(1500.0, 250.0, 3500.0, 1.000);
+        expect(spiral.lowThrustDeltaVKmS).to.be.closeTo(5.655, 0.2); // ~5.66 km/s Delta-V
+        expect(spiral.propellantConsumedKg).to.be.closeTo(227.9, 5.0); // ~228 kg Xenon
+        expect(spiral.propellantFractionPercent).to.be.closeTo(15.2, 1.0); // ~15.2% fuel mass
+        expect(spiral.spiralDurationDays).to.be.closeTo(362.1, 10.0); // ~362 days spiral
+        expect(spiral.spiralDurationYears).to.be.closeTo(0.991, 0.05); // ~0.99 yr
+        expect(spiral.initialAccelerationMmS2).to.be.closeTo(0.167, 0.02); // ~0.167 mm/s^2
+        expect(spiral.finalAccelerationMmS2).to.be.closeTo(0.197, 0.02); // ~0.197 mm/s^2
+        expect(spiral.lowThrustContext).to.include('Low-Thrust Continuous Spiral');
+    });
+
+    it('should calculate volcanic lava tube subsurface thermal attenuation and cave microclimate stability', () => {
+        // 15 m depth, 8e-7 m^2/s rock diffusivity, 210 K mean, 45 K diurnal, 30 K seasonal amplitude:
+        const cave = KRCEngine.computeMartianLavaTubeMicroclimateThermalDamping(15.0, 8.0e-7, 210.0, 45.0, 30.0);
+        expect(cave.diurnalSkinDepthCm).to.be.closeTo(15.0, 1.0); // ~15.0 cm diurnal skin depth
+        expect(cave.seasonalSkinDepthM).to.be.closeTo(3.89, 0.2); // ~3.89 m seasonal skin depth
+        expect(cave.caveDiurnalAmplitudeK).to.be.lessThan(0.001); // Damped to 0.0 K diurnal
+        expect(cave.caveSeasonalAmplitudeK).to.be.closeTo(0.633, 0.1); // ~0.63 K annual oscillation
+        expect(cave.caveMeanTempC).to.be.closeTo(-63.15, 0.5); // ~ -63.2 C
+        expect(cave.thermalBufferingClass).to.include('Isothermal Cave Interior');
+        expect(cave.caveMicroclimateContext).to.include('Lava Tube Microclimate');
+    });
+
+    it('should calculate CRISM olivine Forsterite (Fo#) vs Fayalite (Fa#) solid solution cation ratio', () => {
+        // High-Mg Forsteritic olivine (Nili Fossae mantle cumulate: center = 1.040 um, depth = 0.12 -> Fo82 Fa18):
+        const forsterite = BandMathEngine.computeCRISMOlivineFoFaCompositionIndices(1.040, 0.12);
+        expect(forsterite.isOlivineDetected).to.be.true;
+        expect(forsterite.forsteriteNumberPercent).to.be.closeTo(81.8, 1.0);
+        expect(forsterite.fayaliteNumberPercent).to.be.closeTo(18.2, 1.0);
+        expect(forsterite.olivineCompositionClass).to.include('Forsteritic High-Mg Olivine');
+        expect(forsterite.petrogeneticEvolutionContext).to.include('Primitive Upper Mantle Peridotite');
+
+        // Intermediate basaltic olivine (Gusev Crater: center = 1.055 um, depth = 0.10 -> Fo55 Fa45):
+        const intermed = BandMathEngine.computeCRISMOlivineFoFaCompositionIndices(1.055, 0.10);
+        expect(intermed.isOlivineDetected).to.be.true;
+        expect(intermed.forsteriteNumberPercent).to.be.closeTo(54.5, 1.0);
+        expect(intermed.olivineCompositionClass).to.include('Intermediate Olivine');
+
+        // Fe-rich Fayalite (Syrtis Major differentiated magma: center = 1.075 um, depth = 0.09 -> Fo18 Fa82):
+        const fayalite = BandMathEngine.computeCRISMOlivineFoFaCompositionIndices(1.075, 0.09);
+        expect(fayalite.isOlivineDetected).to.be.true;
+        expect(fayalite.forsteriteNumberPercent).to.be.closeTo(18.2, 1.0);
+        expect(fayalite.olivineCompositionClass).to.include('Fayalitic Fe-Rich Olivine');
+
+        // Non-olivine basalt:
+        const basalt = BandMathEngine.computeCRISMOlivineFoFaCompositionIndices(1.040, 0.010);
+        expect(basalt.isOlivineDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -6783,6 +6783,64 @@ export class KRCEngine {
       permafrostContext: `Ground Ice Sublimation (${zDryCm.toFixed(0)} cm Desiccated Overburden in ${tKyr.toFixed(0)} kyr, ${zDotMmKyr.toFixed(1)} mm/kyr Retreat Rate)`
     };
   }
+
+  /**
+   * Calculate volcanic lava tube subsurface thermal attenuation, diurnal and seasonal skin depths, and cave microclimate temperature stability.
+   * delta_diurn = sqrt( kappa * P_sol / pi )
+   * delta_season = sqrt( kappa * P_year / pi )
+   * A(z) = A_0 * exp( -z / delta )
+   * Reference: Williams et al. (2010), Titus et al. (2021), Cushing (2012) for Martian Cave & Lava Tube Microclimates.
+   * @param {number} [depthBelowSurfaceM=15.0] - Lava tube ceiling depth below surface in meters (1.0 to 100.0 m)
+   * @param {number} [rockThermalDiffusivityM2S=8.0e-7] - Host basalt rock thermal diffusivity in m^2/s (1e-7 to 2e-6 m^2/s)
+   * @param {number} [meanSurfaceTempK=210.0] - Annual mean surface temperature in Kelvin (150 to 260 K)
+   * @param {number} [surfaceDiurnalAmplitudeK=45.0] - Surface day-night temperature amplitude in Kelvin (10 to 80 K)
+   * @param {number} [surfaceSeasonalAmplitudeK=30.0] - Surface summer-winter temperature amplitude in Kelvin (5 to 60 K)
+   * @returns {{diurnalSkinDepthCm: number, seasonalSkinDepthM: number, caveDiurnalAmplitudeK: number, caveSeasonalAmplitudeK: number, caveMeanTempC: number, caveMinTempC: number, caveMaxTempC: number, thermalBufferingClass: string, caveMicroclimateContext: string}}
+   */
+  static computeMartianLavaTubeMicroclimateThermalDamping(depthBelowSurfaceM = 15.0, rockThermalDiffusivityM2S = 8.0e-7, meanSurfaceTempK = 210.0, surfaceDiurnalAmplitudeK = 45.0, surfaceSeasonalAmplitudeK = 30.0) {
+    const zM = Math.max(0.2, depthBelowSurfaceM);
+    const kappa = Math.max(1e-8, rockThermalDiffusivityM2S);
+    const TmeanK = Math.max(120.0, Math.min(300.0, meanSurfaceTempK));
+    const Adiurn0 = Math.max(0.0, surfaceDiurnalAmplitudeK);
+    const Aseas0 = Math.max(0.0, surfaceSeasonalAmplitudeK);
+
+    const PsolSec = 88775.2; // 1 sol in seconds
+    const PyearSec = 668.6 * PsolSec; // 1 Martian year in seconds
+
+    // Skin depths
+    const deltaDiurnM = Math.sqrt((kappa * PsolSec) / Math.PI);
+    const deltaDiurnCm = deltaDiurnM * 100.0;
+
+    const deltaSeasM = Math.sqrt((kappa * PyearSec) / Math.PI);
+
+    // Amplitudes at depth z
+    const AdiurnZ = Adiurn0 * Math.exp(-zM / deltaDiurnM);
+    const AseasZ = Aseas0 * Math.exp(-zM / deltaSeasM);
+
+    // Temperatures in Celsius
+    const TmeanC = TmeanK - 273.15;
+    const TminC = TmeanC - AseasZ - AdiurnZ;
+    const TmaxC = TmeanC + AseasZ + AdiurnZ;
+
+    let bufClass = 'Isothermal Cave Interior (Ultra-Stable Microclimate)';
+    if (AseasZ >= 5.0) {
+      bufClass = 'Shallow Pit Crater / Partially Damped Microclimate';
+    } else if (AseasZ >= 1.0) {
+      bufClass = 'Thermally Buffered Subsurface Cavity';
+    }
+
+    return {
+      diurnalSkinDepthCm: parseFloat(deltaDiurnCm.toFixed(1)),
+      seasonalSkinDepthM: parseFloat(deltaSeasM.toFixed(2)),
+      caveDiurnalAmplitudeK: parseFloat(AdiurnZ.toFixed(4)),
+      caveSeasonalAmplitudeK: parseFloat(AseasZ.toFixed(3)),
+      caveMeanTempC: parseFloat(TmeanC.toFixed(1)),
+      caveMinTempC: parseFloat(TminC.toFixed(2)),
+      caveMaxTempC: parseFloat(TmaxC.toFixed(2)),
+      thermalBufferingClass: bufClass,
+      caveMicroclimateContext: `Lava Tube Microclimate (${TmeanC.toFixed(1)} C Mean, +/-${AseasZ.toFixed(2)} K Annual Oscillation at ${zM.toFixed(0)}m Depth, ${bufClass})`
+    };
+  }
 }
 
 

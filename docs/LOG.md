@@ -460,3 +460,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate Mars-to-Mercury multi-gravity assist trajectory (M-V-M) and reduced MOI Delta-V
 ?: AssertionError: expected 6.769 to be close to 8.529 +/- 0.5
     at n.<anonymous> (unit.js:12085:51)
+
+
+### Automated 4-Hour Check Alert [2026-08-28 19:46:07 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate volcanic lava tube subsurface thermal attenuation and cave microclimate stability
+?: AssertionError: expected 'Isothermal Cave Interior (Ultra-Stabl?' to include 'Thermally Buffered Subsurface Cavity'
+    at n.<anonymous> (unit.js:12145:47)

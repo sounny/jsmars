@@ -6321,6 +6321,67 @@ export class TrajectoryEngine {
       mvmContext: `Mars-Venus-Mercury Gravity Assist (${tofTotDays.toFixed(0)} d Total TOF, ${deltaDeg.toFixed(1)} deg Venus Deflection, ${dvMoiKmS.toFixed(2)} km/s MOI, saved ${dvSavedKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate continuous low-thrust ion/solar-electric propulsion heliocentric spiral trajectory from Mars to target solar orbit, burn time, and propellant mass.
+   * Delta_V = | v_circ(r_2) - v_circ(r_1) |
+   * m_f = m_0 * exp( -Delta_V / ( g_0 * I_sp ) )
+   * t_burn = delta_m * ( g_0 * I_sp ) / Thrust
+   * Reference: Edelbaum (1961), Larson & Wertz (1999), Curtis (2013) for Low-Thrust Continuous Trajectory Design.
+   * @param {number} [initialVehicleMassKg=1500.0] - Spacecraft initial wet mass in kg (100 to 50000 kg)
+   * @param {number} [thrustMillinewtons=250.0] - Continuous thruster thrust in mN (10 to 5000 mN)
+   * @param {number} [specificImpulseSec=3500.0] - Ion engine specific impulse in seconds (1000 to 10000 s)
+   * @param {number} [targetHeliocentricAU=1.000] - Destination heliocentric orbit in AU (0.2 to 5.5 AU)
+   * @returns {{lowThrustDeltaVKmS: number, propellantConsumedKg: number, propellantFractionPercent: number, spiralDurationDays: number, spiralDurationYears: number, initialAccelerationMmS2: number, finalAccelerationMmS2: number, lowThrustContext: string}}
+   */
+  static computeMarsLowThrustContinuousSpiralTrajectory(initialVehicleMassKg = 1500.0, thrustMillinewtons = 250.0, specificImpulseSec = 3500.0, targetHeliocentricAU = 1.000) {
+    const m0Kg = Math.max(10.0, initialVehicleMassKg);
+    const ThrustN = Math.max(0.001, thrustMillinewtons / 1000.0);
+    const Isp = Math.max(100.0, specificImpulseSec);
+    const rTargAU = Math.max(0.1, targetHeliocentricAU);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const g0 = 9.80665;
+    const cMs = g0 * Isp;
+    const cKmS = cMs / 1000.0;
+
+    const rMarsAU = 1.52368;
+    const rMarsKm = rMarsAU * AU_KM;
+    const rTargKm = rTargAU * AU_KM;
+
+    // Heliocentric circular speeds
+    const vMarsKmS = Math.sqrt(muSun / rMarsKm);
+    const vTargKmS = Math.sqrt(muSun / rTargKm);
+    const dvSpiralKmS = Math.abs(vTargKmS - vMarsKmS);
+    const dvSpiralMs = dvSpiralKmS * 1000.0;
+
+    // Rocket equation mass
+    const mfKg = m0Kg * Math.exp(-dvSpiralMs / cMs);
+    const deltaMKg = m0Kg - mfKg;
+    const propPct = (deltaMKg / m0Kg) * 100.0;
+
+    // Flow rate and duration
+    const mdotKgS = ThrustN / cMs;
+    const tBurnSec = deltaMKg / mdotKgS;
+    const tBurnDays = tBurnSec / 86400.0;
+    const tBurnYrs = tBurnDays / 365.25;
+
+    // Accelerations (mm/s^2)
+    const a0MmS2 = (ThrustN / m0Kg) * 1000.0;
+    const afMmS2 = (ThrustN / mfKg) * 1000.0;
+
+    return {
+      lowThrustDeltaVKmS: parseFloat(dvSpiralKmS.toFixed(3)),
+      propellantConsumedKg: parseFloat(deltaMKg.toFixed(2)),
+      propellantFractionPercent: parseFloat(propPct.toFixed(1)),
+      spiralDurationDays: parseFloat(tBurnDays.toFixed(1)),
+      spiralDurationYears: parseFloat(tBurnYrs.toFixed(2)),
+      initialAccelerationMmS2: parseFloat(a0MmS2.toFixed(3)),
+      finalAccelerationMmS2: parseFloat(afMmS2.toFixed(3)),
+      lowThrustContext: `Low-Thrust Continuous Spiral (${tBurnDays.toFixed(0)} d Spiral, ${dvSpiralKmS.toFixed(2)} km/s Delta-V, ${deltaMKg.toFixed(1)} kg Xe Fuel, ${propPct.toFixed(1)}% Fuel Mass)`
+    };
+  }
 }
 
 
