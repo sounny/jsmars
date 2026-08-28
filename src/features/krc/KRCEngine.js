@@ -6841,6 +6841,65 @@ export class KRCEngine {
       caveMicroclimateContext: `Lava Tube Microclimate (${TmeanC.toFixed(1)} C Mean, +/-${AseasZ.toFixed(2)} K Annual Oscillation at ${zM.toFixed(0)}m Depth, ${bufClass})`
     };
   }
+
+  /**
+   * Calculate volcanic fumarolic acid-gas leaching of host basalt, cation stripping, and residual pure silica halo formation timescale.
+   * M_basalt = pi * R_halo^2 * H * rho_basalt * ( 1 - phi )
+   * M_cation = M_basalt * 0.52
+   * t_leach = M_cation / ( M_dot_gas * eta )
+   * Reference: Ruff et al. (2011), Squyres et al. (2008), Morris et al. (2008) for Home Plate Fumarolic Silica Haloes.
+   * @param {number} [fumaroleGasTempC=250.0] - Fumarolic vent gas temperature in deg C (80 to 600 C)
+   * @param {number} [so2GasFluxKgPerDay=500.0] - Daily acid gas SO2+H2S flux in kg/day (10 to 10000 kg/d)
+   * @param {number} [haloRadiusM=5.0] - Siliceous alteration halo radius in meters (1.0 to 50.0 m)
+   * @param {number} [haloConduitHeightM=10.0] - Alteration conduit column height in meters (2.0 to 100.0 m)
+   * @returns {{annualAcidGasFluxTons: number, totalHostBasaltMassTons: number, leachedCationMassTons: number, residualSilicaMassTons: number, completeSilicificationTimescaleYears: number, alterationGradeClass: string, fumaroleContext: string}}
+   */
+  static computeMartianFumarolicAcidSulfateAlteration(fumaroleGasTempC = 250.0, so2GasFluxKgPerDay = 500.0, haloRadiusM = 5.0, haloConduitHeightM = 10.0) {
+    const TgasC = Math.max(50.0, Math.min(800.0, fumaroleGasTempC));
+    const QgasDayKg = Math.max(1.0, so2GasFluxKgPerDay);
+    const RhaloM = Math.max(0.5, haloRadiusM);
+    const HhaloM = Math.max(1.0, haloConduitHeightM);
+
+    const rhoBasalt = 2800.0; // kg/m^3
+    const porosity = 0.15;
+    const etaAcid = 0.85; // 85% reaction efficiency
+
+    // Annual gas flux (tons/yr)
+    const QgasYrKg = QgasDayKg * 365.25;
+    const QgasYrTons = QgasYrKg / 1000.0;
+
+    // Host basalt volume and mass (tons)
+    const VhaloM3 = Math.PI * Math.pow(RhaloM, 2.0) * HhaloM;
+    const MbasaltKg = VhaloM3 * rhoBasalt * (1.0 - porosity);
+    const MbasaltTons = MbasaltKg / 1000.0;
+
+    // Chemical leaching fractions (52 wt% cations stripped: Fe, Mg, Ca, Al, Na; 48 wt% SiO2 residue)
+    const McationKg = MbasaltKg * 0.52;
+    const McationTons = McationKg / 1000.0;
+
+    const MsilicaKg = MbasaltKg * 0.48;
+    const MsilicaTons = MsilicaKg / 1000.0;
+
+    // Timescale to completely silicify halo (years)
+    const tSilicifyYrs = McationKg / (QgasYrKg * etaAcid);
+
+    let gradeClass = 'Extreme Acid-Leached Siliceous Residue (>90 wt% Opal-A Silica)';
+    if (TgasC >= 300.0) {
+      gradeClass = 'High-Temperature Acid-Sulfate Fumarolic Silicification Halo';
+    } else if (TgasC < 120.0) {
+      gradeClass = 'Low-Temperature Solfataric Acid-Leached Sinter Alteration';
+    }
+
+    return {
+      annualAcidGasFluxTons: parseFloat(QgasYrTons.toFixed(1)),
+      totalHostBasaltMassTons: parseFloat(MbasaltTons.toFixed(1)),
+      leachedCationMassTons: parseFloat(McationTons.toFixed(1)),
+      residualSilicaMassTons: parseFloat(MsilicaTons.toFixed(1)),
+      completeSilicificationTimescaleYears: parseFloat(tSilicifyYrs.toFixed(2)),
+      alterationGradeClass: gradeClass,
+      fumaroleContext: `Fumarolic Silica Halo (${tSilicifyYrs.toFixed(1)} yr Silicification, ${MsilicaTons.toFixed(0)} t Opal-A Residue in ${RhaloM.toFixed(1)}m Halo, ${gradeClass})`
+    };
+  }
 }
 
 

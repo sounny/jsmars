@@ -6480,6 +6480,56 @@ export class BandMathEngine {
       petrogeneticEvolutionContext: `${olClass}: Fo${fo.toFixed(0)} Fa${fa.toFixed(0)} (Band Center: ${lamC.toFixed(3)} um - ${petro})`
     };
   }
+
+  /**
+   * Discriminate Hydrothermal Zeolites (Analcime/Clinoptilolite) vs Carbonates vs Saponite Smectite from CRISM 1.9 um, 2.30 um, 2.46 um, and 2.51 um absorptions.
+   * Reference: Ehlmann et al. (2009), Ruff et al. (2014), Viviano-Beck et al. (2014) for Martian Zeolite-Bearing Alkaline Hydrothermal Systems.
+   * @param {number} [band2300CarbonateDepth=0.01] - BD2300/2310 carbonate/Mg-OH absorption band depth (0.0 to 0.40)
+   * @param {number} [band2500CarbonateDepth=0.01] - BD2500 carbonate fundamental overtone depth (0.0 to 0.30)
+   * @param {number} [band2460ZeoliteDepth=0.07] - BD2460 diagnostic zeolite framework band depth (0.0 to 0.30)
+   * @param {number} [band1900WaterDepth=0.08] - BD1900 molecular zeolitic water channel depth (0.0 to 0.50)
+   * @returns {{isZeoliteDetected: boolean, isCarbonateCoexisting: boolean, metasomaticClass: string, mineralSpecies: string, chemicalFormula: string, alkalineHydrothermalContext: string}}
+   */
+  static computeCRISMZeoliteCarbonateMetasomaticIndices(band2300CarbonateDepth = 0.01, band2500CarbonateDepth = 0.01, band2460ZeoliteDepth = 0.07, band1900WaterDepth = 0.08) {
+    const d2300 = Math.max(0.0, band2300CarbonateDepth);
+    const d2500 = Math.max(0.0, band2500CarbonateDepth);
+    const d2460 = Math.max(0.0, band2460ZeoliteDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+
+    const isZeol = d2460 >= 0.030 && d1900 >= 0.035;
+    const isCarb = (d2300 >= 0.035 && d2500 >= 0.030) || (d2500 >= 0.040);
+
+    let metaClass = 'Unaltered Basalt / Low-Hydration Regolith';
+    let species = 'Basalt';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Zeolite or Carbonate Absorption';
+
+    if (isZeol && isCarb) {
+      metaClass = 'Zeolite + Mg-Carbonate Alkaline Metasomatic Complex';
+      species = 'Analcime + Magnesite / Siderite';
+      formula = 'NaAlSi2O6 * H2O + (Mg,Fe)CO3';
+      context = 'Multi-Stage Alkaline Hydrothermal Fluid Circulation / Impact Crater Paleolake Alteration (Nili Fossae / Tyrrhena Terra)';
+    } else if (isZeol) {
+      metaClass = 'Alkaline Hydrothermal Zeolite (Analcime / Clinoptilolite)';
+      species = 'Analcime / Clinoptilolite';
+      formula = 'NaAlSi2O6 * H2O / (Na,K,Ca)2-3Al3(Al,Si)2Si13O36 * 12H2O';
+      context = 'Moderate-Temperature (100-200 C) Alkaline Alteration of Volcanic Glass in Closed Basin';
+    } else if (isCarb) {
+      metaClass = 'Hydrothermal / Lacustrine Carbonate Horizon';
+      species = 'Magnesite / Calcite';
+      formula = '(Mg,Ca)CO3';
+      context = 'Serpentinization Carbonation / Neutral-to-Alkaline Water-Rock Interaction';
+    }
+
+    return {
+      isZeoliteDetected: isZeol,
+      isCarbonateCoexisting: isCarb,
+      metasomaticClass: metaClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      alkalineHydrothermalContext: context
+    };
+  }
 }
 
 

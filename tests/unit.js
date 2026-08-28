@@ -12173,6 +12173,54 @@ describe('Low-Thrust Continuous Spiral, Lava Tube Microclimate & Olivine Fo-Fa I
     });
 });
 
+describe('Solar Corona Plunge, Fumarolic Silica Halo & Zeolite-Carbonate Metasomatism', () => {
+    it('should calculate Mars-to-Sun Parker solar corona plunge trajectory, flight time, and coronal speed', () => {
+        // Solar plunge to 10 Solar Radii (10 R_sun closest approach, 300 km Mars parking altitude):
+        const plunge = TrajectoryEngine.computeMarsToSolarCoronaPlungeTrajectory(10.0, 300.0);
+        expect(plunge.targetPerihelionSolarRadii).to.equal(10.0);
+        expect(plunge.targetPerihelionAUKm).to.be.closeTo(0.0465, 0.005);
+        expect(plunge.trajectoryEccentricity).to.be.closeTo(0.9407, 0.01);
+        expect(plunge.timeOfFlightDays).to.be.closeTo(127.1, 2.0); // ~127 days TOF
+        expect(plunge.transSolarInjectionDeltaVKmS).to.be.closeTo(15.483, 1.0); // ~15.5 km/s TSPI
+        expect(plunge.perihelionCoronalSpeedKmS).to.be.closeTo(192.3, 3.0); // ~192 km/s in corona
+        expect(plunge.solarPlungeContext).to.include('Solar Corona Plunge');
+    });
+
+    it('should calculate volcanic fumarolic acid-gas leaching of host basalt and residual pure silica halo formation', () => {
+        // 250 C gas, 500 kg/day SO2 gas, 5 m radius halo, 10 m conduit height:
+        const fumarole = KRCEngine.computeMartianFumarolicAcidSulfateAlteration(250.0, 500.0, 5.0, 10.0);
+        expect(fumarole.annualAcidGasFluxTons).to.be.closeTo(182.6, 2.0); // ~182.6 t/yr gas
+        expect(fumarole.totalHostBasaltMassTons).to.be.closeTo(1869.2, 50.0); // ~1869 tons basalt
+        expect(fumarole.leachedCationMassTons).to.be.closeTo(972.0, 30.0); // ~972 tons cations stripped
+        expect(fumarole.residualSilicaMassTons).to.be.closeTo(897.2, 30.0); // ~897 tons pure Opal-A silica
+        expect(fumarole.completeSilicificationTimescaleYears).to.be.closeTo(6.26, 0.5); // ~6.3 years
+        expect(fumarole.alterationGradeClass).to.include('Extreme Acid-Leached Siliceous Residue');
+        expect(fumarole.fumaroleContext).to.include('Fumarolic Silica Halo');
+    });
+
+    it('should discriminate Hydrothermal Zeolites (Analcime) and Coexisting Carbonates in CRISM spectra', () => {
+        // Zeolite + Mg-Carbonate assemblage (Nili Fossae / Tyrrhena Terra: BD2460 = 0.07, BD1900 = 0.08, BD2300 = 0.05, BD2500 = 0.06):
+        const zeolCarb = BandMathEngine.computeCRISMZeoliteCarbonateMetasomaticIndices(0.05, 0.06, 0.07, 0.08);
+        expect(zeolCarb.isZeoliteDetected).to.be.true;
+        expect(zeolCarb.isCarbonateCoexisting).to.be.true;
+        expect(zeolCarb.metasomaticClass).to.include('Zeolite + Mg-Carbonate Alkaline Metasomatic Complex');
+        expect(zeolCarb.mineralSpecies).to.include('Analcime');
+        expect(zeolCarb.chemicalFormula).to.include('NaAlSi2O6');
+        expect(zeolCarb.alkalineHydrothermalContext).to.include('Alkaline Hydrothermal Fluid Circulation');
+
+        // Pure Zeolite / Analcime (BD2460 = 0.07, BD1900 = 0.08, no carbonate):
+        const pureZeol = BandMathEngine.computeCRISMZeoliteCarbonateMetasomaticIndices(0.005, 0.005, 0.07, 0.08);
+        expect(pureZeol.isZeoliteDetected).to.be.true;
+        expect(pureZeol.isCarbonateCoexisting).to.be.false;
+        expect(pureZeol.metasomaticClass).to.include('Alkaline Hydrothermal Zeolite');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMZeoliteCarbonateMetasomaticIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isZeoliteDetected).to.be.false;
+        expect(basalt.isCarbonateCoexisting).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -6382,6 +6382,68 @@ export class TrajectoryEngine {
       lowThrustContext: `Low-Thrust Continuous Spiral (${tBurnDays.toFixed(0)} d Spiral, ${dvSpiralKmS.toFixed(2)} km/s Delta-V, ${deltaMKg.toFixed(1)} kg Xe Fuel, ${propPct.toFixed(1)}% Fuel Mass)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Sun Parker-type solar corona plunge trajectory, eccentricity, flight time, and perihelion coronal speed.
+   * a = ( r_mars + r_perihelion ) / 2
+   * e = ( r_mars - r_perihelion ) / ( r_mars + r_perihelion )
+   * v_peri = sqrt( mu_sun * ( 2 / r_p - 1 / a ) )
+   * Reference: Bate et al. (1971), Curtis (2013) for Parker Solar Probe & Helios Coronal Plunge Trajectories.
+   * @param {number} [targetPerihelionSolarRadii=10.0] - Target solar closest approach in solar radii R_sun (4.0 to 100.0 R_sun)
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars departure parking orbit altitude in km (150 to 1000 km)
+   * @returns {{targetPerihelionSolarRadii: number, targetPerihelionAUKm: number, trajectoryEccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, transSolarInjectionDeltaVKmS: number, perihelionCoronalSpeedKmS: number, solarPlungeContext: string}}
+   */
+  static computeMarsToSolarCoronaPlungeTrajectory(targetPerihelionSolarRadii = 10.0, marsParkingAltitudeKm = 300.0) {
+    const RsunMult = Math.max(2.0, Math.min(150.0, targetPerihelionSolarRadii));
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const R_SUN_KM = 696340.0;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+
+    const rpKm = RsunMult * R_SUN_KM;
+    const rpAU = rpKm / AU_KM;
+
+    // Transfer ellipse
+    const aAU = (rMarsAU + rpAU) / 2.0;
+    const aKm = aAU * AU_KM;
+    const ecc = (rMarsAU - rpAU) / (rMarsAU + rpAU);
+
+    // Time of flight (days & years)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vApoKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfDepKmS = Math.abs(vMarsKmS - vApoKmS);
+
+    // Trans-Solar Plunge Injection Delta-V
+    const rParkKm = rMarsKm + hpMarsKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTspiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Perihelion speed in solar corona (km/s)
+    const vPeriKmS = Math.sqrt(muSun * ((2.0 / rpKm) - (1.0 / aKm)));
+
+    return {
+      targetPerihelionSolarRadii: parseFloat(RsunMult.toFixed(1)),
+      targetPerihelionAUKm: parseFloat(rpAU.toFixed(4)),
+      trajectoryEccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      transSolarInjectionDeltaVKmS: parseFloat(dvTspiKmS.toFixed(3)),
+      perihelionCoronalSpeedKmS: parseFloat(vPeriKmS.toFixed(2)),
+      solarPlungeContext: `Solar Corona Plunge (${RsunMult.toFixed(0)} R_sun Perihelion, ${tofDays.toFixed(0)} d TOF, ${dvTspiKmS.toFixed(2)} km/s TSPI, ${vPeriKmS.toFixed(0)} km/s Coronal Speed, e=${ecc.toFixed(3)})`
+    };
+  }
 }
 
 
