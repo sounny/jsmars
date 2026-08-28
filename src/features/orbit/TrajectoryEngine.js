@@ -4947,6 +4947,76 @@ export class TrajectoryEngine {
       trojanAsteroidContext: `Sun-Mars ${pointName} Co-Orbital Station (~${tLibYears.toFixed(0)}-yr Tadpole Libration, ${dvSkAnnualMS.toFixed(1)} m/s/yr Stationkeeping)`
     };
   }
+
+  /**
+   * Calculate Mars-to-Saturn interplanetary Hohmann transfer trajectory, Trans-Saturn Injection (TSI) Delta-V, and Titan gravity assist orbital capture.
+   * a_t = ( r_mars + r_saturn ) / 2
+   * TOF = pi * sqrt( a_t^3 / mu_sun )
+   * Reference: Bate et al. (1971), Strange et al. (2002), Curtis (2013) for Outer Planet Cassini/Huygens exploration architectures.
+   * @param {number} [parkingOrbitAltitudeKm=300.0] - Mars departure low orbit altitude in km (150 to 1000 km)
+   * @param {number} [titanFlybyAltitudeKm=1000.0] - Titan closest approach flyby altitude in km (500 to 5000 km)
+   * @returns {{departurePlanet: string, destinationPlanet: string, transferSemiMajorAxisAU: number, timeOfFlightYears: number, timeOfFlightDays: number, transSaturnInjectionDeltaVKmS: number, saturnArrivalHyperbolicExcessKmS: number, titanGravityAssistDeltaVKmS: number, outerSystemMissionContext: string}}
+   */
+  static computeMarsSaturnInterplanetaryTransferAndTitanSlingshot(parkingOrbitAltitudeKm = 300.0, titanFlybyAltitudeKm = 1000.0) {
+    const hpKm = Math.max(150.0, parkingOrbitAltitudeKm);
+    const hTitanKm = Math.max(300.0, titanFlybyAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11; // km^3/s^2
+    const muMars = 42828.37; // km^3/s^2
+    const muTitan = 8978.1; // km^3/s^2
+    const rMarsKm = 3389.5;
+    const rTitanKm = 2574.7;
+
+    const rMarsAU = 1.52368;
+    const rSaturnAU = 9.5388;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rSaturnDistKm = rSaturnAU * AU_KM;
+
+    // Transfer ellipse semi-major axis
+    const aTransferAU = (rMarsAU + rSaturnAU) / 2.0;
+    const aTransferKm = aTransferAU * AU_KM;
+
+    // Time of flight (seconds, days, years)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aTransferKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYears = tofDays / 365.25;
+
+    // Heliocentric speeds
+    const vMarsKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vPeriTransferKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransferKm)));
+    const vInfDepKmS = vPeriTransferKmS - vMarsKmS;
+
+    // Trans-Saturn Injection (TSI) Delta-V from Mars parking orbit
+    const rParkKm = rMarsKm + hpKm;
+    const vParkCircKmS = Math.sqrt(muMars / rParkKm);
+    const vTransDepHypKmS = Math.sqrt(Math.pow(vInfDepKmS, 2.0) + (2.0 * muMars / rParkKm));
+    const dvTsiKmS = vTransDepHypKmS - vParkCircKmS;
+
+    // Arrival speed at Saturn
+    const vSaturnCircKmS = Math.sqrt(muSun / rSaturnDistKm);
+    const vApoTransferKmS = Math.sqrt(muSun * ((2.0 / rSaturnDistKm) - (1.0 / aTransferKm)));
+    const vInfArrKmS = Math.abs(vSaturnCircKmS - vApoTransferKmS);
+
+    // Titan gravity assist Delta-V boost
+    const rpTitanKm = rTitanKm + hTitanKm;
+    const vInfTitan = 5.5; // km/s typical relative approach
+    const denom = 1.0 + (rpTitanKm * Math.pow(vInfTitan, 2.0)) / muTitan;
+    const sinHalfDelta = 1.0 / denom;
+    const dvTitanKmS = 2.0 * vInfTitan * sinHalfDelta;
+
+    return {
+      departurePlanet: 'Mars',
+      destinationPlanet: 'Saturn',
+      transferSemiMajorAxisAU: parseFloat(aTransferAU.toFixed(2)),
+      timeOfFlightYears: parseFloat(tofYears.toFixed(2)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      transSaturnInjectionDeltaVKmS: parseFloat(dvTsiKmS.toFixed(3)),
+      saturnArrivalHyperbolicExcessKmS: parseFloat(vInfArrKmS.toFixed(3)),
+      titanGravityAssistDeltaVKmS: parseFloat(dvTitanKmS.toFixed(3)),
+      outerSystemMissionContext: `Mars-to-Saturn Transfer (TOF ${tofYears.toFixed(1)} Years, ${dvTsiKmS.toFixed(2)} km/s TSI Delta-V, ${dvTitanKmS.toFixed(2)} km/s Titan Gravity Assist)`
+    };
+  }
 }
 
 

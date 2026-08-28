@@ -5317,6 +5317,64 @@ export class BandMathEngine {
       paleosequestrationContext: context
     };
   }
+
+  /**
+   * Calculate Mafic Mineralogy Modal Partitioning (Olivine vs High-Ca Pyroxene vs Low-Ca Pyroxene) and igneous petrologic classification from CRISM summary parameters.
+   * f_ol = D_ol / D_total * 100
+   * f_hcp = D_hcp / D_total * 100
+   * f_lcp = D_lcp / D_total * 100
+   * Reference: Mustard et al. (2005), Poulet et al. (2007), Rogers & Christensen (2007), Viviano-Beck et al. (2014) for Martian basaltic and ultramafic crustal provinces.
+   * @param {number} [olindexDepth=0.08] - OLINDEX3 / broad 1 um olivine absorption band depth (0.0 to 1.0)
+   * @param {number} [hcpindexDepth=0.04] - HCPINDEX / 2.3 um high-Ca pyroxene band depth (0.0 to 1.0)
+   * @param {number} [lcpindexDepth=0.02] - LCPINDEX / 1.8 um low-Ca pyroxene band depth (0.0 to 1.0)
+   * @returns {{isMaficPresent: boolean, olivineModalPct: number, highCaPyroxeneModalPct: number, lowCaPyroxeneModalPct: number, igneousLithologyClassification: string, petrologicContext: string}}
+   */
+  static computeCRISMOlivinePyroxeneModalPartitioning(olindexDepth = 0.08, hcpindexDepth = 0.04, lcpindexDepth = 0.02) {
+    const dOl = Math.max(0.0, olindexDepth);
+    const dHcp = Math.max(0.0, hcpindexDepth);
+    const dLcp = Math.max(0.0, lcpindexDepth);
+    const dTot = dOl + dHcp + dLcp;
+
+    let isMafic = false;
+    let fOl = 0.0;
+    let fHcp = 0.0;
+    let fLcp = 0.0;
+    let lithology = 'Felsic or Dust-Covered Regolith';
+    let context = 'Standard Unaltered High-Albedo Soil';
+
+    if (dTot >= 0.035) {
+      isMafic = true;
+      fOl = (dOl / dTot) * 100.0;
+      fHcp = (dHcp / dTot) * 100.0;
+      fLcp = (dLcp / dTot) * 100.0;
+
+      if (fOl >= 65.0) {
+        lithology = 'Dunite / Ultramafic Peridotite';
+        context = 'Primitive Upper Mantle Cumulate / Deep Impact Excavation (Nili Fossae / Argyre Type)';
+      } else if (fOl >= 35.0) {
+        lithology = 'Picritic Basalt (Olivine-Phyric Basalt)';
+        context = 'Primitive High-Temperature Mantle Melting / Rapid Volcanic Extrusion';
+      } else if (fHcp >= 50.0) {
+        lithology = 'Tholeiitic Clinopyroxene Basalt';
+        context = 'Evolved Basaltic Shield Volcanism / Syrtis Major Caldera Lavas';
+      } else if (fLcp >= 50.0) {
+        lithology = 'Norite / Orthopyroxene-Rich Basalt';
+        context = 'Ancient Noachian Highlands Primordial Crust (ALH84001 Analogue)';
+      } else {
+        lithology = 'Intermediate Gabbroic / Two-Pyroxene Basalt';
+        context = 'Typical Martian Low-Albedo Intercrater Sand Sheet';
+      }
+    }
+
+    return {
+      isMaficPresent: isMafic,
+      olivineModalPct: parseFloat(fOl.toFixed(1)),
+      highCaPyroxeneModalPct: parseFloat(fHcp.toFixed(1)),
+      lowCaPyroxeneModalPct: parseFloat(fLcp.toFixed(1)),
+      igneousLithologyClassification: lithology,
+      petrologicContext: context
+    };
+  }
 }
 
 

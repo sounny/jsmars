@@ -5501,6 +5501,61 @@ export class KRCEngine {
       cryovolcanicGeomorphologyContext: context
     };
   }
+
+  /**
+   * Calculate ancient Martian volcanic mega-lahar debris flow dynamics, Bingham yield stress, mean flow velocity, and maximum runout distance.
+   * tau_y = tau_0 * exp( b * ( C_v - 0.30 ) )
+   * u_lahar = sqrt( 8 * g_mars * h_flow * S_0 / f_Darcy )
+   * L_runout = 1.25 * V_km3^0.42 / S_0^0.5
+   * Reference: Major (1997), Russell et al. (2003), Cagnoli et al. (2021) for Hecates Tholus & Hadriaca Patera volcano-ice lahar deposits.
+   * @param {number} [laharVolumeKm3=25.0] - Total volcano-ice outburst lahar volume in km^3 (0.1 to 500 km^3)
+   * @param {number} [channelBedSlope=0.015] - Flank slope of the volcanic edifice (0.001 to 0.15)
+   * @param {number} [volcanicAshVolFractionPct=55.0] - Volcanic ash/lithic sediment volume percentage (30 to 70%)
+   * @param {number} [flowDepthMeters=8.0] - Bankfull lahar flow depth in meters (1 to 50 m)
+   * @returns {{laharVolumeKm3: number, slurryBulkDensityKgM3: number, binghamYieldStressPa: number, peakFlowVelocityMS: number, peakFlowVelocityKmH: number, maxRunoutDistanceKm: number, laharSedimentologyContext: string}}
+   */
+  static computeMartianVolcanicLaharDebrisFlowRunout(laharVolumeKm3 = 25.0, channelBedSlope = 0.015, volcanicAshVolFractionPct = 55.0, flowDepthMeters = 8.0) {
+    const Vkm3 = Math.max(0.01, laharVolumeKm3);
+    const S0 = Math.max(0.0005, Math.min(0.20, channelBedSlope));
+    const CvPct = Math.max(25.0, Math.min(75.0, volcanicAshVolFractionPct));
+    const hFlowM = Math.max(0.5, flowDepthMeters);
+
+    const gMars = 3.72076; // m/s^2
+    const rhoWater = 1000.0; // kg/m^3
+    const rhoAsh = 2600.0; // kg/m^3
+    const Cv = CvPct / 100.0;
+
+    // Slurry bulk density (kg/m^3)
+    const rhoSlurry = (Cv * rhoAsh) + ((1.0 - Cv) * rhoWater);
+
+    // Bingham yield stress (Pa)
+    const tauYPa = 25.0 * Math.exp(8.5 * (Cv - 0.30));
+
+    // Peak flow velocity with friction Darcy factor f = 0.05 (m/s and km/h)
+    const fDarcy = 0.055;
+    const uFlowMS = Math.sqrt((8.0 * gMars * hFlowM * S0) / fDarcy);
+    const uFlowKmH = uFlowMS * 3.6;
+
+    // Maximum runout distance (km)
+    const LrunoutKm = 1.25 * Math.pow(Vkm3, 0.42) / Math.sqrt(S0);
+
+    let context = 'Catastrophic Volcano-Ice Mega-Lahar (Widespread Outwash Apron & Boulder Lobes)';
+    if (LrunoutKm < 15.0) {
+      context = 'Localized Flank Mudflow / Hyperconcentrated Torrential Splay';
+    } else if (Vkm3 > 100.0) {
+      context = 'Basin-Scale Volcanogenic Debris Avalanche / Regional Caldera-Breach Megaflood';
+    }
+
+    return {
+      laharVolumeKm3: parseFloat(Vkm3.toFixed(1)),
+      slurryBulkDensityKgM3: parseFloat(rhoSlurry.toFixed(1)),
+      binghamYieldStressPa: parseFloat(tauYPa.toFixed(1)),
+      peakFlowVelocityMS: parseFloat(uFlowMS.toFixed(2)),
+      peakFlowVelocityKmH: parseFloat(uFlowKmH.toFixed(1)),
+      maxRunoutDistanceKm: parseFloat(LrunoutKm.toFixed(1)),
+      laharSedimentologyContext: context
+    };
+  }
 }
 
 

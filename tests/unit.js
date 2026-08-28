@@ -11014,6 +11014,50 @@ describe('Mars Trojans L4/L5 Dynamics, Cryovolcanic Effusion & Carbonate Quatern
     });
 });
 
+describe('Mars-to-Saturn Hohmann Transfers, Mega-Lahar Debris Flows & Mafic Modal Partitioning', () => {
+    it('should calculate Mars-to-Saturn interplanetary Hohmann transfer TOF, TSI, and Titan slingshot Delta-V', () => {
+        // Mars to Saturn transfer (r_S = 9.5388 AU, 300 km parking orbit, 1000 km Titan flyby):
+        const saturn = TrajectoryEngine.computeMarsSaturnInterplanetaryTransferAndTitanSlingshot(300.0, 1000.0);
+        expect(saturn.destinationPlanet).to.equal('Saturn');
+        expect(saturn.transferSemiMajorAxisAU).to.be.closeTo(5.53, 0.1); // ~5.53 AU semi-major axis
+        expect(saturn.timeOfFlightYears).to.be.closeTo(6.50, 0.2); // ~6.5 years TOF
+        expect(saturn.transSaturnInjectionDeltaVKmS).to.be.closeTo(5.33, 0.5); // ~5.33 km/s TSI Delta-V
+        expect(saturn.saturnArrivalHyperbolicExcessKmS).to.be.closeTo(4.67, 0.5); // ~4.67 km/s arrival excess
+        expect(saturn.titanGravityAssistDeltaVKmS).to.be.greaterThan(0.5); // > 0.5 km/s Titan slingshot
+        expect(saturn.outerSystemMissionContext).to.include('Mars-to-Saturn Transfer');
+    });
+
+    it('should calculate ancient Martian volcanic mega-lahar debris flow velocity, yield stress, and runout distance', () => {
+        // Elysium Mons / Hecates Tholus volcano-ice mega-lahar (25 km^3 volume, 1.5% slope, 55% ash):
+        const lahar = KRCEngine.computeMartianVolcanicLaharDebrisFlowRunout(25.0, 0.015, 55.0, 8.0);
+        expect(lahar.laharVolumeKm3).to.equal(25.0);
+        expect(lahar.slurryBulkDensityKgM3).to.equal(1880.0); // 1880 kg/m^3
+        expect(lahar.binghamYieldStressPa).to.be.closeTo(209.4, 15.0); // ~209 Pa yield stress
+        expect(lahar.peakFlowVelocityMS).to.be.closeTo(8.06, 1.0); // ~8.1 m/s peak velocity
+        expect(lahar.maxRunoutDistanceKm).to.be.closeTo(39.4, 5.0); // ~39.4 km runout
+        expect(lahar.laharSedimentologyContext).to.include('Catastrophic Volcano-Ice Mega-Lahar');
+    });
+
+    it('should calculate Mafic Mineralogy Modal Partitioning (Olivine vs HCP vs LCP) and igneous lithology', () => {
+        // Dunite / Ultramafic mantle cumulate in Nili Fossae (8% OL, 1% HCP, 1% LCP):
+        const dunite = BandMathEngine.computeCRISMOlivinePyroxeneModalPartitioning(0.08, 0.01, 0.01);
+        expect(dunite.isMaficPresent).to.be.true;
+        expect(dunite.olivineModalPct).to.equal(80.0); // 80% Olivine
+        expect(dunite.igneousLithologyClassification).to.include('Dunite / Ultramafic Peridotite');
+        expect(dunite.petrologicContext).to.include('Primitive Upper Mantle Cumulate');
+
+        // Tholeiitic Clinopyroxene Basalt in Syrtis Major (2% OL, 6% HCP, 2% LCP):
+        const tholeiite = BandMathEngine.computeCRISMOlivinePyroxeneModalPartitioning(0.02, 0.06, 0.02);
+        expect(tholeiite.isMaficPresent).to.be.true;
+        expect(tholeiite.highCaPyroxeneModalPct).to.equal(60.0); // 60% HCP
+        expect(tholeiite.igneousLithologyClassification).to.include('Tholeiitic Clinopyroxene Basalt');
+
+        // Dust-covered regolith:
+        const dust = BandMathEngine.computeCRISMOlivinePyroxeneModalPartitioning(0.01, 0.01, 0.01);
+        expect(dust.isMaficPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
