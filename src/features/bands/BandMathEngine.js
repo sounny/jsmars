@@ -3056,6 +3056,61 @@ export class BandMathEngine {
       stratigraphicContext: context
     };
   }
+
+  /**
+   * Classify carbonate mineral species and cation stoichiometry (MgCO3, FeCO3, CaCO3, CaMg(CO3)2) from CRISM 2.3 um and 2.5 um band centers.
+   * Reference: Ehlmann et al. (2008), Boynton et al. (2009), Horgan et al. (2020) for Jezero Crater & Nili Fossae carbonates.
+   * @param {number} bandCenter2300Nm - Exact wavelength of 2.3 um CO3 overtone band center in nanometers (2290 to 2355 nm)
+   * @param {number} [bandCenter2500Nm=2515.0] - Exact wavelength of 2.5 um combination band center in nanometers (2490 to 2555 nm)
+   * @param {number} [bandDepth2300=0.04] - Relative absorption band depth (0 to 1)
+   * @returns {{carbonateSpecies: string, dominantCation: string, magnesiumMoleFraction: number, ironMoleFraction: number, calciumMoleFraction: number, paleoEnvironment: string, isSignificantCarbonate: boolean}}
+   */
+  static computeCRISMCarbonateCationSpeciation(bandCenter2300Nm, bandCenter2500Nm = 2515.0, bandDepth2300 = 0.04) {
+    const c2300 = Math.min(2360.0, Math.max(2285.0, bandCenter2300Nm));
+    const c2500 = Math.min(2560.0, Math.max(2485.0, bandCenter2500Nm));
+    const bd = Math.max(0.0, bandDepth2300);
+
+    let species = 'Magnesite (MgCO3)';
+    let cation = 'Mg2+ (Magnesium)';
+    let xMg = 0.90;
+    let xFe = 0.05;
+    let xCa = 0.05;
+    let env = 'Alkaline Lake Margin / Hydrothermal Olivine Carbonation (Nili Fossae / Jezero Rim)';
+
+    if (c2300 <= 2310.0 && c2500 <= 2505.0) {
+      species = 'Magnesite (MgCO3 - Endmember)';
+      cation = 'Mg2+';
+      xMg = 0.95; xFe = 0.03; xCa = 0.02;
+      env = 'Serpentinization / Carbonation of Ultramafic Olivine Bedrock';
+    } else if (c2300 <= 2325.0 && c2500 <= 2522.0) {
+      species = 'Dolomite (CaMg(CO3)2)';
+      cation = 'Ca2+ / Mg2+';
+      xMg = 0.50; xFe = 0.05; xCa = 0.45;
+      env = 'Saline Alkaline Lacustrine Evaporite Basin';
+    } else if (c2300 <= 2338.0) {
+      species = 'Siderite (FeCO3) / Ankerite';
+      cation = 'Fe2+ (Iron)';
+      xMg = 0.15; xFe = 0.75; xCa = 0.10;
+      env = 'Anoxic Reducing Hydrothermal Fluids / Deep Crustal Veins';
+    } else {
+      species = 'Calcite (CaCO3) / Aragonite';
+      cation = 'Ca2+ (Calcium)';
+      xMg = 0.05; xFe = 0.05; xCa = 0.90;
+      env = 'Pedogenic Alkaline Caliche / Cryogenic Soil Carbonate (Phoenix Site)';
+    }
+
+    const isSig = bd >= 0.015;
+
+    return {
+      carbonateSpecies: species,
+      dominantCation: cation,
+      magnesiumMoleFraction: parseFloat(xMg.toFixed(2)),
+      ironMoleFraction: parseFloat(xFe.toFixed(2)),
+      calciumMoleFraction: parseFloat(xCa.toFixed(2)),
+      paleoEnvironment: env,
+      isSignificantCarbonate: isSig
+    };
+  }
 }
 
 

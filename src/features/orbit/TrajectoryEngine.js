@@ -1713,6 +1713,59 @@ export class TrajectoryEngine {
       propellantMassFractionPct: parseFloat(massFracPct.toFixed(2))
     };
   }
+
+  /**
+   * Calculate Mars-to-Earth return departure Trans-Earth Injection (TEI) Delta-V and Earth atmospheric re-entry speed.
+   * v_dep = sqrt( C3_Mars + 2*mu_Mars / r_park )
+   * Delta_V_TEI = v_dep - v_park
+   * v_entry_Earth = sqrt( v_inf_Earth^2 + 2*mu_Earth / r_entry )
+   * Reference: Battin (1999), Vallado (2013) for Mars Sample Return (MSR) mission analysis.
+   * @param {number} [parkOrbitAltitudeKm=300.0] - Mars circular parking orbit altitude in km
+   * @param {number} [transEarthC3EnergyKm2S2=12.0] - Mars departure excess energy C3 in km^2/s^2 (typically 9 to 16 km^2/s^2)
+   * @param {number} [specificImpulseSec=320.0] - Earth Return Vehicle (ERV) specific impulse Isp in seconds
+   * @param {number} [earthArrivalExcessSpeedKmS=3.80] - Earth arrival excess velocity v_infinity in km/s (3.5 to 4.5 km/s)
+   * @returns {{transEarthInjectionDeltaVKmS: number, transEarthInjectionDeltaVMS: number, marsParkingOrbitSpeedKmS: number, earthAtmosphericEntrySpeedKmS: number, propellantMassFractionPct: number}}
+   */
+  static computeMarsToEarthReturnTrajectoryAndTEIDeltaV(parkOrbitAltitudeKm = 300.0, transEarthC3EnergyKm2S2 = 12.0, specificImpulseSec = 320.0, earthArrivalExcessSpeedKmS = 3.80) {
+    const muMars = 42828.37; // km^3/s^2
+    const RpMars = 3396.19;  // km
+    const muEarth = 398600.4418; // km^3/s^2
+    const RpEarth = 6378.137;    // km
+    const g0 = 9.80665;          // m/s^2
+
+    const hp = Math.max(50.0, parkOrbitAltitudeKm);
+    const C3 = Math.max(0.0, transEarthC3EnergyKm2S2);
+    const Isp = Math.max(50.0, specificImpulseSec);
+    const vInfEarth = Math.max(0.1, earthArrivalExcessSpeedKmS);
+
+    const rPark = RpMars + hp;
+
+    // Mars circular parking speed
+    const vPark = Math.sqrt(muMars / rPark);
+
+    // Departure hyperbolic speed from Mars
+    const vDep = Math.sqrt(C3 + (2.0 * muMars) / rPark);
+
+    // TEI Delta-V
+    const deltaV = vDep - vPark;
+    const deltaVMS = deltaV * 1000.0;
+
+    // Propellant mass fraction
+    const massFrac = 1.0 - Math.exp(-deltaVMS / (Isp * g0));
+    const massFracPct = massFrac * 100.0;
+
+    // Earth entry interface speed at 120 km altitude
+    const rEntryEarth = RpEarth + 120.0;
+    const vEntryEarth = Math.sqrt(vInfEarth * vInfEarth + (2.0 * muEarth) / rEntryEarth);
+
+    return {
+      transEarthInjectionDeltaVKmS: parseFloat(deltaV.toFixed(3)),
+      transEarthInjectionDeltaVMS: parseFloat(deltaVMS.toFixed(1)),
+      marsParkingOrbitSpeedKmS: parseFloat(vPark.toFixed(3)),
+      earthAtmosphericEntrySpeedKmS: parseFloat(vEntryEarth.toFixed(3)),
+      propellantMassFractionPct: parseFloat(massFracPct.toFixed(2))
+    };
+  }
 }
 
 

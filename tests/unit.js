@@ -9007,6 +9007,53 @@ describe('Trans-Mars Injection Delta-V, CO2 Clathrate Hydrates & Sulfate Stratig
     });
 });
 
+describe('Trans-Earth Injection Delta-V, Methane Clathrate Hydrates & Carbonate Speciation', () => {
+    it('should calculate Mars-to-Earth return Trans-Earth Injection (TEI) Delta-V and Earth re-entry speed', () => {
+        // Typical MSR departure from 300 km Mars orbit (C3 = 12.0 km^2/s^2, Isp = 320 s, v_inf_Earth = 3.8 km/s):
+        const teiBurn = TrajectoryEngine.computeMarsToEarthReturnTrajectoryAndTEIDeltaV(300.0, 12.0, 320.0, 3.80);
+        expect(teiBurn.marsParkingOrbitSpeedKmS).to.be.closeTo(3.404, 0.05); // ~3.40 km/s circular Mars speed
+        expect(teiBurn.transEarthInjectionDeltaVKmS).to.be.closeTo(2.576, 0.1); // ~2.58 km/s TEI burn
+        expect(teiBurn.earthAtmosphericEntrySpeedKmS).to.be.closeTo(11.71, 0.08); // ~11.71 km/s Earth re-entry
+        expect(teiBurn.propellantMassFractionPct).to.be.greaterThan(50.0);
+    });
+
+    it('should calculate subsurface Methane Clathrate Hydrate stability boundary and cryosphere trap vulnerability', () => {
+        // Deep permafrost at 500 m depth, T = 195 K (stable sequestration):
+        const deepMethane = KRCEngine.computeMethaneClathrateHydrateStabilityBoundary(500.0, 195.0, 2000.0);
+        expect(deepMethane.isMethaneHydrateStable).to.be.true;
+        expect(deepMethane.lithostaticPressureMPa).to.be.closeTo(3.72, 0.05);
+        expect(deepMethane.ch4GasEquivalentDensityKgM3).to.equal(115.0);
+        expect(deepMethane.outgassingVulnerability).to.include('Secure Deep Permafrost Cryosphere Trap');
+
+        // Warm shallow deposit at 20 m depth, T = 230 K (destabilized active outgassing plume):
+        const plumeSource = KRCEngine.computeMethaneClathrateHydrateStabilityBoundary(20.0, 230.0, 1500.0);
+        expect(plumeSource.isMethaneHydrateStable).to.be.false;
+        expect(plumeSource.ch4GasEquivalentDensityKgM3).to.equal(0.0);
+        expect(plumeSource.outgassingVulnerability).to.include('Active Episodic Methane Outgassing');
+    });
+
+    it('should invert CRISM 2.3 um and 2.5 um carbonate band centers for cation speciation (Mg, Fe, Ca)', () => {
+        // Magnesite (MgCO3) in Jezero Crater rim / Nili Fossae (2300 nm & 2500 nm):
+        const magnesite = BandMathEngine.computeCRISMCarbonateCationSpeciation(2300.0, 2500.0, 0.05);
+        expect(magnesite.carbonateSpecies).to.include('Magnesite');
+        expect(magnesite.dominantCation).to.include('Mg2+');
+        expect(magnesite.magnesiumMoleFraction).to.be.greaterThan(0.90);
+        expect(magnesite.isSignificantCarbonate).to.be.true;
+        expect(magnesite.paleoEnvironment).to.include('Ultramafic Olivine');
+
+        // Calcite (CaCO3) caliche soil carbonate at Phoenix site (2340 nm & 2540 nm):
+        const calcite = BandMathEngine.computeCRISMCarbonateCationSpeciation(2340.0, 2540.0, 0.04);
+        expect(calcite.carbonateSpecies).to.include('Calcite');
+        expect(calcite.dominantCation).to.include('Ca2+');
+        expect(calcite.calciumMoleFraction).to.be.greaterThan(0.85);
+
+        // Siderite (FeCO3) reducing vein carbonate (2332 nm & 2528 nm):
+        const siderite = BandMathEngine.computeCRISMCarbonateCationSpeciation(2332.0, 2528.0, 0.03);
+        expect(siderite.carbonateSpecies).to.include('Siderite');
+        expect(siderite.ironMoleFraction).to.be.greaterThan(0.70);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

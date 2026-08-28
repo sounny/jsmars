@@ -2475,6 +2475,58 @@ export class KRCEngine {
       cryosphereRegime: regime
     };
   }
+
+  /**
+   * Calculate subsurface Methane Clathrate Hydrate (CH4 * 5.75 H2O) phase equilibrium stability boundary and gas storage capacity.
+   * ln( P_dissoc_MPa ) = 38.98 - 8533.8 / T_hydrate
+   * Reference: Sloan (1998), Chassefière et al. (2013), Mousis et al. (2016), Webster et al. (2015) for MSL methane plume sources.
+   * @param {number} depthMeters - Subsurface depth in meters (e.g. 50 to 2000 m in permafrost cryosphere)
+   * @param {number} [subsurfaceTempK=210.0] - In-situ geothermal temperature at depth in Kelvin
+   * @param {number} [overburdenDensityKgM3=2000.0] - Bulk density of overlying regolith/basalt in kg/m^3
+   * @returns {{isMethaneHydrateStable: boolean, lithostaticPressureMPa: number, dissociationPressureMPa: number, maxStableTempK: number, ch4GasEquivalentDensityKgM3: number, outgassingVulnerability: string}}
+   */
+  static computeMethaneClathrateHydrateStabilityBoundary(depthMeters, subsurfaceTempK = 210.0, overburdenDensityKgM3 = 2000.0) {
+    const z = Math.max(10.0, depthMeters);
+    const T = Math.max(100.0, Math.min(273.15, subsurfaceTempK));
+    const rho = Math.max(500.0, overburdenDensityKgM3);
+    const g = 3.72; // m/s^2 Mars gravity
+
+    // Lithostatic overburden pressure P = rho * g * z (Pa -> MPa)
+    const pLithPa = rho * g * z;
+    const pLithMPa = pLithPa * 1e-6;
+
+    // Dissociation pressure of CH4 hydrate at temperature T (MPa)
+    const pDissocMPa = Math.exp(38.98 - 8533.8 / T);
+
+    // Maximum stable temperature at lithostatic pressure P_lith (K)
+    let tMaxStableK = 273.15;
+    if (pLithMPa > 0.0001) {
+      tMaxStableK = 8533.8 / (38.98 - Math.log(pLithMPa));
+    }
+
+    const isStable = pLithMPa >= pDissocMPa;
+
+    // Storage capacity: ~115 kg of CH4 per m^3 of clathrate hydrate
+    const ch4StorageKgM3 = isStable ? 115.0 : 0.0;
+
+    let vulnerability = 'Destabilized: Active Episodic Methane Outgassing / Atmospheric Plume Source';
+    if (isStable) {
+      if (z >= 300.0) {
+        vulnerability = 'Secure Deep Permafrost Cryosphere Trap (Stable Sequestration)';
+      } else {
+        vulnerability = 'Shallow Metastable Cryotrap: Sensitive to Diurnal / Seasonal Thermal Pulses';
+      }
+    }
+
+    return {
+      isMethaneHydrateStable: isStable,
+      lithostaticPressureMPa: parseFloat(pLithMPa.toFixed(3)),
+      dissociationPressureMPa: parseFloat(pDissocMPa.toFixed(4)),
+      maxStableTempK: parseFloat(tMaxStableK.toFixed(1)),
+      ch4GasEquivalentDensityKgM3: parseFloat(ch4StorageKgM3.toFixed(1)),
+      outgassingVulnerability: vulnerability
+    };
+  }
 }
 
 
