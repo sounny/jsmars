@@ -5623,6 +5623,52 @@ export class BandMathEngine {
       astrobiologicalContext: context
     };
   }
+
+  /**
+   * Calculate Pyroxene Gaffey Band Area Ratio (BAR = Area II / Area I) and infer ternary Wollastonite-Enstatite-Ferrosilite composition from CRISM spectra.
+   * BAR = Area_Band_II / Area_Band_I
+   * Wo_pct = -105.0 + 130.0 * Band_I_Center_um
+   * Reference: Gaffey et al. (1993, 2002), Cloutis & Gaffey (1991), Mustard et al. (2005), Viviano-Beck et al. (2014) for Syrtis Major volcanic calderas & Noachian crust.
+   * @param {number} [band1CenterUm=1.03] - Band I (1.0 um) absorption center wavelength in um (0.88 to 1.10 um)
+   * @param {number} [band2CenterUm=2.25] - Band II (2.0 um) absorption center wavelength in um (1.80 to 2.40 um)
+   * @param {number} [band1Area=0.08] - Integrated band I absorption area (0.01 to 0.50)
+   * @param {number} [band2Area=0.12] - Integrated band II absorption area (0.01 to 0.50)
+   * @returns {{isPyroxenePresent: boolean, pyroxeneClass: string, mineralSpecies: string, bandAreaRatioBAR: number, estimatedWollastonitePct: number, petrologicContext: string}}
+   */
+  static computeCRISMPyroxeneBandAreaRatioAndComposition(band1CenterUm = 1.03, band2CenterUm = 2.25, band1Area = 0.08, band2Area = 0.12) {
+    const l1 = Math.max(0.85, Math.min(1.15, band1CenterUm));
+    const l2 = Math.max(1.70, Math.min(2.50, band2CenterUm));
+    const a1 = Math.max(0.005, band1Area);
+    const a2 = Math.max(0.005, band2Area);
+
+    const bar = a2 / a1;
+    let isPyrox = true;
+    let pyroxClass = 'Intermediate Clinopyroxene (Pigeonite)';
+    let species = 'Pigeonite (Wo15-25)';
+    let woPct = 20.0;
+    let context = 'Fractionated Tholeiitic Basalt Matrix';
+
+    if (l1 >= 1.00 && l2 >= 2.18 && bar >= 1.30) {
+      pyroxClass = 'High-Calcium Clinopyroxene (HCP / Augite-Diopside)';
+      species = 'Augite (Wo35-45 En45 Fs15)';
+      woPct = Math.min(48.0, Math.max(30.0, -105.0 + (140.0 * l1)));
+      context = 'Evolved Tholeiitic / Alkalic Lava Flows (Syrtis Major Caldera Complex)';
+    } else if (l1 <= 0.94 && l2 <= 1.98 && bar <= 1.15) {
+      pyroxClass = 'Low-Calcium Orthopyroxene (LCP / Enstatite-Hypersthene)';
+      species = 'Orthopyroxene / Norite (Wo4-10 En65 Fs28)';
+      woPct = Math.min(12.0, Math.max(2.0, -85.0 + (100.0 * l1)));
+      context = 'Primitive Plutonic / Ancient Noachian Crust (ALH84001 / Tyrrhena Terra Megabreccia)';
+    }
+
+    return {
+      isPyroxenePresent: isPyrox,
+      pyroxeneClass: pyroxClass,
+      mineralSpecies: species,
+      bandAreaRatioBAR: parseFloat(bar.toFixed(2)),
+      estimatedWollastonitePct: parseFloat(woPct.toFixed(1)),
+      petrologicContext: context
+    };
+  }
 }
 
 

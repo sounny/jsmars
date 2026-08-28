@@ -5834,6 +5834,70 @@ export class KRCEngine {
       sinterDiagenesisContext: context
     };
   }
+
+  /**
+   * Calculate deep crustal hydrothermal convection cells, Rayleigh-Darcy stability number, upwelling Darcy velocity, and Nusselt convective heat flux in ancient impact basins.
+   * Ra = ( rho_f^2 * g_mars * beta_T * c_f * k_perm * H * Delta_T ) / ( mu_f * K_m )
+   * Ra_crit = 4 * pi^2
+   * Nu = Ra / Ra_crit
+   * u_z = ( k_perm * rho_f * g * beta_T * Delta_T ) / mu_f
+   * Reference: Rathbun & Squyres (2002), Abramov & Kring (2005), Solomon et al. (2005) for Hellas, Isidis, & Argyre impact hydrothermal systems.
+   * @param {number} [crustalPermeabilityM2=1.0e-13] - Fractured basalt aquifer permeability in m^2 (1e-16 to 1e-11 m^2)
+   * @param {number} [permeableAquiferDepthKm=4.0] - Hydrothermal basin aquifer thickness in km (1.0 to 10.0 km)
+   * @param {number} [basalHeatFluxMWm2=150.0] - Post-impact / plutonic basal heat flux in mW/m^2 (30 to 500 mW/m^2)
+   * @param {number} [fluidViscosityPaS=2.5e-4] - Hot hydrothermal brine dynamic viscosity in Pa*s (1e-4 to 1e-3 Pa*s)
+   * @returns {{rayleighDarcyNumber: number, criticalRayleighNumber: number, isHydrothermalConvectionActive: boolean, nusseltConvectiveMultiplier: number, upwellingFluidVelocityMYr: number, convectiveHeatDischargeWM2: number, hydrothermalConvectionContext: string}}
+   */
+  static computeMartianDeepHydrothermalConvectionAndRayleighDarcy(crustalPermeabilityM2 = 1.0e-13, permeableAquiferDepthKm = 4.0, basalHeatFluxMWm2 = 150.0, fluidViscosityPaS = 2.5e-4) {
+    const kPerm = Math.max(1.0e-18, crustalPermeabilityM2);
+    const HKm = Math.max(0.5, permeableAquiferDepthKm);
+    const qGeoW = Math.max(0.01, basalHeatFluxMWm2 / 1000.0);
+    const muF = Math.max(1.0e-5, fluidViscosityPaS);
+
+    const gMars = 3.72076;
+    const HM = HKm * 1000.0;
+    const Km = 2.0; // W/(m*K) rock thermal conductivity
+    const rhoF = 1000.0; // kg/m^3
+    const betaT = 5.0e-4; // K^-1
+    const cf = 4184.0; // J/(kg*K)
+
+    // Conductive temperature difference across aquifer (K)
+    const deltaT = (qGeoW * HM) / Km;
+
+    // Rayleigh-Darcy dimensionless number
+    const num = Math.pow(rhoF, 2.0) * gMars * betaT * cf * kPerm * HM * deltaT;
+    const den = muF * Km;
+    const Ra = num / den;
+
+    const RaCrit = 4.0 * Math.pow(Math.PI, 2.0); // ~39.48
+    const isConvecting = Ra > RaCrit;
+
+    let Nu = 1.0;
+    let uzMYr = 0.0;
+    let qConvW = qGeoW;
+
+    if (isConvecting) {
+      Nu = Ra / RaCrit;
+      const uzMS = (kPerm * rhoF * gMars * betaT * deltaT) / muF;
+      uzMYr = uzMS * 3.15576e7;
+      qConvW = qGeoW * Nu;
+    }
+
+    let context = 'Purely Conductive Crustal Regime (Permeability Insufficient for Hydrothermal Convection)';
+    if (isConvecting) {
+      context = `Vigorous Crustal Hydrothermal Convection (Ra/Ra_crit = ${Nu.toFixed(1)}, ~${uzMYr.toFixed(1)} m/yr Upwelling Darcy Circulation)`;
+    }
+
+    return {
+      rayleighDarcyNumber: parseFloat(Ra.toFixed(1)),
+      criticalRayleighNumber: parseFloat(RaCrit.toFixed(2)),
+      isHydrothermalConvectionActive: isConvecting,
+      nusseltConvectiveMultiplier: parseFloat(Nu.toFixed(1)),
+      upwellingFluidVelocityMYr: parseFloat(uzMYr.toFixed(2)),
+      convectiveHeatDischargeWM2: parseFloat(qConvW.toFixed(2)),
+      hydrothermalConvectionContext: context
+    };
+  }
 }
 
 

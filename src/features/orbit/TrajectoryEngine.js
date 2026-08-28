@@ -5319,6 +5319,63 @@ export class TrajectoryEngine {
       gravityWaveAerobrakingContext: `Thermospheric Gravity Wave (${ampPct.toFixed(0)}% Density Wave at ${zKm.toFixed(0)} km, ${tEncSec.toFixed(1)}s Spacecraft Drag Oscillation)`
     };
   }
+
+  /**
+   * Calculate continuous low-thrust ion electric propulsion spiral descent trajectory from high Mars orbit to Phobos co-orbital rendezvous.
+   * Delta_V = | sqrt( mu / r_initial ) - sqrt( mu / r_phobos ) |
+   * m_propellant = m_0 * ( 1 - exp( -Delta_V / ( g_0 * I_sp ) ) )
+   * t_spiral = m_propellant / ( T_thrust / ( g_0 * I_sp ) )
+   * Reference: Edelbaum (1961), Petropoulos (2004), MMX JAXA Mission Design (2020) for Low-Thrust Martian Moon Proximity Operations.
+   * @param {number} [initialAltitudeKm=17032.0] - Departure orbit altitude above Mars in km (1000 to 40000 km)
+   * @param {number} [ionThrustMilliN=150.0] - Continuous electric thruster force in milli-Newtons (10 to 1000 mN)
+   * @param {number} [spacecraftMassKg=1200.0] - Initial wet spacecraft mass in kg (200 to 5000 kg)
+   * @param {number} [ispSeconds=3200.0] - Ion engine specific impulse in seconds (1500 to 5000 s)
+   * @returns {{departureRadiusKm: number, phobosRadiusKm: number, edelbaumDeltaVMMS: number, xenonPropellantConsumedKg: number, spiralDurationDays: number, totalSpiralRevolutions: number, lowThrustMissionContext: string}}
+   */
+  static computeMarsPhobosLowThrustSpiralDescentTrajectory(initialAltitudeKm = 17032.0, ionThrustMilliN = 150.0, spacecraftMassKg = 1200.0, ispSeconds = 3200.0) {
+    const hInitKm = Math.max(1000.0, initialAltitudeKm);
+    const TThrustN = Math.max(0.005, ionThrustMilliN / 1000.0);
+    const m0Kg = Math.max(50.0, spacecraftMassKg);
+    const Isp = Math.max(500.0, ispSeconds);
+
+    const muMars = 42828.37; // km^3/s^2
+    const rMarsKm = 3389.5;
+    const r1Km = rMarsKm + hInitKm;
+    const rPhobosKm = 9376.0; // Phobos semi-major axis
+
+    const g0 = 9.80665; // m/s^2
+    const cMS = Isp * g0; // effective exhaust velocity (m/s)
+
+    // Orbital speeds (m/s)
+    const v1MS = Math.sqrt((muMars * 1e9) / (r1Km * 1000.0));
+    const v2MS = Math.sqrt((muMars * 1e9) / (rPhobosKm * 1000.0));
+
+    // Edelbaum velocity increment (m/s)
+    const dvMS = Math.abs(v2MS - v1MS);
+
+    // Propellant mass consumed (kg)
+    const mXeKg = m0Kg * (1.0 - Math.exp(- dvMS / cMS));
+
+    // Mass flow rate (kg/s) and spiral duration (days)
+    const mDotKgS = TThrustN / cMS;
+    const tSpiralSec = mXeKg / mDotKgS;
+    const tSpiralDays = tSpiralSec / 86400.0;
+
+    // Mean orbital period and revolution count
+    const rMeanM = ((r1Km + rPhobosKm) / 2.0) * 1000.0;
+    const pMeanSec = 2.0 * Math.PI * Math.sqrt(Math.pow(rMeanM, 3.0) / (muMars * 1e9));
+    const nRevs = tSpiralSec / pMeanSec;
+
+    return {
+      departureRadiusKm: parseFloat(r1Km.toFixed(1)),
+      phobosRadiusKm: parseFloat(rPhobosKm.toFixed(1)),
+      edelbaumDeltaVMMS: parseFloat(dvMS.toFixed(1)),
+      xenonPropellantConsumedKg: parseFloat(mXeKg.toFixed(2)),
+      spiralDurationDays: parseFloat(tSpiralDays.toFixed(1)),
+      totalSpiralRevolutions: parseFloat(nRevs.toFixed(1)),
+      lowThrustMissionContext: `Low-Thrust Spiral Descent (${dvMS.toFixed(0)} m/s Delta-V, ${mXeKg.toFixed(1)} kg Xe over ${tSpiralDays.toFixed(0)} Days / ${nRevs.toFixed(0)} Revs)`
+    };
+  }
 }
 
 

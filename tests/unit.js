@@ -11301,6 +11301,54 @@ describe('Mars Gravity Waves, Silica Sinter Diagenesis & Serpentine Polymorph In
     });
 });
 
+describe('Mars-Phobos Low-Thrust Spiral, Hydrothermal Convection & Pyroxene BAR Inversion', () => {
+    it('should calculate continuous low-thrust ion spiral descent from high orbit to Phobos rendezvous', () => {
+        // Ion engine spiral descent (17032 km altitude to Phobos, 150 mN thrust, 1200 kg spacecraft, 3200s Isp):
+        const spiral = TrajectoryEngine.computeMarsPhobosLowThrustSpiralDescentTrajectory(17032.0, 150.0, 1200.0, 3200.0);
+        expect(spiral.departureRadiusKm).to.equal(20421.5);
+        expect(spiral.phobosRadiusKm).to.equal(9376.0);
+        expect(spiral.edelbaumDeltaVMMS).to.be.closeTo(689.0, 10.0); // ~689 m/s Delta-V
+        expect(spiral.xenonPropellantConsumedKg).to.be.closeTo(26.06, 1.0); // ~26 kg Xe
+        expect(spiral.spiralDurationDays).to.be.closeTo(63.1, 5.0); // ~63 days
+        expect(spiral.totalSpiralRevolutions).to.be.closeTo(98.7, 10.0); // ~99 revolutions
+        expect(spiral.lowThrustMissionContext).to.include('Low-Thrust Spiral Descent');
+    });
+
+    it('should calculate deep crustal hydrothermal convection cells and Rayleigh-Darcy stability in impact basins', () => {
+        // Deep 4 km fractured impact basin aquifer (1e-13 m^2 permeability, 150 mW/m^2 basal heat flux):
+        const hydro = KRCEngine.computeMartianDeepHydrothermalConvectionAndRayleighDarcy(1.0e-13, 4.0, 150.0, 2.5e-4);
+        expect(hydro.criticalRayleighNumber).to.be.closeTo(39.48, 0.5); // 4*pi^2 ~39.5
+        expect(hydro.rayleighDarcyNumber).to.be.closeTo(1868.0, 100.0); // Ra ~1868
+        expect(hydro.isHydrothermalConvectionActive).to.be.true; // Vigorous convection
+        expect(hydro.nusseltConvectiveMultiplier).to.be.closeTo(47.3, 3.0); // Nu ~47
+        expect(hydro.upwellingFluidVelocityMYr).to.be.closeTo(7.04, 0.5); // ~7 m/yr upwelling
+        expect(hydro.convectiveHeatDischargeWM2).to.be.closeTo(7.10, 0.5); // ~7.1 W/m^2
+        expect(hydro.hydrothermalConvectionContext).to.include('Vigorous Crustal Hydrothermal Convection');
+
+        // Low-permeability tight basalt (no convection):
+        const tight = KRCEngine.computeMartianDeepHydrothermalConvectionAndRayleighDarcy(1.0e-17, 4.0, 50.0, 2.5e-4);
+        expect(tight.isHydrothermalConvectionActive).to.be.false;
+    });
+
+    it('should calculate Gaffey Pyroxene Band Area Ratio (BAR) and Wollastonite ternary composition from CRISM spectra', () => {
+        // High-Ca Clinopyroxene (Augite in Syrtis Major: Band I = 1.03 um, Band II = 2.25 um, BAR = 1.50):
+        const augite = BandMathEngine.computeCRISMPyroxeneBandAreaRatioAndComposition(1.03, 2.25, 0.08, 0.12);
+        expect(augite.isPyroxenePresent).to.be.true;
+        expect(augite.pyroxeneClass).to.include('High-Calcium Clinopyroxene (HCP / Augite-Diopside)');
+        expect(augite.bandAreaRatioBAR).to.equal(1.50);
+        expect(augite.estimatedWollastonitePct).to.be.closeTo(39.2, 2.0); // ~39% Wo
+        expect(augite.petrologicContext).to.include('Syrtis Major Caldera Complex');
+
+        // Low-Ca Orthopyroxene (Noachian crust / ALH84001: Band I = 0.92 um, Band II = 1.90 um, BAR = 0.90):
+        const opx = BandMathEngine.computeCRISMPyroxeneBandAreaRatioAndComposition(0.92, 1.90, 0.10, 0.09);
+        expect(opx.isPyroxenePresent).to.be.true;
+        expect(opx.pyroxeneClass).to.include('Low-Calcium Orthopyroxene (LCP / Enstatite-Hypersthene)');
+        expect(opx.bandAreaRatioBAR).to.equal(0.90);
+        expect(opx.estimatedWollastonitePct).to.be.closeTo(7.0, 2.0); // ~7% Wo
+        expect(opx.petrologicContext).to.include('Ancient Noachian Crust');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
