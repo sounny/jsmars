@@ -9939,6 +9939,45 @@ describe('Supersonic Parachute Deployment Corridor, Transient Brine Metastabilit
     });
 });
 
+describe('Powered Descent Propellant Budget, Precession Polar Insolation & Kaolinite Weathering', () => {
+    it('should calculate powered descent gravity turn Delta-V, burn duration, and propellant mass budget', () => {
+        // MSL / Perseverance Sky Crane PDI (h0 = 1500 m, v0 = 80 m/s, gamma = -65 deg, T/W = 2.5, Isp = 225 s, mass = 1950 kg):
+        const landing = TrajectoryEngine.computePoweredDescentGravityTurnPropellantBudget(1500.0, 80.0, -65.0, 2.5, 225.0, 1950.0, 'mars');
+        expect(landing.kinematicDeltaVMS).to.be.closeTo(79.25, 1.0); // ~79.25 m/s kinematic reduction
+        expect(landing.gravityLossDeltaVMS).to.be.closeTo(51.4, 3.0); // ~51.4 m/s gravity losses
+        expect(landing.totalMissionDeltaVMS).to.be.closeTo(150.2, 5.0); // ~150 m/s total budget with margin
+        expect(landing.burnDurationSec).to.be.closeTo(14.3, 1.0); // ~14.3 second burn
+        expect(landing.propellantConsumedKg).to.be.closeTo(128.3, 10.0); // ~128 kg propellant
+        expect(landing.descentGuidanceRegime).to.include('Sky Crane');
+    });
+
+    it('should calculate precession of perihelion insolation asymmetry and polar water ice retention', () => {
+        // Current astronomical epoch (obliquity = 25.2 deg, e = 0.0934, varpi = 251 deg):
+        const precession = KRCEngine.computePrecessionInsolationAsymmetryAndPolarIceMoundGrowth(25.2, 0.0934, 251.0, 0.45, 0.70);
+        expect(precession.northPeakSummerInsolationWM2).to.be.lessThan(precession.southPeakSummerInsolationWM2);
+        expect(precession.northPeakSummerTempK).to.be.closeTo(215.0, 15.0); // cool North summer protects water ice
+        expect(precession.dominantWaterIceAccumulationPole).to.include('Planum Boreum');
+        expect(precession.precessionPhaseDescription).to.include('Current Epoch: Southern Summer at Perihelion');
+    });
+
+    it('should discriminate well-crystallized Kaolinite from hydrated Halloysite and unaltered basalt in CRISM spectra', () => {
+        // Kaolinite at Mawrth Vallis (strong 1.41/1.46 um and 2.16/2.21 um doublets, weak 1.91 um water):
+        const kaolinite = BandMathEngine.computeCRISMKaoliniteHalloysiteIndices(0.23, 0.25, 0.298, 0.25, 0.22, 0.30);
+        expect(kaolinite.isKaolinGroupPresent).to.be.true;
+        expect(kaolinite.kaolinMineralSpecies).to.include('Kaolinite');
+        expect(kaolinite.weatheringPedogenicContext).to.include('Subaerial Acid/Meteoric Leaching');
+
+        // Hydrated Halloysite (strong 1.91 um band):
+        const halloysite = BandMathEngine.computeCRISMKaoliniteHalloysiteIndices(0.23, 0.25, 0.22, 0.25, 0.22, 0.30);
+        expect(halloysite.isKaolinGroupPresent).to.be.true;
+        expect(halloysite.kaolinMineralSpecies).to.include('Halloysite');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMKaoliniteHalloysiteIndices(0.30, 0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isKaolinGroupPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

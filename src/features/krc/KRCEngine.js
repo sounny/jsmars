@@ -3992,6 +3992,64 @@ export class KRCEngine {
       rslBrineSurvivalRegime: regime
     };
   }
+
+  /**
+   * Calculate 51-kyr precession of perihelion insolation asymmetry, hemispheric summer temperature extremes, and polar water ice cap stability.
+   * F_summer(theta) = S_0 * ( ( 1 - e^2 ) / ( 1 + e*cos(nu) ) )^2 * sin(eps)
+   * T_max = ( (1 - A) * F_summer / ( eps_th * sigma ) )^(1/4)
+   * Reference: Laskar et al. (2004), Byrne (2009), Fastook et al. (2008) for Planum Boreum vs Planum Australe polar layered deposits.
+   * @param {number} [obliquityDeg=25.2] - Planetary obliquity in degrees
+   * @param {number} [orbitalEccentricity=0.0934] - Martian orbital eccentricity e (0.00 to 0.14)
+   * @param {number} [longitudeOfPerihelionDeg=251.0] - Longitude of perihelion varpi in degrees (0 to 360 deg; currently 251 deg)
+   * @param {number} [northPolarAlbedo=0.45] - North polar water ice cap summer albedo
+   * @param {number} [southPolarAlbedo=0.70] - South polar CO2/dust ice cap summer albedo
+   * @returns {{northPeakSummerInsolationWM2: number, southPeakSummerInsolationWM2: number, northPeakSummerTempK: number, southPeakSummerTempK: number, polarInsolationContrastPercent: number, dominantWaterIceAccumulationPole: string, precessionPhaseDescription: string}}
+   */
+  static computePrecessionInsolationAsymmetryAndPolarIceMoundGrowth(obliquityDeg = 25.2, orbitalEccentricity = 0.0934, longitudeOfPerihelionDeg = 251.0, northPolarAlbedo = 0.45, southPolarAlbedo = 0.70) {
+    const eps = Math.max(10.0, Math.min(45.0, obliquityDeg)) * (Math.PI / 180.0);
+    const e = Math.max(0.001, Math.min(0.20, orbitalEccentricity));
+    const varpiRad = (longitudeOfPerihelionDeg || 251.0) * (Math.PI / 180.0);
+    const Anorth = Math.max(0.1, Math.min(0.9, northPolarAlbedo));
+    const Asouth = Math.max(0.1, Math.min(0.9, southPolarAlbedo));
+
+    const S0 = 590.0; // W/m^2 at 1.524 AU
+    const emiss = 0.95;
+    const sigma = 5.670374e-8;
+
+    // True anomaly at North summer solstice (Ls = 90 deg): nu_north = 90 - varpi
+    const nuNorth = (90.0 * (Math.PI / 180.0)) - varpiRad;
+    const rNormNorth = (1.0 - Math.pow(e, 2.0)) / (1.0 + e * Math.cos(nuNorth));
+    const fNorth = (S0 / Math.pow(rNormNorth, 2.0)) * Math.sin(eps);
+
+    // True anomaly at South summer solstice (Ls = 270 deg): nu_south = 270 - varpi
+    const nuSouth = (270.0 * (Math.PI / 180.0)) - varpiRad;
+    const rNormSouth = (1.0 - Math.pow(e, 2.0)) / (1.0 + e * Math.cos(nuSouth));
+    const fSouth = (S0 / Math.pow(rNormSouth, 2.0)) * Math.sin(eps);
+
+    // Peak summer surface temperatures
+    const Tnorth = Math.pow(((1.0 - Anorth) * fNorth) / (emiss * sigma), 0.25);
+    const Tsouth = Math.pow(((1.0 - Asouth) * fSouth) / (emiss * sigma), 0.25);
+
+    const contrastPct = (Math.abs(fSouth - fNorth) / Math.min(fNorth, fSouth)) * 100.0;
+
+    let pole = 'North Pole (Planum Boreum Perennial Massive Water Ice Mound)';
+    let phase = 'Current Epoch: Southern Summer at Perihelion (Hot South Summer vs Cool North Summer)';
+
+    if (fNorth > fSouth) {
+      pole = 'South Pole (Planum Australe Massive Water Ice Accumulation)';
+      phase = 'Opposite Precession Phase: Northern Summer at Perihelion (Water Ice Transferred to South Pole)';
+    }
+
+    return {
+      northPeakSummerInsolationWM2: parseFloat(fNorth.toFixed(2)),
+      southPeakSummerInsolationWM2: parseFloat(fSouth.toFixed(2)),
+      northPeakSummerTempK: parseFloat(Tnorth.toFixed(2)),
+      southPeakSummerTempK: parseFloat(Tsouth.toFixed(2)),
+      polarInsolationContrastPercent: parseFloat(contrastPct.toFixed(2)),
+      dominantWaterIceAccumulationPole: pole,
+      precessionPhaseDescription: phase
+    };
+  }
 }
 
 

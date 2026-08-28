@@ -4183,6 +4183,54 @@ export class BandMathEngine {
       weatheringEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Kaolinite from hydrated Halloysite and smectites using CRISM 1.41/1.46 um OH doublet, 1.91 um H2O, and 2.16/2.21 um Al-OH doublet.
+   * Reference: Bishop et al. (2008), McKeown et al. (2009), Ehlmann et al. (2011) for Mawrth Vallis and Nili Fossae pedogenic weathering sequences.
+   * @param {number} r1410 - Reflectance at 1.41 um primary structural OH minimum
+   * @param {number} r1460 - Reflectance at 1.46 um secondary OH doublet shoulder
+   * @param {number} r1910 - Reflectance at 1.91 um molecular H2O absorption
+   * @param {number} r2160 - Reflectance at 2.16 um secondary Al-OH doublet shoulder
+   * @param {number} r2210 - Reflectance at 2.21 um primary Al-OH combination minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1410: number, bd1460: number, bd1910: number, bd2160: number, bd2210: number, isKaolinGroupPresent: boolean, kaolinMineralSpecies: string, weatheringPedogenicContext: string}}
+   */
+  static computeCRISMKaoliniteHalloysiteIndices(r1410, r1460, r1910, r2160, r2210, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1410 = Math.max(0.0, 1.0 - (r1410 / cont));
+    const bd1460 = Math.max(0.0, 1.0 - (r1460 / cont));
+    const bd1910 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2160 = Math.max(0.0, 1.0 - (r2160 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+
+    let species = 'Unaltered Basaltic Silicate';
+    let isKaolin = false;
+    let context = 'Standard Crustal Setting';
+
+    // Kaolin group features diagnostic 2.16/2.21 doublet and 1.41/1.46 doublet
+    if (bd2210 >= 0.025 && bd2160 >= 0.015 && (bd1410 >= 0.020 || bd1460 >= 0.015)) {
+      isKaolin = true;
+      if (bd1910 >= 0.025) {
+        species = 'Hydrated Halloysite (Al2Si2O5(OH)4 * 2H2O)';
+        context = 'Low-Temperature Hydrothermal Alteration / Hydrated Nanotubular Pedogenic Regolith (Mawrth Vallis Layered Sequences)';
+      } else {
+        species = 'Well-Crystallized Kaolinite (Al2Si2O5(OH)4)';
+        context = 'Intense Subaerial Acid/Meteoric Leaching & Tropical Pedogenic Weathering Profile (Phyllocian Epoch Bedrock)';
+      }
+    }
+
+    return {
+      bd1410: parseFloat(bd1410.toFixed(4)),
+      bd1460: parseFloat(bd1460.toFixed(4)),
+      bd1910: parseFloat(bd1910.toFixed(4)),
+      bd2160: parseFloat(bd2160.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      isKaolinGroupPresent: isKaolin,
+      kaolinMineralSpecies: species,
+      weatheringPedogenicContext: context
+    };
+  }
 }
 
 

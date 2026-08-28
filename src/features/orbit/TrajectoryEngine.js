@@ -3382,6 +3382,77 @@ export class TrajectoryEngine {
       parachuteDeploymentStatus: status
     };
   }
+
+  /**
+   * Calculate powered descent initiation (PDI) gravity turn trajectory, gravity loss Delta-V penalty, burn duration, and propellant mass budget.
+   * Delta_V_total = ( v_0 - v_f + Delta_V_grav ) * ( 1 + margin )
+   * m_propellant = m_0 * ( 1 - exp( -Delta_V_total / ( I_sp * g_0 ) ) )
+   * Reference: Sostaric & Rea (2005), Blackmore et al. (2010), Acikmese et al. (2013) for MSL/Perseverance Sky Crane, Phoenix, and InSight landings.
+   * @param {number} [initialAltitudeMeters=1500.0] - Powered descent initiation altitude in meters (500 to 5000 m)
+   * @param {number} [initialVelocityMS=80.0] - Spacecraft velocity at parachute separation in m/s (40 to 150 m/s)
+   * @param {number} [initialFlightPathAngleDeg=-65.0] - Velocity vector angle relative to horizontal in degrees (-30 to -90 deg)
+   * @param {number} [thrustToWeightRatio=2.5] - Descent stage thrust-to-weight ratio T/W (1.5 to 5.0)
+   * @param {number} [specificImpulseSec=225.0] - Monopropellant/bipropellant specific impulse in seconds
+   * @param {number} [spacecraftMassKg=1950.0] - Spacecraft total mass at PDI in kg
+   * @param {string} [body='mars'] - Target planetary body
+   * @returns {{kinematicDeltaVMS: number, gravityLossDeltaVMS: number, totalMissionDeltaVMS: number, burnDurationSec: number, propellantConsumedKg: number, propellantFractionPercent: number, descentGuidanceRegime: string}}
+   */
+  static computePoweredDescentGravityTurnPropellantBudget(initialAltitudeMeters = 1500.0, initialVelocityMS = 80.0, initialFlightPathAngleDeg = -65.0, thrustToWeightRatio = 2.5, specificImpulseSec = 225.0, spacecraftMassKg = 1950.0, body = 'mars') {
+    const h0 = Math.max(50.0, initialAltitudeMeters);
+    const v0 = Math.max(5.0, initialVelocityMS);
+    const gammaRad = Math.abs(initialFlightPathAngleDeg) * (Math.PI / 180.0);
+    const tw = Math.max(1.1, thrustToWeightRatio);
+    const Isp = Math.max(100.0, specificImpulseSec);
+    const m0 = Math.max(10.0, spacecraftMassKg);
+    const g0 = 9.80665; // m/s^2
+
+    const isEarth = body.toLowerCase() === 'earth';
+    const isMoon = body.toLowerCase() === 'moon';
+
+    let gPlanet = 3.72076; // m/s^2 (Mars)
+    if (isEarth) {
+      gPlanet = 9.80665;
+    } else if (isMoon) {
+      gPlanet = 1.62;
+    }
+
+    const vf = 0.75; // touchdown velocity (m/s)
+    const deltaVKin = Math.max(0.0, v0 - vf);
+
+    // Net deceleration a_net = (TW - 1) * g_planet (m/s^2)
+    const aNet = (tw - 1.0) * gPlanet;
+    const tBurnSec = v0 / aNet;
+
+    // Gravity loss Delta_V_grav = g_planet * t_burn * sin(gamma_mean) (m/s)
+    const gammaMeanRad = (gammaRad + Math.PI / 2.0) / 2.0; // transitions toward vertical -90 deg
+    const deltaVGrav = gPlanet * tBurnSec * Math.sin(gammaMeanRad);
+
+    // Total Delta-V including 15% flight control & divert margin
+    const margin = 0.15;
+    const deltaVTotal = (deltaVKin + deltaVGrav) * (1.0 + margin);
+
+    // Rocket equation propellant mass consumed m_p = m0 * ( 1 - exp(-Delta_V / (Isp * g0)) )
+    const ce = Isp * g0;
+    const mPropKg = m0 * (1.0 - Math.exp(-deltaVTotal / ce));
+    const propFractionPct = (mPropKg / m0) * 100.0;
+
+    let regime = 'Nominal Sky Crane / Constant Deceleration Soft Landing';
+    if (tBurnSec > 45.0) {
+      regime = 'High Gravity Loss Extended Hover (Excessive Propellant Consumption)';
+    } else if (tw > 4.0) {
+      regime = 'Aggressive High-Thrust Pinch Deceleration (High G-Load on Payload)';
+    }
+
+    return {
+      kinematicDeltaVMS: parseFloat(deltaVKin.toFixed(2)),
+      gravityLossDeltaVMS: parseFloat(deltaVGrav.toFixed(2)),
+      totalMissionDeltaVMS: parseFloat(deltaVTotal.toFixed(2)),
+      burnDurationSec: parseFloat(tBurnSec.toFixed(2)),
+      propellantConsumedKg: parseFloat(mPropKg.toFixed(2)),
+      propellantFractionPercent: parseFloat(propFractionPct.toFixed(2)),
+      descentGuidanceRegime: regime
+    };
+  }
 }
 
 
