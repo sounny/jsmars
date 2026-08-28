@@ -2661,6 +2661,63 @@ export class TrajectoryEngine {
       thermalShadowRegime: regime
     };
   }
+
+  /**
+   * Calculate planetary atmospheric entry ballistic peak deceleration, altitude of peak load, and velocity drop.
+   * rho_peak = ( beta * |sin(gamma)| ) / H_s
+   * h_peak = H_s * ln( rho_0 / rho_peak )
+   * v_peak = v_entry * exp(-0.5)
+   * a_max = ( v_entry^2 * |sin(gamma)| ) / ( 2 * e * H_s )
+   * Reference: Allen & Eggers (1958), Vinh et al. (1980), Braun & Manning (2007) for Mars Pathfinder & Curiosity EDL trajectories.
+   * @param {number} [entryVelocityKmS=5.7] - Atmospheric entry velocity in km/s (3.5 to 12 km/s)
+   * @param {number} [flightPathAngleDeg=-12.5] - Entry flight path angle gamma in degrees (-5 to -30 deg)
+   * @param {number} [ballisticCoeffKgM2=120.0] - Ballistic coefficient beta = m/(C_D*A) in kg/m^2 (50 to 300 kg/m^2)
+   * @param {number} [scaleHeightKm=11.1] - Atmospheric scale height H_s in km
+   * @param {number} [surfaceDensityKgM3=0.020] - Surface atmospheric density rho_0 in kg/m^3
+   * @returns {{peakDecelerationMS2: number, peakDecelerationGLoad: number, altitudeOfPeakDecelerationKm: number, velocityAtPeakDecelerationKmS: number, densityAtPeakDecelerationKgM3: number, entryCorridorStatus: string}}
+   */
+  static computeAtmosphericEntryBallisticPeakDeceleration(entryVelocityKmS = 5.7, flightPathAngleDeg = -12.5, ballisticCoeffKgM2 = 120.0, scaleHeightKm = 11.1, surfaceDensityKgM3 = 0.020) {
+    const vEntryMS = Math.max(1000.0, entryVelocityKmS * 1000.0);
+    const gammaRad = (Math.abs(Math.min(-1.0, flightPathAngleDeg)) * Math.PI) / 180.0;
+    const beta = Math.max(10.0, ballisticCoeffKgM2);
+    const HsM = Math.max(1000.0, scaleHeightKm * 1000.0);
+    const rho0 = Math.max(1e-4, surfaceDensityKgM3);
+
+    const sinGamma = Math.sin(gammaRad);
+    const E_NAT = Math.E;
+
+    // Density at peak deceleration: rho_peak = (beta * sin(gamma)) / Hs
+    const rhoPeak = (beta * sinGamma) / HsM;
+
+    // Altitude of peak deceleration: h_peak = Hs * ln(rho0 / rho_peak)
+    const densityRatio = Math.max(1e-4, rho0 / rhoPeak);
+    const hPeakM = HsM * Math.log(densityRatio);
+    const hPeakKm = hPeakM / 1000.0;
+
+    // Velocity at peak deceleration: v_peak = v_entry * exp(-0.5)
+    const vPeakMS = vEntryMS * Math.exp(-0.5);
+    const vPeakKmS = vPeakMS / 1000.0;
+
+    // Peak deceleration: a_max = (v_entry^2 * sin(gamma)) / (2 * e * Hs)
+    const aMaxMS2 = (Math.pow(vEntryMS, 2.0) * sinGamma) / (2.0 * E_NAT * HsM);
+    const gLoad = aMaxMS2 / 9.80665;
+
+    let corridor = 'Nominal Mars Entry Descent Landing Corridor';
+    if (gLoad > 20.0) {
+      corridor = 'Steep High-G Ballistic Reentry (Severe Thermal and Structural Loads)';
+    } else if (hPeakKm < 10.0) {
+      corridor = 'Shallow / Heavy Vehicle Late Deceleration Corridor (High Risk of Surface Impact before Parachute Deploy)';
+    }
+
+    return {
+      peakDecelerationMS2: parseFloat(aMaxMS2.toFixed(2)),
+      peakDecelerationGLoad: parseFloat(gLoad.toFixed(2)),
+      altitudeOfPeakDecelerationKm: parseFloat(hPeakKm.toFixed(2)),
+      velocityAtPeakDecelerationKmS: parseFloat(vPeakKmS.toFixed(3)),
+      densityAtPeakDecelerationKgM3: parseFloat(rhoPeak.toExponential(4)),
+      entryCorridorStatus: corridor
+    };
+  }
 }
 
 

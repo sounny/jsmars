@@ -3719,6 +3719,50 @@ export class BandMathEngine {
       petrologicalContext: context
     };
   }
+
+  /**
+   * Detect high-temperature Hydrothermal / Metamorphic Sorosilicates (Epidote, Clinozoisite, Piemontite) from CRISM 1.55 um OH and 2.26/2.34 um Fe-OH combination doublets.
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013) for Nili Fossae deep exhumed crustal greenschist facies alteration (>250 C).
+   * @param {number} r1550 - Reflectance at 1.55 um Epidote structural OH minimum
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2260 - Reflectance at 2.26 um Fe3+-OH combination minimum
+   * @param {number} r2340 - Reflectance at 2.34 um subsidiary doublet minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1550: number, bd1900: number, bd2260: number, bd2340: number, isEpidotePresent: boolean, mineralPhase: string, metamorphicGrade: string}}
+   */
+  static computeCRISMEpidoteHydrothermalIndices(r1550, r1910, r2260, r2340, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1550 = Math.max(0.0, 1.0 - (r1550 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2260 = Math.max(0.0, 1.0 - (r2260 / cont));
+    const bd2340 = Math.max(0.0, 1.0 - (r2340 / cont));
+
+    let phase = 'Unaltered Primary Silicate';
+    let isEpidote = false;
+    let grade = 'Low-Temperature / Unmetamorphosed Crust';
+
+    if (bd2260 >= 0.025 && bd2340 >= 0.015) {
+      isEpidote = true;
+      if (bd1550 >= 0.015 && bd1900 < 0.030) {
+        phase = 'Epidote (Fe3+-Rich Sorosilicate)';
+        grade = 'High-Temperature Greenschist Facies Hydrothermal Fluid Circulation (T > 250-350 C) in Exhumed Deep Impact Basement (Nili Fossae / Isidis Rim)';
+      } else {
+        phase = 'Clinozoisite / Piemontite';
+        grade = 'Sub-Greenschist to Greenschist Intermediate Hydrothermal Metamorphism';
+      }
+    }
+
+    return {
+      bd1550: parseFloat(bd1550.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2260: parseFloat(bd2260.toFixed(4)),
+      bd2340: parseFloat(bd2340.toFixed(4)),
+      isEpidotePresent: isEpidote,
+      mineralPhase: phase,
+      metamorphicGrade: grade
+    };
+  }
 }
 
 

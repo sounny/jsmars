@@ -3265,6 +3265,60 @@ export class KRCEngine {
       permafrostContext: context
     };
   }
+
+  /**
+   * Calculate porous regolith thermal conductivity, bulk density, and thermal inertia jump as a function of pore ice saturation.
+   * k_eff = k_lithic^(1-phi) * k_ice^(phi * S_ice) * k_gas^(phi * (1 - S_ice))
+   * rho_bulk = (1 - phi) * rho_rock + phi * S_ice * rho_ice
+   * I = sqrt( k_eff * rho_bulk * C_p )
+   * Reference: Mellon et al. (2008), Schorghofer & Aharonson (2005), Piqueux & Christensen (2009) for Phoenix Lander ground ice.
+   * @param {number} [porosityPct=40.0] - Soil porosity phi in percent (10 to 70 %)
+   * @param {number} [icePoreSaturationPct=80.0] - Fraction of pore space filled with ground ice (0 to 100 %)
+   * @param {number} [lithicConductivityWMK=2.0] - Matrix grain lithic conductivity in W/(m*K)
+   * @param {number} [poreGasConductivityWMK=0.015] - Pore gas thermal conductivity in W/(m*K)
+   * @returns {{effectiveThermalConductivityWMK: number, bulkDensityKgM3: number, apparentThermalInertiaTIU: number, conductivityEnhancementFactor: number, groundIceState: string}}
+   */
+  static computePoreIceSaturationThermalConductivity(porosityPct = 40.0, icePoreSaturationPct = 80.0, lithicConductivityWMK = 2.0, poreGasConductivityWMK = 0.015) {
+    const phi = Math.max(0.05, Math.min(0.80, porosityPct / 100.0));
+    const Sice = Math.max(0.0, Math.min(1.0, icePoreSaturationPct / 100.0));
+    const kLithic = Math.max(0.1, lithicConductivityWMK);
+    const kGas = Math.max(0.001, poreGasConductivityWMK);
+    const kIce = 2.50; // W/(m*K) at 200 K
+
+    const RHO_ROCK = 2800.0; // kg/m^3
+    const RHO_ICE = 917.0; // kg/m^3
+    const CP_SOIL = 800.0; // J/(kg*K)
+
+    // Dry baseline conductivity (S_ice = 0)
+    const kDry = Math.pow(kLithic, 1.0 - phi) * Math.pow(kGas, phi);
+
+    // Saturated effective conductivity
+    const kEff = Math.pow(kLithic, 1.0 - phi) * Math.pow(kIce, phi * Sice) * Math.pow(kGas, phi * (1.0 - Sice));
+
+    // Bulk density
+    const rhoBulk = (1.0 - phi) * RHO_ROCK + phi * Sice * RHO_ICE;
+
+    // Apparent thermal inertia I = sqrt( k * rho * Cp ) (J m^-2 K^-1 s^-1/2)
+    const thermalInertia = Math.sqrt(kEff * rhoBulk * CP_SOIL);
+
+    // Enhancement over dry soil
+    const enhancementRatio = kEff / kDry;
+
+    let state = 'Dry Uncemented Regolith Mantle (Low Thermal Inertia)';
+    if (Sice >= 0.70) {
+      state = 'Massive Pore-Filling Ground Ice / Cryolithosphere (High Thermal Inertia THEMIS Signature)';
+    } else if (Sice > 0.05) {
+      state = 'Partially Cemented Subsurface Ice-Dust Duricrust';
+    }
+
+    return {
+      effectiveThermalConductivityWMK: parseFloat(kEff.toFixed(4)),
+      bulkDensityKgM3: parseFloat(rhoBulk.toFixed(1)),
+      apparentThermalInertiaTIU: parseFloat(thermalInertia.toFixed(1)),
+      conductivityEnhancementFactor: parseFloat(enhancementRatio.toFixed(2)),
+      groundIceState: state
+    };
+  }
 }
 
 

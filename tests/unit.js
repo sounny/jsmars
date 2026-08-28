@@ -9575,6 +9575,38 @@ describe('Orbit Eclipse Shadow Geometry, Permafrost Bedrock Discontinuity & Apat
     });
 });
 
+describe('Atmospheric Entry Deceleration, Pore Ice Saturation & Epidote Metamorphism', () => {
+    it('should calculate planetary atmospheric entry ballistic peak deceleration, altitude of peak load, and velocity drop', () => {
+        // Mars direct hyperbolic entry (v_entry = 5.7 km/s, gamma = -12.5 deg, beta = 120 kg/m^2):
+        const entry = TrajectoryEngine.computeAtmosphericEntryBallisticPeakDeceleration(5.7, -12.5, 120.0, 11.1, 0.020);
+        expect(entry.peakDecelerationGLoad).to.be.closeTo(11.9, 0.5); // ~11.9 g peak load
+        expect(entry.altitudeOfPeakDecelerationKm).to.be.closeTo(23.8, 1.0); // ~23.8 km altitude
+        expect(entry.velocityAtPeakDecelerationKmS).to.be.closeTo(3.46, 0.1); // ~3.46 km/s
+        expect(entry.entryCorridorStatus).to.include('Nominal Mars Entry');
+    });
+
+    it('should calculate porous regolith thermal conductivity, bulk density, and thermal inertia jump with pore ice saturation', () => {
+        // Phoenix lander permafrost soil (porosity = 40%, 80% pore-ice saturation):
+        const poreIce = KRCEngine.computePoreIceSaturationThermalConductivity(40.0, 80.0, 2.0, 0.015);
+        expect(poreIce.effectiveThermalConductivityWMK).to.be.greaterThan(1.4); // ~1.45 W/m/K (high conductivity of ice)
+        expect(poreIce.apparentThermalInertiaTIU).to.be.greaterThan(1500.0); // > 1500 tiu (cryolithosphere jump)
+        expect(poreIce.conductivityEnhancementFactor).to.be.greaterThan(5.0);
+        expect(poreIce.groundIceState).to.include('Massive Pore-Filling Ground Ice');
+    });
+
+    it('should discriminate high-temperature Hydrothermal Epidote from unaltered basalt and low-T clays', () => {
+        // Greenschist-facies Epidote in Nili Fossae deep crustal megabreccia (strong 2.26 um and 2.34 um Fe3+-OH doublet, 1.55 um OH):
+        const epidote = BandMathEngine.computeCRISMEpidoteHydrothermalIndices(0.25, 0.30, 0.23, 0.25, 0.30);
+        expect(epidote.isEpidotePresent).to.be.true;
+        expect(epidote.mineralPhase).to.include('Epidote');
+        expect(epidote.metamorphicGrade).to.include('High-Temperature Greenschist');
+
+        // Unaltered volcanic basalt:
+        const basalt = BandMathEngine.computeCRISMEpidoteHydrothermalIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isEpidotePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
