@@ -3626,6 +3626,73 @@ export class KRCEngine {
       clathrateTrappingPotential: potential
     };
   }
+
+  /**
+   * Calculate subsurface Carbon Dioxide Clathrate Hydrate Stability Zone (CHSZ) upper and lower depth boundaries and polar reservoir thickness.
+   * ln( P_eq / 1 MPa ) = 33.910 - 6895.0 / T
+   * P(z) = P_surf + rho_ice * g_mars * z
+   * T(z) = T_surf + ( Q_geo / k_ice ) * z
+   * Reference: Miller & Smythe (1970), Sloan (1998), Longhi (2006), Mousis et al. (2012) for Martian polar clathrate sequestration.
+   * @param {number} [surfaceTempK=150.0] - Mean annual polar/permafrost surface temperature in K (120 to 200 K)
+   * @param {number} [surfacePressurePa=610.0] - Atmospheric surface pressure in Pa
+   * @param {number} [geothermalHeatFluxMWM2=25.0] - Geothermal heat flux in mW/m^2
+   * @param {number} [iceThermalConductivityWMK=2.5] - Polar ice sheet thermal conductivity in W/(m*K)
+   * @param {number} [iceBulkDensityKgM3=1200.0] - Polar ice/dust bulk density in kg/m^3
+   * @returns {{topDepthMeters: number, bottomDepthMeters: number, chszThicknessMeters: number, maxStabilityTempK: number, co2TrappingPotential: string}}
+   */
+  static computeCarbonDioxideClathrateHydrateStabilityZone(surfaceTempK = 150.0, surfacePressurePa = 610.0, geothermalHeatFluxMWM2 = 25.0, iceThermalConductivityWMK = 2.5, iceBulkDensityKgM3 = 1200.0) {
+    const Tsurf = Math.max(100.0, Math.min(220.0, surfaceTempK));
+    const Psurf = Math.max(100.0, surfacePressurePa);
+    const Qgeo = Math.max(1.0, geothermalHeatFluxMWM2) * 1e-3; // W/m^2
+    const kIce = Math.max(0.1, iceThermalConductivityWMK);
+    const rho = Math.max(500.0, iceBulkDensityKgM3);
+
+    const gMars = 3.72076; // m/s^2
+    const thermalGradKPerM = Qgeo / kIce;
+
+    let zTop = -1;
+    let zBottom = -1;
+    let maxT = Tsurf;
+
+    for (let z = 1; z <= 10000; z += 5) {
+      const PzPa = Psurf + rho * gMars * z;
+      const PzMPa = PzPa / 1e6;
+      const TzK = Tsurf + thermalGradKPerM * z;
+
+      // Phase equilibrium temperature Teq(P): Teq = 6895.0 / ( 33.910 - ln(P_MPa) )
+      const denom = 33.910 - Math.log(PzMPa);
+      const TeqK = denom > 0.0 ? 6895.0 / denom : 0.0;
+
+      const isStable = (TzK <= TeqK) && (TzK < 273.15);
+
+      if (isStable) {
+        if (zTop < 0) {
+          zTop = z;
+        }
+        zBottom = z;
+        if (TzK > maxT) {
+          maxT = TzK;
+        }
+      }
+    }
+
+    const topMeters = zTop > 0 ? zTop : 0;
+    const bottomMeters = zBottom > 0 ? zBottom : 0;
+    const thicknessM = Math.max(0, bottomMeters - topMeters);
+
+    let potential = 'Massive Polar CO2 Clathrate Sequestration Reservoir';
+    if (thicknessM < 500) {
+      potential = 'Marginal Shallow CO2 Clathrate Stability Zone';
+    }
+
+    return {
+      topDepthMeters: topMeters,
+      bottomDepthMeters: bottomMeters,
+      chszThicknessMeters: thicknessM,
+      maxStabilityTempK: parseFloat(maxT.toFixed(2)),
+      co2TrappingPotential: potential
+    };
+  }
 }
 
 

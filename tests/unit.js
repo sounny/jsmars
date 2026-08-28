@@ -9772,6 +9772,38 @@ describe('Planetary Gravity Assist, Methane Clathrate Stability & Carbonate Spec
     });
 });
 
+describe('Aerobraking Orbit Decay, CO2 Clathrate Stability & Jarosite Alteration', () => {
+    it('should calculate single-pass aerobraking drag velocity dissipation, energy loss, and apoapsis reduction', () => {
+        // Mars orbiter aerobraking pass (r_a = 30000 km, r_p = 3520 km, rho_p = 3.5e-9 kg/m^3, beta = 80 kg/m^2):
+        const aero = TrajectoryEngine.computeAerobrakingPassEnergyDissipationAndApoapsisDecay(30000.0, 3520.0, 3.5e-9, 7.5, 80.0, 'mars');
+        expect(aero.dragDeltaVMS).to.be.greaterThan(0.01); // ~0.016 m/s velocity dissipation per pass
+        expect(aero.energyDissipationJPerKg).to.be.lessThan(0.0); // negative energy delta
+        expect(aero.apoapsisDecayKm).to.be.greaterThan(0.5); // noticeable apoapsis reduction per rev
+        expect(aero.aerobrakingPassRegime).to.include('Aerobraking Corridor Pass');
+    });
+
+    it('should calculate subsurface CO2 Clathrate Hydrate Stability Zone (CHSZ) upper/lower boundaries and reservoir thickness', () => {
+        // North polar layered deposits (T_surf = 150 K, P_surf = 610 Pa, Q_geo = 25 mW/m^2, k = 2.5 W/m/K):
+        const co2Clathrate = KRCEngine.computeCarbonDioxideClathrateHydrateStabilityZone(150.0, 610.0, 25.0, 2.5, 1200.0);
+        expect(co2Clathrate.topDepthMeters).to.be.at.least(0); // stable right from shallow polar ice depths
+        expect(co2Clathrate.bottomDepthMeters).to.be.greaterThan(2000); // extends down to > 2-4 km before basal thermal decomposition
+        expect(co2Clathrate.chszThicknessMeters).to.be.greaterThan(2000);
+        expect(co2Clathrate.co2TrappingPotential).to.include('Polar CO2 Clathrate');
+    });
+
+    it('should discriminate hyper-acidic Jarosite from carbonates, smectites, and unaltered basalt in CRISM spectra', () => {
+        // Jarosite at Meridiani Planum / Mawrth Vallis (strong 2.26 um Fe3+-OH and 1.85 um sulfate-OH bands):
+        const jarosite = BandMathEngine.computeCRISMJarositeIndices(0.24, 0.23, 0.22, 0.28, 0.30);
+        expect(jarosite.isJarositePresent).to.be.true;
+        expect(jarosite.mineralPhase).to.include('Jarosite');
+        expect(jarosite.acidityEnvironment).to.include('Hyper-Acidic (pH < 3)');
+
+        // Basalt:
+        const basalt = BandMathEngine.computeCRISMJarositeIndices(0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isJarositePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

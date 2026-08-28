@@ -3974,6 +3974,45 @@ export class BandMathEngine {
       paleoenvironmentalContext: context
     };
   }
+
+  /**
+   * Detect hyper-acidic Jarosite iron-hydroxy-sulfate from CRISM 1.85 um sulfate-OH and 2.26 um Fe3+-OH combination bands.
+   * Reference: Klingelhöfer et al. (2004), Farrand et al. (2009), Ehlmann et al. (2016) for Meridiani Planum (Opportunity) and Mawrth Vallis acid-sulfate environments (pH < 3).
+   * @param {number} r1470 - Reflectance at 1.47 um OH minimum
+   * @param {number} r1850 - Reflectance at 1.85 um diagnostic sulfate/OH minimum
+   * @param {number} r2260 - Reflectance at 2.26 um primary Fe3+-OH combination minimum
+   * @param {number} r2470 - Reflectance at 2.47 um secondary sulfate absorption
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1470: number, bd1850: number, bd2260: number, bd2470: number, isJarositePresent: boolean, mineralPhase: string, acidityEnvironment: string}}
+   */
+  static computeCRISMJarositeIndices(r1470, r1850, r2260, r2470 = 0.30, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1470 = Math.max(0.0, 1.0 - (r1470 / cont));
+    const bd1850 = Math.max(0.0, 1.0 - (r1850 / cont));
+    const bd2260 = Math.max(0.0, 1.0 - (r2260 / cont));
+    const bd2470 = Math.max(0.0, 1.0 - (r2470 / cont));
+
+    let phase = 'Unaltered Basaltic Crust';
+    let isJaro = false;
+    let acidity = 'Circum-Neutral Environment';
+
+    if (bd2260 >= 0.025 && bd1850 >= 0.020) {
+      isJaro = true;
+      phase = 'Jarosite (KFe3(SO4)2(OH)6)';
+      acidity = 'Hyper-Acidic (pH < 3) Oxidizing Sulfate Evaporite Lacustrine / Diagenetic Groundwater System (Meridiani Planum / Mawrth Vallis)';
+    }
+
+    return {
+      bd1470: parseFloat(bd1470.toFixed(4)),
+      bd1850: parseFloat(bd1850.toFixed(4)),
+      bd2260: parseFloat(bd2260.toFixed(4)),
+      bd2470: parseFloat(bd2470.toFixed(4)),
+      isJarositePresent: isJaro,
+      mineralPhase: phase,
+      acidityEnvironment: acidity
+    };
+  }
 }
 
 

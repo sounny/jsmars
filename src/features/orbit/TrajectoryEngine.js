@@ -3024,6 +3024,86 @@ export class TrajectoryEngine {
       swingbyFeasibility: feasibility
     };
   }
+
+  /**
+   * Calculate single-pass aerobraking atmospheric drag velocity dissipation, orbital energy loss, and apoapsis altitude reduction.
+   * Delta_V_drag = ( rho_p / beta ) * sqrt( pi * mu * H_s * r_p / ( 2 * a * e ) )
+   * Delta_energy = - v_p * Delta_V_drag
+   * Delta_r_a = r_a - ( 2 * a_new - r_p )
+   * Reference: King-Hele (1987), Lyons (1992), Spencer & Tolson (2007) for MGS, Odyssey, and MRO Mars aerobraking operations.
+   * @param {number} [apoapsisRadiusKm=30000.0] - Pre-pass apoapsis radius in km
+   * @param {number} [periapsisRadiusKm=3520.0] - Aerobraking corridor periapsis radius in km (~124 km altitude on Mars)
+   * @param {number} [atmosphericDensityAtPeriapsisKgM3=3.5e-9] - Atmospheric density at periapsis in kg/m^3 (1e-10 to 1e-7 kg/m^3)
+   * @param {number} [scaleHeightKm=7.5] - Local atmospheric scale height in km
+   * @param {number} [ballisticCoeffKgM2=80.0] - Spacecraft ballistic coefficient m / (Cd * A) in kg/m^2
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{dragDeltaVMS: number, energyDissipationJPerKg: number, apoapsisDecayKm: number, newApoapsisRadiusKm: number, newOrbitalPeriodHours: number, aerobrakingPassRegime: string}}
+   */
+  static computeAerobrakingPassEnergyDissipationAndApoapsisDecay(apoapsisRadiusKm = 30000.0, periapsisRadiusKm = 3520.0, atmosphericDensityAtPeriapsisKgM3 = 3.5e-9, scaleHeightKm = 7.5, ballisticCoeffKgM2 = 80.0, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const isVenus = body.toLowerCase() === 'venus';
+
+    let mu = 42828.37e9; // m^3/s^2 (Mars)
+    let Rp = 3396.19e3; // m
+
+    if (isEarth) {
+      mu = 398600.4418e9;
+      Rp = 6378.137e3;
+    } else if (isVenus) {
+      mu = 324859.0e9;
+      Rp = 6051.8e3;
+    }
+
+    const raM = Math.max(periapsisRadiusKm * 1000.0 + 1000.0, apoapsisRadiusKm * 1000.0);
+    const rpM = Math.max(Rp + 50000.0, periapsisRadiusKm * 1000.0);
+    const rhoP = Math.max(1e-12, atmosphericDensityAtPeriapsisKgM3);
+    const HsM = Math.max(500.0, scaleHeightKm * 1000.0);
+    const beta = Math.max(1.0, ballisticCoeffKgM2);
+
+    // Orbital geometry in SI (meters)
+    const aM = (raM + rpM) / 2.0;
+    const e = (raM - rpM) / (raM + rpM);
+
+    // Periapsis velocity v_p = sqrt( mu * ( 2/rp - 1/a ) ) (m/s)
+    const vpMS = Math.sqrt(mu * ((2.0 / rpM) - (1.0 / aM)));
+
+    // Specific orbital energy eps = - mu / (2 * a) (J/kg)
+    const epsOld = -mu / (2.0 * aM);
+
+    // King-Hele drag velocity dissipation Delta_V_drag (m/s)
+    const kingHeleFactor = Math.sqrt((Math.PI * mu * HsM * rpM) / (2.0 * aM * e));
+    const deltaVDragMS = (rhoP / beta) * kingHeleFactor;
+
+    // Energy dissipation per pass Delta_eps = - vp * Delta_V_drag (J/kg)
+    const deltaEps = -vpMS * deltaVDragMS;
+    const epsNew = epsOld + deltaEps;
+
+    // New semi-major axis and new apoapsis
+    const aNewM = -mu / (2.0 * epsNew);
+    const raNewM = 2.0 * aNewM - rpM;
+    const deltaRaKm = (raM - raNewM) / 1000.0;
+    const raNewKm = raNewM / 1000.0;
+
+    // New orbital period T = 2 * pi * sqrt( a^3 / mu ) in hours
+    const periodSec = 2.0 * Math.PI * Math.sqrt(Math.pow(aNewM, 3.0) / mu);
+    const periodHours = periodSec / 3600.0;
+
+    let regime = 'Nominal Aerobraking Corridor Pass';
+    if (deltaRaKm < 1.0) {
+      regime = 'Shallow Walk-In Corridor (Low Dynamic Pressure & Slow Decay)';
+    } else if (deltaRaKm > 100.0) {
+      regime = 'Aggressive Deep-Corridor Aerobraking Dip (High Thermal Flux & Rapid Decay)';
+    }
+
+    return {
+      dragDeltaVMS: parseFloat(deltaVDragMS.toFixed(4)),
+      energyDissipationJPerKg: parseFloat(deltaEps.toFixed(2)),
+      apoapsisDecayKm: parseFloat(deltaRaKm.toFixed(2)),
+      newApoapsisRadiusKm: parseFloat(raNewKm.toFixed(2)),
+      newOrbitalPeriodHours: parseFloat(periodHours.toFixed(2)),
+      aerobrakingPassRegime: regime
+    };
+  }
 }
 
 
