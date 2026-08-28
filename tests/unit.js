@@ -9707,6 +9707,38 @@ describe('Relativistic Time Dilation, Salt Duricrust Conduction & Lawsonite Meta
     });
 });
 
+describe('Solar Gravitational Lens Optics, Non-Linear Conductivity & Serpentine Speciation', () => {
+    it('should calculate Solar Gravitational Lens (SGL) Einstein deflection, minimum focal distance, and optical gain', () => {
+        // Spacecraft along SGL focal line at 550 AU (lambda = 1.0 um):
+        const sgl = TrajectoryEngine.computeSolarGravitationalLensFocalParameters(550.0, 1.0, 1.0);
+        expect(sgl.einsteinDeflectionArcsec).to.be.closeTo(1.751, 0.05); // ~1.75 arcsec Einstein deflection
+        expect(sgl.minimumFocalDistanceAU).to.be.closeTo(547.6, 2.0); // ~547.6 AU minimum focal distance
+        expect(sgl.opticalIntensityGain).to.be.greaterThan(1e15); // massive optical intensity magnification
+        expect(sgl.isInsideFocalRegion).to.be.true;
+        expect(sgl.lensStatus).to.include('Active Solar Gravitational Lens');
+    });
+
+    it('should calculate non-linear subsurface thermal profile with temperature-dependent conductivity k(T) = k0*(T0/T)^n', () => {
+        // Pure water ice sheet (T_surf = 150 K, z = 1000 m, Q_geo = 25 mW/m^2, k0 = 2.22 W/m/K, n = 1.0):
+        const profile = KRCEngine.computeTemperatureDependentConductivityThermalProfile(150.0, 1000.0, 25.0, 2.22, 1.0);
+        expect(profile.nonLinearTargetTempK).to.be.greaterThan(profile.linearModelTargetTempK); // non-linear warming
+        expect(profile.nonLinearMeanGradientKPerKm).to.be.closeTo(6.3, 0.5);
+        expect(profile.lithosphereMediumContext).to.include('Pure Crystalline H2O Ice');
+    });
+
+    it('should discriminate trioctahedral Serpentine from smectites, chlorites, and unaltered ultramafic basalt', () => {
+        // Lizardite/Antigorite in Nili Fossae serpentinized olivine bedrock (strong 1.39 um and 2.325 um Mg-OH, dry):
+        const serp = BandMathEngine.computeCRISMSerpentineSpeciationIndices(0.24, 0.30, 0.28, 0.23, 0.30);
+        expect(serp.isSerpentinePresent).to.be.true;
+        expect(serp.serpentinePhase).to.include('Serpentine');
+        expect(serp.serpentinizationSetting).to.include('Abiotic H2 and CH4');
+
+        // Unaltered ultramafic rock:
+        const basalt = BandMathEngine.computeCRISMSerpentineSpeciationIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isSerpentinePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

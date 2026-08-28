@@ -3889,6 +3889,50 @@ export class BandMathEngine {
       metamorphicGrade: grade
     };
   }
+
+  /**
+   * Discriminate Serpentine group trioctahedral phyllosilicates (Lizardite, Antigorite, Chrysotile) from smectites and chlorites using CRISM 1.39 um and 2.325 um Mg-OH bands.
+   * Reference: Ehlmann et al. (2009, 2010), Mustard et al. (2008), Viviano et al. (2014) for Nili Fossae olivine serpentinization and abiotic H2/CH4 generation.
+   * @param {number} r1390 - Reflectance at 1.39 um Serpentine Mg-OH overtone minimum
+   * @param {number} r1910 - Reflectance at 1.91 um H2O band
+   * @param {number} r2120 - Reflectance at 2.12 um diagnostic inflection
+   * @param {number} r2325 - Reflectance at 2.325 um primary Mg-OH combination minimum
+   * @param {number} [continuumLevel=0.30] - Background continuum level
+   * @returns {{bd1390: number, bd1900: number, bd2120: number, bd2325: number, isSerpentinePresent: boolean, serpentinePhase: string, serpentinizationSetting: string}}
+   */
+  static computeCRISMSerpentineSpeciationIndices(r1390, r1910, r2120, r2325, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1390 = Math.max(0.0, 1.0 - (r1390 / cont));
+    const bd1900 = Math.max(0.0, 1.0 - (r1910 / cont));
+    const bd2120 = Math.max(0.0, 1.0 - (r2120 / cont));
+    const bd2325 = Math.max(0.0, 1.0 - (r2325 / cont));
+
+    let phase = 'Unaltered Ultramafic / Basaltic Rock';
+    let isSerp = false;
+    let setting = 'Standard Igneous Crust';
+
+    if (bd2325 >= 0.025 && bd1390 >= 0.015) {
+      isSerp = true;
+      if (bd1900 < 0.025) {
+        phase = 'Lizardite / Antigorite Serpentine (Mg3Si2O5(OH)4)';
+        setting = 'Hydrothermal Serpentinization of Ultramafic Olivine Peridotite with Abiotic H2 and CH4 Release (Nili Fossae / Claritas Fossae)';
+      } else {
+        phase = 'Mixed Serpentine-Saponite Clay Complex';
+        setting = 'Late-Stage Low-Temperature Aquifer Alteration of Ultramafic Bedrock';
+      }
+    }
+
+    return {
+      bd1390: parseFloat(bd1390.toFixed(4)),
+      bd1900: parseFloat(bd1900.toFixed(4)),
+      bd2120: parseFloat(bd2120.toFixed(4)),
+      bd2325: parseFloat(bd2325.toFixed(4)),
+      isSerpentinePresent: isSerp,
+      serpentinePhase: phase,
+      serpentinizationSetting: setting
+    };
+  }
 }
 
 

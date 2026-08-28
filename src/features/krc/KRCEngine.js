@@ -3499,6 +3499,64 @@ export class KRCEngine {
       saltDepositContext: context
     };
   }
+
+  /**
+   * Calculate non-linear subsurface thermal conduction profile with temperature-dependent thermal conductivity k(T) = k0 * (T0/T)^n.
+   * For n = 1: T(z) = T_surf * exp( Q_geo * z / (k0 * T0) )
+   * For n != 1: T(z) = [ T_surf^(1-n) + (1-n) * Q_geo * z / (k0 * T0^n) ]^( 1 / (1-n) )
+   * Reference: Ross et al. (1978), Klinger (1980), Clifford (1993), Kieffer (2013) for phonon-scattering cryosphere thermal profiles.
+   * @param {number} surfaceTempK - Surface ground/ice temperature in K (120 to 250 K)
+   * @param {number} [targetDepthMeters=1000.0] - Target crustal evaluation depth in meters (10 to 5000 m)
+   * @param {number} [geothermalHeatFluxMWM2=25.0] - Geothermal heat flux in mW/m^2 (10 to 50 mW/m^2)
+   * @param {number} [conductivityRefK0=2.22] - Reference thermal conductivity k0 in W/(m*K) at T0
+   * @param {number} [tempExponentN=1.0] - Temperature exponent n (1.0 for crystalline H2O ice, 0.5-0.7 for basalt)
+   * @returns {{nonLinearTargetTempK: number, linearModelTargetTempK: number, nonLinearMeanGradientKPerKm: number, thermalNonLinearityDeltaTK: number, effectiveConductivityAtDepthWMK: number, lithosphereMediumContext: string}}
+   */
+  static computeTemperatureDependentConductivityThermalProfile(surfaceTempK, targetDepthMeters = 1000.0, geothermalHeatFluxMWM2 = 25.0, conductivityRefK0 = 2.22, tempExponentN = 1.0) {
+    const Tsurf = Math.max(80.0, Math.min(270.0, surfaceTempK));
+    const zM = Math.max(1.0, targetDepthMeters);
+    const QgeoW = Math.max(1.0, geothermalHeatFluxMWM2) * 1e-3; // W/m^2
+    const k0 = Math.max(0.01, conductivityRefK0);
+    const n = Math.max(0.0, Math.min(2.0, tempExponentN));
+    const T0 = 273.15; // K
+
+    let TzNonLinear = Tsurf;
+
+    if (Math.abs(n - 1.0) < 1e-4) {
+      // Pure water ice (n = 1.0): T(z) = Tsurf * exp( (Q_geo * z) / (k0 * T0) )
+      const arg = (QgeoW * zM) / (k0 * T0);
+      TzNonLinear = Tsurf * Math.exp(arg);
+    } else {
+      // General power law (n != 1.0): T(z) = [ Tsurf^(1-n) + (1-n)*Q_geo*z / (k0 * T0^n) ]^(1/(1-n))
+      const term1 = Math.pow(Tsurf, 1.0 - n);
+      const term2 = ((1.0 - n) * QgeoW * zM) / (k0 * Math.pow(T0, n));
+      TzNonLinear = Math.pow(Math.max(1.0, term1 + term2), 1.0 / (1.0 - n));
+    }
+
+    // Linear model baseline using surface conductivity k(Tsurf): Tz_linear = Tsurf + (Q_geo / kSurf) * z
+    const kSurf = k0 * Math.pow(T0 / Tsurf, n);
+    const TzLinear = Tsurf + (QgeoW / kSurf) * zM;
+
+    const deltaT = TzNonLinear - TzLinear;
+    const meanGradKPerKm = ((TzNonLinear - Tsurf) / zM) * 1000.0;
+
+    // Effective conductivity at depth k(Tz) = k0 * (T0 / Tz)^n
+    const kDepth = k0 * Math.pow(T0 / TzNonLinear, n);
+
+    let medium = 'Pure Crystalline H2O Ice Sheet (Umklapp Phonon Scattering k ~ 1/T)';
+    if (n < 0.8) {
+      medium = 'Dense Basaltic / Anorthositic Igneous Crust (Intermediate Phonon Dispersion)';
+    }
+
+    return {
+      nonLinearTargetTempK: parseFloat(TzNonLinear.toFixed(3)),
+      linearModelTargetTempK: parseFloat(TzLinear.toFixed(3)),
+      nonLinearMeanGradientKPerKm: parseFloat(meanGradKPerKm.toFixed(2)),
+      thermalNonLinearityDeltaTK: parseFloat(deltaT.toFixed(3)),
+      effectiveConductivityAtDepthWMK: parseFloat(kDepth.toFixed(3)),
+      lithosphereMediumContext: medium
+    };
+  }
 }
 
 

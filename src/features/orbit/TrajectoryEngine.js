@@ -2897,6 +2897,62 @@ export class TrajectoryEngine {
       relativisticRegime: regime
     };
   }
+
+  /**
+   * Calculate Solar Gravitational Lens (SGL) focal line parameters, Einstein deflection angle, minimum focal distance, and optical amplification gain.
+   * alpha_hat = 4 * G * M_sun / ( c^2 * R_sun )
+   * z_focal_min = R_sun / alpha_hat
+   * mu_gain = 4 * pi^2 * R_sun / lambda
+   * d_spot = 1.22 * lambda * z / ( 2 * R_sun )
+   * Reference: Eshleman (1979), Turyshev & Toth (2017, 2020) for SGL exoplanet surface imaging at 550+ AU.
+   * @param {number} [heliocentricDistanceAU=550.0] - Spacecraft focal line distance in AU (547 to 1000 AU)
+   * @param {number} [observingWavelengthMicrons=1.0] - Optical/NIR observing wavelength lambda in microns (0.3 to 10 um)
+   * @param {number} [telescopeApertureMeters=1.0] - Spacecraft receiver telescope aperture diameter in meters
+   * @returns {{einsteinDeflectionArcsec: number, minimumFocalDistanceAU: number, opticalIntensityGain: number, opticalIntensityGainDB: number, focalSpotDiameterMeters: number, isInsideFocalRegion: boolean, lensStatus: string}}
+   */
+  static computeSolarGravitationalLensFocalParameters(heliocentricDistanceAU = 550.0, observingWavelengthMicrons = 1.0, telescopeApertureMeters = 1.0) {
+    const rAU = Math.max(1.0, heliocentricDistanceAU);
+    const lambdaM = Math.max(0.1, observingWavelengthMicrons) * 1e-6;
+    const dTel = Math.max(0.1, telescopeApertureMeters);
+
+    const AU_TO_M = 1.495978707e11;
+    const R_SUN_M = 6.9634e8;
+    const MU_SUN_M3S2 = 1.3271244e20; // m^3/s^2
+    const C_MS = 299792458.0;
+
+    // Einstein deflection angle alpha_hat = 4 * mu / (c^2 * R_sun) (radians and arcsec)
+    const alphaRad = (4.0 * MU_SUN_M3S2) / (Math.pow(C_MS, 2.0) * R_SUN_M);
+    const alphaArcsec = (alphaRad * 180.0 * 3600.0) / Math.PI;
+
+    // Minimum focal distance z_min = R_sun / alpha_hat (m and AU)
+    const zMinM = R_SUN_M / alphaRad;
+    const zMinAU = zMinM / AU_TO_M;
+
+    const zTargetM = rAU * AU_TO_M;
+    const inFocal = rAU >= zMinAU;
+
+    // Peak monochromatic optical intensity gain mu_gain = 4 * pi^2 * R_sun / lambda
+    const muGain = (4.0 * Math.pow(Math.PI, 2.0) * R_SUN_M) / lambdaM;
+    const gainDB = 10.0 * Math.log10(muGain);
+
+    // Focal spot diameter d_spot = 1.22 * lambda * z / (2 * R_sun)
+    const spotDiamM = (1.22 * lambdaM * zTargetM) / (2.0 * R_SUN_M);
+
+    let status = 'Pre-Focal Transit (Sun Subtends Larger Angle than Einstein Ring - No Amplification)';
+    if (inFocal) {
+      status = 'Active Solar Gravitational Lens Focal Line (Massive ~10^16 Intensity Amplification for Exoplanet Kilopixel Imaging)';
+    }
+
+    return {
+      einsteinDeflectionArcsec: parseFloat(alphaArcsec.toFixed(4)),
+      minimumFocalDistanceAU: parseFloat(zMinAU.toFixed(2)),
+      opticalIntensityGain: parseFloat(muGain.toExponential(4)),
+      opticalIntensityGainDB: parseFloat(gainDB.toFixed(2)),
+      focalSpotDiameterMeters: parseFloat(spotDiamM.toFixed(2)),
+      isInsideFocalRegion: inFocal,
+      lensStatus: status
+    };
+  }
 }
 
 
