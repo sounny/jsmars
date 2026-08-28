@@ -5,6 +5,9 @@
 ## 🔭 Overview
 **JSMARS** is a web-based port of the popular Java Mission-planning and Analysis for Remote Sensing (JMARS) desktop application. It aims to provide a quick, accessible way to view and analyze planetary data (Mars, Moon, etc.) directly in the browser without requiring a heavy desktop installation.
 
+- 🌐 **Live Web Application:** [jsmars.sounny.com](https://jsmars.sounny.com)
+- 💼 **LinkedIn Page:** [linkedin.com/company/jsmars](https://www.linkedin.com/company/jsmars/)
+
 This project adheres to a **"No-Build"** philosophy: it uses standard ES Modules and Vanilla JavaScript. 
 
 ## Key Features
@@ -46,6 +49,10 @@ The original Java-based JMARS application source code is available in the `jmars
 See [docs/jsmars-roadmap.md](docs/jsmars-roadmap.md) for the detailed plan.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for project architecture.
 
+## 🌐 Community & Links
+- **LinkedIn:** [https://www.linkedin.com/company/jsmars/](https://www.linkedin.com/company/jsmars/)
+- **Live Deployment:** [https://jsmars.sounny.com](https://jsmars.sounny.com)
+- **Developer & Creator:** [Dr. Sounny](https://sounny.github.io)
 
 ## 🤝 Contributing
 Please read [AGENTS.md](AGENTS.md) for architectural guidelines and coding standards.
