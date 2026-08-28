@@ -5864,6 +5864,67 @@ export class TrajectoryEngine {
       trojanTransferContext: `Mars to ${targetTrojanCluster} Transfer (${tofYrs.toFixed(1)} yr TOF, ${dvTtiKmS.toFixed(2)} km/s TTI, ${vInfArrTrojKmS.toFixed(2)} km/s Rendezvous, Total ${dvTotKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate Mars Atmospheric Entry, Descent & Landing (EDL) trajectory, peak deceleration altitude, G-load, dynamic pressure, and stagnation aerothermal heat flux.
+   * h_gmax = H * ln( ( rho_0 * H ) / ( 2 * beta * sin(-gamma) ) )
+   * a_max = v_entry^2 * sin(-gamma) / ( 2 * e * H )
+   * q_dot_stag = k_SG * sqrt( rho_stag / R_n ) * v_gmax^3
+   * Reference: Allen & Eggers (1958), Sutton & Graves (1971), Steltzner et al. (2014) for MSL/Curiosity EDL.
+   * @param {number} [entrySpeedKmS=5.85] - Atmospheric entry interface velocity at 125 km in km/s (3.5 to 8.0 km/s)
+   * @param {number} [flightPathAngleDeg=-12.5] - Entry flight path angle gamma in degrees (-6.0 to -25.0 deg)
+   * @param {number} [ballisticCoefficientKgM2=145.0] - Aeroshell ballistic coefficient m/(Cd*A) in kg/m^2 (50 to 300 kg/m^2)
+   * @param {number} [noseRadiusM=0.60] - Heatshield effective nose radius in m (0.2 to 2.0 m)
+   * @returns {{entrySpeedKmS: number, flightPathAngleDeg: number, peakDecelerationAltitudeKm: number, peakDecelerationGs: number, peakDynamicPressureKPa: number, peakStagnationHeatFluxWcm2: number, velocityAtPeakDecelKmS: number, edlContext: string}}
+   */
+  static computeMartianAtmosphericEntryDescentTrajectory(entrySpeedKmS = 5.85, flightPathAngleDeg = -12.5, ballisticCoefficientKgM2 = 145.0, noseRadiusM = 0.60) {
+    const vEntryKmS = Math.max(2.5, Math.min(10.0, entrySpeedKmS));
+    const gammaDeg = Math.min(-3.0, Math.max(-45.0, flightPathAngleDeg));
+    const beta = Math.max(20.0, ballisticCoefficientKgM2);
+    const Rn = Math.max(0.1, noseRadiusM);
+
+    const vEntryMS = vEntryKmS * 1000.0;
+    const gammaRad = Math.abs(gammaDeg * (Math.PI / 180.0));
+    const H = 11100.0; // Scale height (m)
+    const rho0 = 0.020; // Surface density (kg/m^3)
+    const g0Earth = 9.80665;
+    const kSG = 1.90e-4; // Sutton-Graves CO2 aerothermal coefficient
+
+    // Altitude of peak deceleration (m & km)
+    const arg = (rho0 * H) / (2.0 * beta * Math.sin(gammaRad));
+    const hGmaxM = Math.max(0.0, H * Math.log(Math.max(1.001, arg)));
+    const hGmaxKm = hGmaxM / 1000.0;
+
+    // Peak deceleration (m/s^2 and Earth G's)
+    const aMaxMS2 = (Math.pow(vEntryMS, 2.0) * Math.sin(gammaRad)) / (2.0 * Math.E * H);
+    const Gmax = aMaxMS2 / g0Earth;
+
+    // Velocity at peak deceleration (m/s & km/s)
+    const vGmaxMS = vEntryMS * Math.exp(-0.5);
+    const vGmaxKmS = vGmaxMS / 1000.0;
+
+    // Density at peak deceleration
+    const rhoStag = (2.0 * beta * Math.sin(gammaRad)) / H;
+
+    // Peak dynamic pressure (kPa)
+    const qDynPa = 0.5 * rhoStag * Math.pow(vGmaxMS, 2.0);
+    const qDynKPa = qDynPa / 1000.0;
+
+    // Peak stagnation aerothermal heat flux (W/cm^2)
+    const qDotStagWM2 = kSG * Math.sqrt(rhoStag / Rn) * Math.pow(vGmaxMS, 3.0);
+    const qDotStagWCm2 = qDotStagWM2 / 10000.0;
+
+    return {
+      entrySpeedKmS: parseFloat(vEntryKmS.toFixed(2)),
+      flightPathAngleDeg: parseFloat(gammaDeg.toFixed(1)),
+      peakDecelerationAltitudeKm: parseFloat(hGmaxKm.toFixed(2)),
+      peakDecelerationGs: parseFloat(Gmax.toFixed(2)),
+      peakDynamicPressureKPa: parseFloat(qDynKPa.toFixed(2)),
+      peakStagnationHeatFluxWcm2: parseFloat(qDotStagWCm2.toFixed(1)),
+      velocityAtPeakDecelKmS: parseFloat(vGmaxKmS.toFixed(2)),
+      edlContext: `Mars EDL Entry (${Gmax.toFixed(1)} g Peak Load at ${hGmaxKm.toFixed(1)} km, ${qDotStagWCm2.toFixed(0)} W/cm^2 Peak Heat Flux, ${qDynKPa.toFixed(1)} kPa Dynamic Pressure)`
+    };
+  }
 }
 
 

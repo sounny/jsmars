@@ -11769,6 +11769,61 @@ describe('Mars-to-Jupiter Trojan Transfer, Magma Chamber Solidification & Illite
     });
 });
 
+describe('Mars EDL Entry Deceleration, Basalt Weathering Kinetics & Carbonate Cation Inversion', () => {
+    it('should calculate Mars Atmospheric Entry & Landing (EDL) peak G-load, deceleration altitude, and heat flux', () => {
+        // MSL Curiosity type entry (5.85 km/s entry speed, -12.5 deg flight path angle, 145 kg/m^2 beta, 0.6 m nose radius):
+        const edl = TrajectoryEngine.computeMartianAtmosphericEntryDescentTrajectory(5.85, -12.5, 145.0, 0.60);
+        expect(edl.entrySpeedKmS).to.equal(5.85);
+        expect(edl.flightPathAngleDeg).to.equal(-12.5);
+        expect(edl.peakDecelerationAltitudeKm).to.be.closeTo(14.02, 0.5); // ~14.0 km altitude
+        expect(edl.peakDecelerationGs).to.be.closeTo(12.52, 0.5); // ~12.5 g peak load
+        expect(edl.peakDynamicPressureKPa).to.be.closeTo(35.60, 2.0); // ~35.6 kPa dynamic pressure
+        expect(edl.peakStagnationHeatFluxWcm2).to.be.closeTo(82.4, 4.0); // ~82.4 W/cm^2 peak heat flux
+        expect(edl.velocityAtPeakDecelKmS).to.be.closeTo(3.55, 0.2); // ~3.55 km/s at peak decel
+        expect(edl.edlContext).to.include('Mars EDL Entry');
+    });
+
+    it('should calculate Transition State Theory (TST) basaltic bedrock weathering rate and clay formation regime', () => {
+        // Open-system leaching (W/R = 50, pH = 6.5, 25 C, 5000 m^2/kg specific surface):
+        const openWeathering = KRCEngine.computeMartianBasaltWeatheringAndClayFormationKinetics(50.0, 6.5, 25.0, 5000.0);
+        expect(openWeathering.dissolutionRateMolM2S).to.be.closeTo(3.65e-16, 0.5e-16); // ~3.65e-16 mol/(m^2*s)
+        expect(openWeathering.weatheringFrontTimescaleKyrPerMeter).to.be.closeTo(173.8, 15.0); // ~174 kyr per meter
+        expect(openWeathering.dominantNeoformedPhyllosilicate).to.include('Kaolinite / Halloysite');
+        expect(openWeathering.geochemicalRegime).to.include('Open-System Intensive Leaching');
+
+        // Closed-basin alkaline evaporation (W/R = 5, pH = 9.0, 25 C):
+        const closedWeathering = KRCEngine.computeMartianBasaltWeatheringAndClayFormationKinetics(5.0, 9.0, 25.0, 5000.0);
+        expect(closedWeathering.dominantNeoformedPhyllosilicate).to.include('Saponite + Carbonate');
+        expect(closedWeathering.geochemicalRegime).to.include('Hyper-Alkaline Closed Paleolake');
+    });
+
+    it('should discriminate Magnesium Carbonate (Magnesite), Iron (Siderite), and Calcium (Calcite) in CRISM spectra', () => {
+        // Magnesite (MgCO3 in Nili Fossae / Jezero margin: Band I = 2.31 um, Band II = 2.51 um):
+        const magnesite = BandMathEngine.computeCRISMCarbonateCationDiscriminationIndices(2.31, 2.51, 0.08, 0.07);
+        expect(magnesite.isCarbonateDetected).to.be.true;
+        expect(magnesite.carbonateCationClass).to.include('Magnesium Carbonate (Magnesite Type)');
+        expect(magnesite.mineralSpecies).to.include('Magnesite');
+        expect(magnesite.chemicalFormula).to.equal('MgCO3');
+        expect(magnesite.paleoenvironmentalContext).to.include('Serpentinization & Carbonation of Ultramafic');
+
+        // Siderite (FeCO3 in reducing lacustrine deep units: Band I = 2.34 um, Band II = 2.54 um):
+        const siderite = BandMathEngine.computeCRISMCarbonateCationDiscriminationIndices(2.34, 2.54, 0.09, 0.08);
+        expect(siderite.isCarbonateDetected).to.be.true;
+        expect(siderite.carbonateCationClass).to.include('Iron Carbonate (Siderite Type)');
+        expect(siderite.chemicalFormula).to.equal('FeCO3');
+
+        // Calcite (CaCO3 in alkaline hydrothermal springs: Band I = 2.355 um, Band II = 2.555 um):
+        const calcite = BandMathEngine.computeCRISMCarbonateCationDiscriminationIndices(2.355, 2.555, 0.07, 0.06);
+        expect(calcite.isCarbonateDetected).to.be.true;
+        expect(calcite.carbonateCationClass).to.include('Calcium Carbonate (Calcite / Aragonite Type)');
+        expect(calcite.chemicalFormula).to.equal('CaCO3');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMCarbonateCationDiscriminationIndices(2.31, 2.51, 0.005, 0.005);
+        expect(basalt.isCarbonateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

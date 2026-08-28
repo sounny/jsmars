@@ -6064,6 +6064,56 @@ export class BandMathEngine {
       thermalAlterationContext: context
     };
   }
+
+  /**
+   * Discriminate Carbonate Cation solid solution (Mg-Carbonate Magnesite vs Fe-Carbonate Siderite vs Ca-Carbonate Calcite) from CRISM 2.30 um and 2.50 um CO3 vibrational band minima.
+   * Reference: Ehlmann et al. (2008), Morris et al. (2010), Bishop et al. (2013), Viviano-Beck et al. (2014) for Martian Carbonate Mineralogy.
+   * @param {number} [band2300CenterUm=2.310] - CO3 combination band I center wavelength in micrometers (2.28 to 2.36 um)
+   * @param {number} [band2500CenterUm=2.510] - CO3 combination band II center wavelength in micrometers (2.48 to 2.56 um)
+   * @param {number} [band2300Depth=0.08] - Band I absorption depth (0.0 to 0.40)
+   * @param {number} [band2500Depth=0.07] - Band II absorption depth (0.0 to 0.40)
+   * @returns {{isCarbonateDetected: boolean, carbonateCationClass: string, mineralSpecies: string, chemicalFormula: string, paleoenvironmentalContext: string}}
+   */
+  static computeCRISMCarbonateCationDiscriminationIndices(band2300CenterUm = 2.310, band2500CenterUm = 2.510, band2300Depth = 0.08, band2500Depth = 0.07) {
+    const c2300 = Math.max(2.25, Math.min(2.40, band2300CenterUm));
+    const c2500 = Math.max(2.45, Math.min(2.60, band2500CenterUm));
+    const d2300 = Math.max(0.0, band2300Depth);
+    const d2500 = Math.max(0.0, band2500Depth);
+
+    let isCarb = false;
+    let carbClass = 'Non-Carbonate Matrix';
+    let species = 'Basalt';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic CO3 Absorption';
+
+    if (d2300 >= 0.030 && d2500 >= 0.025) {
+      isCarb = true;
+      if (c2300 <= 2.318 && c2500 <= 2.520) {
+        carbClass = 'Magnesium Carbonate (Magnesite Type)';
+        species = 'Magnesite';
+        formula = 'MgCO3';
+        context = 'Serpentinization & Carbonation of Ultramafic Olivine-Rich Crust (Nili Fossae / Jezero Margin Unit / Comanche Outcrop)';
+      } else if (c2300 <= 2.348 && c2500 <= 2.548) {
+        carbClass = 'Iron Carbonate (Siderite Type)';
+        species = 'Siderite';
+        formula = 'FeCO3';
+        context = 'Reducing Anoxic Hydrothermal Fluids / Subsurface Ferrous Carbonate Veins (Jezero Delta Deep Lacustrine)';
+      } else {
+        carbClass = 'Calcium Carbonate (Calcite / Aragonite Type)';
+        species = 'Calcite';
+        formula = 'CaCO3';
+        context = 'Alkaline Ca-Rich Lacustrine Hydrothermal Spring / Diagenetic Cement';
+      }
+    }
+
+    return {
+      isCarbonateDetected: isCarb,
+      carbonateCationClass: carbClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      paleoenvironmentalContext: context
+    };
+  }
 }
 
 

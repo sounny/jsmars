@@ -6375,6 +6375,62 @@ export class KRCEngine {
       magmaSolidificationContext: `Magma Chamber Solidification (${tSolidKyr.toFixed(1)} kyr Solidification, ${QlatentEJ.toFixed(0)} EJ Latent Heat, ${wAureoleKm.toFixed(1)} km Aureole)`
     };
   }
+
+  /**
+   * Calculate Transition State Theory (TST) basaltic bedrock dissolution kinetics, weathering front penetration timescale, and clay neoformation regime.
+   * r_diss = k_0 * exp( -E_a / ( R * T ) ) * a_H+^n_H+
+   * t_weather = 1 / ( r_diss * A_spec * M_w )
+   * Reference: Lasaga (1984), Bandfield et al. (2000), Zolotov & Mironenko (2007), Ehlmann et al. (2011) for Noachian Aqueous Weathering.
+   * @param {number} [waterRockRatio=50.0] - Water-to-rock mass ratio W/R (0.1 to 1000.0)
+   * @param {number} [fluidPH=6.5] - Weathering fluid pH (2.0 to 11.0)
+   * @param {number} [weatheringTempC=25.0] - Weathering fluid temperature in deg C (0.0 to 90.0 C)
+   * @param {number} [specificSurfaceAreaM2Kg=5000.0] - Rock specific surface area in m^2/kg (500 to 50000 m^2/kg)
+   * @returns {{dissolutionRateMolM2S: number, weatheringFrontTimescaleKyrPerMeter: number, dominantNeoformedPhyllosilicate: string, geochemicalRegime: string, weatheringKineticsContext: string}}
+   */
+  static computeMartianBasaltWeatheringAndClayFormationKinetics(waterRockRatio = 50.0, fluidPH = 6.5, weatheringTempC = 25.0, specificSurfaceAreaM2Kg = 5000.0) {
+    const wrRatio = Math.max(0.1, waterRockRatio);
+    const pH = Math.max(1.0, Math.min(13.0, fluidPH));
+    const tempC = Math.max(0.0, Math.min(150.0, weatheringTempC));
+    const Aspec = Math.max(100.0, specificSurfaceAreaM2Kg);
+
+    const R = 8.31446;
+    const Ea = 60000.0; // J/mol activation energy
+    const k0 = 1.0e-2; // mol/(m^2*s)
+    const nH = 0.45; // reaction order
+    const Mw = 0.100; // kg/mol mean basalt molar mass
+    const TK = 273.15 + tempC;
+
+    // Proton activity and dissolution rate (mol / (m^2 * s))
+    const aH = Math.pow(10.0, -pH);
+    const rDiss = k0 * Math.exp(-Ea / (R * TK)) * Math.pow(aH, nH);
+
+    // Weathering timescale per meter of bedrock (Kyr/m)
+    const tWeatherSec = 1.0 / (rDiss * Aspec * Mw);
+    const tWeatherKyr = tWeatherSec / (3.15576e7 * 1000.0);
+
+    // Geochemical regime & neoformed clay mineral
+    let clayMineral = 'Fe/Mg Smectite (Nontronite / Saponite)';
+    let regime = 'Stagnant Closed-Basin / Alkaline Diagenetic Regime';
+
+    if (wrRatio >= 20.0 && pH <= 6.5) {
+      clayMineral = 'Kaolinite / Halloysite (Al-Phyllosilicates)';
+      regime = 'Open-System Intensive Leaching / Topset Weathering Profile';
+    } else if (wrRatio >= 10.0 && pH <= 7.5) {
+      clayMineral = 'Montmorillonite / Al-Smectite';
+      regime = 'Moderate Leaching / Fluvial Alteration Horizon';
+    } else if (pH > 8.5) {
+      clayMineral = 'Saponite + Carbonate + Zeolite Assemblage';
+      regime = 'Hyper-Alkaline Closed Paleolake Evaporation';
+    }
+
+    return {
+      dissolutionRateMolM2S: rDiss,
+      weatheringFrontTimescaleKyrPerMeter: parseFloat(tWeatherKyr.toFixed(1)),
+      dominantNeoformedPhyllosilicate: clayMineral,
+      geochemicalRegime: regime,
+      weatheringKineticsContext: `Aqueous Weathering (${tWeatherKyr.toFixed(0)} kyr/m Alteration Rate, ${clayMineral}, ${regime})`
+    };
+  }
 }
 
 
