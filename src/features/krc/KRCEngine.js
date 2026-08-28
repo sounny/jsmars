@@ -4513,6 +4513,64 @@ export class KRCEngine {
       atmosphericPlumeSignature: plumeDesc
     };
   }
+
+  /**
+   * Calculate subsurface magma sill crystallization timescale, Stefan latent heat kinetics, and thermal metamorphic halo width.
+   * tau_solid = b^2 / ( 4 * kappa * lambda_s^2 )
+   * w_halo = 2 * sqrt( kappa * tau_solid )
+   * Reference: Jaeger (1968), Turcotte & Schubert (2002), Michalski & Niles (2012) for Elysium Planitia / Syrtis Major volcanic intrusions.
+   * @param {number} [sillThicknessMeters=500.0] - Total vertical thickness of magma sheet in meters (50 to 5000 m)
+   * @param {number} [intrusionDepthMeters=3000.0] - Depth below Martian surface in meters (500 to 20000 m)
+   * @param {number} [magmaTempK=1473.15] - Initial basaltic magma temperature in K (1200 C)
+   * @param {number} [thermalDiffusivityM2S=1e-6] - Crustal thermal diffusivity in m^2/s
+   * @returns {{sillHalfThicknessMeters: number, solidificationTimeYears: number, thermalHaloWidthMeters: number, peakWallrockContactTempK: number, peakWallrockContactTempC: number, hydrothermalContactZoneMetamorphism: string}}
+   */
+  static computeSubsurfaceMagmaSillCoolingAndThermalHalo(sillThicknessMeters = 500.0, intrusionDepthMeters = 3000.0, magmaTempK = 1473.15, thermalDiffusivityM2S = 1e-6) {
+    const H = Math.max(10.0, sillThicknessMeters);
+    const zM = Math.max(50.0, intrusionDepthMeters);
+    const Tmagma = Math.max(1000.0, magmaTempK);
+    const kappa = Math.max(1e-7, thermalDiffusivityM2S);
+
+    const b = H / 2.0; // half thickness (m)
+    const Tsolidus = 1273.15; // 1000 C (K)
+
+    // Ambient host rock temperature at depth z (dT/dz = 12.5 K/km)
+    const Tambient = 215.0 + (0.0125 * zM);
+
+    const cp = 1000.0; // J/(kg*K)
+    const Lf = 4.0e5; // J/kg latent heat of fusion
+
+    // Stefan dimensionless latent heat parameter lambda_s
+    const lambdaS = Math.max(0.2, Math.sqrt((cp * Math.max(10.0, Tsolidus - Tambient)) / (2.0 * Lf * Math.sqrt(Math.PI))));
+
+    // Solidification timescale tau_solid (seconds & years)
+    const SECS_PER_YEAR = 3.15576e7;
+    const tauSolidSec = Math.pow(b, 2.0) / (4.0 * kappa * Math.pow(lambdaS, 2.0));
+    const tauSolidYears = tauSolidSec / SECS_PER_YEAR;
+
+    // Metamorphic aureole / thermal halo width
+    const wHaloM = 2.0 * Math.sqrt(kappa * tauSolidSec);
+
+    // Peak contact wallrock temperature
+    const TcontactK = Tambient + ((Tmagma - Tambient) / 2.0);
+    const TcontactC = TcontactK - 273.15;
+
+    let metaDesc = 'High-Temperature Hydrothermal Skarn & Pyroxene/Epidote Facies Halo';
+    if (TcontactC < 300.0) {
+      metaDesc = 'Low-Grade Zeolite/Prehnite Hydrothermal Aureole';
+    } else if (TcontactC > 700.0) {
+      metaDesc = 'High-Grade Pyroxene Hornfels / Magmatic Partial Melting Contact Zone';
+    }
+
+    return {
+      sillHalfThicknessMeters: parseFloat(b.toFixed(1)),
+      solidificationTimeYears: parseFloat(tauSolidYears.toFixed(0)),
+      thermalHaloWidthMeters: parseFloat(wHaloM.toFixed(1)),
+      peakWallrockContactTempK: parseFloat(TcontactK.toFixed(1)),
+      peakWallrockContactTempC: parseFloat(TcontactC.toFixed(1)),
+      hydrothermalContactZoneMetamorphism: metaDesc
+    };
+  }
 }
 
 

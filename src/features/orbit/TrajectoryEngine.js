@@ -3916,6 +3916,86 @@ export class TrajectoryEngine {
       gravityAssistRegime: regime
     };
   }
+
+  /**
+   * Calculate continuous low-thrust Edelbaum spiral orbital transfer duration, Delta-V, propellant mass, and number of orbital revolutions.
+   * Delta_V_spiral = | v1 - v2 |
+   * m_p = m0 * ( 1 - exp( -Delta_V / ( Isp * g0 ) ) )
+   * t_spiral = ( m0 * Isp * g0 / T ) * ( 1 - exp( -Delta_V / ( Isp * g0 ) ) )
+   * Reference: Edelbaum (1961), Wiesel (1997), Curtis (2013) for solar electric ion propulsion (SEP) spiral trajectories.
+   * @param {number} [initialAltitudeKm=400.0] - Initial circular orbit altitude in km
+   * @param {number} [finalAltitudeKm=17038.5] - Final circular orbit altitude in km (17038.5 km = Areostationary orbit)
+   * @param {number} [thrustNewtons=0.50] - Continuous thruster output in Newtons (0.01 to 10.0 N)
+   * @param {number} [specificImpulseSec=3200.0] - Specific impulse in seconds (1000 to 10000 s for Hall/Ion thrusters)
+   * @param {number} [spacecraftMassKg=1000.0] - Spacecraft initial wet mass in kg (100 to 50000 kg)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{initialOrbitalSpeedKmS: number, finalOrbitalSpeedKmS: number, continuousSpiralDeltaVKmS: number, propellantConsumedKg: number, transferDurationDays: number, totalSpiralRevolutions: number, lowThrustPropulsionContext: string}}
+   */
+  static computeContinuousLowThrustSpiralOrbitRaising(initialAltitudeKm = 400.0, finalAltitudeKm = 17038.5, thrustNewtons = 0.50, specificImpulseSec = 3200.0, spacecraftMassKg = 1000.0, body = 'mars') {
+    const h1Km = Math.max(50.0, initialAltitudeKm);
+    const h2Km = Math.max(50.0, finalAltitudeKm);
+    const thrustN = Math.max(1e-4, thrustNewtons);
+    const isp = Math.max(100.0, specificImpulseSec);
+    const m0 = Math.max(1.0, spacecraftMassKg);
+
+    let mu = 4.282837e13; // m^3/s^2 (Mars)
+    let rPlanetKm = 3389.5;
+
+    if (body.toLowerCase() === 'earth') {
+      mu = 3.986004418e14;
+      rPlanetKm = 6378.137;
+    } else if (body.toLowerCase() === 'moon') {
+      mu = 4.9048695e12;
+      rPlanetKm = 1737.4;
+    }
+
+    const r1M = (rPlanetKm + h1Km) * 1000.0;
+    const r2M = (rPlanetKm + h2Km) * 1000.0;
+
+    const v1MS = Math.sqrt(mu / r1M);
+    const v2MS = Math.sqrt(mu / r2M);
+    const v1KmS = v1MS / 1000.0;
+    const v2KmS = v2MS / 1000.0;
+
+    // Edelbaum velocity increment
+    const dvSpiralMS = Math.abs(v1MS - v2MS);
+    const dvSpiralKmS = dvSpiralMS / 1000.0;
+
+    // Effective exhaust velocity c = Isp * g0 (m/s)
+    const g0 = 9.80665;
+    const cMS = isp * g0;
+
+    // Propellant mass consumption
+    const massRatio = Math.exp(-dvSpiralMS / cMS);
+    const mpKg = m0 * (1.0 - massRatio);
+
+    // Duration in seconds and days
+    const mDotKgS = thrustN / cMS;
+    const tSpiralSec = mpKg / mDotKgS;
+    const tSpiralDays = tSpiralSec / 86400.0;
+
+    // Average orbital period to estimate spiral revolutions
+    const aAvgM = (r1M + r2M) / 2.0;
+    const pAvgSec = 2.0 * Math.PI * Math.sqrt(Math.pow(aAvgM, 3.0) / mu);
+    const numRevs = tSpiralSec / pAvgSec;
+
+    let context = 'Continuous Solar Electric Ion Propulsion (SEP) Low-Thrust Orbital Spiral';
+    if (tSpiralDays > 100.0) {
+      context = 'Ultra-Long Multi-Month Continuous Low-Thrust Raising Campaign';
+    } else if (h2Km < h1Km) {
+      context = 'Continuous Low-Thrust Orbital Lowering / De-orbiting Spiral';
+    }
+
+    return {
+      initialOrbitalSpeedKmS: parseFloat(v1KmS.toFixed(3)),
+      finalOrbitalSpeedKmS: parseFloat(v2KmS.toFixed(3)),
+      continuousSpiralDeltaVKmS: parseFloat(dvSpiralKmS.toFixed(3)),
+      propellantConsumedKg: parseFloat(mpKg.toFixed(2)),
+      transferDurationDays: parseFloat(tSpiralDays.toFixed(1)),
+      totalSpiralRevolutions: parseFloat(numRevs.toFixed(0)),
+      lowThrustPropulsionContext: context
+    };
+  }
 }
 
 

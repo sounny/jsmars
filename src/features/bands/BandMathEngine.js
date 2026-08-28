@@ -4547,6 +4547,48 @@ export class BandMathEngine {
       paleoclimateDesiccationContext: context
     };
   }
+
+  /**
+   * Discriminate High-Calcium Pyroxene (HCP: Augite, Diopside) from Low-Calcium Pyroxene (LCP: Enstatite, Pigeonite) using CRISM Band 1 (~1.0 um) and Band 2 (~2.0 um) crystal field absorption band centers.
+   * Reference: Mustard et al. (2005), Clénet et al. (2011), Viviano-Beck et al. (2014) for Noachian vs Hesperian volcanic crust discrimination.
+   * @param {number} band1CenterUm - Wavelength of primary Fe2+ crystal field Band 1 minimum in um (0.85 to 1.15 um)
+   * @param {number} band2CenterUm - Wavelength of secondary Fe2+ crystal field Band 2 minimum in um (1.75 to 2.45 um)
+   * @param {number} [bandDepth1=0.08] - Band 1 absorption depth (0.0 to 1.0)
+   * @param {number} [bandDepth2=0.08] - Band 2 absorption depth (0.0 to 1.0)
+   * @returns {{band1CenterUm: number, band2CenterUm: number, isPyroxenePresent: boolean, pyroxeneMineralClass: string, petrogeneticEvolutionContext: string}}
+   */
+  static computeCRISMPyroxeneHighLowCalciumIndices(band1CenterUm, band2CenterUm, bandDepth1 = 0.08, bandDepth2 = 0.08) {
+    const l1 = Math.max(0.80, Math.min(1.20, band1CenterUm));
+    const l2 = Math.max(1.70, Math.min(2.50, band2CenterUm));
+    const bd1 = Math.max(0.0, bandDepth1);
+    const bd2 = Math.max(0.0, bandDepth2);
+
+    let isPyroxene = false;
+    let mineral = 'Unaltered Primary Igneous Silicate';
+    let context = 'Standard Basaltic Composition';
+
+    if (bd1 >= 0.030 && bd2 >= 0.030) {
+      isPyroxene = true;
+      if (l1 >= 1.00 && l2 >= 2.20) {
+        mineral = 'High-Calcium Pyroxene (HCP: Augite / Diopside)';
+        context = 'Evolved Differentiated Basaltic Flood Lavas / Fractional Crystallization (Hesperian Volcanism)';
+      } else if (l1 <= 0.96 && l2 <= 2.05) {
+        mineral = 'Low-Calcium Pyroxene (LCP: Orthopyroxene / Enstatite / Bronzite)';
+        context = 'Primitive Ancient Martian Crust / Deep Magmatic Cumulates Exhumed by Noachian Impact Basins';
+      } else {
+        mineral = 'Intermediate-Calcium Pyroxene (Pigeonite / Clinopyroxene Mixture)';
+        context = 'Moderately Differentiated Magmatic Basalt';
+      }
+    }
+
+    return {
+      band1CenterUm: parseFloat(l1.toFixed(3)),
+      band2CenterUm: parseFloat(l2.toFixed(3)),
+      isPyroxenePresent: isPyroxene,
+      pyroxeneMineralClass: mineral,
+      petrogeneticEvolutionContext: context
+    };
+  }
 }
 
 

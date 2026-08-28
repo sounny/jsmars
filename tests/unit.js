@@ -10264,6 +10264,48 @@ describe('Heliocentric Gravity Assist Vectors, Methane Clathrate & Sulfate Hydra
     });
 });
 
+describe('Continuous Low-Thrust Spiral, Magma Sill Solidification & Pyroxene HCP/LCP', () => {
+    it('should calculate low-thrust continuous Edelbaum spiral Delta-V, propellant mass, and duration', () => {
+        // Low Mars Orbit (400 km) to Areostationary Orbit (17038.5 km) transfer with 0.50 N ion thruster (Isp = 3200 s, m0 = 1000 kg):
+        const spiral = TrajectoryEngine.computeContinuousLowThrustSpiralOrbitRaising(400.0, 17038.5, 0.50, 3200.0, 1000.0, 'mars');
+        expect(spiral.initialOrbitalSpeedKmS).to.be.closeTo(3.362, 0.05); // ~3.36 km/s LMO speed
+        expect(spiral.finalOrbitalSpeedKmS).to.be.closeTo(1.448, 0.05); // ~1.45 km/s Areostationary speed
+        expect(spiral.continuousSpiralDeltaVKmS).to.be.closeTo(1.914, 0.05); // ~1.91 km/s Edelbaum Delta-V
+        expect(spiral.propellantConsumedKg).to.be.closeTo(59.17, 2.0); // ~59.2 kg Xenon propellant
+        expect(spiral.transferDurationDays).to.be.closeTo(43.0, 3.0); // ~43 days continuous thrusting
+        expect(spiral.totalSpiralRevolutions).to.be.greaterThan(50);
+        expect(spiral.lowThrustPropulsionContext).to.include('Continuous Solar Electric');
+    });
+
+    it('should calculate subsurface magma sill solidification time and thermal metamorphic halo width', () => {
+        // 500 m thick basaltic sill at 3 km depth in Elysium Planitia:
+        const sill = KRCEngine.computeSubsurfaceMagmaSillCoolingAndThermalHalo(500.0, 3000.0, 1473.15, 1e-6);
+        expect(sill.sillHalfThicknessMeters).to.equal(250.0);
+        expect(sill.solidificationTimeYears).to.be.closeTo(688.0, 100.0); // ~688 years to crystallize
+        expect(sill.thermalHaloWidthMeters).to.be.closeTo(294.0, 80.0); // ~294 m metamorphic aureole
+        expect(sill.peakWallrockContactTempC).to.be.closeTo(589.7, 20.0); // ~590 C contact temperature
+        expect(sill.hydrothermalContactZoneMetamorphism).to.include('Hydrothermal Skarn');
+    });
+
+    it('should discriminate High-Calcium Pyroxene (Augite) from Low-Calcium Pyroxene (Enstatite) and basalt in CRISM spectra', () => {
+        // High-Calcium Pyroxene (Augite in Syrtis Major: Band 1 = 1.05 um, Band 2 = 2.30 um):
+        const hcp = BandMathEngine.computeCRISMPyroxeneHighLowCalciumIndices(1.05, 2.30, 0.08, 0.08);
+        expect(hcp.isPyroxenePresent).to.be.true;
+        expect(hcp.pyroxeneMineralClass).to.include('High-Calcium Pyroxene');
+        expect(hcp.petrogeneticEvolutionContext).to.include('Evolved Differentiated Basaltic');
+
+        // Low-Calcium Pyroxene (Orthopyroxene in Noachian crust: Band 1 = 0.92 um, Band 2 = 1.90 um):
+        const lcp = BandMathEngine.computeCRISMPyroxeneHighLowCalciumIndices(0.92, 1.90, 0.08, 0.08);
+        expect(lcp.isPyroxenePresent).to.be.true;
+        expect(lcp.pyroxeneMineralClass).to.include('Low-Calcium Pyroxene');
+        expect(lcp.petrogeneticEvolutionContext).to.include('Primitive Ancient Martian Crust');
+
+        // Flat spectrum:
+        const flat = BandMathEngine.computeCRISMPyroxeneHighLowCalciumIndices(1.00, 2.00, 0.01, 0.01);
+        expect(flat.isPyroxenePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
