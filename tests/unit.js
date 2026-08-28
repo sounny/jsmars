@@ -9308,6 +9308,45 @@ describe('Aerocapture Entry Corridor, Frost Albedo Feedback & Pyroxene Speciatio
     });
 });
 
+describe('Aerobraking Orbit Lowering, Subsurface Thermal Waves & Olivine Solid Solution', () => {
+    it('should calculate multi-pass Mars aerobraking orbit lowering passes, campaign duration, and Delta-V savings', () => {
+        // Mars Odyssey / MRO-type aerobraking (initial apoapsis = 35000 km, target = 400 km, corridor hp = 120 km):
+        const aeroCampaign = TrajectoryEngine.computeAerobrakingOrbitLoweringPasses(35000.0, 400.0, 120.0, 55.0, 'mars');
+        expect(aeroCampaign.totalAeroDeltaVMS).to.be.closeTo(1220.0, 100.0); // ~1.22 km/s total Delta-V dissipated
+        expect(aeroCampaign.estimatedPassCount).to.be.greaterThan(200); // 200-1000 drag passes
+        expect(aeroCampaign.campaignDurationMonths).to.be.greaterThan(2.0); // multi-month campaign
+        expect(aeroCampaign.propellantSavedKg).to.be.greaterThan(250.0); // > 250 kg fuel saved
+    });
+
+    it('should calculate 1D subsurface thermal wave exponential attenuation, skin depth, and phase lag', () => {
+        // Diurnal thermal wave in basaltic regolith (alpha = 3.5e-8 m^2/s, surface amplitude = 40 K):
+        const diurnalWave = KRCEngine.computeSubsurfaceThermalWaveAttenuation(0.05, 40.0, 'diurnal', 3.5e-8); // at 5 cm depth
+        expect(diurnalWave.thermalSkinDepthCm).to.be.closeTo(3.14, 0.3); // ~3.1 cm diurnal skin depth
+        expect(diurnalWave.dampedAmplitudeK).to.be.lessThan(10.0); // drops from 40 K to ~8 K
+        expect(diurnalWave.amplitudeAttenuationPct).to.be.greaterThan(75.0);
+        expect(diurnalWave.phaseDelayHours).to.be.greaterThan(5.0); // ~6-7 hours lag
+
+        // Deep isothermal horizon (> 3 skin depths, e.g. 20 cm for diurnal):
+        const deepZone = KRCEngine.computeSubsurfaceThermalWaveAttenuation(0.20, 40.0, 'diurnal', 3.5e-8);
+        expect(deepZone.dampedAmplitudeK).to.be.lessThan(0.5);
+        expect(deepZone.thermalPenetrationHorizon).to.include('Isothermal Deep Subsurface');
+    });
+
+    it('should invert Olivine Fo-Fa solid solution composition from CRISM 1.05 um band center shift', () => {
+        // Forsteritic Mantle Olivine (Fo90) in Nili Fossae (band center near 1035 nm):
+        const foOlivine = BandMathEngine.computeCRISMOlivineSolidSolutionIndices(0.21, 0.20, 0.23, 0.28, 0.25);
+        expect(foOlivine.forsteritePct).to.be.at.least(75.0); // >= 75% Fo
+        expect(foOlivine.mantleOrigin).to.be.true;
+        expect(foOlivine.olivineComposition).to.include('Forsteritic Olivine');
+
+        // Fayalitic Iron-Rich Olivine (Fa70 / Fo30) in evolved basalt (band center shifted to 1065 nm):
+        const faOlivine = BandMathEngine.computeCRISMOlivineSolidSolutionIndices(0.24, 0.205, 0.20, 0.28, 0.25);
+        expect(faOlivine.forsteritePct).to.be.lessThan(50.0);
+        expect(faOlivine.mantleOrigin).to.be.false;
+        expect(faOlivine.olivineComposition).to.include('Fayalitic Olivine');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

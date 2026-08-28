@@ -2185,6 +2185,75 @@ export class TrajectoryEngine {
       entryCorridorWidthDeg: parseFloat(corridorDeg.toFixed(2))
     };
   }
+
+  /**
+   * Calculate multi-pass aerobraking orbit lowering campaign parameters, pass count, campaign duration, and Delta-V savings.
+   * Delta_a_pass = - 2 * pi * ( rho_p * r_p^2 / beta ) * sqrt( H / (2*pi * a * e) )
+   * Reference: Lyons (1999), Tolson et al. (2008) for MGS, Odyssey, and MRO aerobraking flight operations.
+   * @param {number} [initialApoapsisKm=35000.0] - Initial post-capture apoapsis altitude in km
+   * @param {number} [targetApoapsisKm=400.0] - Final science mapping apoapsis altitude in km
+   * @param {number} [periapsisAltitudeKm=120.0] - Aerobraking atmospheric drag corridor altitude in km
+   * @param {number} [ballisticCoeffKgM2=55.0] - Spacecraft ballistic coefficient m / (C_D * A)
+   * @param {string} [body='mars'] - Planetary body
+   * @returns {{totalAeroDeltaVMS: number, estimatedPassCount: number, campaignDurationDays: number, campaignDurationMonths: number, meanDeltaVPerPassMS: number, propellantSavedKg: number}}
+   */
+  static computeAerobrakingOrbitLoweringPasses(initialApoapsisKm = 35000.0, targetApoapsisKm = 400.0, periapsisAltitudeKm = 120.0, ballisticCoeffKgM2 = 55.0, body = 'mars') {
+    const isEarth = body.toLowerCase() === 'earth';
+    const mu = isEarth ? 398600.4418 : 42828.37; // km^3/s^2
+    const Rp = isEarth ? 6378.137 : 3396.19;     // km
+    const H = isEarth ? 8.5 : 11.1;              // atmospheric scale height km
+    const rho0 = isEarth ? 1.225 : 0.020;        // kg/m^3
+    const g0 = 9.80665;
+    const ispChemical = 320.0;
+    const m0Spacecraft = 1000.0; // kg baseline
+
+    const ha0 = Math.max(1000.0, initialApoapsisKm);
+    const haTarget = Math.max(100.0, targetApoapsisKm);
+    const hp = Math.max(80.0, Math.min(150.0, periapsisAltitudeKm));
+    const beta = Math.max(10.0, ballisticCoeffKgM2);
+
+    const rp = Rp + hp;
+    const ra0 = Rp + ha0;
+    const raFinal = Rp + haTarget;
+
+    const a0 = (rp + ra0) / 2.0;
+    const aFinal = (rp + raFinal) / 2.0;
+    const e0 = (ra0 - rp) / (ra0 + rp);
+
+    // Atmospheric density at drag corridor periapsis
+    const rhoPeri = rho0 * Math.exp(-hp / H); // kg/m^3
+
+    // Velocity at periapsis for initial and final orbits
+    const vp0 = Math.sqrt(mu * (2.0 / rp - 1.0 / a0));
+    const vpFinal = Math.sqrt(mu * (2.0 / rp - 1.0 / aFinal));
+    const totalDeltaVMS = Math.abs(vp0 - vpFinal) * 1000.0;
+
+    // Approximate Delta_a per pass at mean orbit
+    const aMean = (a0 + aFinal) / 2.0;
+    const eMean = Math.max(0.05, (e0 + 0.01) / 2.0);
+    const deltaAPassKm = 2.0 * Math.PI * (rhoPeri * Math.pow(rp * 1000.0, 2.0) / beta) * Math.sqrt((H * 1000.0) / (2.0 * Math.PI * (aMean * 1000.0) * eMean)) / 1000.0;
+
+    const estimatedPasses = Math.max(50, Math.min(2500, Math.round((a0 - aFinal) / Math.max(1.0, deltaAPassKm))));
+    const meanDeltaVPassMS = totalDeltaVMS / estimatedPasses;
+
+    // Campaign duration by integrating orbital periods
+    const p0Days = (2.0 * Math.PI * Math.sqrt(Math.pow(a0, 3.0) / mu)) / 86400.0;
+    const pFinalDays = (2.0 * Math.PI * Math.sqrt(Math.pow(aFinal, 3.0) / mu)) / 86400.0;
+    const campaignDays = (estimatedPasses * (p0Days + pFinalDays)) / 2.0;
+    const campaignMonths = campaignDays / 30.4375;
+
+    // Propellant mass saved
+    const propSavedKg = m0Spacecraft * (1.0 - Math.exp(-totalDeltaVMS / (ispChemical * g0)));
+
+    return {
+      totalAeroDeltaVMS: parseFloat(totalDeltaVMS.toFixed(1)),
+      estimatedPassCount: estimatedPasses,
+      campaignDurationDays: parseFloat(campaignDays.toFixed(1)),
+      campaignDurationMonths: parseFloat(campaignMonths.toFixed(1)),
+      meanDeltaVPerPassMS: parseFloat(meanDeltaVPassMS.toFixed(2)),
+      propellantSavedKg: parseFloat(propSavedKg.toFixed(1))
+    };
+  }
 }
 
 

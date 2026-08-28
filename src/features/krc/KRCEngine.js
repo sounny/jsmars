@@ -2897,6 +2897,62 @@ export class KRCEngine {
       frostCoverState: state
     };
   }
+
+  /**
+   * Calculate 1D subsurface thermal wave propagation, exponential amplitude attenuation, and phase lag delay in layered Martian regolith.
+   * d_s = sqrt( alpha * P / pi )
+   * Delta_T(z) = Delta_T0 * exp( -z / d_s )
+   * phase_lag = z / d_s
+   * Reference: Christensen (1986), Mellon et al. (2004), Bandfield (2007) for THEMIS & InSight SEIS heat flow thermal sounding.
+   * @param {number} depthMeters - Subsurface probe depth in meters (0 to 2.5 m)
+   * @param {number} [surfaceAmplitudeK=40.0] - Surface diurnal/seasonal peak-to-peak temperature amplitude Delta_T0 in K
+   * @param {string} [periodCycle='diurnal'] - Thermal cycle ('diurnal', 'annual')
+   * @param {number} [thermalDiffusivityM2S=3.5e-8] - Regolith thermal diffusivity alpha in m^2/s
+   * @returns {{thermalSkinDepthCm: number, thermalSkinDepthMeters: number, dampedAmplitudeK: number, amplitudeAttenuationPct: number, phaseDelayHours: number, phaseDelaySols: number, thermalPenetrationHorizon: string}}
+   */
+  static computeSubsurfaceThermalWaveAttenuation(depthMeters, surfaceAmplitudeK = 40.0, periodCycle = 'diurnal', thermalDiffusivityM2S = 3.5e-8) {
+    const z = Math.max(0.0, depthMeters);
+    const dT0 = Math.max(0.1, surfaceAmplitudeK);
+    const alpha = Math.max(1e-9, thermalDiffusivityM2S);
+    const isAnnual = periodCycle.toLowerCase() === 'annual';
+
+    const MARS_SOL_SEC = 88775.244;
+    const MARS_YEAR_SOLS = 668.6;
+    const P = isAnnual ? MARS_YEAR_SOLS * MARS_SOL_SEC : MARS_SOL_SEC;
+
+    // Thermal skin depth d_s = sqrt(alpha * P / pi)
+    const dsMeters = Math.sqrt((alpha * P) / Math.PI);
+    const dsCm = dsMeters * 100.0;
+
+    // Damped amplitude at depth z
+    const dTZ = dT0 * Math.exp(-z / dsMeters);
+    const attPct = (1.0 - dTZ / dT0) * 100.0;
+
+    // Phase delay
+    const phaseRad = z / dsMeters;
+    const delaySec = (phaseRad * P) / (2.0 * Math.PI);
+    const delayHours = delaySec / 3600.0;
+    const delaySols = delaySec / MARS_SOL_SEC;
+
+    let horizon = 'Active Dynamic Thermal Boundary Layer (Sub-Skin Depth)';
+    if (z === 0.0) {
+      horizon = 'Exposed Surface Skin Interface';
+    } else if (z > dsMeters * 3.0) {
+      horizon = 'Isothermal Deep Subsurface (> 3 Skin Depths: Constant Mean Annual Temperature)';
+    } else if (z >= dsMeters) {
+      horizon = 'Attenuated Deep Thermal Zone (> 1 Skin Depth: Weak Damped Signal)';
+    }
+
+    return {
+      thermalSkinDepthCm: parseFloat(dsCm.toFixed(2)),
+      thermalSkinDepthMeters: parseFloat(dsMeters.toFixed(4)),
+      dampedAmplitudeK: parseFloat(dTZ.toFixed(2)),
+      amplitudeAttenuationPct: parseFloat(attPct.toFixed(1)),
+      phaseDelayHours: parseFloat(delayHours.toFixed(2)),
+      phaseDelaySols: parseFloat(delaySols.toFixed(3)),
+      thermalPenetrationHorizon: horizon
+    };
+  }
 }
 
 

@@ -3391,6 +3391,61 @@ export class BandMathEngine {
       volcanicContext: context
     };
   }
+
+  /**
+   * Invert Olivine (Mg,Fe)2SiO4 solid solution Forsterite (Fo#) vs Fayalite (Fa#) content from CRISM 1.05 um crystal field band center shifts.
+   * Reference: King & Ridley (1987), Mustard et al. (2005), Koeppen & Hamilton (2008) for Nili Fossae dunitic mantle exposures.
+   * @param {number} r1020 - Reflectance at 1020 nm (Mg-rich Fo side)
+   * @param {number} r1050 - Reflectance at 1050 nm (Intermediate Fo60 center)
+   * @param {number} r1080 - Reflectance at 1080 nm (Fe-rich Fa side)
+   * @param {number} r1800 - Reflectance at 1800 nm continuum shoulder
+   * @param {number} [continuumLevel=0.25] - Background continuum level
+   * @returns {{bandCenterNm: number, forsteritePct: number, fayalitePct: number, olIndex: number, olivineComposition: string, mantleOrigin: boolean}}
+   */
+  static computeCRISMOlivineSolidSolutionIndices(r1020, r1050, r1080, r1800, continuumLevel = 0.25) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    // Parabolic vertex interpolation of 1.05 um triplet
+    const y1 = r1020;
+    const y2 = r1050;
+    const y3 = r1080;
+
+    let lambdaMinNm = 1050.0;
+    const denom = 2.0 * (y1 - 2.0 * y2 + y3);
+    if (Math.abs(denom) > 1e-6) {
+      const delta = 30.0 * (y1 - y3) / denom;
+      lambdaMinNm = Math.max(1020.0, Math.min(1090.0, 1050.0 + delta));
+    }
+
+    // Fo content linear calibration between 1030 nm (Fo100) and 1080 nm (Fo0 / Fa100)
+    const foRaw = 100.0 - ((lambdaMinNm - 1030.0) / (1080.0 - 1030.0)) * 100.0;
+    const foPct = Math.max(0.0, Math.min(100.0, foRaw));
+    const faPct = 100.0 - foPct;
+
+    // Broad olivine band depth OLINDEX
+    const bd1050 = Math.max(0.0, 1.0 - (r1050 / cont));
+    const olIndex = (r1800 - r1050) / Math.max(1e-4, r1800 + r1050);
+
+    let comp = 'Magnesium-Rich Forsteritic Olivine (Fo85-92 - Dunitic Mantle/Plutonic Peridotite)';
+    let mantle = true;
+
+    if (foPct < 50.0) {
+      comp = 'Iron-Rich Fayalitic Olivine (Fo20-45 / Fa55-80 - Evolved Alkaline Magma)';
+      mantle = false;
+    } else if (foPct < 75.0) {
+      comp = 'Intermediate Basaltic Phenocryst Olivine (Fo55-75 - Typical Martian Basalt)';
+      mantle = false;
+    }
+
+    return {
+      bandCenterNm: parseFloat(lambdaMinNm.toFixed(1)),
+      forsteritePct: parseFloat(foPct.toFixed(1)),
+      fayalitePct: parseFloat(faPct.toFixed(1)),
+      olIndex: parseFloat(olIndex.toFixed(4)),
+      olivineComposition: comp,
+      mantleOrigin: mantle
+    };
+  }
 }
 
 
