@@ -4905,6 +4905,53 @@ export class BandMathEngine {
       alkalineVolcanicPetrogenesis: context
     };
   }
+
+  /**
+   * Discriminate Zeolite (Analcime/Chabazite framework silicate) from Hydrated Opaline Silica using CRISM 1.41 um, 1.92 um, 2.21 um (Si-OH), and 2.48 um channel water features.
+   * Reference: Ehlmann et al. (2009), Ruff et al. (2011), Viviano-Beck et al. (2014) for Martian crater central peak zeolite-facies alteration.
+   * @param {number} r1410 - Reflectance at 1.41 um molecular H2O overtone
+   * @param {number} r1920 - Reflectance at 1.92 um fundamental molecular H2O
+   * @param {number} r2210 - Reflectance at 2.21 um diagnostic Si-OH silanol vibration
+   * @param {number} r2480 - Reflectance at 2.48 um zeolite channel structural framework band
+   * @param {number} [continuumLevel=0.30] - Background continuum reflectance
+   * @returns {{bd1410: number, bd1920: number, bd2210: number, bd2480: number, isHydratedPhasePresent: boolean, hydratedMineralPhase: string, diageneticAqueousSetting: string}}
+   */
+  static computeCRISMZeoliteHydratedSilicaIndices(r1410, r1920, r2210, r2480, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    const bd1410 = Math.max(0.0, 1.0 - (r1410 / cont));
+    const bd1920 = Math.max(0.0, 1.0 - (r1920 / cont));
+    const bd2210 = Math.max(0.0, 1.0 - (r2210 / cont));
+    const bd2480 = Math.max(0.0, 1.0 - (r2480 / cont));
+
+    let isHydrated = false;
+    let phase = 'Anhydrous Primary Silicate / Basalt';
+    let setting = 'Standard Igneous Regolith';
+
+    if (bd1920 >= 0.020) {
+      isHydrated = true;
+      if (bd2210 >= 0.025) {
+        phase = 'Hydrated Opaline Silica (Opal-A / Opal-CT)';
+        setting = 'Acid-Sulfate Epithermal Hot Spring Sinter / Volcanic Fumarole Hydrothermal Alteration';
+      } else if (bd2480 >= 0.020) {
+        phase = 'Zeolite (Analcime / Clinoptilolite / Chabazite)';
+        setting = 'Alkaline Saline Closed-Basin Paleolake / Low-Grade Burial Metamorphism of Volcanic Glass';
+      } else {
+        phase = 'Undifferentiated Hydrated Mineral Phase';
+        setting = 'Diffuse Aqueous Weathering Horizon';
+      }
+    }
+
+    return {
+      bd1410: parseFloat(bd1410.toFixed(4)),
+      bd1920: parseFloat(bd1920.toFixed(4)),
+      bd2210: parseFloat(bd2210.toFixed(4)),
+      bd2480: parseFloat(bd2480.toFixed(4)),
+      isHydratedPhasePresent: isHydrated,
+      hydratedMineralPhase: phase,
+      diageneticAqueousSetting: setting
+    };
+  }
 }
 
 

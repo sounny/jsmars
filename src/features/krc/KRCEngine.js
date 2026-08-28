@@ -5000,6 +5000,65 @@ export class KRCEngine {
       climaticCollapseRegime: regime
     };
   }
+
+  /**
+   * Calculate subsurface megaregolith compaction porosity decay, depth-dependent thermal diffusivity, and annual thermal wave phase lag.
+   * phi(z) = phi_0 * exp( - z / H_pore )
+   * delta_skin = sqrt( kappa * P / pi )
+   * phase_lag = z / delta_skin
+   * Reference: Clifford (1993), Hanna & Phillips (2005), Kieffer (2013) for Martian megaregolith cryosphere thermal structure.
+   * @param {number} [subsurfaceDepthMeters=5.0] - Target subsurface depth in meters (0.1 to 5000 m)
+   * @param {number} [surfacePorosityPct=40.0] - Unconsolidated ground surface porosity percentage (10 to 60%)
+   * @param {number} [eFoldingDepthKm=3.5] - Porosity compaction e-folding depth in km (1.5 to 8.0 km)
+   * @param {number} [poreIceSaturationPct=80.0] - Pore space ice volume filling percentage (0 to 100%)
+   * @returns {{subsurfaceDepthMeters: number, megaregolithPorosityPct: number, bulkCrustalDensityKgM3: number, thermalConductivityWMK: number, annualThermalSkinDepthMeters: number, annualPhaseLagSols: number, megaregolithThermalContext: string}}
+   */
+  static computeSubsurfaceMegaregolithPorosityDecayAndThermalPhaseLag(subsurfaceDepthMeters = 5.0, surfacePorosityPct = 40.0, eFoldingDepthKm = 3.5, poreIceSaturationPct = 80.0) {
+    const zM = Math.max(0.05, subsurfaceDepthMeters);
+    const phi0 = Math.max(0.05, Math.min(0.70, surfacePorosityPct / 100.0));
+    const HporeM = Math.max(500.0, eFoldingDepthKm * 1000.0);
+    const Sice = Math.max(0.0, Math.min(1.0, poreIceSaturationPct / 100.0));
+
+    // Porosity decay with lithostatic overburden compaction
+    const phiZ = phi0 * Math.exp(-zM / HporeM);
+    const phiZPct = phiZ * 100.0;
+
+    // Density and Thermal properties
+    const rhoGrain = 2900.0; // kg/m^3
+    const rhoIce = 920.0; // kg/m^3
+    const rhoBulk = (rhoGrain * (1.0 - phiZ)) + (rhoIce * phiZ * Sice);
+
+    const kSolid = 2.5; // W/(m*K)
+    const kIce = 2.2; // W/(m*K)
+    const kEff = 0.05 + (kSolid * Math.pow(1.0 - phiZ, 1.5)) + (kIce * phiZ * Sice);
+
+    const cp = 850.0; // J/(kg*K)
+    const kappa = kEff / (rhoBulk * cp); // m^2/s
+
+    // Annual thermal wave skin depth and phase lag (P = 668.6 sols = 5.9355e7 s)
+    const pAnnualSec = 5.9355e7;
+    const deltaSkinM = Math.sqrt((kappa * pAnnualSec) / Math.PI);
+
+    const phaseLagRad = zM / deltaSkinM;
+    const phaseLagSols = (phaseLagRad / (2.0 * Math.PI)) * 668.6;
+
+    let regime = 'Active Cryospheric Annual Thermal Layer / Seasonal Skin Depth Horizon';
+    if (zM > 20.0) {
+      regime = 'Deep Thermally Damped Megaregolith Basement / Geothermal Dominance';
+    } else if (zM < 1.0) {
+      regime = 'Diurnal Active Boundary Skin Layer / Rapid Diurnal Temperature Fluctuations';
+    }
+
+    return {
+      subsurfaceDepthMeters: parseFloat(zM.toFixed(2)),
+      megaregolithPorosityPct: parseFloat(phiZPct.toFixed(2)),
+      bulkCrustalDensityKgM3: parseFloat(rhoBulk.toFixed(1)),
+      thermalConductivityWMK: parseFloat(kEff.toFixed(3)),
+      annualThermalSkinDepthMeters: parseFloat(deltaSkinM.toFixed(2)),
+      annualPhaseLagSols: parseFloat(phaseLagSols.toFixed(1)),
+      megaregolithThermalContext: regime
+    };
+  }
 }
 
 

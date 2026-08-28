@@ -10622,6 +10622,46 @@ describe('Areostationary Orbit Dynamics, CO2 Atmospheric Collapse & Diopside Pyr
     });
 });
 
+describe('Mars Free Return Cyclers, Megaregolith Compaction & Zeolites vs Opal', () => {
+    it('should calculate Mars-Earth unpowered free return flyby trajectory, periapsis speed, and turn angle', () => {
+        // Mars flyby at 250 km altitude (v_inf = 5.65 km/s):
+        const freeRet = TrajectoryEngine.computeMarsFreeReturnCircumlunarInterplanetaryFlyby(250.0, 5.65);
+        expect(freeRet.marsFlybyAltitudeKm).to.equal(250.0);
+        expect(freeRet.marsClosestApproachSpeedKmS).to.be.closeTo(7.447, 0.05); // ~7.45 km/s periapsis speed
+        expect(freeRet.hyperbolicTurnAngleDeg).to.be.closeTo(31.26, 1.0); // ~31.3 deg gravity assist bending angle
+        expect(freeRet.totalMissionDurationDays).to.equal(501); // 501-day Inspiration Mars mission loop
+        expect(freeRet.freeReturnTrajectoryContext).to.include('Unpowered Ballistic Mars-to-Earth Free Return');
+    });
+
+    it('should calculate megaregolith compaction porosity decay, bulk density, and annual phase lag', () => {
+        // Subsurface at z = 100 m (surface porosity = 40%, H_pore = 3.5 km, ice saturation = 80%):
+        const mega = KRCEngine.computeSubsurfaceMegaregolithPorosityDecayAndThermalPhaseLag(100.0, 40.0, 3.5, 80.0);
+        expect(mega.subsurfaceDepthMeters).to.equal(100.0);
+        expect(mega.megaregolithPorosityPct).to.be.closeTo(38.88, 1.0); // ~38.9% porosity at 100 m
+        expect(mega.bulkCrustalDensityKgM3).to.be.closeTo(2058.6, 50.0); // ~2059 kg/m^3 bulk density
+        expect(mega.annualThermalSkinDepthMeters).to.be.closeTo(4.47, 0.5); // ~4.47 m annual skin depth
+        expect(mega.megaregolithThermalContext).to.include('Deep Thermally Damped Megaregolith');
+    });
+
+    it('should discriminate Zeolite (Analcime/Chabazite) from Opaline Hydrated Silica in CRISM spectra', () => {
+        // Zeolite (Analcime) in crater central peak (1.41 um, 1.92 um, and 2.48 um without 2.21 um Si-OH):
+        const zeolite = BandMathEngine.computeCRISMZeoliteHydratedSilicaIndices(0.24, 0.22, 0.30, 0.24, 0.30);
+        expect(zeolite.isHydratedPhasePresent).to.be.true;
+        expect(zeolite.hydratedMineralPhase).to.include('Zeolite (Analcime');
+        expect(zeolite.diageneticAqueousSetting).to.include('Alkaline Saline Closed-Basin');
+
+        // Hydrated Opaline Silica (Opal-A / Opal-CT) with sharp 2.21 um Si-OH band:
+        const opal = BandMathEngine.computeCRISMZeoliteHydratedSilicaIndices(0.24, 0.22, 0.22, 0.30, 0.30);
+        expect(opal.isHydratedPhasePresent).to.be.true;
+        expect(opal.hydratedMineralPhase).to.include('Hydrated Opaline Silica');
+        expect(opal.diageneticAqueousSetting).to.include('Acid-Sulfate Epithermal Hot Spring');
+
+        // Anhydrous basalt:
+        const basalt = BandMathEngine.computeCRISMZeoliteHydratedSilicaIndices(0.30, 0.30, 0.30, 0.30, 0.30);
+        expect(basalt.isHydratedPhasePresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

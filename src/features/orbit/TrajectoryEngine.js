@@ -4442,6 +4442,46 @@ export class TrajectoryEngine {
       areostationaryMissionContext: 'Areostationary Equatorial Relay & Continuous Planetary Disk Monitoring'
     };
   }
+
+  /**
+   * Calculate Mars-Earth Free Return unpowered flyby trajectory, hyperbolic bending angle, periapsis speed, and Earth return velocity.
+   * sin( delta / 2 ) = 1 / ( 1 + ( rp * v_inf^2 ) / mu_mars )
+   * v_peri = sqrt( v_inf^2 + 2 * mu_mars / rp )
+   * Reference: Hollister (1969), Aldrin (1985), Byrnes et al. (1993), Tito et al. (2013) for Inspiration Mars & cycler architectures.
+   * @param {number} [marsFlybyAltitudeKm=250.0] - Mars closest approach flyby altitude in km (100 to 5000 km)
+   * @param {number} [marsVInfKmS=5.65] - Mars approach hyperbolic excess velocity in km/s (3.0 to 9.0 km/s)
+   * @returns {{marsFlybyAltitudeKm: number, marsClosestApproachSpeedKmS: number, hyperbolicTurnAngleDeg: number, earthReturnVInfKmS: number, totalMissionDurationDays: number, freeReturnTrajectoryContext: string}}
+   */
+  static computeMarsFreeReturnCircumlunarInterplanetaryFlyby(marsFlybyAltitudeKm = 250.0, marsVInfKmS = 5.65) {
+    const hpKm = Math.max(50.0, marsFlybyAltitudeKm);
+    const vInf = Math.max(1.0, marsVInfKmS);
+
+    const rMarsKm = 3389.5;
+    const muMars = 42828.37; // km^3/s^2
+
+    // Periapsis radius and speed at Mars
+    const rpKm = rMarsKm + hpKm;
+    const vPeriKmS = Math.sqrt(Math.pow(vInf, 2.0) + (2.0 * muMars) / rpKm);
+
+    // Hyperbolic turn angle delta: sin(delta/2) = 1 / ( 1 + rp*vInf^2 / mu )
+    const denom = 1.0 + (rpKm * Math.pow(vInf, 2.0)) / muMars;
+    const sinHalfDelta = 1.0 / denom;
+    const halfDeltaRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinHalfDelta)));
+    const deltaDeg = 2.0 * halfDeltaRad * (180.0 / Math.PI);
+
+    // Free return duration (~501 days for Inspiration Mars fast flyby, ~730 days for 2:1 resonance)
+    const missionDays = 501.0;
+    const vInfEarthRet = Math.sqrt(Math.pow(vInf, 2.0) + 6.8); // Return excess
+
+    return {
+      marsFlybyAltitudeKm: parseFloat(hpKm.toFixed(1)),
+      marsClosestApproachSpeedKmS: parseFloat(vPeriKmS.toFixed(3)),
+      hyperbolicTurnAngleDeg: parseFloat(deltaDeg.toFixed(2)),
+      earthReturnVInfKmS: parseFloat(vInfEarthRet.toFixed(3)),
+      totalMissionDurationDays: parseFloat(missionDays.toFixed(0)),
+      freeReturnTrajectoryContext: 'Unpowered Ballistic Mars-to-Earth Free Return Flyby (Inspiration Mars Architecture)'
+    };
+  }
 }
 
 
