@@ -8966,6 +8966,47 @@ describe('Mars Orbit Insertion Delta-V, Porous Regolith Ice Lag & Zeolite Discri
     });
 });
 
+describe('Trans-Mars Injection Delta-V, CO2 Clathrate Hydrates & Sulfate Stratigraphy', () => {
+    it('should calculate Trans-Mars Injection (TMI) Delta-V from characteristic departure energy C3', () => {
+        // Typical Mars launch from 250 km LEO (C3 = 15.0 km^2/s^2, Isp = 450 s Centaur upper stage):
+        const tmiBurn = TrajectoryEngine.computeInterplanetaryDepartureC3AndTransMarsInjectionDeltaV(15.0, 250.0, 450.0, 'earth');
+        expect(tmiBurn.circularParkingOrbitSpeedKmS).to.be.closeTo(7.756, 0.05); // ~7.76 km/s LEO orbital velocity
+        expect(tmiBurn.departureHyperbolicSpeedKmS).to.be.closeTo(11.631, 0.05); // ~11.63 km/s escape insertion velocity
+        expect(tmiBurn.transMarsInjectionDeltaVKmS).to.be.closeTo(3.875, 0.05); // ~3.88 km/s TMI burn
+        expect(tmiBurn.propellantMassFractionPct).to.be.greaterThan(55.0);
+    });
+
+    it('should calculate subsurface CO2 Clathrate Hydrate phase stability and cryosphere gas reservoir', () => {
+        // Deep polar ice cap at 1500 m depth, T = 180 K (pLith = 6.14 MPa):
+        const deepClathrate = KRCEngine.computeCO2ClathrateHydrateStabilityBoundary(1500.0, 180.0, 1100.0);
+        expect(deepClathrate.isClathrateStable).to.be.true;
+        expect(deepClathrate.lithostaticPressureMPa).to.be.closeTo(6.138, 0.05);
+        expect(deepClathrate.dissociationPressureMPa).to.be.lessThan(1.0);
+        expect(deepClathrate.co2GasEquivalentDensityKgM3).to.equal(165.0);
+        expect(deepClathrate.cryosphereRegime).to.include('Gigaton CO2 Clathrate Paleoclimate Reservoir');
+
+        // Warm shallow equatorial deposit at 50 m depth, T = 220 K (unstable dissociation):
+        const warmUnstable = KRCEngine.computeCO2ClathrateHydrateStabilityBoundary(50.0, 220.0, 1500.0);
+        expect(warmUnstable.isClathrateStable).to.be.false;
+        expect(warmUnstable.co2GasEquivalentDensityKgM3).to.equal(0.0);
+    });
+
+    it('should discriminate Monohydrated Sulfates from Polyhydrated Sulfates in CRISM spectra', () => {
+        // Monohydrated Sulfate (Kieserite): distinct 2.13 um feature (r = 0.26 vs continuum (0.28+0.29)/2 = 0.285 -> BD2130 = 0.0877), low SINDEX2
+        const kieserite = BandMathEngine.computeCRISMMonoVsPolyHydratedSulfateIndices(0.28, 0.26, 0.29, 0.30, 0.30);
+        expect(kieserite.isMonohydratedSulfate).to.be.true;
+        expect(kieserite.isPolyhydratedSulfate).to.be.false;
+        expect(kieserite.sulfateClass).to.include('Monohydrated Sulfate');
+        expect(kieserite.stratigraphicContext).to.include('Basal Layered Sulfate Deposit');
+
+        // Polyhydrated Sulfate (Gypsum / Epsomite): strong 2.40 um absorption (SINDEX2 = 0.10) and deep 1.92 um water (BD1900 = 0.133)
+        const gypsum = BandMathEngine.computeCRISMMonoVsPolyHydratedSulfateIndices(0.26, 0.29, 0.295, 0.27, 0.30);
+        expect(gypsum.isMonohydratedSulfate).to.be.false;
+        expect(gypsum.isPolyhydratedSulfate).to.be.true;
+        expect(gypsum.sulfateClass).to.include('Polyhydrated Sulfate');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

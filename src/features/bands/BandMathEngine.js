@@ -3006,6 +3006,56 @@ export class BandMathEngine {
       geologicalSetting: setting
     };
   }
+
+  /**
+   * Discriminate Monohydrated Sulfates (Kieserite / Szomolnokite) from Polyhydrated Sulfates (Gypsum / Epsomite).
+   * BD2130 = 1.0 - ( 2 * R_2130 ) / ( R_1920 + R_2250 )
+   * SINDEX2 = 1.0 - ( 2 * R_2400 ) / ( R_2290 + R_2530 )
+   * Reference: Gendrin et al. (2005), Bibring et al. (2006), Roach et al. (2009) for Martian sulfate stratigraphy.
+   * @param {number} r1920 - Reflectance at 1.92 um H2O band
+   * @param {number} r2130 - Reflectance at 2.13 um monohydrated sulfate band
+   * @param {number} r2250 - Reflectance at 2.25 um continuum
+   * @param {number} r2400 - Reflectance at 2.40 um polyhydrated sulfate band
+   * @param {number} [continuumLevel=0.30] - Mean background continuum level
+   * @returns {{bd2130: number, sindex2: number, sulfateClass: string, isMonohydratedSulfate: boolean, isPolyhydratedSulfate: boolean, stratigraphicContext: string}}
+   */
+  static computeCRISMMonoVsPolyHydratedSulfateIndices(r1920, r2130, r2250, r2400, continuumLevel = 0.30) {
+    const cont = Math.max(1e-4, continuumLevel);
+
+    // Monohydrated sulfate index (2.13 um feature)
+    const continuum2130 = (r1920 + r2250) / 2.0;
+    const bd2130 = Math.max(0.0, 1.0 - (r2130 / Math.max(1e-4, continuum2130)));
+
+    // Polyhydrated sulfate index (2.40 um feature)
+    const sindex2 = Math.max(0.0, 1.0 - (r2400 / cont));
+
+    // Structural water depth
+    const bd1900 = Math.max(0.0, 1.0 - (r1920 / cont));
+
+    let sClass = 'Non-Sulfate Lithology / Primary Basalt';
+    let isMono = false;
+    let isPoly = false;
+    let context = 'Volcanic Plains';
+
+    if (bd2130 >= 0.020 && sindex2 < 0.020) {
+      sClass = 'Monohydrated Sulfate (Kieserite MgSO4*H2O / Szomolnokite)';
+      isMono = true;
+      context = 'Basal Layered Sulfate Deposit (High-Temperature Desiccation / Evaporite)';
+    } else if (sindex2 >= 0.020 || (bd1900 >= 0.030 && sindex2 >= 0.015)) {
+      sClass = 'Polyhydrated Sulfate (Gypsum CaSO4*2H2O / Epsomite MgSO4*7H2O)';
+      isPoly = true;
+      context = 'Upper Cap Layer / Dune Field (Acidic Evaporite Sequence)';
+    }
+
+    return {
+      bd2130: parseFloat(bd2130.toFixed(4)),
+      sindex2: parseFloat(sindex2.toFixed(4)),
+      sulfateClass: sClass,
+      isMonohydratedSulfate: isMono,
+      isPolyhydratedSulfate: isPoly,
+      stratigraphicContext: context
+    };
+  }
 }
 
 

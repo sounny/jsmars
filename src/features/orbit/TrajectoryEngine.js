@@ -1664,6 +1664,55 @@ export class TrajectoryEngine {
       targetOrbitPeriodHours: parseFloat(periodHours.toFixed(2))
     };
   }
+
+  /**
+   * Calculate interplanetary departure characteristic energy C3, departure hyperbolic speed, and Trans-Mars Injection (TMI) Delta-V.
+   * v_dep = sqrt( C3 + 2*mu / r_park )
+   * v_park = sqrt( mu / r_park )
+   * Delta_V = v_dep - v_park
+   * Reference: Vallado (2013), Battin (1999) for Earth-to-Mars launch trajectory injection.
+   * @param {number} c3CharacteristicEnergyKm2S2 - Characteristic launch excess energy C3 = v_inf^2 in km^2/s^2 (e.g. 10 to 25 km^2/s^2)
+   * @param {number} [parkOrbitAltitudeKm=250.0] - Circular parking orbit altitude in km (LEO 250 km)
+   * @param {number} [specificImpulseSec=450.0] - Upper stage engine specific impulse Isp in seconds (450 s for LOX/LH2 Centaur)
+   * @param {string} [departureBody='earth'] - Launch departure planetary body ('earth', 'mars')
+   * @returns {{transMarsInjectionDeltaVKmS: number, transMarsInjectionDeltaVMS: number, departureHyperbolicSpeedKmS: number, circularParkingOrbitSpeedKmS: number, propellantMassFractionPct: number}}
+   */
+  static computeInterplanetaryDepartureC3AndTransMarsInjectionDeltaV(c3CharacteristicEnergyKm2S2, parkOrbitAltitudeKm = 250.0, specificImpulseSec = 450.0, departureBody = 'earth') {
+    const bKey = departureBody.toLowerCase();
+    const isMars = bKey === 'mars';
+
+    const mu = isMars ? 42828.37 : 398600.4418; // km^3/s^2
+    const Rp = isMars ? 3396.19 : 6378.137;     // km
+    const g0 = 9.80665;                          // m/s^2
+
+    const C3 = Math.max(0.0, c3CharacteristicEnergyKm2S2);
+    const hp = Math.max(50.0, parkOrbitAltitudeKm);
+    const Isp = Math.max(50.0, specificImpulseSec);
+
+    const rPark = Rp + hp;
+
+    // Circular parking orbit speed
+    const vPark = Math.sqrt(mu / rPark);
+
+    // Departure hyperbolic velocity at parking orbit altitude
+    const vDep = Math.sqrt(C3 + (2.0 * mu) / rPark);
+
+    // Injection Delta-V
+    const deltaV = vDep - vPark;
+    const deltaVMS = deltaV * 1000.0;
+
+    // Tsiolkovsky propellant mass fraction: Delta_m / m0 = 1 - exp( -Delta_V / (Isp * g0) )
+    const massFrac = 1.0 - Math.exp(-deltaVMS / (Isp * g0));
+    const massFracPct = massFrac * 100.0;
+
+    return {
+      transMarsInjectionDeltaVKmS: parseFloat(deltaV.toFixed(3)),
+      transMarsInjectionDeltaVMS: parseFloat(deltaVMS.toFixed(1)),
+      departureHyperbolicSpeedKmS: parseFloat(vDep.toFixed(3)),
+      circularParkingOrbitSpeedKmS: parseFloat(vPark.toFixed(3)),
+      propellantMassFractionPct: parseFloat(massFracPct.toFixed(2))
+    };
+  }
 }
 
 

@@ -2423,6 +2423,58 @@ export class KRCEngine {
       lagDiffusionResistanceCoeff: parseFloat((L / Deff).toFixed(1))
     };
   }
+
+  /**
+   * Calculate subsurface CO2 Clathrate Hydrate (CO2 * 5.75 H2O) phase equilibrium stability boundary and gas storage capacity.
+   * ln( P_dissoc_MPa ) = 30.12 - 6030.0 / T_hydrate
+   * Reference: Miller & Smythe (1970), Sloan (1998), Mousis et al. (2013), Chassefière et al. (2013) for Martian polar cryosphere.
+   * @param {number} depthMeters - Subsurface depth in meters (e.g. 500 to 3000 m in polar layered deposits)
+   * @param {number} [subsurfaceTempK=190.0] - In-situ geothermal temperature at depth in Kelvin
+   * @param {number} [overburdenDensityKgM3=1100.0] - Bulk density of overlying polar ice/dust mantle in kg/m^3
+   * @returns {{isClathrateStable: boolean, lithostaticPressureMPa: number, dissociationPressureMPa: number, maxStableTempK: number, co2GasEquivalentDensityKgM3: number, cryosphereRegime: string}}
+   */
+  static computeCO2ClathrateHydrateStabilityBoundary(depthMeters, subsurfaceTempK = 190.0, overburdenDensityKgM3 = 1100.0) {
+    const z = Math.max(10.0, depthMeters);
+    const T = Math.max(100.0, Math.min(273.15, subsurfaceTempK));
+    const rho = Math.max(500.0, overburdenDensityKgM3);
+    const g = 3.72; // m/s^2 Mars gravity
+
+    // Lithostatic overburden pressure P = rho * g * z (Pa -> MPa)
+    const pLithPa = rho * g * z;
+    const pLithMPa = pLithPa * 1e-6;
+
+    // Dissociation pressure of CO2 hydrate at temperature T (MPa)
+    const pDissocMPa = Math.exp(30.12 - 6030.0 / T);
+
+    // Maximum stable temperature at lithostatic pressure P_lith (K)
+    let tMaxStableK = 273.15;
+    if (pLithMPa > 0.001) {
+      tMaxStableK = 6030.0 / (30.12 - Math.log(pLithMPa));
+    }
+
+    const isStable = pLithMPa >= pDissocMPa;
+
+    // Storage capacity: ~165 kg of CO2 per m^3 of clathrate hydrate
+    const co2StorageKgM3 = isStable ? 165.0 : 0.0;
+
+    let regime = 'Unstable: Clathrate Dissociates to Free CO2 Gas & H2O Ice';
+    if (isStable) {
+      if (z >= 1000.0) {
+        regime = 'Deep Polar Layered Cryosphere: Gigaton CO2 Clathrate Paleoclimate Reservoir';
+      } else {
+        regime = 'Shallow Metastable Cryogenic CO2 Clathrate Deposit';
+      }
+    }
+
+    return {
+      isClathrateStable: isStable,
+      lithostaticPressureMPa: parseFloat(pLithMPa.toFixed(3)),
+      dissociationPressureMPa: parseFloat(pDissocMPa.toFixed(4)),
+      maxStableTempK: parseFloat(tMaxStableK.toFixed(1)),
+      co2GasEquivalentDensityKgM3: parseFloat(co2StorageKgM3.toFixed(1)),
+      cryosphereRegime: regime
+    };
+  }
 }
 
 
