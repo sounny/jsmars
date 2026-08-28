@@ -5556,6 +5556,69 @@ export class KRCEngine {
       laharSedimentologyContext: context
     };
   }
+
+  /**
+   * Calculate Martian glacial basal thermal regime (cold-based vs warm-based), basal strain heating, and bedrock abrasion erosion rate.
+   * T_base = T_surf + ( ( q_geo + q_strain ) * H_ice ) / k_ice
+   * T_pmt = 273.15 - 0.074 * P_base_MPa
+   * Reference: Fastook et al. (2012), Head & Marchant (2003), Brough et al. (2016) for Amazonian Lobate Debris Aprons (LDA) & non-erosive cold-based ice.
+   * @param {number} [iceThicknessMeters=800.0] - Glacial ice column thickness in meters (100 to 4000 m)
+   * @param {number} [iceSurfaceVelocityMYr=5.0] - Surface downslope flow velocity in m/year (0.1 to 100 m/yr)
+   * @param {number} [geothermalHeatFluxMWm2=35.0] - Basal geothermal heat flux in mW/m^2 (10 to 120 mW/m^2)
+   * @param {number} [surfaceMeanTempK=190.0] - Mean annual glacier surface temperature in K (150 to 220 K)
+   * @returns {{iceThicknessMeters: number, basalTemperatureK: number, pressureMeltingPointK: number, isGlacierColdBased: boolean, basalSlidingVelocityMYr: number, bedrockErosionRateMmMyr: number, glacialGeomorphologyContext: string}}
+   */
+  static computeMartianGlacialThermalRegimeAndBedrockErosionRate(iceThicknessMeters = 800.0, iceSurfaceVelocityMYr = 5.0, geothermalHeatFluxMWm2 = 35.0, surfaceMeanTempK = 190.0) {
+    const Hice = Math.max(50.0, iceThicknessMeters);
+    const UsMYr = Math.max(0.01, iceSurfaceVelocityMYr);
+    const qGeoW = Math.max(0.005, geothermalHeatFluxMWm2 / 1000.0);
+    const Tsurf = Math.max(130.0, Math.min(230.0, surfaceMeanTempK));
+
+    const gMars = 3.72076; // m/s^2
+    const rhoIce = 920.0; // kg/m^3
+    const kIce = 2.2; // W/(m*K)
+    const slope = 0.02; // 2% mean flank gradient
+
+    // Cryostatic pressure (MPa)
+    const PbasePa = rhoIce * gMars * Hice;
+    const PbaseMPa = PbasePa / 1e6;
+
+    // Basal shear stress (Pa)
+    const tauBPa = rhoIce * gMars * Hice * slope;
+
+    // Strain heating flux (W/m^2)
+    const usMS = UsMYr / 3.15576e7;
+    const qStrainW = tauBPa * usMS;
+
+    // Basal temperature (K)
+    const deltaT = ((qGeoW + qStrainW) * Hice) / kIce;
+    const TbaseK = Tsurf + deltaT;
+
+    // Pressure melting point (K)
+    const TpmtK = 273.15 - (0.074 * PbaseMPa);
+
+    const isColdBased = TbaseK < TpmtK;
+
+    let uSlideMYr = 0.0;
+    let erosionRateMmMyr = 0.001; // Extremely low cold-based protective ice rate (1 mm / Gyr)
+    let context = 'Cold-Based Non-Erosive Glaciation (Preserves Ancient Noachian Cratered Topography)';
+
+    if (!isColdBased) {
+      uSlideMYr = 0.75 * UsMYr;
+      erosionRateMmMyr = 1500.0 * Math.pow(uSlideMYr / 5.0, 2.0); // Wet-based glacial quarrying
+      context = 'Warm-Based Polythermal Glacier (Active Basal Sliding, Cirque Scouring & Glacial Grooving)';
+    }
+
+    return {
+      iceThicknessMeters: parseFloat(Hice.toFixed(1)),
+      basalTemperatureK: parseFloat(TbaseK.toFixed(1)),
+      pressureMeltingPointK: parseFloat(TpmtK.toFixed(2)),
+      isGlacierColdBased: isColdBased,
+      basalSlidingVelocityMYr: parseFloat(uSlideMYr.toFixed(2)),
+      bedrockErosionRateMmMyr: parseFloat(erosionRateMmMyr.toFixed(3)),
+      glacialGeomorphologyContext: context
+    };
+  }
 }
 
 

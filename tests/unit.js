@@ -11058,6 +11058,59 @@ describe('Mars-to-Saturn Hohmann Transfers, Mega-Lahar Debris Flows & Mafic Moda
     });
 });
 
+describe('Mars Asteroid Gravity Tractor, Glacial Thermal Regimes & Hydrated Silica Crystallinity', () => {
+    it('should calculate Mars Trojan / co-orbital asteroid Gravity Tractor towing deflection and b-plane shift', () => {
+        // 150m Trojan asteroid deflection (2000 kg spacecraft, 120m standoff, 3 yrs towing, 10 yrs lead time):
+        const tractor = TrajectoryEngine.computeMartianAsteroidGravityTractorDeflection(150.0, 2200.0, 2000.0, 120.0, 3.0, 10.0);
+        expect(tractor.gravitationalTowingForceMicroN).to.be.closeTo(36038.6, 100.0); // ~36,038 micro-N (36 mN)
+        expect(tractor.cumulativeDeltaVMMS).to.be.closeTo(0.878, 0.1); // ~0.88 mm/s
+        expect(tractor.bPlaneDisplacementKm).to.be.closeTo(830.8, 50.0); // ~831 km b-plane displacement
+        expect(tractor.planetaryDefenseContext).to.include('Gravity Tractor Deflection');
+    });
+
+    it('should calculate Martian glacial basal thermal regime (cold-based vs warm-based) and erosion rate', () => {
+        // Amazonian Lobate Debris Apron (LDA) cold-based ice (800 m ice, 5 m/yr flow, 35 mW/m^2 heat flux, 190 K surface):
+        const lda = KRCEngine.computeMartianGlacialThermalRegimeAndBedrockErosionRate(800.0, 5.0, 35.0, 190.0);
+        expect(lda.iceThicknessMeters).to.equal(800.0);
+        expect(lda.basalTemperatureK).to.be.closeTo(205.9, 3.0); // ~206 K basal temp
+        expect(lda.pressureMeltingPointK).to.be.closeTo(272.95, 0.5); // ~273 K PMT
+        expect(lda.isGlacierColdBased).to.be.true; // Frozen to bed
+        expect(lda.basalSlidingVelocityMYr).to.equal(0.0); // No basal sliding
+        expect(lda.bedrockErosionRateMmMyr).to.equal(0.001); // Minimal erosion
+        expect(lda.glacialGeomorphologyContext).to.include('Cold-Based Non-Erosive Glaciation');
+
+        // Warm-based polythermal wet glacier with basal sliding:
+        const warm = KRCEngine.computeMartianGlacialThermalRegimeAndBedrockErosionRate(3500.0, 25.0, 80.0, 210.0);
+        expect(warm.isGlacierColdBased).to.be.false;
+        expect(warm.basalSlidingVelocityMYr).to.be.greaterThan(10.0);
+        expect(warm.bedrockErosionRateMmMyr).to.be.greaterThan(1000.0);
+    });
+
+    it('should discriminate Opal-A, Opal-CT, and Quartz/Chalcedony crystallinity phases in CRISM spectra', () => {
+        // Opal-A (Amorphous silica sinter at Home Plate Gusev, broad 2.235 um band FWHM = 0.065 um):
+        const opalA = BandMathEngine.computeCRISMHydratedSilicaCrystallinityIndices(1.440, 2.235, 0.065, 0.08);
+        expect(opalA.isSilicaPresent).to.be.true;
+        expect(opalA.silicaCrystallinityPhase).to.include('Amorphous Hydrated Silica (Opal-A)');
+        expect(opalA.silicaMineralSpecies).to.include('Opal-A (Hydrated Silica Sinter');
+        expect(opalA.hydrothermalDiageneticContext).to.include('Volcanic Fumarole Exhalative Sinter');
+
+        // Opal-CT (Paracrystalline disordered silica in Noctis Labyrinthus, FWHM = 0.040 um):
+        const opalCT = BandMathEngine.computeCRISMHydratedSilicaCrystallinityIndices(1.420, 2.230, 0.040, 0.08);
+        expect(opalCT.isSilicaPresent).to.be.true;
+        expect(opalCT.silicaCrystallinityPhase).to.include('Paracrystalline Opal (Opal-CT)');
+        expect(opalCT.hydrothermalDiageneticContext).to.include('Diagenetically Matured');
+
+        // Chalcedony / Crystalline Quartz (sharp FWHM = 0.022 um):
+        const quartz = BandMathEngine.computeCRISMHydratedSilicaCrystallinityIndices(1.410, 2.210, 0.022, 0.08);
+        expect(quartz.isSilicaPresent).to.be.true;
+        expect(quartz.silicaCrystallinityPhase).to.include('Microcrystalline / Crystalline Quartz');
+
+        // Flat basalt:
+        const basalt = BandMathEngine.computeCRISMHydratedSilicaCrystallinityIndices(1.440, 2.235, 0.065, 0.01);
+        expect(basalt.isSilicaPresent).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -5375,6 +5375,51 @@ export class BandMathEngine {
       petrologicContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrated Silica Crystallinity States (Opal-A vs Opal-CT vs Quartz / Chalcedony) from CRISM NIR absorption band width and center positions.
+   * Reference: Squyres et al. (2008), Milliken et al. (2008), Rice et al. (2013), Sun & Milliken (2015), Viviano-Beck et al. (2014) for Home Plate Gusev and Noctis Labyrinthus silica deposits.
+   * @param {number} [band1400CenterUm=1.440] - Wavelength of the Si-OH / H2O overtone in um (1.38 to 1.48 um)
+   * @param {number} [band2200CenterUm=2.235] - Wavelength of the Si-OH fundamental absorption in um (2.20 to 2.28 um)
+   * @param {number} [band2200FwhmUm=0.065] - Full Width at Half Maximum (FWHM) of the 2.2 um silica absorption in um (0.015 to 0.120 um)
+   * @param {number} [silicaIndexDepth=0.06] - BD2210 / SINDEX2 hydrated silica band depth (0.0 to 1.0)
+   * @returns {{isSilicaPresent: boolean, silicaCrystallinityPhase: string, silicaMineralSpecies: string, hydrothermalDiageneticContext: string}}
+   */
+  static computeCRISMHydratedSilicaCrystallinityIndices(band1400CenterUm = 1.440, band2200CenterUm = 2.235, band2200FwhmUm = 0.065, silicaIndexDepth = 0.06) {
+    const l1400 = Math.max(1.38, Math.min(1.48, band1400CenterUm));
+    const l2200 = Math.max(2.20, Math.min(2.28, band2200CenterUm));
+    const fwhm = Math.max(0.015, Math.min(0.120, band2200FwhmUm));
+    const depth = Math.max(0.0, silicaIndexDepth);
+
+    let isSilica = false;
+    let phase = 'Non-Siliceous Matrix';
+    let species = 'Basaltic Regolith';
+    let context = 'Standard Unaltered Bedrock';
+
+    if (depth >= 0.025) {
+      isSilica = true;
+      if (fwhm >= 0.055) {
+        phase = 'Amorphous Hydrated Silica (Opal-A)';
+        species = 'Opal-A (Hydrated Silica Sinter / Fumarolic Silica)';
+        context = 'Low-Temperature Hydrothermal Spring / Volcanic Fumarole Exhalative Sinter (Home Plate Gusev / Nili Fossae Type)';
+      } else if (fwhm >= 0.030) {
+        phase = 'Paracrystalline Opal (Opal-CT)';
+        species = 'Opal-CT (Disordered Cristobalite-Tridymite Silica)';
+        context = 'Diagenetically Matured Aqueous Alteration / Paleolake Ripened Siliceous Horizon (Noctis Labyrinthus Type)';
+      } else {
+        phase = 'Microcrystalline / Crystalline Quartz';
+        species = 'Chalcedony / Crystalline Quartz (SiO2)';
+        context = 'High-Temperature Hydrothermal Vein / Metamorphic Dehydrated Recrystallization';
+      }
+    }
+
+    return {
+      isSilicaPresent: isSilica,
+      silicaCrystallinityPhase: phase,
+      silicaMineralSpecies: species,
+      hydrothermalDiageneticContext: context
+    };
+  }
 }
 
 

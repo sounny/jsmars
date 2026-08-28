@@ -5017,6 +5017,60 @@ export class TrajectoryEngine {
       outerSystemMissionContext: `Mars-to-Saturn Transfer (TOF ${tofYears.toFixed(1)} Years, ${dvTsiKmS.toFixed(2)} km/s TSI Delta-V, ${dvTitanKmS.toFixed(2)} km/s Titan Gravity Assist)`
     };
   }
+
+  /**
+   * Calculate Mars co-orbital asteroid / Trojan continuous low-thrust Gravity Tractor towing deflection and b-plane trajectory displacement.
+   * F_g = G * M_ast * m_sc / d_standoff^2
+   * Delta_v_ast = a_ast * t_tow
+   * Delta_b = 3 * Delta_v_ast * t_lead
+   * Reference: Lu & Love (2005), Schweickart et al. (2006), Wie (2008) for Planetary Defense and Asteroid Orbit Trimming.
+   * @param {number} [asteroidDiameterMeters=150.0] - Target asteroid spherical equivalent diameter in meters (10 to 1000 m)
+   * @param {number} [asteroidDensityKgM3=2200.0] - Bulk asteroid density in kg/m^3 (1200 to 4000 kg/m^3)
+   * @param {number} [spacecraftMassKg=2000.0] - Gravity tractor spacecraft mass in kg (500 to 10000 kg)
+   * @param {number} [standoffDistanceMeters=120.0] - Spacecraft hover standoff distance from asteroid center in meters (50 to 500 m)
+   * @param {number} [towDurationYears=3.0] - Active gravity tractor towing duration in years (0.5 to 10 years)
+   * @param {number} [leadTimeToEncounterYears=10.0] - Orbital propagation lead time before keyhole encounter in years (1 to 50 years)
+   * @returns {{asteroidMassKg: number, gravitationalTowingForceMicroN: number, cumulativeDeltaVMMS: number, bPlaneDisplacementKm: number, planetaryDefenseContext: string}}
+   */
+  static computeMartianAsteroidGravityTractorDeflection(asteroidDiameterMeters = 150.0, asteroidDensityKgM3 = 2200.0, spacecraftMassKg = 2000.0, standoffDistanceMeters = 120.0, towDurationYears = 3.0, leadTimeToEncounterYears = 10.0) {
+    const D = Math.max(5.0, asteroidDiameterMeters);
+    const rho = Math.max(1000.0, asteroidDensityKgM3);
+    const mSc = Math.max(100.0, spacecraftMassKg);
+    const dStandoff = Math.max(D / 2.0 + 10.0, standoffDistanceMeters);
+    const tTowYrs = Math.max(0.1, towDurationYears);
+    const tLeadYrs = Math.max(0.5, leadTimeToEncounterYears);
+
+    const G = 6.67430e-11;
+    const Rast = D / 2.0;
+
+    // Asteroid mass (kg)
+    const Mast = (4.0 / 3.0) * Math.PI * Math.pow(Rast, 3.0) * rho;
+
+    // Mutual gravitational force (N and micro-N)
+    const FgN = (G * Mast * mSc) / Math.pow(dStandoff, 2.0);
+    const FgMicroN = FgN * 1e6;
+
+    // Asteroid acceleration (m/s^2)
+    const aAst = (G * mSc) / Math.pow(dStandoff, 2.0);
+
+    // Cumulative velocity deflection (mm/s)
+    const tTowSec = tTowYrs * 3.15576e7;
+    const dvAstMS = aAst * tTowSec;
+    const dvAstMMS = dvAstMS * 1000.0;
+
+    // B-plane displacement (km)
+    const tLeadSec = tLeadYrs * 3.15576e7;
+    const deltaBMeters = 3.0 * dvAstMS * tLeadSec;
+    const deltaBKm = deltaBMeters / 1000.0;
+
+    return {
+      asteroidMassKg: parseFloat(Mast.toExponential(4)),
+      gravitationalTowingForceMicroN: parseFloat(FgMicroN.toFixed(2)),
+      cumulativeDeltaVMMS: parseFloat(dvAstMMS.toFixed(3)),
+      bPlaneDisplacementKm: parseFloat(deltaBKm.toFixed(1)),
+      planetaryDefenseContext: `Gravity Tractor Deflection (${dvAstMMS.toFixed(2)} mm/s Delta-V -> ${deltaBKm.toFixed(0)} km B-Plane Shift over ${tLeadYrs.toFixed(0)} Yrs)`
+    };
+  }
 }
 
 
