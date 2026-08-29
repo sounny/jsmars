@@ -16441,6 +16441,56 @@ describe('Mars-to-Leukothea Transfer, Guildite Metasomatism & Hydroxyl-Sulfate S
     });
 });
 
+describe('Mars-to-Atalante Transfer, Castanite Metasomatism & Ferric Oxysulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to carbonaceous asteroid (36) Atalante and orbit capture', () => {
+        // Mars to Atalante (300 km Mars alt, 2.747 AU distance, 15 km capture alt, 18.43 deg plane change):
+        const at = TrajectoryEngine.computeMarsToAtalanteTransfer(300.0, 2.747, 15.0, 18.43);
+        expect(at.semiMajorAxisAU).to.be.closeTo(2.135, 0.1); // ~2.14 AU
+        expect(at.eccentricity).to.be.closeTo(0.2864, 0.01); // e ~ 0.286
+        expect(at.timeOfFlightDays).to.be.closeTo(568.96, 30.0); // ~569 days (~1.56 yr)
+        expect(at.timeOfFlightYears).to.be.closeTo(1.56, 0.1); // ~1.56 yr
+        expect(at.marsDepartureDeltaVKmS).to.be.closeTo(6.601, 0.5); // ~6.60 km/s TAtI
+        expect(at.atalanteOrbitInsertionDeltaVKmS).to.be.closeTo(2.469, 0.5); // ~2.47 km/s AtOI
+        expect(at.totalMissionDeltaVKmS).to.be.closeTo(9.070, 1.0); // ~9.07 km/s total
+        expect(at.atalanteContext).to.include('Mars-to-Atalante');
+    });
+
+    it('should calculate low-temperature acid alteration into castanite ferric oxysulfate and thermal inertia', () => {
+        // 34% initial porosity, 6 C ambient temp, 0.40 ferric oxysulfate activity product, 195 yr duration:
+        const cas = KRCEngine.computeMartianCastaniteMetasomatism(0.34, 6.0, 0.40, 195.0);
+        expect(cas.castaniteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(cas.boundWaterYieldWeightPercent).to.be.greaterThan(17.0); // > 17 wt% bound H2O
+        expect(cas.octahydrateThermalInertiaTIU).to.be.closeTo(1135.9, 200.0); // ~1136 tiu
+        expect(cas.oxysulfateFaciesClass).to.include('Acidic Evaporite Castanite Facies');
+        expect(cas.castaniteContext).to.include('Castanite at 6 C');
+    });
+
+    it('should discriminate Castanite vs Amarantite vs Copiapite in CRISM spectra', () => {
+        // Castanite (Aureum / Juventae / Ganges: BD1440 = 0.040, BD1940 = 0.060, BD2160 = 0.040, BD2400 = 0.035):
+        const cas = BandMathEngine.computeCRISMCastaniteFerricOxysulfateSpeciationIndices(0.040, 0.060, 0.040, 0.035);
+        expect(cas.isFerricOxysulfateDetected).to.be.true;
+        expect(cas.sulfateMineralClass).to.include('Octahydrated Castanite Ferric Oxysulfate Facies');
+        expect(cas.mineralSpecies).to.include('Castanite');
+        expect(cas.parageneticAssociation).to.include('Acidic Evaporite Castanite Layer');
+
+        // Amarantite (BD1440 = 0.040, BD1940 = 0.040, BD2160 = 0.040, BD2400 = 0.035):
+        const ama = BandMathEngine.computeCRISMCastaniteFerricOxysulfateSpeciationIndices(0.040, 0.040, 0.040, 0.035);
+        expect(ama.isFerricOxysulfateDetected).to.be.true;
+        expect(ama.sulfateMineralClass).to.include('Heptahydrated Amarantite Oxysulfate Facies');
+        expect(ama.mineralSpecies).to.include('Amarantite');
+
+        // Copiapite (BD1440 = 0.040, BD1940 = 0.060, BD2160 = 0.010, BD2400 = 0.035):
+        const cop = BandMathEngine.computeCRISMCastaniteFerricOxysulfateSpeciationIndices(0.040, 0.060, 0.010, 0.035);
+        expect(cop.isFerricOxysulfateDetected).to.be.true;
+        expect(cop.sulfateMineralClass).to.include('Copiapite-Group Ferric Sulfate Facies');
+        expect(cop.mineralSpecies).to.include('Copiapite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMCastaniteFerricOxysulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isFerricOxysulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

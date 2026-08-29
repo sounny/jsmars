@@ -12005,6 +12005,67 @@ export class KRCEngine {
       guilditeContext: `Guildite at ${TC.toFixed(0)} C, a(CuFeOH)=${aCuFeOH.toFixed(2)} (${(alphaGui * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${gClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature acidic alteration of ferric-rich basalt into castanite, octahydrate oxysulfate crystallization, and thermal inertia.
+   * Host + 2 Fe3+ + 2 SO4(2-) + O(2-) + 8 H2O (-15 to 30 C) -> Castanite (Fe2(SO4)2O·8H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Iron-Oxysulfates.
+   * @param {number} [initialHostPorosity=0.34] - Initial basaltic host rock porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=6.0] - Ambient alteration temperature in C (-25 to 45 C)
+   * @param {number} [ferricHydroxylFluidActivity=0.40] - Dissolved ferric oxysulfate activity product (0.01 to 1.0)
+   * @param {number} [durationYears=195.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{castaniteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantFerricOxysulfatePhase: string, octahydrateThermalInertiaTIU: number, oxysulfateFaciesClass: string, castaniteContext: string}}
+   */
+  static computeMartianCastaniteMetasomatism(initialHostPorosity = 0.34, ambientTempC = 6.0, ferricHydroxylFluidActivity = 0.40, durationYears = 195.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialHostPorosity));
+    const TC = Math.max(-30.0, Math.min(55.0, ambientTempC));
+    const aFeSO4 = Math.max(0.005, Math.min(1.0, ferricHydroxylFluidActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.78e4; // 37.8 kJ/mol for castanite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.1e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aFeSO4, 0.45);
+    const alphaCas = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural water yield (wt%)
+    const wH2OPct = alphaCas * 34.30;
+
+    // Octahydrate crystal volume growth and matrix porosity evolution
+    const phiResidual = (phi0 * (1.0 - (0.33 * alphaCas))) + (0.09 * alphaCas);
+    const rhoGrain = 2190.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.72; // W/(m K)
+    const Cspec = 990.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Castanite (Fe2(SO4)2O·8H2O)';
+    let cClass = 'Octahydrated Ferric Oxysulfate Facies';
+
+    if (alphaCas >= 0.50 && TC >= -15.0 && TC <= 30.0 && aFeSO4 >= 0.15) {
+      species = 'Castanite (Fe2(SO4)2O·8H2O)';
+      cClass = 'Acidic Evaporite Castanite Facies (Aureum / Juventae / Ganges)';
+    } else if (TC > 30.0) {
+      species = 'Amarantite Heptahydrate Oxysulfate Phase';
+      cClass = 'Partially Dehydrated Oxysulfate Transition';
+    } else {
+      species = 'Coquimbite-Rhomboclase Composite';
+      cClass = 'Extreme Acid Iron Sulfate Residue';
+    }
+
+    return {
+      castaniteConversionFraction: parseFloat(alphaCas.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantFerricOxysulfatePhase: species,
+      octahydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      oxysulfateFaciesClass: cClass,
+      castaniteContext: `Castanite at ${TC.toFixed(0)} C, a(FeSO4)=${aFeSO4.toFixed(2)} (${(alphaCas * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${cClass})`
+    };
+  }
 }
 
 

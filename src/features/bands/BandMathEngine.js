@@ -10993,6 +10993,60 @@ export class BandMathEngine {
       parageneticEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Octahydrated Ferric Oxysulfates (Castanite vs Amarantite vs Copiapite) from CRISM 1.440 um, 1.940 um, 2.160 um, and 2.400 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Iron-Oxysulfates.
+   * @param {number} [band1440H2ODepth=0.040] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.060] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2160FeOHDepth=0.040] - BD2160 castanite diagnostic ferric oxysulfate vibrational combination depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.035] - BD2400 sulfate vibrational combination overtone depth (0.0 to 0.50)
+   * @returns {{isFerricOxysulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, parageneticAssociation: string}}
+   */
+  static computeCRISMCastaniteFerricOxysulfateSpeciationIndices(band1440H2ODepth = 0.040, band1940H2ODepth = 0.060, band2160FeOHDepth = 0.040, band2400SO4Depth = 0.035) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2160 = Math.max(0.0, band2160FeOHDepth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isCastanite = d1940 >= 0.050 && d1440 >= 0.025 && d2160 >= 0.025 && d2400 >= 0.025;
+    const isAmarantite = d1940 >= 0.030 && d1940 < 0.050 && d2160 >= 0.025 && d2400 >= 0.025;
+    const isCopiapite = d1940 >= 0.055 && d2400 >= 0.030 && d2160 < 0.020;
+
+    const isOxysulfate = isCastanite || isAmarantite || isCopiapite;
+
+    let sClass = 'Ferric-Oxysulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let assoc = 'Unaltered Primary Crust';
+
+    if (isOxysulfate) {
+      if (isCastanite) {
+        sClass = 'Octahydrated Castanite Ferric Oxysulfate Facies';
+        species = 'Castanite';
+        formula = 'Fe2(SO4)2O·8H2O';
+        assoc = 'Acidic Evaporite Castanite Layer (Aureum / Juventae / Ganges)';
+      } else if (isAmarantite) {
+        sClass = 'Heptahydrated Amarantite Oxysulfate Facies';
+        species = 'Amarantite';
+        formula = 'Fe2(SO4)2O·7H2O';
+        assoc = 'Partially Dehydrated Secondary Oxysulfate Outcrop';
+      } else {
+        sClass = 'Copiapite-Group Ferric Sulfate Facies';
+        species = 'Copiapite';
+        formula = 'Fe2+Fe3+4(SO4)6(OH)2·20H2O';
+        assoc = 'Hyper-Acidic Aqueous Efflorescence Sequence';
+      }
+    }
+
+    return {
+      isFerricOxysulfateDetected: isOxysulfate,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      parageneticAssociation: assoc
+    };
+  }
 }
 
 
