@@ -13609,6 +13609,53 @@ describe('Mars-to-Arrokoth KBO Transfer, Clay Illitization & Metamorphic Speciat
     });
 });
 
+describe('Mars-to-Makemake Transfer, Acid Sulfate Weathering & Alunite-Jarosite Speciation', () => {
+    it('should calculate interplanetary transfer from Mars to Kuiper Belt dwarf planet 136472 Makemake and orbit capture', () => {
+        // Mars to Makemake (300 km Mars alt, 45.79 AU distance, 500 km capture alt):
+        const make = TrajectoryEngine.computeMarsToMakemakeTransfer(300.0, 45.79, 500.0);
+        expect(make.semiMajorAxisAU).to.be.closeTo(23.657, 0.5); // ~23.66 AU
+        expect(make.eccentricity).to.be.closeTo(0.9356, 0.01); // e ~ 0.936
+        expect(make.timeOfFlightDays).to.be.closeTo(21000.0, 2000.0); // ~21000-23000 days
+        expect(make.timeOfFlightYears).to.be.closeTo(57.5, 5.0); // ~57-63 yr
+        expect(make.marsDepartureDeltaVKmS).to.be.closeTo(7.392, 0.6); // ~7.39 km/s TMI
+        expect(make.makemakeOrbitInsertionDeltaVKmS).to.be.closeTo(2.777, 0.4); // ~2.78 km/s MOI
+        expect(make.totalMissionDeltaVKmS).to.be.closeTo(10.169, 0.8); // ~10.17 km/s total
+        expect(make.makemakeContext).to.include('Mars-to-Makemake');
+    });
+
+    it('should calculate acid sulfate weathering kinetics of sulfides into jarosite and alunite duricrust', () => {
+        // 15 wt% FeS2, pH 1.8, 65 C reaction temp, 50 yr duration:
+        const acid = KRCEngine.computeMartianAcidSulfateAluniteJarositeKinetics(0.15, 1.8, 65.0, 50.0);
+        expect(acid.pyriteOxidationFraction).to.be.greaterThan(0.80); // > 80% oxidized
+        expect(acid.jarositePrecipitatedWeightPercent).to.be.closeTo(21.0, 4.0); // ~21 wt% Jarosite
+        expect(acid.alunitePrecipitatedWeightPercent).to.be.closeTo(6.5, 2.0); // ~6.5 wt% Alunite
+        expect(acid.sulfateDuricrustThermalInertiaTIU).to.be.closeTo(1640.0, 150.0); // ~1640 tiu duricrust
+        expect(acid.acidSulfateAlterationClass).to.include('Intense Fumarolic Acid Sulfate Alteration');
+        expect(acid.acidWeatheringContext).to.include('Acid Sulfate');
+    });
+
+    it('should discriminate Hydrothermal Alunite vs Acid Evaporite Jarosite in CRISM spectra', () => {
+        // Alunite (Mawrth Vallis / Columbus: BD1480 = 0.04, BD1760 = 0.03, BD2160 = 0.05, BD2270 = 0.01):
+        const alu = BandMathEngine.computeCRISMAluniteJarositeAcidSulfateIndices(0.04, 0.03, 0.05, 0.01);
+        expect(alu.isAcidSulfateDetected).to.be.true;
+        expect(alu.acidSulfateSpeciesClass).to.include('Hydrothermal Acid Sulfate (Potassium Alunite)');
+        expect(alu.mineralSpecies).to.include('Alunite');
+        expect(alu.chemicalFormula).to.include('KAl3(SO4)2(OH)6');
+        expect(alu.phGeochemicalContext).to.include('High-Temperature Acid-Sulfate');
+
+        // Jarosite (Meridiani Planum Burns Formation: BD1480 = 0.01, BD1760 = 0.01, BD2160 = 0.01, BD2270 = 0.05):
+        const jaro = BandMathEngine.computeCRISMAluniteJarositeAcidSulfateIndices(0.01, 0.01, 0.01, 0.05);
+        expect(jaro.isAcidSulfateDetected).to.be.true;
+        expect(jaro.acidSulfateSpeciesClass).to.include('Acid Groundwater Evaporite (Jarosite)');
+        expect(jaro.mineralSpecies).to.include('Jarosite');
+        expect(jaro.chemicalFormula).to.include('KFe3(SO4)2(OH)6');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMAluniteJarositeAcidSulfateIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAcidSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

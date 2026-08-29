@@ -8658,6 +8658,60 @@ export class KRCEngine {
       illitizationContext: `Clay Illitization at ${TC.toFixed(0)} C (${(illiteFrac * 100).toFixed(1)}% Illite, ${reichweiteClass}, TIU=${TIU.toFixed(0)})`
     };
   }
+
+  /**
+   * Calculate hydrothermal / fumarolic acid sulfate weathering kinetics, pyrite oxidation, and jarosite/alunite paragenetic yield.
+   * FeS2 + 3.5 O2 + H2O -> Fe2+ + 2 SO4(2-) + 2 H+
+   * KFe3(SO4)2(OH)6 (Jarosite) + KAl3(SO4)2(OH)6 (Alunite) Precipitation
+   * Reference: Squyres et al. (2004), Klingelhofer et al. (2004), Farrand et al. (2009), Ehlmann et al. (2016) for Acid Sulfate Alteration.
+   * @param {number} [initialFeS2MassFraction=0.15] - Initial sulfide mass fraction in basalt (0.01 to 0.50)
+   * @param {number} [solutionPH=1.8] - Acid pore fluid pH (0.5 to 5.0)
+   * @param {number} [reactionTempC=65.0] - Reaction temperature in C (10 to 180 C)
+   * @param {number} [durationYears=50.0] - Weathering duration in years (0.1 to 10000 yr)
+   * @returns {{pyriteOxidationFraction: number, jarositePrecipitatedWeightPercent: number, alunitePrecipitatedWeightPercent: number, sulfateDuricrustThermalInertiaTIU: number, acidSulfateAlterationClass: string, acidWeatheringContext: string}}
+   */
+  static computeMartianAcidSulfateAluniteJarositeKinetics(initialFeS2MassFraction = 0.15, solutionPH = 1.8, reactionTempC = 65.0, durationYears = 50.0) {
+    const wFeS2 = Math.max(0.01, Math.min(0.80, initialFeS2MassFraction));
+    const pH = Math.max(0.2, Math.min(6.0, solutionPH));
+    const TC = Math.max(0.0, Math.min(250.0, reactionTempC));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.70e4; // 57 kJ/mol
+
+    // Pyrite oxidation rate constant (1/s)
+    const kRate = 2.5e4 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(10.0, -0.11 * (pH - 2.0));
+    const alphaOx = 1.0 - Math.exp(-Math.min(25.0, kRate * tSec));
+
+    // Jarosite and Alunite precipitation yields (wt%)
+    const wJarositePct = alphaOx * wFeS2 * 145.0; // wt% Jarosite
+    const wAlunitePct = alphaOx * wFeS2 * 45.0; // wt% Alunite
+
+    // Thermal inertia of cemented acid sulfate duricrust
+    const phi = 0.18 * (1.0 - (0.4 * alphaOx));
+    const rhoBulk = 2450.0 * (1.0 - phi);
+    const kTherm = (1.25 * (1.0 - phi)) + (0.35 * (wJarositePct / 100.0));
+    const Cspec = 880.0;
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let altClass = 'Mild Surface Acid Fog Oxidation';
+    if (wJarositePct >= 10.0 && wAlunitePct >= 3.0) {
+      altClass = 'Intense Fumarolic Acid Sulfate Alteration / Solfatara Horizon (Meridiani / Mawrth / Columbus)';
+    } else if (wJarositePct >= 3.0) {
+      altClass = 'Moderate Acid Groundwater Jarosite-Evaporite Duricrust';
+    }
+
+    return {
+      pyriteOxidationFraction: parseFloat(alphaOx.toFixed(3)),
+      jarositePrecipitatedWeightPercent: parseFloat(wJarositePct.toFixed(1)),
+      alunitePrecipitatedWeightPercent: parseFloat(wAlunitePct.toFixed(1)),
+      sulfateDuricrustThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      acidSulfateAlterationClass: altClass,
+      acidWeatheringContext: `Acid Sulfate at pH ${pH.toFixed(1)}, ${TC.toFixed(0)} C (${wJarositePct.toFixed(1)}% Jarosite, ${wAlunitePct.toFixed(1)}% Alunite, TIU=${TIU.toFixed(0)}, ${altClass})`
+    };
+  }
 }
 
 

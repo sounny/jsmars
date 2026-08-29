@@ -8501,6 +8501,78 @@ export class TrajectoryEngine {
       kboContext: `Mars-to-Arrokoth KBO (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Delta-V=${dvTkiKmS.toFixed(2)} km/s, V_rel=${vRelKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to Kuiper Belt dwarf planet 136472 Makemake and orbit capture.
+   * a = ( r_mars + r_makemake ) / 2
+   * e = ( r_makemake - r_mars ) / ( r_makemake + r_mars )
+   * Reference: Brown (2008, 2013), Curtis (2013) for Kuiper Belt Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [makemakeDistanceAU=45.79] - Makemake heliocentric distance in AU (38.0 to 53.0 AU)
+   * @param {number} [makemakePeriapsisAltitudeKm=500.0] - Makemake orbit insertion periapsis altitude in km (100 to 10000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, makemakeOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, makemakeContext: string}}
+   */
+  static computeMarsToMakemakeTransfer(marsParkingAltitudeKm = 300.0, makemakeDistanceAU = 45.79, makemakePeriapsisAltitudeKm = 500.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rMAU = Math.max(35.0, Math.min(60.0, makemakeDistanceAU));
+    const hpMKm = Math.max(50.0, makemakePeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muMake = 205.0; // km^3/s^2
+    const rMakeKm = 715.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rMDistKm = rMAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rMDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rMDistKm - rMarsDistKm) / (rMDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTmiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Makemake capture
+    const vMCircKmS = Math.sqrt(muSun / rMDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rMDistKm) - (1.0 / aKm)));
+    const vInfMKmS = Math.abs(vMCircKmS - vArrKmS);
+
+    const rpMKm = rMakeKm + hpMKm;
+    const eCap = 0.85; // High-eccentricity capture
+    const aCapKm = rpMKm / (1.0 - eCap);
+
+    const vHypMKmS = Math.sqrt(Math.pow(vInfMKmS, 2.0) + ((2.0 * muMake) / rpMKm));
+    const vCapMKmS = Math.sqrt(muMake * ((2.0 / rpMKm) - (1.0 / aCapKm)));
+    const dvMoiKmS = vHypMKmS - vCapMKmS;
+
+    const dvTotKmS = dvTmiKmS + dvMoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTmiKmS.toFixed(3)),
+      makemakeOrbitInsertionDeltaVKmS: parseFloat(dvMoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      makemakeContext: `Mars-to-Makemake (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, MOI=${dvMoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

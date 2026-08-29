@@ -707,3 +707,13 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary direct transfer from Mars to Kuiper Belt Object 48695 Arrokoth
 ?: AssertionError: expected 3.314 to be close to 2.004 +/- 0.4
     at n.<anonymous> (unit.js:13570:56)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 03:30:55 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate interplanetary transfer from Mars to Kuiper Belt dwarf planet 136472 Makemake and orbit capture
+?: AssertionError: expected 2.777 to be close to 1.502 +/- 0.4
+    at n.<anonymous> (unit.js:13621:60)
+- should calculate acid sulfate weathering kinetics of sulfides into jarosite and alunite duricrust
+?: AssertionError: expected 0.004 to be above 0.8
+    at n.<anonymous> (unit.js:13629:52)

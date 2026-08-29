@@ -7952,6 +7952,56 @@ export class BandMathEngine {
       metamorphicGradeContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrothermal Alunite vs Acid Evaporite Jarosite vs Natroalunite from CRISM 1.48 um, 1.76 um, 2.16 um, and 2.27 um bands.
+   * Reference: Swayze et al. (2008), Farrand et al. (2009), Ehlmann et al. (2016), Viviano-Beck et al. (2014) for Acid Sulfate Alteration.
+   * @param {number} [band1480OHDepth=0.04] - BD1480 alunite diagnostic OH doublet depth (0.0 to 0.40)
+   * @param {number} [band1760OHDepth=0.03] - BD1760 alunite diagnostic OH combination depth (0.0 to 0.40)
+   * @param {number} [band2160AlOHDepth=0.05] - BD2160 alunite primary Al-OH absorption depth (0.0 to 0.50)
+   * @param {number} [band2270FeOHDepth=0.01] - BD2270 jarosite primary Fe3+-OH absorption depth (0.0 to 0.50)
+   * @returns {{isAcidSulfateDetected: boolean, acidSulfateSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, phGeochemicalContext: string}}
+   */
+  static computeCRISMAluniteJarositeAcidSulfateIndices(band1480OHDepth = 0.04, band1760OHDepth = 0.03, band2160AlOHDepth = 0.05, band2270FeOHDepth = 0.01) {
+    const d1480 = Math.max(0.0, band1480OHDepth);
+    const d1760 = Math.max(0.0, band1760OHDepth);
+    const d2160 = Math.max(0.0, band2160AlOHDepth);
+    const d2270 = Math.max(0.0, band2270FeOHDepth);
+
+    const isAlunite = d1480 >= 0.025 && d1760 >= 0.020 && d2160 >= 0.030;
+    const isJarosite = d2270 >= 0.030 && d2160 < 0.020;
+    const isNatroalunite = d1480 >= 0.025 && d1760 >= 0.020 && d2160 >= 0.020 && d2160 < d1480;
+
+    let sClass = 'Sulfate-Free Silicate Regolith';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Detectable Acid Sulfate Hydroxyl Absorption';
+
+    if (isAlunite) {
+      sClass = 'Hydrothermal Acid Sulfate (Potassium Alunite)';
+      species = 'Alunite';
+      formula = 'KAl3(SO4)2(OH)6';
+      context = 'High-Temperature Acid-Sulfate Hydrothermal Leaching / Fumarolic Solfatara (pH < 3, Mawrth / Columbus / Cross)';
+    } else if (isJarosite) {
+      sClass = 'Acid Groundwater Evaporite (Jarosite)';
+      species = 'Jarosite';
+      formula = 'KFe3(SO4)2(OH)6';
+      context = 'Extreme Acid-Saline Oxidizing Groundwater Playa / Evaporite Lake (pH 1-3, Meridiani Planum Burns Formation)';
+    } else if (isNatroalunite) {
+      sClass = 'Sodium Alunite (Natroalunite)';
+      species = 'Natroalunite';
+      formula = 'NaAl3(SO4)2(OH)6';
+      context = 'Sodium-Rich Hydrothermal Acid Leaching of Sodic Plagioclase Basalt';
+    }
+
+    return {
+      isAcidSulfateDetected: isAlunite || isJarosite || isNatroalunite,
+      acidSulfateSpeciesClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      phGeochemicalContext: context
+    };
+  }
 }
 
 
