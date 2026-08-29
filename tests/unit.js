@@ -15734,6 +15734,56 @@ describe('Mars-to-Lutetia Transfer, Rozenite Metasomatism & Ferrous Sulfate Spec
     });
 });
 
+describe('Mars-to-Kalliope Transfer, Copiapite Metasomatism & Ferric Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to large metallic binary asteroid (22) Kalliope and orbit capture', () => {
+        // Mars to Kalliope (300 km Mars alt, 2.910 AU distance, 25 km capture alt, 13.71 deg plane change):
+        const ka = TrajectoryEngine.computeMarsToKalliopeTransfer(300.0, 2.910, 25.0, 13.71);
+        expect(ka.semiMajorAxisAU).to.be.closeTo(2.217, 0.1); // ~2.22 AU
+        expect(ka.eccentricity).to.be.closeTo(0.3127, 0.01); // e ~ 0.313
+        expect(ka.timeOfFlightDays).to.be.closeTo(601.40, 30.0); // ~601 days (~1.65 yr)
+        expect(ka.timeOfFlightYears).to.be.closeTo(1.65, 0.1); // ~1.65 yr
+        expect(ka.marsDepartureDeltaVKmS).to.be.closeTo(5.086, 0.5); // ~5.09 km/s TKaI
+        expect(ka.kalliopeOrbitInsertionDeltaVKmS).to.be.closeTo(2.803, 0.5); // ~2.80 km/s KaOI
+        expect(ka.totalMissionDeltaVKmS).to.be.closeTo(7.889, 1.0); // ~7.89 km/s total
+        expect(ka.kalliopeContext).to.include('Mars-to-Kalliope');
+    });
+
+    it('should calculate low-temperature acidic oxidative hydration of jarosite crust into polyhydrated copiapite and thermal inertia', () => {
+        // 32% initial porosity, 15 C ambient temp, 0.36 a(FeSO4), 200 yr duration:
+        const cop = KRCEngine.computeMartianCopiapiteMetasomatism(0.32, 15.0, 0.36, 200.0);
+        expect(cop.copiapiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(cop.boundWaterYieldWeightPercent).to.be.greaterThan(15.0); // > 15 wt% bound H2O
+        expect(cop.friableSulfateThermalInertiaTIU).to.be.closeTo(1185.3, 200.0); // ~1185 tiu
+        expect(cop.ferricSulfateFaciesClass).to.include('Acidic Evaporite Copiapite Facies');
+        expect(cop.copiapiteContext).to.include('Copiapite at 15 C');
+    });
+
+    it('should discriminate Copiapite vs Coquimbite vs Rhomboclase in CRISM spectra', () => {
+        // Copiapite (Juventae / Capri / Melas: BD1435 = 0.040, BD1920 = 0.060, BD2180 = 0.040, BD2430 = 0.040):
+        const cop = BandMathEngine.computeCRISMCopiapiteFerricSulfateSpeciationIndices(0.040, 0.060, 0.040, 0.040);
+        expect(cop.isFerricSulfateDetected).to.be.true;
+        expect(cop.sulfateMineralClass).to.include('Polyhydrated Copiapite Facies');
+        expect(cop.mineralSpecies).to.include('Copiapite');
+        expect(cop.acidityEnvironment).to.include('Extreme Acid-Sulfate Polyhydrated Evaporite Sequences');
+
+        // Coquimbite (BD1435 = 0.020, BD1920 = 0.050, BD2180 = 0.015, BD2430 = 0.035):
+        const coq = BandMathEngine.computeCRISMCopiapiteFerricSulfateSpeciationIndices(0.020, 0.050, 0.015, 0.035);
+        expect(coq.isFerricSulfateDetected).to.be.true;
+        expect(coq.sulfateMineralClass).to.include('Coquimbite Nonahydrate Facies');
+        expect(coq.mineralSpecies).to.include('Coquimbite');
+
+        // Rhomboclase (BD1435 = 0.035, BD1920 = 0.025, BD2180 = 0.035, BD2430 = 0.020):
+        const rho = BandMathEngine.computeCRISMCopiapiteFerricSulfateSpeciationIndices(0.035, 0.025, 0.035, 0.020);
+        expect(rho.isFerricSulfateDetected).to.be.true;
+        expect(rho.sulfateMineralClass).to.include('Rhomboclase Acid-Sulfate Facies');
+        expect(rho.mineralSpecies).to.include('Rhomboclase');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMCopiapiteFerricSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isFerricSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

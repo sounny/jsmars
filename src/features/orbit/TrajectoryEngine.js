@@ -11567,6 +11567,81 @@ export class TrajectoryEngine {
       lutetiaContext: `Mars-to-Lutetia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, LuOI=${dvLuoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to large metallic binary M-type asteroid (22) Kalliope and orbit capture.
+   * a = ( r_mars + r_kalliope ) / 2
+   * e = ( r_kalliope - r_mars ) / ( r_kalliope + r_mars )
+   * Reference: Marchis et al. (2003), Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [kalliopeDistanceAU=2.910] - Kalliope heliocentric distance in AU (2.2 to 3.5 AU)
+   * @param {number} [kalliopePeriapsisAltitudeKm=25.0] - Kalliope orbit insertion periapsis altitude in km (5 to 400 km)
+   * @param {number} [inclinationPlaneChangeDeg=13.71] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, kalliopeOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, kalliopeContext: string}}
+   */
+  static computeMarsToKalliopeTransfer(marsParkingAltitudeKm = 300.0, kalliopeDistanceAU = 2.910, kalliopePeriapsisAltitudeKm = 25.0, inclinationPlaneChangeDeg = 13.71) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rKaAU = Math.max(2.1, Math.min(3.7, kalliopeDistanceAU));
+    const hpKaKm = Math.max(5.0, kalliopePeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muKalliope = 5.42; // km^3/s^2
+    const rKalliopeKm = 83.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rKaDistKm = rKaAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rKaDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rKaDistKm - rMarsDistKm) / (rKaDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTkaiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Kalliope capture
+    const vKaCircKmS = Math.sqrt(muSun / rKaDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rKaDistKm) - (1.0 / aKm)));
+    const vInfKaKmS = Math.abs(vKaCircKmS - vArrKmS);
+
+    const rpKaKm = rKalliopeKm + hpKaKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpKaKm / (1.0 - eCap);
+
+    const vHypKaKmS = Math.sqrt(Math.pow(vInfKaKmS, 2.0) + ((2.0 * muKalliope) / rpKaKm));
+    const vCapKaKmS = Math.sqrt(muKalliope * ((2.0 / rpKaKm) - (1.0 / aCapKm)));
+    const dvKaoiKmS = vHypKaKmS - vCapKaKmS;
+
+    const dvTotKmS = dvTkaiMarsKmS + dvKaoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTkaiMarsKmS.toFixed(3)),
+      kalliopeOrbitInsertionDeltaVKmS: parseFloat(dvKaoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      kalliopeContext: `Mars-to-Kalliope (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, KaOI=${dvKaoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

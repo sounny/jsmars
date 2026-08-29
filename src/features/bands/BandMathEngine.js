@@ -10237,6 +10237,60 @@ export class BandMathEngine {
       hydrationEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Polyhydrated Ferric Sulfates (Copiapite vs Coquimbite vs Rhomboclase vs Jarosite) from CRISM 1.435 um, 1.920 um, 2.180 um, and 2.430 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Polyhydrated Ferric Sulfate Speciation.
+   * @param {number} [band1435OHDepth=0.040] - BD1435 copiapite sharp OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1920H2ODepth=0.060] - BD1920 copiapite intense shifted structural H2O depth (0.0 to 0.60)
+   * @param {number} [band2180SO4OHDepth=0.040] - BD2180 diagnostic ferric SO4-OH vibrational combination depth (0.0 to 0.50)
+   * @param {number} [band2430SO4Depth=0.040] - BD2430 polyhydrated sulfate overtone triplet depth (0.0 to 0.50)
+   * @returns {{isFerricSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, acidityEnvironment: string}}
+   */
+  static computeCRISMCopiapiteFerricSulfateSpeciationIndices(band1435OHDepth = 0.040, band1920H2ODepth = 0.060, band2180SO4OHDepth = 0.040, band2430SO4Depth = 0.040) {
+    const d1435 = Math.max(0.0, band1435OHDepth);
+    const d1920 = Math.max(0.0, band1920H2ODepth);
+    const d2180 = Math.max(0.0, band2180SO4OHDepth);
+    const d2430 = Math.max(0.0, band2430SO4Depth);
+
+    const isCopiapite = d1435 >= 0.025 && d1920 >= 0.040 && d2180 >= 0.025 && d2430 >= 0.025;
+    const isCoquimbite = d1920 >= 0.035 && d2430 >= 0.025 && d2180 < 0.020;
+    const isRhomboclase = d1435 >= 0.025 && d2180 >= 0.025 && d1920 < 0.035;
+
+    const isFe3S = isCopiapite || isCoquimbite || isRhomboclase;
+
+    let sClass = 'Ferric-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isFe3S) {
+      if (isCopiapite) {
+        sClass = 'Polyhydrated Copiapite Facies';
+        species = 'Copiapite';
+        formula = 'Fe2+Fe3+4(SO4)6(OH)2·20H2O';
+        env = 'Extreme Acid-Sulfate Polyhydrated Evaporite Sequences (Juventae / Capri / Melas Chasma)';
+      } else if (isCoquimbite) {
+        sClass = 'Coquimbite Nonahydrate Facies';
+        species = 'Coquimbite';
+        formula = 'Fe2(SO4)3·9H2O';
+        env = 'Moderately Acidic Oxidized Sulfate Outcrop';
+      } else {
+        sClass = 'Rhomboclase Acid-Sulfate Facies';
+        species = 'Rhomboclase';
+        formula = 'HFe(SO4)2·4H2O';
+        env = 'Hyper-Acidic Low-Water-Activity Hydrothermal Residue';
+      }
+    }
+
+    return {
+      isFerricSulfateDetected: isFe3S,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      acidityEnvironment: env
+    };
+  }
 }
 
 

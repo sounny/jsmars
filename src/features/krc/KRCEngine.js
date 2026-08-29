@@ -11151,6 +11151,67 @@ export class KRCEngine {
       rozeniteContext: `Rozenite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaRoz * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${rClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature acidic oxidative hydration of jarosite and ferric-ferrous sulfate crust into polyhydrated copiapite, superhydration swelling, and thermal inertia.
+   * Jarosite + Fe2+ + 2 Fe3+ + 4 SO4(2-) + 22 H2O (-5 to 35 C) -> Copiapite (Fe2+Fe3+4(SO4)6(OH)2·20H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Polyhydrated Ferric Sulfates.
+   * @param {number} [initialJarositicCrustPorosity=0.32] - Initial jarositic host crust porosity (0.05 to 0.60)
+   * @param {number} [ambientTempC=15.0] - Ambient alteration temperature in C (-15 to 55 C)
+   * @param {number} [acidFerricSulfateFluidActivity=0.36] - Dissolved acid ferric sulfate fluid activity (0.01 to 1.0)
+   * @param {number} [durationYears=200.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{copiapiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantFerricSulfateSpecies: string, friableSulfateThermalInertiaTIU: number, ferricSulfateFaciesClass: string, copiapiteContext: string}}
+   */
+  static computeMartianCopiapiteMetasomatism(initialJarositicCrustPorosity = 0.32, ambientTempC = 15.0, acidFerricSulfateFluidActivity = 0.36, durationYears = 200.0) {
+    const phi0 = Math.max(0.01, Math.min(0.65, initialJarositicCrustPorosity));
+    const TC = Math.max(-20.0, Math.min(70.0, ambientTempC));
+    const aFeSO4 = Math.max(0.005, Math.min(1.0, acidFerricSulfateFluidActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.80e4; // 38 kJ/mol for copiapite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.1e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aFeSO4, 0.35);
+    const alphaCop = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound crystal water yield (wt%)
+    const wH2OPct = alphaCop * 29.80;
+
+    // Superhydration crystal expansion and friable porous texture
+    const phiResidual = (phi0 * (1.0 - (0.30 * alphaCop))) + (0.10 * alphaCop);
+    const rhoGrain = 2100.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.85; // W/(m K)
+    const Cspec = 950.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Polyhydrated Copiapite (Fe2+Fe3+4(SO4)6(OH)2·20H2O)';
+    let cClass = 'Polyhydrated Mixed-Valence Ferric Sulfate Facies';
+
+    if (alphaCop >= 0.50 && TC >= -5.0 && TC <= 35.0 && aFeSO4 >= 0.15) {
+      species = 'Copiapite (Fe2+Fe3+4(SO4)6(OH)2·20H2O)';
+      cClass = 'Acidic Evaporite Copiapite Facies (Juventae / Capri / Melas Chasma)';
+    } else if (TC > 35.0) {
+      species = 'Coquimbite Nonahydrate (Fe2(SO4)3·9H2O)';
+      cClass = 'Moderate-Temperature Ferric Sulfate Facies';
+    } else {
+      species = 'Rhomboclase Acid Sulfate Precursor';
+      cClass = 'Hyper-Acidic Ferric Sulfate Residue';
+    }
+
+    return {
+      copiapiteConversionFraction: parseFloat(alphaCop.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantFerricSulfateSpecies: species,
+      friableSulfateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      ferricSulfateFaciesClass: cClass,
+      copiapiteContext: `Copiapite at ${TC.toFixed(0)} C, a(FeSO4)=${aFeSO4.toFixed(2)} (${(alphaCop * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${cClass})`
+    };
+  }
 }
 
 
