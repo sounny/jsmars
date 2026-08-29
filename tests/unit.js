@@ -15834,6 +15834,56 @@ describe('Mars-to-Thalia Transfer, Mirabilite Metasomatism & Sodium Sulfate Spec
     });
 });
 
+describe('Mars-to-Themis Transfer, Hexahydrite Metasomatism & Magnesium Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to large water-ice-coated asteroid (24) Themis and orbit capture', () => {
+        // Mars to Themis (300 km Mars alt, 3.130 AU distance, 30 km capture alt, 0.76 deg plane change):
+        const thm = TrajectoryEngine.computeMarsToThemisTransfer(300.0, 3.130, 30.0, 0.76);
+        expect(thm.semiMajorAxisAU).to.be.closeTo(2.327, 0.1); // ~2.33 AU
+        expect(thm.eccentricity).to.be.closeTo(0.3452, 0.01); // e ~ 0.345
+        expect(thm.timeOfFlightDays).to.be.closeTo(646.60, 30.0); // ~647 days (~1.77 yr)
+        expect(thm.timeOfFlightYears).to.be.closeTo(1.77, 0.1); // ~1.77 yr
+        expect(thm.marsDepartureDeltaVKmS).to.be.closeTo(2.585, 0.5); // ~2.59 km/s TThmI
+        expect(thm.themisOrbitInsertionDeltaVKmS).to.be.closeTo(2.998, 0.5); // ~3.00 km/s ThmOI
+        expect(thm.totalMissionDeltaVKmS).to.be.closeTo(5.583, 1.0); // ~5.58 km/s total
+        expect(thm.themisContext).to.include('Mars-to-Themis');
+    });
+
+    it('should calculate low-temperature hydration of kieserite into hexahydrite and thermal inertia', () => {
+        // 25% initial porosity, 10 C ambient temp, 0.55 RH, 180 yr duration:
+        const hex = KRCEngine.computeMartianHexahydriteMetasomatism(0.25, 10.0, 0.55, 180.0);
+        expect(hex.hexahydriteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(hex.boundWaterYieldWeightPercent).to.be.greaterThan(23.0); // > 23 wt% bound H2O
+        expect(hex.polyhydratedSulfateThermalInertiaTIU).to.be.closeTo(1239.9, 200.0); // ~1240 tiu
+        expect(hex.magnesiumSulfateFaciesClass).to.include('Equilibrium Hexahydrite Evaporite Facies');
+        expect(hex.hexahydriteContext).to.include('Hexahydrite at 10 C');
+    });
+
+    it('should discriminate Hexahydrite vs Epsomite vs Kieserite in CRISM spectra', () => {
+        // Hexahydrite (Candor / Ophir / Columbus: BD1440 = 0.045, BD1935 = 0.060, BD2130 = 0.040, BD2400 = 0.040):
+        const hex = BandMathEngine.computeCRISMHexahydriteMgSulfateSpeciationIndices(0.045, 0.060, 0.040, 0.040);
+        expect(hex.isMagnesiumSulfateDetected).to.be.true;
+        expect(hex.sulfateMineralClass).to.include('Polyhydrated Hexahydrite Facies');
+        expect(hex.mineralSpecies).to.include('Hexahydrite');
+        expect(hex.hydrationEnvironment).to.include('Moderate Relative Humidity Polyhydrated Sulfate Sequences');
+
+        // Epsomite (BD1440 = 0.045, BD1935 = 0.055, BD2130 = 0.015, BD2400 = 0.030):
+        const eps = BandMathEngine.computeCRISMHexahydriteMgSulfateSpeciationIndices(0.045, 0.055, 0.015, 0.030);
+        expect(eps.isMagnesiumSulfateDetected).to.be.true;
+        expect(eps.sulfateMineralClass).to.include('Superhydrated Epsomite Facies');
+        expect(eps.mineralSpecies).to.include('Epsomite');
+
+        // Kieserite (BD1440 = 0.010, BD1935 = 0.015, BD2130 = 0.045, BD2400 = 0.045):
+        const kie = BandMathEngine.computeCRISMHexahydriteMgSulfateSpeciationIndices(0.010, 0.015, 0.045, 0.045);
+        expect(kie.isMagnesiumSulfateDetected).to.be.true;
+        expect(kie.sulfateMineralClass).to.include('Monohydrated Kieserite Facies');
+        expect(kie.mineralSpecies).to.include('Kieserite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMHexahydriteMgSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMagnesiumSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

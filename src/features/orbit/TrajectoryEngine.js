@@ -11717,6 +11717,81 @@ export class TrajectoryEngine {
       thaliaContext: `Mars-to-Thalia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, ThOI=${dvThoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to large water-ice-coated carbonaceous C-type asteroid (24) Themis and orbit capture.
+   * a = ( r_mars + r_themis ) / 2
+   * e = ( r_themis - r_mars ) / ( r_themis + r_mars )
+   * Reference: Rivkin & Emery (2010), Campins et al. (2010), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [themisDistanceAU=3.130] - Themis heliocentric distance in AU (2.5 to 3.8 AU)
+   * @param {number} [themisPeriapsisAltitudeKm=30.0] - Themis orbit insertion periapsis altitude in km (5 to 450 km)
+   * @param {number} [inclinationPlaneChangeDeg=0.76] - Orbital plane change angle in degrees (0 to 25 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, themisOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, themisContext: string}}
+   */
+  static computeMarsToThemisTransfer(marsParkingAltitudeKm = 300.0, themisDistanceAU = 3.130, themisPeriapsisAltitudeKm = 30.0, inclinationPlaneChangeDeg = 0.76) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rThmAU = Math.max(2.3, Math.min(3.9, themisDistanceAU));
+    const hpThmKm = Math.max(5.0, themisPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muThemis = 7.54; // km^3/s^2
+    const rThemisKm = 99.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rThmDistKm = rThmAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rThmDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rThmDistKm - rMarsDistKm) / (rThmDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTthmiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Themis capture
+    const vThmCircKmS = Math.sqrt(muSun / rThmDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rThmDistKm) - (1.0 / aKm)));
+    const vInfThmKmS = Math.abs(vThmCircKmS - vArrKmS);
+
+    const rpThmKm = rThemisKm + hpThmKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpThmKm / (1.0 - eCap);
+
+    const vHypThmKmS = Math.sqrt(Math.pow(vInfThmKmS, 2.0) + ((2.0 * muThemis) / rpThmKm));
+    const vCapThmKmS = Math.sqrt(muThemis * ((2.0 / rpThmKm) - (1.0 / aCapKm)));
+    const dvThmoiKmS = vHypThmKmS - vCapThmKmS;
+
+    const dvTotKmS = dvTthmiMarsKmS + dvThmoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTthmiMarsKmS.toFixed(3)),
+      themisOrbitInsertionDeltaVKmS: parseFloat(dvThmoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      themisContext: `Mars-to-Themis (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, ThmOI=${dvThmoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

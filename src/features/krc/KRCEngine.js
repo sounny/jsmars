@@ -11273,6 +11273,67 @@ export class KRCEngine {
       mirabiliteContext: `Mirabilite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaMrb * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${mClass})`
     };
   }
+
+  /**
+   * Calculate low-to-moderate temperature hydration of kieserite into hexahydrite and epsomite, hydration volume expansion, and thermal inertia.
+   * MgSO4·H2O (Kieserite) + 5 H2O (-15 to 40 C) -> MgSO4·6H2O (Hexahydrite)
+   * Reference: Vaniman et al. (2004), Viviano-Beck et al. (2014), Roach et al. (2010) for Martian Polyhydrated Magnesium Sulfates.
+   * @param {number} [initialKieseriteCrustPorosity=0.25] - Initial monohydrated kieserite crust porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=10.0] - Ambient alteration temperature in C (-25 to 55 C)
+   * @param {number} [relativeHumidityFraction=0.55] - Atmospheric / pore relative humidity (0.02 to 1.0)
+   * @param {number} [durationYears=180.0] - Hydration exposure duration in years (0.1 to 5000 yr)
+   * @returns {{hexahydriteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantMagnesiumSulfateSpecies: string, polyhydratedSulfateThermalInertiaTIU: number, magnesiumSulfateFaciesClass: string, hexahydriteContext: string}}
+   */
+  static computeMartianHexahydriteMetasomatism(initialKieseriteCrustPorosity = 0.25, ambientTempC = 10.0, relativeHumidityFraction = 0.55, durationYears = 180.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialKieseriteCrustPorosity));
+    const TC = Math.max(-30.0, Math.min(65.0, ambientTempC));
+    const rh = Math.max(0.01, Math.min(1.0, relativeHumidityFraction));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.70e4; // 37 kJ/mol for hexahydrite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.8e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(rh, 0.50);
+    const alphaHex = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound crystal water yield (wt%)
+    const wH2OPct = alphaHex * 47.32;
+
+    // Volumetric expansion (160%) and porous evaporite retention
+    const phiResidual = (phi0 * (1.0 - (0.35 * alphaHex))) + (0.09 * alphaHex);
+    const rhoGrain = 1750.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.88; // W/(m K)
+    const Cspec = 1120.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Hexahydrite (MgSO4·6H2O)';
+    let hClass = 'Polyhydrated Magnesium Sulfate Facies';
+
+    if (alphaHex >= 0.50 && TC >= -15.0 && TC <= 40.0 && rh >= 0.35 && rh <= 0.75) {
+      species = 'Hexahydrite (MgSO4·6H2O)';
+      hClass = 'Equilibrium Hexahydrite Evaporite Facies (Candor / Ophir / Columbus)';
+    } else if (rh > 0.75 && TC < 25.0) {
+      species = 'Epsomite Heptahydrate (MgSO4·7H2O)';
+      hClass = 'Superhydrated Epsomite Facies';
+    } else {
+      species = 'Starkeyite Tetrahydrate (MgSO4·4H2O)';
+      hClass = 'Dehydrated Intermediate Magnesium Sulfate Residue';
+    }
+
+    return {
+      hexahydriteConversionFraction: parseFloat(alphaHex.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantMagnesiumSulfateSpecies: species,
+      polyhydratedSulfateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      magnesiumSulfateFaciesClass: hClass,
+      hexahydriteContext: `Hexahydrite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaHex * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${hClass})`
+    };
+  }
 }
 
 

@@ -10345,6 +10345,60 @@ export class BandMathEngine {
       cryogenicEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Polyhydrated Magnesium Sulfates (Hexahydrite vs Epsomite vs Starkeyite vs Kieserite) from CRISM 1.440 um, 1.935 um, 2.130 um, and 2.400 um absorption bands.
+   * Reference: Vaniman et al. (2004), Viviano-Beck et al. (2014), Roach et al. (2010) for Martian Polyhydrated Magnesium Sulfate Speciation.
+   * @param {number} [band1440H2ODepth=0.045] - BD1440 hexahydrite sharp structural OH/H2O doublet depth (0.0 to 0.50)
+   * @param {number} [band1935H2ODepth=0.060] - BD1935 hexahydrite fundamental structural H2O depth (0.0 to 0.60)
+   * @param {number} [band2130SO4Depth=0.040] - BD2130 sulfate combination band depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.040] - BD2400 sulfate vibrational overtone depth (0.0 to 0.50)
+   * @returns {{isMagnesiumSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrationEnvironment: string}}
+   */
+  static computeCRISMHexahydriteMgSulfateSpeciationIndices(band1440H2ODepth = 0.045, band1935H2ODepth = 0.060, band2130SO4Depth = 0.040, band2400SO4Depth = 0.040) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1935 = Math.max(0.0, band1935H2ODepth);
+    const d2130 = Math.max(0.0, band2130SO4Depth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isHexahydrite = d1440 >= 0.025 && d1935 >= 0.040 && d2130 >= 0.025 && d2400 >= 0.025;
+    const isEpsomite = d1440 >= 0.025 && d1935 >= 0.035 && d2130 < 0.020;
+    const isKieserite = d2130 >= 0.030 && d2400 >= 0.030 && d1440 < 0.020 && d1935 < 0.025;
+
+    const isMgS = isHexahydrite || isEpsomite || isKieserite;
+
+    let sClass = 'Magnesium-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isMgS) {
+      if (isHexahydrite) {
+        sClass = 'Polyhydrated Hexahydrite Facies';
+        species = 'Hexahydrite';
+        formula = 'MgSO4·6H2O';
+        env = 'Moderate Relative Humidity Polyhydrated Sulfate Sequences (Candor / Ophir / Columbus)';
+      } else if (isEpsomite) {
+        sClass = 'Superhydrated Epsomite Facies';
+        species = 'Epsomite';
+        formula = 'MgSO4·7H2O';
+        env = 'High Water Activity Cryogenic Aqueous Environment';
+      } else {
+        sClass = 'Monohydrated Kieserite Facies';
+        species = 'Kieserite';
+        formula = 'MgSO4·H2O';
+        env = 'Hyper-Arid Dehydration / Low-Water-Activity Transition';
+      }
+    }
+
+    return {
+      isMagnesiumSulfateDetected: isMgS,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationEnvironment: env
+    };
+  }
 }
 
 
