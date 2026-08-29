@@ -8497,6 +8497,61 @@ export class KRCEngine {
       serpentineMetamorphicContext: `Metamorphic Contact at ${TC.toFixed(0)} C (${(alpha * 100).toFixed(0)}% Dehydroxylated, ${wOlPct.toFixed(1)}% Recryst Olivine, TIU=${TIU.toFixed(0)}, ${faciesClass})`
     };
   }
+
+  /**
+   * Calculate subsurface methane clathrate hydrate (CH4 * 5.75H2O) phase equilibrium, Kim-Bishnoi dissociation kinetics, and atmospheric outgassing volume.
+   * ln( P_eq / 1 kPa ) = 38.98 - 8533.8 / T
+   * J_diss = k_d * exp( -E_a / ( R * T ) ) * ( P_eq - P_pore )
+   * V_CH4 = phi * S_clathrate * 164.0
+   * Reference: Chassefiere et al. (2013), Webster et al. (2015, 2021), Mousis et al. (2015) for Martian Clathrates.
+   * @param {number} [burialDepthM=15.0] - Cryosphere burial depth in meters (0.5 to 2000 m)
+   * @param {number} [subsurfaceTempK=225.0] - Cryosphere temperature in K (170 to 270 K)
+   * @param {number} [porePressureKPa=0.60] - Ambient pore gas pressure in kPa (0.1 to 10000 kPa)
+   * @param {number} [clathrateSaturationFraction=0.20] - Pore space clathrate saturation (0.01 to 0.90)
+   * @returns {{isClathrateStable: boolean, equilibriumPressureKPa: number, dissociationDrivingForceKPa: number, methaneOutgassingVolumeM3PerM3: number, clathrateCryosphereThermalInertiaTIU: number, clathrateRegimeClass: string, clathrateStabilityContext: string}}
+   */
+  static computeMartianMethaneClathrateStabilityKinetics(burialDepthM = 15.0, subsurfaceTempK = 225.0, porePressureKPa = 0.60, clathrateSaturationFraction = 0.20) {
+    const zM = Math.max(0.1, burialDepthM);
+    const TK = Math.max(160.0, Math.min(273.15, subsurfaceTempK));
+    const Ppore = Math.max(0.05, porePressureKPa);
+    const Sclath = Math.max(0.01, Math.min(0.95, clathrateSaturationFraction));
+
+    // Phase equilibrium pressure (kPa)
+    const lnPeq = 38.98 - (8533.8 / TK);
+    const PeqKPa = Math.exp(lnPeq);
+
+    const isStable = Ppore >= PeqKPa;
+    const deltaPKPa = Math.max(0.0, PeqKPa - Ppore);
+
+    // Methane gas yield per m^3 soil (STP m^3)
+    const phi = 0.35; // 35% regolith porosity
+    const VgasM3 = phi * Sclath * 164.0; // 164 m^3 CH4 per m^3 clathrate
+
+    // Thermal inertia of clathrate-cemented permafrost
+    const kTherm = (0.55 * (1.0 - phi)) + (0.50 * phi * Sclath);
+    const rhoBulk = (2800.0 * (1.0 - phi)) + (920.0 * phi * Sclath);
+    const Cspec = 1200.0;
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let regimeClass = 'Stable Subsurface Methane Clathrate Cryosphere Reservoir';
+    if (!isStable) {
+      if (deltaPKPa >= 1.0) {
+        regimeClass = 'Active Thermal Dissociation & Vigorous Methane Outgassing Plume (Gale Crater / Seasonal TLS Detection)';
+      } else {
+        regimeClass = 'Slow Metastable Clathrate Degassing / Microseepage';
+      }
+    }
+
+    return {
+      isClathrateStable: isStable,
+      equilibriumPressureKPa: parseFloat(PeqKPa.toFixed(2)),
+      dissociationDrivingForceKPa: parseFloat(deltaPKPa.toFixed(2)),
+      methaneOutgassingVolumeM3PerM3: parseFloat(VgasM3.toFixed(2)),
+      clathrateCryosphereThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      clathrateRegimeClass: regimeClass,
+      clathrateStabilityContext: `CH4 Clathrate at ${TK.toFixed(0)}K (P_eq=${PeqKPa.toFixed(1)}kPa, P_pore=${Ppore.toFixed(1)}kPa, ${VgasM3.toFixed(1)} m^3 CH4/m^3, ${regimeClass})`
+    };
+  }
 }
 
 

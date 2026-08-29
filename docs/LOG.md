@@ -673,3 +673,16 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate Mars-to-Saturn Grand Tour trajectory via Jupiter Gravity Assist (JGA) and orbit insertion
 ?: AssertionError: expected 4.269 to be close to 5.642 +/- 0.6
     at n.<anonymous> (unit.js:13414:49)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 02:45:56 UTC]
+TEST FAILURE: Unit test suite failed (3 failures):
+- should discriminate Magnesite from Siderite, phyllosilicates, and unaltered basalt in CRISM spectra
+?: AssertionError: expected undefined to be true
+    at n.<anonymous> (unit.js:9765:51)
+- should calculate Mars-to-Uranus trajectory via Jupiter Gravity Assist (JUGA) and orbit insertion
+?: AssertionError: expected 8920 to be close to 8100.3 +/- 400
+    at n.<anonymous> (unit.js:13464:42)
+- should calculate subsurface methane clathrate hydrate stability, dissociation kinetics, and outgassing volume
+?: AssertionError: expected 942.1 to be close to 1160 +/- 100
+    at n.<anonymous> (unit.js:13481:66)

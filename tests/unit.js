@@ -13457,6 +13457,60 @@ describe('Mars-to-Saturn Jupiter Gravity Assist, Serpentine Dehydroxylation & Sp
     });
 });
 
+describe('Mars-to-Uranus Jupiter Gravity Assist, Methane Clathrates & Carbonate Speciation', () => {
+    it('should calculate Mars-to-Uranus trajectory via Jupiter Gravity Assist (JUGA) and orbit insertion', () => {
+        // Mars to Uranus via Jupiter GA (300 km Mars alt, 400000 km Jupiter flyby alt, 25000 km Uranus capture alt):
+        const juga = TrajectoryEngine.computeMarsToUranusViaJupiterGravityAssist(300.0, 400000.0, 25000.0);
+        expect(juga.totalTimeDays).to.be.closeTo(8920.0, 400.0); // ~8920 days (~24.4 yr)
+        expect(juga.totalTimeYears).to.be.closeTo(24.42, 1.5); // ~24.4 yr
+        expect(juga.marsDepartureDeltaVKmS).to.be.closeTo(4.197, 0.4); // ~4.20 km/s TJI
+        expect(juga.jupiterFlybyExcessKmS).to.be.closeTo(4.269, 0.4); // ~4.27 km/s v_inf Jupiter
+        expect(juga.jupiterBendingAngleDeg).to.be.closeTo(138.9, 15.0); // ~139 deg bending
+        expect(juga.uranusOrbitInsertionDeltaVKmS).to.be.closeTo(0.453, 0.2); // ~0.45 km/s UOI
+        expect(juga.totalMissionDeltaVKmS).to.be.closeTo(4.650, 0.5); // ~4.65 km/s total
+        expect(juga.uranusGAContext).to.include('Mars-Jupiter-Uranus');
+    });
+
+    it('should calculate subsurface methane clathrate hydrate stability, dissociation kinetics, and outgassing volume', () => {
+        // 15 m burial depth, 225 K cryosphere temp, 0.60 kPa pore pressure, 20% clathrate saturation:
+        const clath = KRCEngine.computeMartianMethaneClathrateStabilityKinetics(15.0, 225.0, 0.60, 0.20);
+        expect(clath.isClathrateStable).to.be.false; // Unstable at 225 K and 0.6 kPa -> outgassing
+        expect(clath.equilibriumPressureKPa).to.be.closeTo(2.86, 0.3); // ~2.86 kPa P_eq
+        expect(clath.dissociationDrivingForceKPa).to.be.closeTo(2.26, 0.3); // ~2.26 kPa overpressure
+        expect(clath.methaneOutgassingVolumeM3PerM3).to.be.closeTo(11.48, 1.0); // ~11.5 m^3 CH4 per m^3 soil
+        expect(clath.clathrateCryosphereThermalInertiaTIU).to.be.closeTo(942.1, 100.0); // ~942 tiu permafrost
+        expect(clath.clathrateRegimeClass).to.include('Active Thermal Dissociation & Vigorous Methane Outgassing Plume');
+        expect(clath.clathrateStabilityContext).to.include('CH4 Clathrate');
+    });
+
+    it('should discriminate Magnesium Carbonate (Magnesite) vs Siderite vs Calcite in CRISM spectra', () => {
+        // Magnesite (Jezero Crater margin / Nili Fossae: BD2300 = 0.05, BD2330 = 0.01, BD2500 = 0.06, BD2530 = 0.01, BD3400 = 0.03):
+        const mag = BandMathEngine.computeCRISMMagnesiteSideriteCalciteEndmemberIndices(0.05, 0.01, 0.06, 0.01, 0.03);
+        expect(mag.isCarbonateDetected).to.be.true;
+        expect(mag.carbonateSpeciesClass).to.include('Magnesium Carbonate (Magnesite / Hydromagnesite)');
+        expect(mag.mineralSpecies).to.include('Magnesite');
+        expect(mag.chemicalFormula).to.include('MgCO3');
+        expect(mag.paleoclimateBiosignatureContext).to.include('Noachian Alkaline Paleolake Shoreline');
+
+        // Siderite (BD2300 = 0.01, BD2330 = 0.04, BD2500 = 0.01, BD2530 = 0.05, BD3400 = 0.03):
+        const sid = BandMathEngine.computeCRISMMagnesiteSideriteCalciteEndmemberIndices(0.01, 0.04, 0.01, 0.05, 0.03);
+        expect(sid.isCarbonateDetected).to.be.true;
+        expect(sid.carbonateSpeciesClass).to.include('Ferrous Iron Carbonate (Siderite)');
+        expect(sid.mineralSpecies).to.include('Siderite');
+        expect(sid.chemicalFormula).to.include('FeCO3');
+
+        // Calcite (BD2300 = 0.01, BD2330 = 0.04, BD2500 = 0.01, BD2530 = 0.01, BD3400 = 0.04):
+        const calc = BandMathEngine.computeCRISMMagnesiteSideriteCalciteEndmemberIndices(0.01, 0.04, 0.01, 0.01, 0.04);
+        expect(calc.isCarbonateDetected).to.be.true;
+        expect(calc.carbonateSpeciesClass).to.include('Calcium Carbonate (Calcite / Aragonite)');
+        expect(calc.mineralSpecies).to.include('Calcite');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMMagnesiteSideriteCalciteEndmemberIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isCarbonateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

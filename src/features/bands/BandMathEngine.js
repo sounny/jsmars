@@ -7804,6 +7804,58 @@ export class BandMathEngine {
       serpentinizationContext: context
     };
   }
+
+  /**
+   * Discriminate Magnesium Carbonate (Magnesite) vs Iron Carbonate (Siderite) vs Calcium Carbonate (Calcite) from CRISM 2.30 um, 2.33 um, 2.50 um, 2.53 um, and 3.40 um bands.
+   * Reference: Ehlmann et al. (2008), Niles et al. (2013), Edwards & Ehlmann (2015), Viviano-Beck et al. (2014) for Martian Carbonates.
+   * @param {number} [band2300CarbonateDepth=0.04] - BD2300 magnesite diagnostic CO3 overtone depth (0.0 to 0.40)
+   * @param {number} [band2330CarbonateDepth=0.01] - BD2330 siderite/calcite shifted CO3 depth (0.0 to 0.40)
+   * @param {number} [band2500CarbonateDepth=0.05] - BD2500 magnesite diagnostic CO3 combination depth (0.0 to 0.40)
+   * @param {number} [band2530CarbonateDepth=0.01] - BD2530 siderite/calcite shifted CO3 combination depth (0.0 to 0.40)
+   * @param {number} [band3400CarbonateDepth=0.03] - BD3400 fundamental carbonate absorption depth (0.0 to 0.40)
+   * @returns {{isCarbonateDetected: boolean, carbonateSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, paleoclimateBiosignatureContext: string}}
+   */
+  static computeCRISMMagnesiteSideriteCalciteEndmemberIndices(band2300CarbonateDepth = 0.04, band2330CarbonateDepth = 0.01, band2500CarbonateDepth = 0.05, band2530CarbonateDepth = 0.01, band3400CarbonateDepth = 0.03) {
+    const d2300 = Math.max(0.0, band2300CarbonateDepth);
+    const d2330 = Math.max(0.0, band2330CarbonateDepth);
+    const d2500 = Math.max(0.0, band2500CarbonateDepth);
+    const d2530 = Math.max(0.0, band2530CarbonateDepth);
+    const d3400 = Math.max(0.0, band3400CarbonateDepth);
+
+    const isMagnesite = d2300 >= 0.030 && d2500 >= 0.035 && d2300 > d2330;
+    const isSiderite = d2330 >= 0.030 && d2530 >= 0.035 && d2530 > d2500;
+    const isCalcite = d2330 >= 0.030 && d2500 < 0.020 && d3400 >= 0.025;
+
+    let carbClass = 'Carbonate-Free Silicate Regolith';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Detectable Carbonate Absorption';
+
+    if (isMagnesite) {
+      carbClass = 'Magnesium Carbonate (Magnesite / Hydromagnesite)';
+      species = 'Magnesite';
+      formula = 'MgCO3';
+      context = 'Noachian Alkaline Paleolake Shoreline Precipitate / High-Priority Astrobiological Biosignature Preservation (Jezero Crater Marginal Carbonate / Nili Fossae)';
+    } else if (isSiderite) {
+      carbClass = 'Ferrous Iron Carbonate (Siderite)';
+      species = 'Siderite';
+      formula = 'FeCO3';
+      context = 'Subsurface Anoxic Hydrothermal Alteration / Neutral-to-Alkaline Deep Groundwater Fluid Circulation';
+    } else if (isCalcite) {
+      carbClass = 'Calcium Carbonate (Calcite / Aragonite)';
+      species = 'Calcite';
+      formula = 'CaCO3';
+      context = 'Pedogenic / Evaporative Carbonate Crust from Low-Temperature Weathering of Plagioclase Basalt';
+    }
+
+    return {
+      isCarbonateDetected: isMagnesite || isSiderite || isCalcite,
+      carbonateSpeciesClass: carbClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      paleoclimateBiosignatureContext: context
+    };
+  }
 }
 
 
