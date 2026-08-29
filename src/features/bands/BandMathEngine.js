@@ -11263,6 +11263,62 @@ export class BandMathEngine {
       gossanHydrationState: state
     };
   }
+
+  /**
+   * Discriminate Anhydrous Copper-Ferric Oxysulfates (Anhydrous Cu-Fe Oxysulfate vs Guildite vs Brochantite) from CRISM 0.800 um, 1.440 um, 1.940 um, 2.160 um, and 2.400 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Copper-Bearing Sulfates.
+   * @param {number} [band800CuDepth=0.045] - BD800 copper crystal field electronic absorption depth (0.0 to 0.50)
+   * @param {number} [band1440H2ODepth=0.010] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.015] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2160FeOHDepth=0.040] - BD2160 iron-oxysulfate combination depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.045] - BD2400 sulfate vibrational combination overtone depth (0.0 to 0.50)
+   * @returns {{isAnhydrousCopperFerricOxysulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, parageneticRegime: string}}
+   */
+  static computeCRISMAnhydrousCopperFerricOxysulfateSpeciationIndices(band800CuDepth = 0.045, band1440H2ODepth = 0.010, band1940H2ODepth = 0.015, band2160FeOHDepth = 0.040, band2400SO4Depth = 0.045) {
+    const d800 = Math.max(0.0, band800CuDepth);
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2160 = Math.max(0.0, band2160FeOHDepth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isAnhydrousCuFeOxy = d800 >= 0.030 && d2160 >= 0.025 && d2400 >= 0.030 && d1940 < 0.020;
+    const isGuildite = d800 >= 0.025 && d1940 >= 0.025 && d2160 >= 0.025;
+    const isBrochantite = d800 >= 0.035 && d1440 >= 0.025 && d1940 < 0.020 && d2160 < 0.020;
+
+    const isCuFeOxysulfate = isAnhydrousCuFeOxy || isGuildite || isBrochantite;
+
+    let sClass = 'Copper-Ferric-Oxysulfate-Free Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Primary Crust';
+
+    if (isCuFeOxysulfate) {
+      if (isAnhydrousCuFeOxy) {
+        sClass = 'Anhydrous Copper-Ferric Oxysulfate Facies';
+        species = 'Anhydrous Copper-Ferric Oxysulfate';
+        formula = 'CuFe(SO4)2O';
+        regime = 'High-Temperature Hydrothermal Sinter Outcrop (Syrtis Major / Coprates / Noctis)';
+      } else if (isGuildite) {
+        sClass = 'Tetrahydrated Guildite Hydroxyl-Sulfate Facies';
+        species = 'Guildite';
+        formula = 'CuFe(SO4)2(OH)·4H2O';
+        regime = 'Hydrated Epithermal Hydroxyl-Sulfate Vein';
+      } else {
+        sClass = 'Basic Brochantite Copper Hydroxyl-Sulfate Facies';
+        species = 'Brochantite';
+        formula = 'Cu4(SO4)(OH)6';
+        regime = 'Supergene Basic Copper Alteration Crust';
+      }
+    }
+
+    return {
+      isAnhydrousCopperFerricOxysulfateDetected: isCuFeOxysulfate,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      parageneticRegime: regime
+    };
+  }
 }
 
 

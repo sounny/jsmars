@@ -12992,6 +12992,81 @@ export class TrajectoryEngine {
       harmoniaContext: `Mars-to-Harmonia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, HaOI=${dvHaoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to main-belt major dark carbonaceous C-type asteroid (41) Daphne and orbit capture.
+   * a = ( r_mars + r_daphne ) / 2
+   * e = ( r_daphne - r_mars ) / ( r_daphne + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [daphneDistanceAU=2.765] - Daphne heliocentric distance in AU (1.8 to 3.7 AU)
+   * @param {number} [daphnePeriapsisAltitudeKm=15.0] - Daphne orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=15.77] - Orbital plane change angle in degrees (0 to 45 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, daphneOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, daphneContext: string}}
+   */
+  static computeMarsToDaphneTransfer(marsParkingAltitudeKm = 300.0, daphneDistanceAU = 2.765, daphnePeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 15.77) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rDaAU = Math.max(1.7, Math.min(3.8, daphneDistanceAU));
+    const hpDaKm = Math.max(5.0, daphnePeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muDaphne = 10.50; // km^3/s^2 (major dark C-type asteroid with moon Peneius, D~174 km)
+    const rDaphneKm = 87.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rDaDistKm = rDaAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rDaDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rDaDistKm - rMarsDistKm) / (rDaDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTdaiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Daphne capture
+    const vDaCircKmS = Math.sqrt(muSun / rDaDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rDaDistKm) - (1.0 / aKm)));
+    const vInfDaKmS = Math.abs(vDaCircKmS - vArrKmS);
+
+    const rpDaKm = rDaphneKm + hpDaKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpDaKm / (1.0 - eCap);
+
+    const vHypDaKmS = Math.sqrt(Math.pow(vInfDaKmS, 2.0) + ((2.0 * muDaphne) / rpDaKm));
+    const vCapDaKmS = Math.sqrt(muDaphne * ((2.0 / rpDaKm) - (1.0 / aCapKm)));
+    const dvDaoiKmS = vHypDaKmS - vCapDaKmS;
+
+    const dvTotKmS = dvTdaiMarsKmS + dvDaoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTdaiMarsKmS.toFixed(3)),
+      daphneOrbitInsertionDeltaVKmS: parseFloat(dvDaoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      daphneContext: `Mars-to-Daphne (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, DaOI=${dvDaoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

@@ -16691,6 +16691,56 @@ describe('Mars-to-Harmonia Transfer, Ransomite Dehydration & Anhydrous Cu-Fe Spe
     });
 });
 
+describe('Mars-to-Daphne Transfer, Guildite Dehydration & Oxysulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to major carbonaceous asteroid (41) Daphne and orbit capture', () => {
+        // Mars to Daphne (300 km Mars alt, 2.765 AU distance, 15 km capture alt, 15.77 deg plane change):
+        const da = TrajectoryEngine.computeMarsToDaphneTransfer(300.0, 2.765, 15.0, 15.77);
+        expect(da.semiMajorAxisAU).to.be.closeTo(2.144, 0.1); // ~2.14 AU
+        expect(da.eccentricity).to.be.closeTo(0.2894, 0.01); // e ~ 0.289
+        expect(da.timeOfFlightDays).to.be.closeTo(572.56, 30.0); // ~573 days (~1.57 yr)
+        expect(da.timeOfFlightYears).to.be.closeTo(1.57, 0.1); // ~1.57 yr
+        expect(da.marsDepartureDeltaVKmS).to.be.closeTo(5.671, 0.5); // ~5.67 km/s TDaI
+        expect(da.daphneOrbitInsertionDeltaVKmS).to.be.closeTo(2.364, 0.5); // ~2.36 km/s DaOI
+        expect(da.totalMissionDeltaVKmS).to.be.closeTo(8.035, 1.0); // ~8.04 km/s total
+        expect(da.daphneContext).to.include('Mars-to-Daphne');
+    });
+
+    it('should calculate hydrothermal dehydration of guildite into anhydrous copper-ferric oxysulfate and thermal inertia', () => {
+        // 24% initial porosity, 50 C surface temp, 0.06 RH, 260 yr duration:
+        const gdh = KRCEngine.computeMartianGuilditeDehydration(0.24, 50.0, 0.06, 260.0);
+        expect(gdh.guilditeDehydrationFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(gdh.boundWaterYieldWeightPercent).to.be.lessThan(12.0); // < 12 wt% bound H2O+OH
+        expect(gdh.induratedAnhydrousThermalInertiaTIU).to.be.closeTo(1967.3, 200.0); // ~1967 tiu
+        expect(gdh.anhydrousOxysulfateFaciesClass).to.include('Indurated Anhydrous Cu-Fe Oxysulfate Facies');
+        expect(gdh.guilditeDehydrationContext).to.include('Anhydrous Cu-Fe Oxysulfate at 50 C');
+    });
+
+    it('should discriminate Anhydrous Cu-Fe Oxysulfate vs Guildite vs Brochantite in CRISM spectra', () => {
+        // Anhydrous Cu-Fe Oxysulfate (Syrtis Major / Coprates / Noctis: BD800 = 0.045, BD1440 = 0.010, BD1940 = 0.015, BD2160 = 0.040, BD2400 = 0.045):
+        const anhOxy = BandMathEngine.computeCRISMAnhydrousCopperFerricOxysulfateSpeciationIndices(0.045, 0.010, 0.015, 0.040, 0.045);
+        expect(anhOxy.isAnhydrousCopperFerricOxysulfateDetected).to.be.true;
+        expect(anhOxy.sulfateMineralClass).to.include('Anhydrous Copper-Ferric Oxysulfate Facies');
+        expect(anhOxy.mineralSpecies).to.include('Anhydrous Copper-Ferric Oxysulfate');
+        expect(anhOxy.parageneticRegime).to.include('High-Temperature Hydrothermal Sinter Outcrop');
+
+        // Guildite (BD800 = 0.045, BD1440 = 0.035, BD1940 = 0.045, BD2160 = 0.040, BD2400 = 0.035):
+        const gui = BandMathEngine.computeCRISMAnhydrousCopperFerricOxysulfateSpeciationIndices(0.045, 0.035, 0.045, 0.040, 0.035);
+        expect(gui.isAnhydrousCopperFerricOxysulfateDetected).to.be.true;
+        expect(gui.sulfateMineralClass).to.include('Tetrahydrated Guildite Hydroxyl-Sulfate Facies');
+        expect(gui.mineralSpecies).to.include('Guildite');
+
+        // Brochantite (BD800 = 0.050, BD1440 = 0.035, BD1940 = 0.010, BD2160 = 0.010, BD2400 = 0.035):
+        const bro = BandMathEngine.computeCRISMAnhydrousCopperFerricOxysulfateSpeciationIndices(0.050, 0.035, 0.010, 0.010, 0.035);
+        expect(bro.isAnhydrousCopperFerricOxysulfateDetected).to.be.true;
+        expect(bro.sulfateMineralClass).to.include('Basic Brochantite Copper Hydroxyl-Sulfate Facies');
+        expect(bro.mineralSpecies).to.include('Brochantite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMAnhydrousCopperFerricOxysulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAnhydrousCopperFerricOxysulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

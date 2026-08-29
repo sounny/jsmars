@@ -12310,6 +12310,67 @@ export class KRCEngine {
       ransomiteDehydrationContext: `Anhydrous Cu-Fe at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaRdh * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${aClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal desiccation and high-temperature dehydration of tetrahydrated guildite into anhydrous copper-ferric oxysulfate, crystal sintering, and thermal inertia.
+   * CuFe(SO4)2(OH)·4H2O -> CuFe(SO4)2O + 4.5 H2O (35 to 115 C, low RH)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Copper-Bearing Sulfates.
+   * @param {number} [initialGuilditePorosity=0.24] - Initial guildite host rock porosity (0.05 to 0.55)
+   * @param {number} [surfaceTempC=50.0] - Surface/hydrothermal desiccation temperature in C (15 to 125 C)
+   * @param {number} [atmosphericRelativeHumidity=0.06] - Atmospheric / pore relative humidity (0.001 to 0.70)
+   * @param {number} [durationYears=260.0] - Desiccation exposure duration in years (0.1 to 5000 yr)
+   * @returns {{guilditeDehydrationFraction: number, boundWaterYieldWeightPercent: number, dominantCopperFerricPhase: string, induratedAnhydrousThermalInertiaTIU: number, anhydrousOxysulfateFaciesClass: string, guilditeDehydrationContext: string}}
+   */
+  static computeMartianGuilditeDehydration(initialGuilditePorosity = 0.24, surfaceTempC = 50.0, atmosphericRelativeHumidity = 0.06, durationYears = 260.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialGuilditePorosity));
+    const TC = Math.max(0.0, Math.min(140.0, surfaceTempC));
+    const rh = Math.max(0.001, Math.min(0.75, atmosphericRelativeHumidity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.30e4; // 43.0 kJ/mol for guildite dehydration crystallization
+
+    // Reaction rate constant
+    const kRate = 4.1e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(1.0 - rh, 0.55);
+    const alphaGdh = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound water and OH yield (wt%)
+    const wH2OPct = (1.0 - alphaGdh) * 24.35;
+
+    // Crystal volume contraction and indurated anhydrous compaction
+    const phiResidual = phi0 * (1.0 - (0.42 * alphaGdh));
+    const rhoGrain = 2820.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.80; // W/(m K)
+    const Cspec = 840.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Anhydrous Copper-Ferric Oxysulfate (CuFe(SO4)2O)';
+    let gClass = 'Anhydrous Copper-Ferric Oxysulfate Facies';
+
+    if (alphaGdh >= 0.50 && TC >= 35.0 && rh <= 0.20) {
+      species = 'Anhydrous Copper-Ferric Oxysulfate (CuFe(SO4)2O)';
+      gClass = 'Indurated Anhydrous Cu-Fe Oxysulfate Facies (Syrtis Major / Coprates / Noctis)';
+    } else if (rh > 0.20) {
+      species = 'Metastable Guildite-Anhydrous Composite';
+      gClass = 'Partially Dehydrated Hydroxyl-Sulfate Phase';
+    } else {
+      species = 'Tenorite-Hematite Sintered Calcination Matrix';
+      gClass = 'Hyper-Thermal Calcination Crust';
+    }
+
+    return {
+      guilditeDehydrationFraction: parseFloat(alphaGdh.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantCopperFerricPhase: species,
+      induratedAnhydrousThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      anhydrousOxysulfateFaciesClass: gClass,
+      guilditeDehydrationContext: `Anhydrous Cu-Fe Oxysulfate at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaGdh * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${gClass})`
+    };
+  }
 }
 
 
