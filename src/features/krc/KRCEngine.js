@@ -11822,6 +11822,67 @@ export class KRCEngine {
       botryogenContext: `Botryogen at ${TC.toFixed(0)} C, a(MgFeOH)=${aMgFe.toFixed(2)} (${(alphaBot * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${bClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature acidic alteration of sodium-magnesium-ferric basalt into slavkite, nonahydrate crystallization, and thermal inertia.
+   * Host + Na+ + Mg2+ + Fe3+ + 3 SO4(2-) + OH- + 9 H2O (-10 to 35 C) -> Slavkite (NaMgFe(SO4)3(OH)·9H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Hydroxyl-Bearing Sulfates.
+   * @param {number} [initialHostPorosity=0.35] - Initial host basalt porosity (0.05 to 0.60)
+   * @param {number} [ambientTempC=8.0] - Ambient alteration temperature in C (-20 to 50 C)
+   * @param {number} [sodiumFerricSulfateActivity=0.44] - Dissolved multi-cation sulfate fluid activity product (0.01 to 1.0)
+   * @param {number} [durationYears=160.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{slavkiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantMultiCationPhase: string, nonahydrateThermalInertiaTIU: number, multiCationFaciesClass: string, slavkiteContext: string}}
+   */
+  static computeMartianSlavkiteMetasomatism(initialHostPorosity = 0.35, ambientTempC = 8.0, sodiumFerricSulfateActivity = 0.44, durationYears = 160.0) {
+    const phi0 = Math.max(0.01, Math.min(0.65, initialHostPorosity));
+    const TC = Math.max(-25.0, Math.min(60.0, ambientTempC));
+    const aNaMgFe = Math.max(0.005, Math.min(1.0, sodiumFerricSulfateActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.70e4; // 37.0 kJ/mol for slavkite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.5e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aNaMgFe, 0.42);
+    const alphaSlv = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural water and hydroxyl yield (wt%)
+    const wH2OPct = alphaSlv * 36.84;
+
+    // Nonahydrate crystal volume growth and porous matrix evolution
+    const phiResidual = (phi0 * (1.0 - (0.32 * alphaSlv))) + (0.10 * alphaSlv);
+    const rhoGrain = 2020.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.65; // W/(m K)
+    const Cspec = 1060.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Slavkite (NaMgFe(SO4)3(OH)·9H2O)';
+    let sClass = 'Nonahydrated Sodium-Magnesium-Ferric Hydroxyl-Sulfate Facies';
+
+    if (alphaSlv >= 0.50 && TC >= -10.0 && TC <= 35.0 && aNaMgFe >= 0.15) {
+      species = 'Slavkite (NaMgFe(SO4)3(OH)·9H2O)';
+      sClass = 'Superhydrated Slavkite Facies (Aram Chaos / Shalbatana / Hebes)';
+    } else if (TC > 35.0) {
+      species = 'Voltaite-Epsomite Mixed Sulfate Association';
+      sClass = 'High-Temperature Acid-Saline Sulfate Association';
+    } else {
+      species = 'Bloedite-Ferrinatrite Composite';
+      sClass = 'Mixed Alkaline-Acid Multi-Cation Sulfate Residue';
+    }
+
+    return {
+      slavkiteConversionFraction: parseFloat(alphaSlv.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantMultiCationPhase: species,
+      nonahydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      multiCationFaciesClass: sClass,
+      slavkiteContext: `Slavkite at ${TC.toFixed(0)} C, a(NaMgFe)=${aNaMgFe.toFixed(2)} (${(alphaSlv * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

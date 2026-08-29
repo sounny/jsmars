@@ -16291,6 +16291,56 @@ describe('Mars-to-Pomona Transfer, Botryogen Metasomatism & Magnesium-Ferric Spe
     });
 });
 
+describe('Mars-to-Polyhymnia Transfer, Slavkite Metasomatism & Multi-Cation Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to high-eccentricity asteroid (33) Polyhymnia and orbit capture', () => {
+        // Mars to Polyhymnia (300 km Mars alt, 2.865 AU distance, 10 km capture alt, 1.87 deg plane change):
+        const py = TrajectoryEngine.computeMarsToPolyhymniaTransfer(300.0, 2.865, 10.0, 1.87);
+        expect(py.semiMajorAxisAU).to.be.closeTo(2.194, 0.1); // ~2.19 AU
+        expect(py.eccentricity).to.be.closeTo(0.3056, 0.01); // e ~ 0.306
+        expect(py.timeOfFlightDays).to.be.closeTo(592.54, 30.0); // ~593 days (~1.62 yr)
+        expect(py.timeOfFlightYears).to.be.closeTo(1.62, 0.1); // ~1.62 yr
+        expect(py.marsDepartureDeltaVKmS).to.be.closeTo(2.493, 0.5); // ~2.49 km/s TPyI
+        expect(py.polyhymniaOrbitInsertionDeltaVKmS).to.be.closeTo(2.638, 0.5); // ~2.64 km/s PyOI
+        expect(py.totalMissionDeltaVKmS).to.be.closeTo(5.131, 1.0); // ~5.13 km/s total
+        expect(py.polyhymniaContext).to.include('Mars-to-Polyhymnia');
+    });
+
+    it('should calculate low-temperature acid alteration into slavkite nonahydrate and thermal inertia', () => {
+        // 35% initial porosity, 8 C ambient temp, 0.44 multi-cation activity product, 160 yr duration:
+        const slv = KRCEngine.computeMartianSlavkiteMetasomatism(0.35, 8.0, 0.44, 160.0);
+        expect(slv.slavkiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(slv.boundWaterYieldWeightPercent).to.be.greaterThan(18.0); // > 18 wt% bound H2O+OH
+        expect(slv.nonahydrateThermalInertiaTIU).to.be.closeTo(1079.1, 200.0); // ~1079 tiu
+        expect(slv.multiCationFaciesClass).to.include('Superhydrated Slavkite Facies');
+        expect(slv.slavkiteContext).to.include('Slavkite at 8 C');
+    });
+
+    it('should discriminate Slavkite vs Voltaite vs Polyhydrate in CRISM spectra', () => {
+        // Slavkite (Aram Chaos / Shalbatana / Hebes: BD1440 = 0.040, BD1940 = 0.065, BD2175 = 0.040, BD2400 = 0.035):
+        const slv = BandMathEngine.computeCRISMSlavkiteSodiumMagnesiumFerricSpeciationIndices(0.040, 0.065, 0.040, 0.035);
+        expect(slv.isMultiCationHydroxylSulfateDetected).to.be.true;
+        expect(slv.sulfateMineralClass).to.include('Nonahydrated Slavkite Multi-Cation Hydroxyl-Sulfate Facies');
+        expect(slv.mineralSpecies).to.include('Slavkite');
+        expect(slv.parageneticAssociation).to.include('Cryogenic Evaporite Hydrothermal Slavkite Outcrop');
+
+        // Voltaite (BD1440 = 0.040, BD1940 = 0.070, BD2175 = 0.015, BD2400 = 0.040):
+        const vol = BandMathEngine.computeCRISMSlavkiteSodiumMagnesiumFerricSpeciationIndices(0.040, 0.070, 0.015, 0.040);
+        expect(vol.isMultiCationHydroxylSulfateDetected).to.be.true;
+        expect(vol.sulfateMineralClass).to.include('Octadecahydrated Voltaite Group Facies');
+        expect(vol.mineralSpecies).to.include('Voltaite');
+
+        // Polyhydrate (BD1440 = 0.040, BD1940 = 0.045, BD2175 = 0.010, BD2400 = 0.010):
+        const poly = BandMathEngine.computeCRISMSlavkiteSodiumMagnesiumFerricSpeciationIndices(0.040, 0.045, 0.010, 0.010);
+        expect(poly.isMultiCationHydroxylSulfateDetected).to.be.true;
+        expect(poly.sulfateMineralClass).to.include('Bloedite-Polyhydrate Sulfate Facies');
+        expect(poly.mineralSpecies).to.include('Hydrated Sodium-Magnesium Sulfate');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMSlavkiteSodiumMagnesiumFerricSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMultiCationHydroxylSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

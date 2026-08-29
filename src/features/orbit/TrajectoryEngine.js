@@ -12392,6 +12392,81 @@ export class TrajectoryEngine {
       pomonaContext: `Mars-to-Pomona (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, PoOI=${dvPoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to main-belt high-eccentricity asteroid (33) Polyhymnia and orbit capture.
+   * a = ( r_mars + r_polyhymnia ) / 2
+   * e = ( r_polyhymnia - r_mars ) / ( r_polyhymnia + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [polyhymniaDistanceAU=2.865] - Polyhymnia heliocentric distance in AU (1.9 to 3.7 AU)
+   * @param {number} [polyhymniaPeriapsisAltitudeKm=10.0] - Polyhymnia orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=1.87] - Orbital plane change angle in degrees (0 to 30 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, polyhymniaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, polyhymniaContext: string}}
+   */
+  static computeMarsToPolyhymniaTransfer(marsParkingAltitudeKm = 300.0, polyhymniaDistanceAU = 2.865, polyhymniaPeriapsisAltitudeKm = 10.0, inclinationPlaneChangeDeg = 1.87) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rPyAU = Math.max(1.8, Math.min(3.8, polyhymniaDistanceAU));
+    const hpPyKm = Math.max(5.0, polyhymniaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muPolyhymnia = 1.15; // km^3/s^2 (high-eccentricity asteroid, D~54 km)
+    const rPolyhymniaKm = 27.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rPyDistKm = rPyAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rPyDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rPyDistKm - rMarsDistKm) / (rPyDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTpyiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Polyhymnia capture
+    const vPyCircKmS = Math.sqrt(muSun / rPyDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rPyDistKm) - (1.0 / aKm)));
+    const vInfPyKmS = Math.abs(vPyCircKmS - vArrKmS);
+
+    const rpPyKm = rPolyhymniaKm + hpPyKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpPyKm / (1.0 - eCap);
+
+    const vHypPyKmS = Math.sqrt(Math.pow(vInfPyKmS, 2.0) + ((2.0 * muPolyhymnia) / rpPyKm));
+    const vCapPyKmS = Math.sqrt(muPolyhymnia * ((2.0 / rpPyKm) - (1.0 / aCapKm)));
+    const dvPyoiKmS = vHypPyKmS - vCapPyKmS;
+
+    const dvTotKmS = dvTpyiMarsKmS + dvPyoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTpyiMarsKmS.toFixed(3)),
+      polyhymniaOrbitInsertionDeltaVKmS: parseFloat(dvPyoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      polyhymniaContext: `Mars-to-Polyhymnia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, PyOI=${dvPyoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
