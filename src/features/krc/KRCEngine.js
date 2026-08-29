@@ -8603,6 +8603,61 @@ export class KRCEngine {
       impactHydrothermalContext: `Impact Hydrothermal System D=${DCrater.toFixed(0)}km (${(tTotalYrs / 1000).toFixed(0)} kyr lifetime, ${volThroughputKm3.toFixed(0)} km^3 H2O, ${habClass})`
     };
   }
+
+  /**
+   * Calculate burial diagenetic illitization kinetics of smectite clay into ordered mixed-layer illite-smectite (I/S) and illite.
+   * 1/S - 1/S_0 = A * exp( -E_a / ( R * T ) ) * [K+]^0.5 * t
+   * Reference: Ehlmann & Edwards (2014), Bristow et al. (2018), Cuadros et al. (2013) for Martian Clay Diagenesis.
+   * @param {number} [initialSmectiteFraction=0.90] - Initial smectite layer fraction in clay (0.10 to 1.0)
+   * @param {number} [burialTempC=120.0] - Geothermal / hydrothermal burial temperature in C (40 to 300 C)
+   * @param {number} [poreFluidPotassiumMolar=0.05] - Pore fluid [K+] concentration in mol/L (0.001 to 2.0 M)
+   * @param {number} [durationMyr=10.0] - Thermal duration in million years (0.01 to 500 Myr)
+   * @returns {{illiteLayerFraction: number, residualSmectiteFraction: number, reichweiteOrderingClass: string, illitizedThermalInertiaTIU: number, metamorphicGradeClass: string, illitizationContext: string}}
+   */
+  static computeMartianSmectiteIllitizationKinetics(initialSmectiteFraction = 0.90, burialTempC = 120.0, poreFluidPotassiumMolar = 0.05, durationMyr = 10.0) {
+    const S0 = Math.max(0.10, Math.min(1.0, initialSmectiteFraction));
+    const TC = Math.max(20.0, Math.min(400.0, burialTempC));
+    const kMolar = Math.max(0.0001, poreFluidPotassiumMolar);
+    const tMyr = Math.max(0.001, durationMyr);
+
+    const TK = TC + 273.15;
+    const tSec = tMyr * 1.0e6 * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 1.17e5; // 117 kJ/mol
+    const A = 8.08e4; // M^-0.5 s^-1
+
+    const kRate = A * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(kMolar);
+    const invS = (1.0 / S0) + (kRate * tSec);
+    const Scurr = Math.max(0.001, Math.min(S0, 1.0 / invS));
+    const illiteFrac = 1.0 - Scurr;
+
+    let reichweiteClass = 'Random R0 Mixed-Layer Illite-Smectite (< 50% Illite)';
+    let gradeClass = 'Low-Temperature Diagenetic Smectite (Zeolite / Early Diagenesis Facies)';
+
+    if (illiteFrac >= 0.85) {
+      reichweiteClass = 'Highly Ordered R3 (ISII) Mixed-Layer / Pure Illite-Muscovite (> 85% Illite)';
+      gradeClass = 'Anchizone to Epizone Low-Grade Metamorphic Horizon (Deep Noachian Basement)';
+    } else if (illiteFrac >= 0.50) {
+      reichweiteClass = 'Regularly Ordered R1 (IS) Mixed-Layer Illite-Smectite (50-85% Illite)';
+      gradeClass = 'Mesodiagenetic Burial Horizon (T > 80-100 C, Gale Crater Deep Strata)';
+    }
+
+    // Thermal inertia of compacted illitized mudstone
+    const phi = 0.15 * (1.0 - (0.6 * illiteFrac));
+    const rhoBulk = 2600.0 * (1.0 - phi);
+    const kTherm = (1.95 * (1.0 - phi)) + (0.45 * illiteFrac);
+    const Cspec = 850.0;
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    return {
+      illiteLayerFraction: parseFloat(illiteFrac.toFixed(3)),
+      residualSmectiteFraction: parseFloat(Scurr.toFixed(3)),
+      reichweiteOrderingClass: reichweiteClass,
+      illitizedThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      metamorphicGradeClass: gradeClass,
+      illitizationContext: `Clay Illitization at ${TC.toFixed(0)} C (${(illiteFrac * 100).toFixed(1)}% Illite, ${reichweiteClass}, TIU=${TIU.toFixed(0)})`
+    };
+  }
 }
 
 

@@ -13557,6 +13557,58 @@ describe('Mars-to-Neptune Jupiter Gravity Assist, Impact Hydrothermal & Zeolite 
     });
 });
 
+describe('Mars-to-Arrokoth KBO Transfer, Clay Illitization & Metamorphic Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to Kuiper Belt Object 48695 Arrokoth', () => {
+        // Mars to Arrokoth (300 km Mars alt, 44.581 AU heliocentric distance, 3500 km flyby pericenter):
+        const kbo = TrajectoryEngine.computeMarsToArrokothKBOTransfer(300.0, 44.581, 3500.0);
+        expect(kbo.semiMajorAxisAU).to.be.closeTo(23.052, 0.5); // ~23.05 AU
+        expect(kbo.eccentricity).to.be.closeTo(0.9339, 0.01); // e ~ 0.934
+        expect(kbo.timeOfFlightDays).to.be.closeTo(20213.5, 500.0); // ~20214 days (~55.3 yr)
+        expect(kbo.timeOfFlightYears).to.be.closeTo(55.34, 1.5); // ~55.3 yr
+        expect(kbo.marsDepartureDeltaVKmS).to.be.closeTo(7.346, 0.6); // ~7.35 km/s TKI
+        expect(kbo.hyperbolicExcessVelocityKmS).to.be.closeTo(9.613, 0.6); // ~9.61 km/s v_inf
+        expect(kbo.encounterRelativeVelocityKmS).to.be.closeTo(3.314, 0.4); // ~3.31 km/s flyby v_rel
+        expect(kbo.kboContext).to.include('Mars-to-Arrokoth KBO');
+    });
+
+    it('should calculate burial diagenetic illitization kinetics of smectite clay into ordered illite-smectite', () => {
+        // 90% initial smectite, 120 C burial temp, 0.05 M K+, 10 Myr duration:
+        const illite = KRCEngine.computeMartianSmectiteIllitizationKinetics(0.90, 120.0, 0.05, 10.0);
+        expect(illite.illiteLayerFraction).to.be.greaterThan(0.90); // > 90% illitized
+        expect(illite.residualSmectiteFraction).to.be.lessThan(0.10); // < 10% residual smectite
+        expect(illite.reichweiteOrderingClass).to.include('Highly Ordered R3 (ISII) Mixed-Layer / Pure Illite-Muscovite');
+        expect(illite.illitizedThermalInertiaTIU).to.be.closeTo(2250.0, 200.0); // ~2250 tiu compacted shale
+        expect(illite.metamorphicGradeClass).to.include('Anchizone to Epizone Low-Grade Metamorphic Horizon');
+        expect(illite.illitizationContext).to.include('Clay Illitization');
+    });
+
+    it('should discriminate Expandable Smectite vs Ordered Mixed-Layer I/S vs Pure Metamorphic Illite/Muscovite in CRISM spectra', () => {
+        // Smectite (Montmorillonite in Mawrth Vallis: BD1400 = 0.03, BD1900 = 0.08, BD2200 = 0.07, BD2350 = 0.01):
+        const smect = BandMathEngine.computeCRISMSmectiteIlliteMuscoviteMetamorphicIndices(0.03, 0.08, 0.07, 0.01);
+        expect(smect.isAlPhyllosilicateDetected).to.be.true;
+        expect(smect.metamorphicSpeciesClass).to.include('Expandable Smectite (Montmorillonite / Beidellite)');
+        expect(smect.mineralSpecies).to.include('Montmorillonite');
+        expect(smect.hydrationRatio).to.be.greaterThan(0.85);
+
+        // Mixed-layer I/S (BD1400 = 0.03, BD1900 = 0.04, BD2200 = 0.07, BD2350 = 0.03):
+        const isLayer = BandMathEngine.computeCRISMSmectiteIlliteMuscoviteMetamorphicIndices(0.03, 0.04, 0.07, 0.03);
+        expect(isLayer.isAlPhyllosilicateDetected).to.be.true;
+        expect(isLayer.metamorphicSpeciesClass).to.include('Ordered Mixed-Layer Illite-Smectite (I/S)');
+        expect(isLayer.mineralSpecies).to.include('Mixed-Layer I/S');
+
+        // Pure Illite / Muscovite (BD1400 = 0.03, BD1900 = 0.015, BD2200 = 0.07, BD2350 = 0.04):
+        const ill = BandMathEngine.computeCRISMSmectiteIlliteMuscoviteMetamorphicIndices(0.03, 0.015, 0.07, 0.04);
+        expect(ill.isAlPhyllosilicateDetected).to.be.true;
+        expect(ill.metamorphicSpeciesClass).to.include('Diagenetic Illite / Metamorphic Muscovite (Sericite)');
+        expect(ill.mineralSpecies).to.include('Illite / Muscovite');
+        expect(ill.chemicalFormula).to.include('KAl2(AlSi3O10)(OH)2');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMSmectiteIlliteMuscoviteMetamorphicIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAlPhyllosilicateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

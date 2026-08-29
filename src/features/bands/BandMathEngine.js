@@ -7900,6 +7900,58 @@ export class BandMathEngine {
       hydrothermalDiageneticContext: context
     };
   }
+
+  /**
+   * Discriminate Expandable Smectite (Montmorillonite) vs Mixed-Layer Illite-Smectite (I/S) vs Pure Metamorphic Illite/Muscovite from CRISM 1.40 um, 1.90 um, 2.20 um, and 2.35 um bands.
+   * Reference: Bishop et al. (2008), Bristow et al. (2015, 2018), Viviano-Beck et al. (2014) for Martian Clay Metamorphism.
+   * @param {number} [band1400OHDepth=0.03] - BD1400 structural Al-OH / H2O depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.02] - BD1900 interlayer H2O absorption depth (0.0 to 0.50)
+   * @param {number} [band2200AlOHDepth=0.07] - BD2200 primary Al-OH octahedral vibration depth (0.0 to 0.50)
+   * @param {number} [band2350IlliteShoulderDepth=0.04] - BD2350 illite/muscovite diagnostic Al-OH combination shoulder depth (0.0 to 0.40)
+   * @returns {{isAlPhyllosilicateDetected: boolean, metamorphicSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, hydrationRatio: number, metamorphicGradeContext: string}}
+   */
+  static computeCRISMSmectiteIlliteMuscoviteMetamorphicIndices(band1400OHDepth = 0.03, band1900WaterDepth = 0.02, band2200AlOHDepth = 0.07, band2350IlliteShoulderDepth = 0.04) {
+    const d1400 = Math.max(0.0, band1400OHDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2200 = Math.max(0.0, band2200AlOHDepth);
+    const d2350 = Math.max(0.0, band2350IlliteShoulderDepth);
+
+    const isAlPhyllo = d2200 >= 0.025 && (d1400 >= 0.015 || d1900 >= 0.015);
+    const hydRatio = d2200 > 1e-4 ? d1900 / d2200 : 0.0;
+
+    let spClass = 'Non-Aluminous Matrix / Basalt';
+    let species = 'Basaltic Regolith';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Detectable Al-Phyllosilicate Absorption';
+
+    if (isAlPhyllo) {
+      if (hydRatio >= 0.85 && d2350 < 0.025) {
+        spClass = 'Expandable Smectite (Montmorillonite / Beidellite)';
+        species = 'Montmorillonite';
+        formula = '(Na,Ca)0.33(Al,Mg)2(Si4O10)(OH)2 * nH2O';
+        context = 'Low-Temperature Aqueous Alteration / Paleolake Sedimentation or Pedogenic Leaching';
+      } else if (hydRatio >= 0.35) {
+        spClass = 'Ordered Mixed-Layer Illite-Smectite (I/S)';
+        species = 'Mixed-Layer I/S';
+        formula = 'Kx(Al,Mg)2(Si4-xAlxO10)(OH)2';
+        context = 'Burial Diagenetic Heating (T > 80-120 C) / Hydrothermal Transition Zone';
+      } else {
+        spClass = 'Diagenetic Illite / Metamorphic Muscovite (Sericite)';
+        species = 'Illite / Muscovite';
+        formula = 'KAl2(AlSi3O10)(OH)2';
+        context = 'High-Grade Hydrothermal / Anchizone Metamorphic Recrystallization (Deep Noachian Basement / Conduit)';
+      }
+    }
+
+    return {
+      isAlPhyllosilicateDetected: isAlPhyllo,
+      metamorphicSpeciesClass: spClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationRatio: parseFloat(hydRatio.toFixed(3)),
+      metamorphicGradeContext: context
+    };
+  }
 }
 
 
