@@ -16341,6 +16341,56 @@ describe('Mars-to-Polyhymnia Transfer, Slavkite Metasomatism & Multi-Cation Spec
     });
 });
 
+describe('Mars-to-Circe Transfer, Ransomite Metasomatism & Copper-Ferric Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to carbonaceous asteroid (34) Circe and orbit capture', () => {
+        // Mars to Circe (300 km Mars alt, 2.685 AU distance, 15 km capture alt, 5.50 deg plane change):
+        const ci = TrajectoryEngine.computeMarsToCirceTransfer(300.0, 2.685, 15.0, 5.50);
+        expect(ci.semiMajorAxisAU).to.be.closeTo(2.104, 0.1); // ~2.10 AU
+        expect(ci.eccentricity).to.be.closeTo(0.2759, 0.01); // e ~ 0.276
+        expect(ci.timeOfFlightDays).to.be.closeTo(556.62, 30.0); // ~557 days (~1.52 yr)
+        expect(ci.timeOfFlightYears).to.be.closeTo(1.52, 0.1); // ~1.52 yr
+        expect(ci.marsDepartureDeltaVKmS).to.be.closeTo(2.698, 0.5); // ~2.70 km/s TCiI
+        expect(ci.circeOrbitInsertionDeltaVKmS).to.be.closeTo(2.434, 0.5); // ~2.43 km/s CiOI
+        expect(ci.totalMissionDeltaVKmS).to.be.closeTo(5.132, 1.0); // ~5.13 km/s total
+        expect(ci.circeContext).to.include('Mars-to-Circe');
+    });
+
+    it('should calculate low-temperature acid alteration into ransomite copper-ferric sulfate and thermal inertia', () => {
+        // 28% initial porosity, 14 C ambient temp, 0.36 copper-ferric activity product, 210 yr duration:
+        const ran = KRCEngine.computeMartianRansomiteMetasomatism(0.28, 14.0, 0.36, 210.0);
+        expect(ran.ransomiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(ran.boundWaterYieldWeightPercent).to.be.greaterThan(8.0); // > 8 wt% bound H2O
+        expect(ran.induratedHexahydrateThermalInertiaTIU).to.be.closeTo(1485.4, 200.0); // ~1485 tiu
+        expect(ran.copperSulfateFaciesClass).to.include('Indurated Ransomite Facies');
+        expect(ran.ransomiteContext).to.include('Ransomite at 14 C');
+    });
+
+    it('should discriminate Ransomite vs Chalcanthite vs Roemerite in CRISM spectra', () => {
+        // Ransomite (Nili Fossae / Terra Sabaea / Noctis: BD800 = 0.045, BD1440 = 0.035, BD1940 = 0.045, BD2400 = 0.035):
+        const ran = BandMathEngine.computeCRISMRansomiteCopperFerricSpeciationIndices(0.045, 0.035, 0.045, 0.035);
+        expect(ran.isCopperFerricSulfateDetected).to.be.true;
+        expect(ran.sulfateMineralClass).to.include('Hexahydrated Ransomite Copper-Ferric Sulfate Facies');
+        expect(ran.mineralSpecies).to.include('Ransomite');
+        expect(ran.gossanParagenesis).to.include('Oxidized Copper-Ferric Sulfide Gossan Outcrop');
+
+        // Chalcanthite (BD800 = 0.050, BD1440 = 0.035, BD1940 = 0.055, BD2400 = 0.010):
+        const chc = BandMathEngine.computeCRISMRansomiteCopperFerricSpeciationIndices(0.050, 0.035, 0.055, 0.010);
+        expect(chc.isCopperFerricSulfateDetected).to.be.true;
+        expect(chc.sulfateMineralClass).to.include('Pentahydrated Chalcanthite Copper Sulfate Facies');
+        expect(chc.mineralSpecies).to.include('Chalcanthite');
+
+        // Roemerite (BD800 = 0.010, BD1440 = 0.035, BD1940 = 0.045, BD2400 = 0.035):
+        const roe = BandMathEngine.computeCRISMRansomiteCopperFerricSpeciationIndices(0.010, 0.035, 0.045, 0.035);
+        expect(roe.isCopperFerricSulfateDetected).to.be.true;
+        expect(roe.sulfateMineralClass).to.include('Tetradecahydrated Roemerite Ferrous-Ferric Sulfate Facies');
+        expect(roe.mineralSpecies).to.include('Roemerite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMRansomiteCopperFerricSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isCopperFerricSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

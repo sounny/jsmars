@@ -11883,6 +11883,67 @@ export class KRCEngine {
       slavkiteContext: `Slavkite at ${TC.toFixed(0)} C, a(NaMgFe)=${aNaMgFe.toFixed(2)} (${(alphaSlv * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature acidic alteration of copper-ferric sulfide gossan into ransomite, hexahydrate compaction, and thermal inertia.
+   * Gossan + Cu2+ + 2 Fe3+ + 4 SO4(2-) + 6 H2O (-5 to 40 C) -> Ransomite (CuFe2(SO4)4·6H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Copper-Bearing Sulfates.
+   * @param {number} [initialHostPorosity=0.28] - Initial gossan host rock porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=14.0] - Ambient alteration temperature in C (-15 to 55 C)
+   * @param {number} [copperFerricFluidActivity=0.36] - Dissolved copper-ferric sulfate activity product (0.01 to 1.0)
+   * @param {number} [durationYears=210.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{ransomiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantCopperFerricPhase: string, induratedHexahydrateThermalInertiaTIU: number, copperSulfateFaciesClass: string, ransomiteContext: string}}
+   */
+  static computeMartianRansomiteMetasomatism(initialHostPorosity = 0.28, ambientTempC = 14.0, copperFerricFluidActivity = 0.36, durationYears = 210.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialHostPorosity));
+    const TC = Math.max(-20.0, Math.min(65.0, ambientTempC));
+    const aCuFe = Math.max(0.005, Math.min(1.0, copperFerricFluidActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.95e4; // 39.5 kJ/mol for ransomite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.8e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aCuFe, 0.40);
+    const alphaRan = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural water yield (wt%)
+    const wH2OPct = alphaRan * 16.89;
+
+    // Hexahydrate crystal compaction and cementing
+    const phiResidual = phi0 * (1.0 - (0.40 * alphaRan));
+    const rhoGrain = 2650.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.10; // W/(m K)
+    const Cspec = 880.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Ransomite (CuFe2(SO4)4·6H2O)';
+    let rClass = 'Hexahydrated Copper-Ferric Sulfate Facies';
+
+    if (alphaRan >= 0.50 && TC >= -5.0 && TC <= 40.0 && aCuFe >= 0.15) {
+      species = 'Ransomite (CuFe2(SO4)4·6H2O)';
+      rClass = 'Indurated Ransomite Facies (Nili Fossae / Terra Sabaea / Noctis)';
+    } else if (TC > 40.0) {
+      species = 'Chalcanthite-Roemerite Association';
+      rClass = 'High-Temperature Acid Cu-Fe Sulfate Sequence';
+    } else {
+      species = 'Covellite-Jarosite Weathering Residue';
+      rClass = 'Sulfide Weathering Transition';
+    }
+
+    return {
+      ransomiteConversionFraction: parseFloat(alphaRan.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantCopperFerricPhase: species,
+      induratedHexahydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      copperSulfateFaciesClass: rClass,
+      ransomiteContext: `Ransomite at ${TC.toFixed(0)} C, a(CuFe)=${aCuFe.toFixed(2)} (${(alphaRan * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${rClass})`
+    };
+  }
 }
 
 
