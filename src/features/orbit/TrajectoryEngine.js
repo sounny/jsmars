@@ -10517,6 +10517,81 @@ export class TrajectoryEngine {
       astraeaContext: `Mars-to-Astraea (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, AOI=${dvAoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to stony H-chondrite parent asteroid (6) Hebe and orbit capture.
+   * a = ( r_mars + r_hebe ) / 2
+   * e = ( r_hebe - r_mars ) / ( r_hebe + r_mars )
+   * Reference: Gaffey & Gilbert (1998), Marsset et al. (2020), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [hebeDistanceAU=2.426] - Hebe heliocentric distance in AU (1.9 to 3.0 AU)
+   * @param {number} [hebePeriapsisAltitudeKm=25.0] - Hebe orbit insertion periapsis altitude in km (5 to 300 km)
+   * @param {number} [inclinationPlaneChangeDeg=14.77] - Orbital plane change angle in degrees (0 to 30 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, hebeOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, hebeContext: string}}
+   */
+  static computeMarsToHebeTransfer(marsParkingAltitudeKm = 300.0, hebeDistanceAU = 2.426, hebePeriapsisAltitudeKm = 25.0, inclinationPlaneChangeDeg = 14.77) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rHAU = Math.max(1.8, Math.min(3.2, hebeDistanceAU));
+    const hpHKm = Math.max(5.0, hebePeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muHebe = 9.30; // km^3/s^2
+    const rHebeKm = 93.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rHDistKm = rHAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rHDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rHDistKm - rMarsDistKm) / (rHDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvThiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Hebe capture
+    const vHCircKmS = Math.sqrt(muSun / rHDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rHDistKm) - (1.0 / aKm)));
+    const vInfHKmS = Math.abs(vHCircKmS - vArrKmS);
+
+    const rpHKm = rHebeKm + hpHKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpHKm / (1.0 - eCap);
+
+    const vHypHKmS = Math.sqrt(Math.pow(vInfHKmS, 2.0) + ((2.0 * muHebe) / rpHKm));
+    const vCapHKmS = Math.sqrt(muHebe * ((2.0 / rpHKm) - (1.0 / aCapKm)));
+    const dvHoiKmS = vHypHKmS - vCapHKmS;
+
+    const dvTotKmS = dvThiMarsKmS + dvHoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvThiMarsKmS.toFixed(3)),
+      hebeOrbitInsertionDeltaVKmS: parseFloat(dvHoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      hebeContext: `Mars-to-Hebe (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, HOI=${dvHoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

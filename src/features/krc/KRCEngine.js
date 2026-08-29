@@ -10296,6 +10296,67 @@ export class KRCEngine {
       talcCarbonateContext: `Talc-Carbonate Soapstone at ${TC.toFixed(0)} C, X(CO2)=${xCO2.toFixed(2)} (${(alphaTC * 100).toFixed(1)}% converted, ${wSoapPct.toFixed(1)}% Soapstone, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate high-temperature pneumatolytic greisenization of evolved felsic crust into topaz-quartz greisen, matrix induration, and thermal inertia.
+   * Felsic Crust + HF + H2O (350-550 C) -> Topaz (Al2SiO4(F,OH)2) + Zinnwaldite Mica + Quartz Greisen
+   * Reference: Viviano-Beck et al. (2014), Ehlmann et al. (2016), Carter et al. (2013) for Martian High-Temperature Pneumatolytic Alteration.
+   * @param {number} [leucogranitePorosity=0.14] - Initial evolved granitic/felsic crust porosity (0.02 to 0.40)
+   * @param {number} [pneumatolyticTempC=420.0] - Metasomatic fluid temperature in C (250 to 650 C)
+   * @param {number} [fluorineActivityHF=0.15] - Fluid HF activity / fluorine fugacity ratio (0.01 to 0.80)
+   * @param {number} [durationYears=400.0] - Pneumatolytic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{greisenConversionFraction: number, topazYieldWeightPercent: number, dominantGreisenSpecies: string, induratedGreisenThermalInertiaTIU: number, greisenFaciesClass: string, topazContext: string}}
+   */
+  static computeMartianTopazGreisenMetasomatism(leucogranitePorosity = 0.14, pneumatolyticTempC = 420.0, fluorineActivityHF = 0.15, durationYears = 400.0) {
+    const phi0 = Math.max(0.01, Math.min(0.45, leucogranitePorosity));
+    const TC = Math.max(200.0, Math.min(700.0, pneumatolyticTempC));
+    const aHF = Math.max(0.005, Math.min(1.0, fluorineActivityHF));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.40e4; // 64 kJ/mol for greisen topaz crystallization
+
+    // Reaction rate constant
+    const kRate = 5.5e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(aHF);
+    const alphaGreisen = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Topaz yield (wt%)
+    const wTopazPct = alphaGreisen * 52.0;
+
+    // Quartz-topaz greisen void infilling
+    const phiResidual = phi0 * (1.0 - (0.80 * alphaGreisen));
+    const rhoGrain = 3100.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.95; // W/(m K)
+    const Cspec = 840.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Fluor-Topaz + Quartz Greisen';
+    let gClass = 'Pneumatolytic Topaz Greisen Facies';
+
+    if (aHF >= 0.10 && TC >= 350.0 && TC <= 550.0) {
+      species = 'Fluor-Topaz (Al2SiO4(F,OH)2) + Quartz';
+      gClass = 'High-Temperature Pneumatolytic Topaz Greisen (Syrtis Major / Terra Sirenum)';
+    } else if (TC > 550.0) {
+      species = 'Andalusite-Corundum Pyrometamorphic Facies';
+      gClass = 'Magmatic Contact Skarn Transition';
+    } else {
+      species = 'Incipient Sericitic / Muscovite Greisen';
+      gClass = 'Low-Temperature Hydrothermal Greisen Margin';
+    }
+
+    return {
+      greisenConversionFraction: parseFloat(alphaGreisen.toFixed(3)),
+      topazYieldWeightPercent: parseFloat(wTopazPct.toFixed(1)),
+      dominantGreisenSpecies: species,
+      induratedGreisenThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      greisenFaciesClass: gClass,
+      topazContext: `Topaz Greisen at ${TC.toFixed(0)} C, a(HF)=${aHF.toFixed(2)} (${(alphaGreisen * 100).toFixed(1)}% converted, ${wTopazPct.toFixed(1)}% Topaz, TIU=${TIU.toFixed(0)}, ${gClass})`
+    };
+  }
 }
 
 

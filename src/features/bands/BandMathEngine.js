@@ -9481,6 +9481,60 @@ export class BandMathEngine {
       metasomaticEnvironment: env
     };
   }
+
+  /**
+   * Discriminate High-Temperature Pneumatolytic F-OH Minerals (Fluor-Topaz vs Hydroxyl-Topaz vs Muscovite Greisen vs Felsic Protolith) from CRISM 1.200 um, 2.080 um, 2.210 um, and 2.350 um absorption bands.
+   * Reference: Viviano-Beck et al. (2014), Ehlmann et al. (2016), Carter et al. (2013) for Martian Pneumatolytic Topaz Greisen.
+   * @param {number} [band1200OHDepth=0.015] - BD1200 topaz weak fundamental OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2080AlOHDepth=0.045] - BD2080 topaz diagnostic Al-F-OH vibrational depth (0.0 to 0.50)
+   * @param {number} [band2210AlOHDepth=0.060] - BD2210 shifted Al-OH doublet component depth (0.0 to 0.50)
+   * @param {number} [band2350FOHDepth=0.020] - BD2350 high-temperature fluorine combination depth (0.0 to 0.50)
+   * @returns {{isTopazGreisenDetected: boolean, greisenMineralClass: string, mineralSpecies: string, chemicalFormula: string, pneumatolyticEnvironment: string}}
+   */
+  static computeCRISMTopazGreisenSpeciationIndices(band1200OHDepth = 0.015, band2080AlOHDepth = 0.045, band2210AlOHDepth = 0.060, band2350FOHDepth = 0.020) {
+    const d1200 = Math.max(0.0, band1200OHDepth);
+    const d2080 = Math.max(0.0, band2080AlOHDepth);
+    const d2210 = Math.max(0.0, band2210AlOHDepth);
+    const d2350 = Math.max(0.0, band2350FOHDepth);
+
+    const isFluorTopaz = d2080 >= 0.035 && d2210 >= 0.040 && d2350 >= 0.015;
+    const isHydroxylTopaz = d2080 >= 0.030 && d2210 >= 0.035 && d1200 >= 0.020;
+    const isMuscoviteGreisen = d2210 >= 0.040 && d2080 < 0.020;
+
+    const isGreisen = isFluorTopaz || isHydroxylTopaz || isMuscoviteGreisen;
+
+    let gClass = 'Greisen-Free Felsic/Basaltic Matrix';
+    let species = 'Felsic Protolith';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Evolved Crust';
+
+    if (isGreisen) {
+      if (isFluorTopaz) {
+        gClass = 'Pneumatolytic Fluor-Topaz Greisen Facies';
+        species = 'Fluor-Topaz';
+        formula = 'Al2SiO4(F,OH)2';
+        env = 'High-Temperature Magmatic-Pneumatolytic HF Volatile Degassing (350-550 C, Syrtis Major / Terra Sirenum)';
+      } else if (isHydroxylTopaz) {
+        gClass = 'Hydrothermal Hydroxyl-Topaz Facies';
+        species = 'OH-Rich Topaz';
+        formula = 'Al2SiO4(OH)2';
+        env = 'Moderate-Temperature F-Poor Hydrothermal Circulation';
+      } else {
+        gClass = 'Phyllic / Muscovite Greisen Border';
+        species = 'Muscovite + Quartz';
+        formula = 'KAl2(AlSi3O10)(OH)2';
+        env = 'Late-Stage Magmatic Hydrothermal Greisenization';
+      }
+    }
+
+    return {
+      isTopazGreisenDetected: isGreisen,
+      greisenMineralClass: gClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      pneumatolyticEnvironment: env
+    };
+  }
 }
 
 

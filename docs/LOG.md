@@ -815,3 +815,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary direct transfer from Mars to Mercury-crossing asteroid (3200) Phaethon
 ?: AssertionError: expected 28.13 to be close to 31.84 +/- 3
     at n.<anonymous> (unit.js:14659:60)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 10:30:55 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate sub-greenschist facies hydrothermal metamorphism, porosity reduction, and crystalline metabasalt thermal inertia
+?: AssertionError: expected undefined to be a number or a date
+    at n.<anonymous> (unit.js:14235:58)

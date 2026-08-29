@@ -15040,6 +15040,55 @@ describe('Mars-to-Astraea Transfer, Talc-Carbonate Metasomatism & Soapstone Spec
     });
 });
 
+describe('Mars-to-Hebe Transfer, Topaz Greisen Metasomatism & Topaz Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony H-chondrite parent asteroid (6) Hebe and orbit capture', () => {
+        // Mars to Hebe (300 km Mars alt, 2.426 AU distance, 25 km capture alt, 14.77 deg plane change):
+        const heb = TrajectoryEngine.computeMarsToHebeTransfer(300.0, 2.426, 25.0, 14.77);
+        expect(heb.semiMajorAxisAU).to.be.closeTo(1.975, 0.1); // ~1.97 AU
+        expect(heb.eccentricity).to.be.closeTo(0.2285, 0.01); // e ~ 0.228
+        expect(heb.timeOfFlightDays).to.be.closeTo(506.00, 30.0); // ~506 days (~1.38 yr)
+        expect(heb.timeOfFlightYears).to.be.closeTo(1.38, 0.1); // ~1.38 yr
+        expect(heb.marsDepartureDeltaVKmS).to.be.closeTo(5.045, 0.5); // ~5.05 km/s THI
+        expect(heb.hebeOrbitInsertionDeltaVKmS).to.be.closeTo(2.112, 0.5); // ~2.11 km/s HOI
+        expect(heb.totalMissionDeltaVKmS).to.be.closeTo(7.157, 1.0); // ~7.16 km/s total
+        expect(heb.hebeContext).to.include('Mars-to-Hebe');
+    });
+
+    it('should calculate high-temperature pneumatolytic greisenization of felsic crust into topaz-quartz greisen and indurated thermal inertia', () => {
+        // 14% initial porosity, 420 C pneumatolytic temp, 0.15 a(HF), 400 yr duration:
+        const top = KRCEngine.computeMartianTopazGreisenMetasomatism(0.14, 420.0, 0.15, 400.0);
+        expect(top.greisenConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(top.topazYieldWeightPercent).to.be.greaterThan(25.0); // > 25 wt% topaz
+        expect(top.induratedGreisenThermalInertiaTIU).to.be.closeTo(2780.0, 200.0); // ~2780 tiu
+        expect(top.greisenFaciesClass).to.include('High-Temperature Pneumatolytic Topaz Greisen');
+        expect(top.topazContext).to.include('Topaz Greisen at 420 C');
+    });
+
+    it('should discriminate Fluor-Topaz vs Hydroxyl-Topaz vs Muscovite Greisen in CRISM spectra', () => {
+        // Fluor-Topaz (Syrtis Major / Terra Sirenum: BD1200 = 0.015, BD2080 = 0.045, BD2210 = 0.060, BD2350 = 0.020):
+        const top = BandMathEngine.computeCRISMTopazGreisenSpeciationIndices(0.015, 0.045, 0.060, 0.020);
+        expect(top.isTopazGreisenDetected).to.be.true;
+        expect(top.greisenMineralClass).to.include('Pneumatolytic Fluor-Topaz Greisen Facies');
+        expect(top.mineralSpecies).to.include('Fluor-Topaz');
+        expect(top.pneumatolyticEnvironment).to.include('High-Temperature Magmatic-Pneumatolytic HF Volatile Degassing');
+
+        // Hydroxyl-Topaz (BD1200 = 0.025, BD2080 = 0.035, BD2210 = 0.045, BD2350 = 0.010):
+        const ohtop = BandMathEngine.computeCRISMTopazGreisenSpeciationIndices(0.025, 0.035, 0.045, 0.010);
+        expect(ohtop.isTopazGreisenDetected).to.be.true;
+        expect(ohtop.greisenMineralClass).to.include('Hydrothermal Hydroxyl-Topaz Facies');
+        expect(ohtop.mineralSpecies).to.include('OH-Rich Topaz');
+
+        // Muscovite Greisen (BD1200 = 0.005, BD2080 = 0.010, BD2210 = 0.055, BD2350 = 0.010):
+        const musc = BandMathEngine.computeCRISMTopazGreisenSpeciationIndices(0.005, 0.010, 0.055, 0.010);
+        expect(musc.isTopazGreisenDetected).to.be.true;
+        expect(musc.greisenMineralClass).to.include('Phyllic / Muscovite Greisen Border');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMTopazGreisenSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isTopazGreisenDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
