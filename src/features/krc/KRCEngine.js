@@ -8256,6 +8256,62 @@ export class KRCEngine {
       perchlorateFlowContext: `Mg(ClO4)2 Brine at ${TK.toFixed(0)}K (${vPoreCmDay.toFixed(1)} cm/day, ${etaCP.toFixed(0)} cP, TIU=${TIU.toFixed(0)}, ${phaseClass})`
     };
   }
+
+  /**
+   * Calculate South Polar Layered Deposits (SPLD) subglacial basal melting equilibrium, MARSIS radar reflector liquid lake stability, and thermal state.
+   * T_base = T_surf + ( q_geo * H_ice ) / k_ice
+   * T_melt = 273.15 - Delta_T_press - Delta_T_salinity
+   * Reference: Orosei et al. (2018), Lauro et al. (2021), Sori & Bramson (2019) for Martian Subglacial Lakes.
+   * @param {number} [iceSheetThicknessKm=1.5] - Polar ice sheet thickness in km (0.2 to 4.0 km)
+   * @param {number} [surfaceTempK=160.0] - Mean polar surface temperature in K (140 to 190 K)
+   * @param {number} [geothermalHeatFluxMWM2=75.0] - Geothermal heat flux in mW/m^2 (20 to 120 mW/m^2)
+   * @param {number} [perchlorateSalinityGPerKg=300.0] - Dissolved perchlorate salt concentration in g/kg (0 to 450 g/kg)
+   * @returns {{isBasalMeltingOccurring: boolean, basalTemperatureK: number, basalTemperatureC: number, basalMeltingPointK: number, basalThermalMarginK: number, subglacialHydrologyClass: string, subglacialLakeContext: string}}
+   */
+  static computeMartianSubglacialBasalMeltingEquilibrium(iceSheetThicknessKm = 1.5, surfaceTempK = 160.0, geothermalHeatFluxMWM2 = 75.0, perchlorateSalinityGPerKg = 300.0) {
+    const HKm = Math.max(0.1, iceSheetThicknessKm);
+    const TsurfK = Math.max(120.0, Math.min(220.0, surfaceTempK));
+    const qGeomW = Math.max(10.0, geothermalHeatFluxMWM2);
+    const Sppt = Math.max(0.0, Math.min(450.0, perchlorateSalinityGPerKg));
+
+    const HM = HKm * 1000.0;
+    const qGeoW = qGeomW / 1000.0; // W/m^2
+    const kIce = 2.00; // W/(m K) effective ice-dust conductivity
+
+    // Basal steady-state temperature
+    const TbaseK = TsurfK + ((qGeoW * HM) / kIce);
+    const TbaseC = TbaseK - 273.15;
+
+    // Freezing point depression
+    const deltaTpress = 0.074 * HKm; // K
+    const deltaTsal = 0.22 * Sppt; // K depression from Mg/Ca perchlorates
+    const TmeltK = 273.15 - deltaTpress - deltaTsal;
+
+    // Basal margin
+    const marginK = TbaseK - TmeltK;
+    const isMelting = marginK >= 0.0;
+
+    let hydroClass = 'Frozen Cold-Based Glacial Bed (Basal Radar Attenuation)';
+    if (isMelting) {
+      if (Sppt >= 200.0) {
+        hydroClass = 'Stable Hypersaline Subglacial Liquid Water Lake (Planum Australe MARSIS Radar Anomaly)';
+      } else {
+        hydroClass = 'Active Basal Hydrothermal Melting & Subglacial Drainage Network';
+      }
+    } else if (marginK >= -10.0) {
+      hydroClass = 'Near-Melting Polythermal Glacier Bed (Metastable Under Local Magmatic Plumes)';
+    }
+
+    return {
+      isBasalMeltingOccurring: isMelting,
+      basalTemperatureK: parseFloat(TbaseK.toFixed(2)),
+      basalTemperatureC: parseFloat(TbaseC.toFixed(2)),
+      basalMeltingPointK: parseFloat(TmeltK.toFixed(2)),
+      basalThermalMarginK: parseFloat(marginK.toFixed(2)),
+      subglacialHydrologyClass: hydroClass,
+      subglacialLakeContext: `Subglacial Bed at ${HKm.toFixed(1)}km (T_base=${TbaseC.toFixed(1)} C, T_melt=${(TmeltK - 273.15).toFixed(1)} C, Margin=${marginK.toFixed(1)}K, ${hydroClass})`
+    };
+  }
 }
 
 

@@ -7611,6 +7611,57 @@ export class BandMathEngine {
       rslAstrobiologicalContext: context
     };
   }
+
+  /**
+   * Discriminate Crystalline Water Ice (H2O) vs Carbon Dioxide Dry Ice (CO2) from CRISM 1.435 um, 1.50 um, 2.00 um, 2.15 um, and 2.35 um absorption bands.
+   * Reference: Bibring et al. (2004), Langevin et al. (2005), Brown et al. (2008), Viviano-Beck et al. (2014) for Polar Cap Volatiles.
+   * @param {number} [band1435CO2Depth=0.01] - BD1435 diagnostic CO2 narrow absorption depth (0.0 to 0.40)
+   * @param {number} [band1500WaterIceDepth=0.08] - BD1500 broad H2O crystalline ice absorption depth (0.0 to 0.50)
+   * @param {number} [band2000WaterIceDepth=0.10] - BD2000 fundamental H2O/CO2 combination depth (0.0 to 0.60)
+   * @param {number} [band2150CO2Depth=0.01] - BD2150 CO2 ice combination depth (0.0 to 0.40)
+   * @param {number} [band2350CO2Depth=0.01] - BD2350 diagnostic CO2 overtone depth (0.0 to 0.40)
+   * @returns {{isVolatileIceDetected: boolean, polarIceSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, cryogenicVolatileContext: string}}
+   */
+  static computeCRISMIceSpeciationIndices(band1435CO2Depth = 0.01, band1500WaterIceDepth = 0.08, band2000WaterIceDepth = 0.10, band2150CO2Depth = 0.01, band2350CO2Depth = 0.01) {
+    const d1435 = Math.max(0.0, band1435CO2Depth);
+    const d1500 = Math.max(0.0, band1500WaterIceDepth);
+    const d2000 = Math.max(0.0, band2000WaterIceDepth);
+    const d2150 = Math.max(0.0, band2150CO2Depth);
+    const d2350 = Math.max(0.0, band2350CO2Depth);
+
+    const isCO2Ice = (d1435 >= 0.035 || d2350 >= 0.035) && (d2150 >= 0.025 || d2000 >= 0.050);
+    const isWaterIce = d1500 >= 0.040 && d2000 >= 0.050 && d2350 < 0.025 && d1435 < 0.025;
+
+    let iceClass = 'Ice-Free Silicate Regolith / Dust';
+    let species = 'Basaltic Regolith';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Unfrozen or Dry Soil without Diagnostic Volatile Ice Absorption';
+
+    if (isCO2Ice && isWaterIce) {
+      iceClass = 'Mixed CO2 - H2O Polar Slab Ice';
+      species = 'Carbon Dioxide Ice + Water Ice Matrix';
+      formula = 'CO2(s) + H2O(s)';
+      context = 'Co-Condensing Polar Frost / Springtime Sublimating Residual Cap Margin';
+    } else if (isCO2Ice) {
+      iceClass = 'Carbon Dioxide Dry Ice (CO2 Ice Slab)';
+      species = 'Dry Ice (Carbon Dioxide)';
+      formula = 'CO2(s)';
+      context = 'Seasonal Polar Cap / South Polar Residual Cap Swiss-Cheese Terrain (Planum Australe)';
+    } else if (isWaterIce) {
+      iceClass = 'Crystalline Water Ice (H2O Ice Sheet)';
+      species = 'Crystalline Water Ice';
+      formula = 'H2O(s)';
+      context = 'Perennial North Polar Cap (Planum Boreum) / Mid-Latitude Lobate Debris Aprons (Glacial Flow)';
+    }
+
+    return {
+      isVolatileIceDetected: isCO2Ice || isWaterIce,
+      polarIceSpeciesClass: iceClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      cryogenicVolatileContext: context
+    };
+  }
 }
 
 

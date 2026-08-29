@@ -13270,6 +13270,51 @@ describe('Mars-to-Sedna Inner Oort Cloud Flyby, Perchlorate Brines & Oxychlorine
     });
 });
 
+describe("Mars-to-'Oumuamua Interstellar Chase, Subglacial Lakes & Volatile Ice Speciation", () => {
+    it("should calculate interplanetary hyperbolic chase transfer from Mars to interstellar object 1I/'Oumuamua and relative encounter velocity", () => {
+        // Mars to Oumuamua at 15.0 AU intercept, 300 km Mars alt:
+        const oumuamua = TrajectoryEngine.computeMarsToOumuamuaHyperbolicIntercept(300.0, 15.0);
+        expect(oumuamua.transferTimeDays).to.be.closeTo(4337.8, 100.0); // ~4338 days
+        expect(oumuamua.transferTimeYears).to.be.closeTo(11.876, 0.3); // ~11.88 yr
+        expect(oumuamua.marsDepartureDeltaVKmS).to.be.closeTo(6.692, 0.5); // ~6.69 km/s TII
+        expect(oumuamua.oumuamuaRelativeEncounterVelocityKmS).to.be.closeTo(28.684, 1.0); // ~28.68 km/s relative flyby
+        expect(oumuamua.transferEccentricity).to.be.closeTo(0.8156, 0.02); // e ~ 0.816
+        expect(oumuamua.interceptContext).to.include("1I/'Oumuamua Chase");
+    });
+
+    it('should calculate subglacial basal melting equilibrium and MARSIS radar liquid lake stability', () => {
+        // 1.5 km polar ice, 160 K surface temp, 75 mW/m^2 geothermal flux, 300 g/kg perchlorate salinity:
+        const subglacial = KRCEngine.computeMartianSubglacialBasalMeltingEquilibrium(1.5, 160.0, 75.0, 300.0);
+        expect(subglacial.isBasalMeltingOccurring).to.be.true;
+        expect(subglacial.basalTemperatureK).to.be.closeTo(216.25, 2.0); // ~216.3 K
+        expect(subglacial.basalMeltingPointK).to.be.closeTo(207.04, 2.0); // ~207.0 K
+        expect(subglacial.basalThermalMarginK).to.be.greaterThan(5.0); // > 5 K margin
+        expect(subglacial.subglacialHydrologyClass).to.include('Stable Hypersaline Subglacial Liquid Water Lake');
+        expect(subglacial.subglacialLakeContext).to.include('Subglacial Bed');
+    });
+
+    it('should discriminate Crystalline Water Ice (H2O) vs Carbon Dioxide Dry Ice (CO2) in CRISM spectra', () => {
+        // Water Ice (Planum Boreum / Lobate Debris Apron: BD1435 = 0.01, BD1500 = 0.08, BD2000 = 0.10, BD2150 = 0.01, BD2350 = 0.01):
+        const waterIce = BandMathEngine.computeCRISMIceSpeciationIndices(0.01, 0.08, 0.10, 0.01, 0.01);
+        expect(waterIce.isVolatileIceDetected).to.be.true;
+        expect(waterIce.polarIceSpeciesClass).to.include('Crystalline Water Ice (H2O Ice Sheet)');
+        expect(waterIce.mineralSpecies).to.include('Crystalline Water Ice');
+        expect(waterIce.chemicalFormula).to.include('H2O(s)');
+        expect(waterIce.cryogenicVolatileContext).to.include('Perennial North Polar Cap');
+
+        // Dry Ice (South Pole Swiss-Cheese Terrain: BD1435 = 0.05, BD1500 = 0.01, BD2000 = 0.08, BD2150 = 0.05, BD2350 = 0.06):
+        const dryIce = BandMathEngine.computeCRISMIceSpeciationIndices(0.05, 0.01, 0.08, 0.05, 0.06);
+        expect(dryIce.isVolatileIceDetected).to.be.true;
+        expect(dryIce.polarIceSpeciesClass).to.include('Carbon Dioxide Dry Ice (CO2 Ice Slab)');
+        expect(dryIce.mineralSpecies).to.include('Dry Ice (Carbon Dioxide)');
+        expect(dryIce.chemicalFormula).to.include('CO2(s)');
+
+        // Unfrozen dry soil:
+        const drySoil = BandMathEngine.computeCRISMIceSpeciationIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(drySoil.isVolatileIceDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -7965,6 +7965,64 @@ export class TrajectoryEngine {
       sednaTransferContext: `Mars-to-Sedna Flyby (${tofsYrs.toFixed(1)} yr TOF, ${dvTsiKmS.toFixed(2)} km/s TSI, ${vInfSednaKmS.toFixed(2)} km/s Flyby)`
     };
   }
+
+  /**
+   * Calculate interplanetary high-energy chase transfer from Mars to intercept interstellar object 1I/'Oumuamua in deep space and relative encounter velocity.
+   * a_trans = ( r_mars + r_intercept ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Reference: Meech et al. (2017), Seligman & Laughlin (2018), Hein et al. (2019) for Interstellar Object Intercept Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [interceptDistanceAU=15.0] - Intercept heliocentric distance in AU (5.0 to 50.0 AU)
+   * @returns {{transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, oumuamuaRelativeEncounterVelocityKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, interceptContext: string}}
+   */
+  static computeMarsToOumuamuaHyperbolicIntercept(marsParkingAltitudeKm = 300.0, interceptDistanceAU = 15.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rIntAU = Math.max(3.0, interceptDistanceAU);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rIntDistKm = rIntAU * AU_KM;
+
+    // Hohmann geometry
+    const aTransKm = (rMarsDistKm + rIntDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rIntDistKm - rMarsDistKm) / (rIntDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTiiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Intercept
+    const vInfOumuamuaKmS = 26.33; // Hyperbolic excess of 1I/'Oumuamua
+    const vOumuamuaKmS = Math.sqrt(Math.pow(vInfOumuamuaKmS, 2.0) + ((2.0 * muSun) / rIntDistKm));
+    const vScKmS = Math.sqrt(muSun * ((2.0 / rIntDistKm) - (1.0 / aTransKm)));
+    const vRelKmS = Math.sqrt(Math.pow(vOumuamuaKmS, 2.0) + Math.pow(vScKmS, 2.0));
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTiiKmS.toFixed(3)),
+      oumuamuaRelativeEncounterVelocityKmS: parseFloat(vRelKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      interceptContext: `1I/'Oumuamua Chase at ${rIntAU.toFixed(1)}AU (${tofsYrs.toFixed(1)} yr TOF, ${dvTiiKmS.toFixed(2)} km/s TII, ${vRelKmS.toFixed(1)} km/s Rel Flyby)`
+    };
+  }
 }
 
 
