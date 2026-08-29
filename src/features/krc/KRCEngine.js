@@ -8122,6 +8122,73 @@ export class KRCEngine {
       jarositeParagenesisContext: `Acid-Sulfate pH ${pH.toFixed(1)} (${wJarositePct.toFixed(0)}% Jarosite, ${wPolySulfatePct.toFixed(0)}% Sulfate, TIU=${TIU.toFixed(0)}, ${faciesClass})`
     };
   }
+
+  /**
+   * Calculate subsurface evaporite salt (halite/anhydrite) diapirism, dislocation creep halokinesis rheology, dome uplift rate, and halite thermal inertia.
+   * Delta_P = Delta_rho * g_mars * z
+   * eps_dot = A * sigma^n * exp( -Q / ( R * T ) )
+   * eta_eff = sigma / ( 2 * eps_dot )
+   * v_diapir = ( 2 * Delta_rho * g_mars * r^2 ) / ( 9 * eta_eff )
+   * Reference: Baioni & Tramontana (2016), Jackson et al. (2008), Urai et al. (2008) for Valles Marineris Salt Domes.
+   * @param {number} [sedimentOverburdenThicknessKm=4.0] - Basaltic sediment overburden depth in km (1.0 to 12.0 km)
+   * @param {number} [saltBedThicknessM=500.0] - Evaporite salt source layer thickness in m (50 to 3000 m)
+   * @param {number} [geothermalGradientKPerKm=25.0] - Geothermal gradient in K/km (10 to 50 K/km)
+   * @param {number} [differentialStressMPa=8.8] - Driving tectonic/buoyancy differential stress in MPa (0.5 to 50.0 MPa)
+   * @returns {{burialTemperatureC: number, effectiveSaltViscosityPaS: number, strainRatePerSec: number, diapiricAscentRateMmPerYr: number, haliteThermalInertiaTIU: number, halokinesisStructuralClass: string, diapirismContext: string}}
+   */
+  static computeMartianSaltDiapirismHalokinesisKinetics(sedimentOverburdenThicknessKm = 4.0, saltBedThicknessM = 500.0, geothermalGradientKPerKm = 25.0, differentialStressMPa = 8.8) {
+    const zKm = Math.max(0.5, sedimentOverburdenThicknessKm);
+    const hSaltM = Math.max(20.0, saltBedThicknessM);
+    const gammaGeo = Math.max(5.0, geothermalGradientKPerKm);
+    const sigmaMPa = Math.max(0.1, differentialStressMPa);
+
+    const TsurfK = 215.0;
+    const Rgas = 8.314;
+    const Qcreep = 1.05e5; // 105 kJ/mol
+    const A = 1.6e-4; // MPa^-n s^-1
+    const n = 4.5; // Dislocation creep stress exponent
+    const gMars = 3.72; // m/s^2
+    const deltaRho = 2750.0 - 2160.0; // 590 kg/m^3 buoyancy density contrast
+
+    // Salt source bed temperature
+    const TburialK = TsurfK + (gammaGeo * zKm);
+    const TburialC = TburialK - 273.15;
+
+    // Dislocation creep strain rate (1/s)
+    const epsDot = A * Math.pow(sigmaMPa, n) * Math.exp(-Qcreep / (Rgas * TburialK));
+    const sigmaPa = sigmaMPa * 1.0e6;
+
+    // Effective dynamic viscosity (Pa*s)
+    const etaEff = Math.max(1.0e15, sigmaPa / (2.0 * Math.max(1.0e-25, epsDot)));
+
+    // Stokes diapiric ascent rate (m/s and mm/yr)
+    const rDiapirM = Math.min(2000.0, hSaltM);
+    const vAscentMS = (2.0 * deltaRho * gMars * Math.pow(rDiapirM, 2.0)) / (9.0 * etaEff);
+    const vAscentMmYr = vAscentMS * 3.15576e10; // m/s to mm/yr
+
+    // Thermal inertia of crystalline halite
+    const kTherm = 5.50; // W/(m K)
+    const rhoBulk = 2160.0 * 0.98;
+    const Cspec = 860.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let structClass = 'Incipient Salt Pillow / Low-Relief Swell';
+    if (vAscentMmYr >= 0.10) {
+      structClass = 'Active Piercement Salt Diapir / Extrusive Salt Glacier (Namakier / Candor Chasma)';
+    } else if (vAscentMmYr >= 0.001) {
+      structClass = 'Mature Salt Dome / Bulging Sedimentary Anticlinal Core (Juventae Chasma)';
+    }
+
+    return {
+      burialTemperatureC: parseFloat(TburialC.toFixed(1)),
+      effectiveSaltViscosityPaS: parseFloat(etaEff.toExponential(2)),
+      strainRatePerSec: parseFloat(epsDot.toExponential(2)),
+      diapiricAscentRateMmPerYr: parseFloat(vAscentMmYr.toExponential(2)),
+      haliteThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      halokinesisStructuralClass: structClass,
+      diapirismContext: `Salt Diapirism at ${zKm.toFixed(1)}km (${TburialC.toFixed(0)} C, Viscosity=${etaEff.toExponential(1)} Pa*s, TIU=${TIU.toFixed(0)}, ${structClass})`
+    };
+  }
 }
 
 

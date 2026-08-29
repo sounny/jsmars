@@ -7521,6 +7521,52 @@ export class BandMathEngine {
       acidHydrothermalContext: context
     };
   }
+
+  /**
+   * Discriminate Anhydrous Chloride Salt (Halite) in terminal dry playas vs Hydrated Potash-Magnesium Bittern (Polyhalite) from CRISM VNIR slope and SWIR absorption features.
+   * Reference: Osterloo et al. (2008, 2010), Glotch et al. (2010), Viviano-Beck et al. (2014) for Martian Chloride and Bittern Deposits.
+   * @param {number} [visSlope700To1000=0.12] - 700 to 1000 nm positive spectral slope (0.0 to 0.40)
+   * @param {number} [band1400WaterDepth=0.01] - BD1400 molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1750SulfateDepth=0.01] - BD1750 diagnostic Polyhalite sulfate combination depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 molecular H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2170SulfateDepth=0.01] - BD2170 Polyhalite overtone depth (0.0 to 0.40)
+   * @returns {{isEvaporiteDetected: boolean, evaporiteSalinityClass: string, mineralSpecies: string, chemicalFormula: string, playaPaleolakeContext: string}}
+   */
+  static computeCRISMHalitePolyhaliteSpeciationIndices(visSlope700To1000 = 0.12, band1400WaterDepth = 0.01, band1750SulfateDepth = 0.01, band1900WaterDepth = 0.01, band2170SulfateDepth = 0.01) {
+    const sVNIR = Math.max(0.0, visSlope700To1000);
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1750 = Math.max(0.0, band1750SulfateDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2170 = Math.max(0.0, band2170SulfateDepth);
+
+    const isHalite = sVNIR >= 0.08 && d1400 < 0.020 && d1900 < 0.025;
+    const isPolyhalite = d1900 >= 0.040 && d1750 >= 0.025 && d2170 >= 0.025;
+
+    let evClass = 'Standard Basaltic Regolith';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Characteristic Chloride or Bittern Absorption';
+
+    if (isHalite) {
+      evClass = 'Anhydrous Chloride Salt (Halite Playa Deposit)';
+      species = 'Halite';
+      formula = 'NaCl';
+      context = 'Terminal Desiccation of Ancient Closed-Basin Paleolakes / Chloride Salt Flats with High Astrobiological Preservation in Fluid Inclusions (Terra Sirenum)';
+    } else if (isPolyhalite) {
+      evClass = 'Hydrated Potash-Magnesium Bittern Sulfate (Polyhalite)';
+      species = 'Polyhalite';
+      formula = 'K2Ca2Mg(SO4)4 * 2H2O';
+      context = 'Extreme Late-Stage Evaporation of Hypersaline Brine / Marine or Lacustrine Bittern Liquors';
+    }
+
+    return {
+      isEvaporiteDetected: isHalite || isPolyhalite,
+      evaporiteSalinityClass: evClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      playaPaleolakeContext: context
+    };
+  }
 }
 
 

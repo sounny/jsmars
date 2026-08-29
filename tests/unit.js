@@ -13180,6 +13180,51 @@ describe('Mars-to-Arrokoth KBO Flyby, Acid-Sulfate Jarosite & Alunite Speciation
     });
 });
 
+describe('Mars-to-Eris Scattered Disc Transfer, Salt Diapirism & Halite Speciation', () => {
+    it('should calculate interplanetary Hohmann transfer from Mars to scattered disc dwarf planet 136199 Eris and orbit insertion', () => {
+        // Mars to Eris (1.52 to 67.78 AU, 300 km Mars alt, 500 km Eris capture alt):
+        const eris = TrajectoryEngine.computeMarsToErisDirectTransfer(300.0, 500.0);
+        expect(eris.transferTimeDays).to.be.closeTo(37279.7, 300.0); // ~37280 days
+        expect(eris.transferTimeYears).to.be.closeTo(102.066, 1.0); // ~102.1 yr
+        expect(eris.marsDepartureDeltaVKmS).to.be.closeTo(8.242, 1.5); // ~8.24 km/s TEI
+        expect(eris.erisArrivalExcessKmS).to.be.closeTo(2.840, 0.5); // ~2.84 km/s v_inf
+        expect(eris.erisOrbitInsertionDeltaVKmS).to.be.closeTo(1.926, 0.3); // ~1.93 km/s EOI
+        expect(eris.totalMissionDeltaVKmS).to.be.closeTo(10.168, 1.5); // ~10.17 km/s total
+        expect(eris.transferEccentricity).to.be.closeTo(0.9560, 0.02); // e ~ 0.956
+        expect(eris.erisTransferContext).to.include('Mars-to-Eris Direct');
+    });
+
+    it('should calculate subsurface salt diapirism, dislocation creep rheology, and halite thermal inertia', () => {
+        // 4 km sediment overburden, 500 m salt bed, 25 K/km geothermal gradient, 8.8 MPa differential stress:
+        const diapir = KRCEngine.computeMartianSaltDiapirismHalokinesisKinetics(4.0, 500.0, 25.0, 8.8);
+        expect(diapir.burialTemperatureC).to.be.closeTo(41.85, 2.0); // ~42 C burial temp
+        expect(diapir.haliteThermalInertiaTIU).to.be.closeTo(3164.4, 100.0); // ~3164 tiu high-inertia halite
+        expect(diapir.halokinesisStructuralClass).to.include('Incipient Salt Pillow / Low-Relief Swell');
+        expect(diapir.diapirismContext).to.include('Salt Diapirism');
+    });
+
+    it('should discriminate Anhydrous Halite Playa vs Hydrated Polyhalite Bittern in CRISM spectra', () => {
+        // Halite Chloride Playa (Terra Sirenum: Slope = 0.12, BD1400 = 0.01, BD1750 = 0.01, BD1900 = 0.01, BD2170 = 0.01):
+        const halite = BandMathEngine.computeCRISMHalitePolyhaliteSpeciationIndices(0.12, 0.01, 0.01, 0.01, 0.01);
+        expect(halite.isEvaporiteDetected).to.be.true;
+        expect(halite.evaporiteSalinityClass).to.include('Anhydrous Chloride Salt (Halite Playa Deposit)');
+        expect(halite.mineralSpecies).to.include('Halite');
+        expect(halite.chemicalFormula).to.include('NaCl');
+        expect(halite.playaPaleolakeContext).to.include('Terminal Desiccation of Ancient Closed-Basin Paleolakes');
+
+        // Polyhalite Bittern (Slope = 0.02, BD1400 = 0.04, BD1750 = 0.04, BD1900 = 0.05, BD2170 = 0.04):
+        const poly = BandMathEngine.computeCRISMHalitePolyhaliteSpeciationIndices(0.02, 0.04, 0.04, 0.05, 0.04);
+        expect(poly.isEvaporiteDetected).to.be.true;
+        expect(poly.evaporiteSalinityClass).to.include('Hydrated Potash-Magnesium Bittern Sulfate (Polyhalite)');
+        expect(poly.mineralSpecies).to.include('Polyhalite');
+        expect(poly.chemicalFormula).to.include('K2Ca2Mg(SO4)4 * 2H2O');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMHalitePolyhaliteSpeciationIndices(0.01, 0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isEvaporiteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

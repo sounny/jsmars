@@ -7836,6 +7836,79 @@ export class TrajectoryEngine {
       arrokothTransferContext: `Mars-to-Arrokoth Flyby (${tofsYrs.toFixed(1)} yr TOF, ${dvTkiKmS.toFixed(2)} km/s TKI, ${vInfArrKmS.toFixed(2)} km/s Flyby)`
     };
   }
+
+  /**
+   * Calculate interplanetary Hohmann transfer from Mars to massive scattered disc dwarf planet (136199 Eris) and elliptical orbit insertion.
+   * a_trans = ( r_mars + r_eris ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Delta_V_tot = Delta_V_TEI + Delta_V_EOI
+   * Reference: Brown et al. (2005), Sicardy et al. (2011), Curtis (2013) for Scattered Disc Transfers.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [erisPeriapsisAltitudeKm=500.0] - Eris capture periapsis altitude in km (100 to 50000 km)
+   * @returns {{transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, erisArrivalExcessKmS: number, erisOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, erisTransferContext: string}}
+   */
+  static computeMarsToErisDirectTransfer(marsParkingAltitudeKm = 300.0, erisPeriapsisAltitudeKm = 500.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpEKm = Math.max(100.0, erisPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muEris = 1108.0;
+    const rErisKm = 1163.0;
+
+    const rMarsAU = 1.52368;
+    const rErisAU = 67.781;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rErisDistKm = rErisAU * AU_KM;
+
+    // Hohmann geometry
+    const aTransKm = (rMarsDistKm + rErisDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rErisDistKm - rMarsDistKm) / (rErisDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTeiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Eris arrival
+    const vErisCircKmS = Math.sqrt(muSun / rErisDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rErisDistKm) - (1.0 / aTransKm)));
+    const vInfErisKmS = Math.abs(vErisCircKmS - vArrKmS);
+
+    const rpEKm = rErisKm + hpEKm;
+    const eCap = 0.95; // Highly elliptical capture orbit
+    const aCapKm = rpEKm / (1.0 - eCap);
+
+    const vHypEKmS = Math.sqrt(Math.pow(vInfErisKmS, 2.0) + ((2.0 * muEris) / rpEKm));
+    const vCapEKmS = Math.sqrt(muEris * ((2.0 / rpEKm) - (1.0 / aCapKm)));
+    const dvEoiKmS = vHypEKmS - vCapEKmS;
+
+    const dvTotKmS = dvTeiKmS + dvEoiKmS;
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTeiKmS.toFixed(3)),
+      erisArrivalExcessKmS: parseFloat(vInfErisKmS.toFixed(3)),
+      erisOrbitInsertionDeltaVKmS: parseFloat(dvEoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      erisTransferContext: `Mars-to-Eris Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfErisKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

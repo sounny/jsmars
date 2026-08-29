@@ -621,3 +621,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary Hohmann transfer from Mars to Kuiper Belt contact binary 486958 Arrokoth and flyby speed
 ?: AssertionError: expected 20213.5 to be close to 19992.5 +/- 200
     at n.<anonymous> (unit.js:13142:49)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 01:15:57 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate subsurface salt diapirism, dislocation creep rheology, and halite thermal inertia
+?: AssertionError: expected 'Incipient Salt Pillow / Low-Relief Sw?' to include 'Mature Salt Dome / Bulging Sedimentar?'
+    at n.<anonymous> (unit.js:13202:54)
