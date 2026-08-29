@@ -9697,6 +9697,60 @@ export class BandMathEngine {
       zeolitizationRegime: regime
     };
   }
+
+  /**
+   * Discriminate Martian Monohydrate vs Polyhydrate Iron/Magnesium Sulfates (Szomolnokite vs Kieserite vs Rozenite vs Melanterite) from CRISM 1.470 um, 1.970 um, 2.130 um, and 2.400 um absorption bands.
+   * Reference: Bishop et al. (2009), Roach et al. (2010), Viviano-Beck et al. (2014) for Martian Ferrous Sulfate Mineralogy.
+   * @param {number} [band1470FeOHDepth=0.040] - BD1470 ferrous monohydrate diagnostic Fe2+ electronic absorption depth (0.0 to 0.40)
+   * @param {number} [band1970FeH2ODepth=0.045] - BD1970 shifted monohydrate H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2130FeSO4Depth=0.060] - BD2130 monohydrate sulfate primary vibrational depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.050] - BD2400 sulfate fundamental combination depth (0.0 to 0.50)
+   * @returns {{isSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrationEnvironment: string}}
+   */
+  static computeCRISMSzomolnokiteSpeciationIndices(band1470FeOHDepth = 0.040, band1970FeH2ODepth = 0.045, band2130FeSO4Depth = 0.060, band2400SO4Depth = 0.050) {
+    const d1470 = Math.max(0.0, band1470FeOHDepth);
+    const d1970 = Math.max(0.0, band1970FeH2ODepth);
+    const d2130 = Math.max(0.0, band2130FeSO4Depth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isSzomolnokite = d1470 >= 0.025 && d1970 >= 0.030 && d2130 >= 0.035 && d2400 >= 0.030;
+    const isKieserite = d2130 >= 0.035 && d2400 >= 0.030 && d1470 < 0.020 && d1970 < 0.020;
+    const isPolyhydrate = d1970 >= 0.035 && d2130 < 0.020;
+
+    const isSulf = isSzomolnokite || isKieserite || isPolyhydrate;
+
+    let sClass = 'Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Crustal Terrain';
+
+    if (isSulf) {
+      if (isSzomolnokite) {
+        sClass = 'Ferrous Monohydrate Sulfate Facies';
+        species = 'Szomolnokite';
+        formula = 'FeSO4·H2O';
+        env = 'Low-Water-Activity Acid Evaporite Desiccation (Juventae / Candor Chasma / Aram Chaos)';
+      } else if (isKieserite) {
+        sClass = 'Magnesian Monohydrate Sulfate Facies';
+        species = 'Kieserite';
+        formula = 'MgSO4·H2O';
+        env = 'Magnesium-Rich Evaporitic Playa / Lacustrine Strata';
+      } else {
+        sClass = 'Hydrated Polyhydrate Sulfate Sequence';
+        species = 'Rozenite / Melanterite';
+        formula = 'FeSO4·4-7H2O';
+        env = 'High-Relative-Humidity Hydrothermal/Groundwater Discharge Zone';
+      }
+    }
+
+    return {
+      isSulfateDetected: isSulf,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationEnvironment: env
+    };
+  }
 }
 
 
