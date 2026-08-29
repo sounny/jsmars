@@ -9209,6 +9209,60 @@ export class BandMathEngine {
       hydrothermalTemperatureRegime: regime
     };
   }
+
+  /**
+   * Discriminate Dioctahedral Smectite Clay Species (Al-Beidellite vs Fe3+-Nontronite vs Intermediate Solid Solution vs Montmorillonite) from CRISM 1.410 um, 1.910 um, 2.190 um, and 2.290 um absorption bands.
+   * Reference: Ehlmann et al. (2011), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Dioctahedral Smectite Mineralogy.
+   * @param {number} [band1410OHDepth=0.030] - BD1400/BD1410 smectite OH vibration depth (0.0 to 0.40)
+   * @param {number} [band1910H2ODepth=0.045] - BD1900/BD1910 structural interlayer H2O depth (0.0 to 0.50)
+   * @param {number} [band2190AlOHDepth=0.055] - BD2190 beidellite diagnostic tetrahedral-Al substituted Al-OH depth (0.0 to 0.50)
+   * @param {number} [band2290FeOHDepth=0.015] - BD2290 nontronite Fe3+-OH vibration depth (0.0 to 0.50)
+   * @returns {{isDioctahedralSmectiteDetected: boolean, smectiteSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, geochemicalAlterationRegime: string}}
+   */
+  static computeCRISMBeidelliteNontroniteSpeciationIndices(band1410OHDepth = 0.030, band1910H2ODepth = 0.045, band2190AlOHDepth = 0.055, band2290FeOHDepth = 0.015) {
+    const d1410 = Math.max(0.0, band1410OHDepth);
+    const d1910 = Math.max(0.0, band1910H2ODepth);
+    const d2190 = Math.max(0.0, band2190AlOHDepth);
+    const d2290 = Math.max(0.0, band2290FeOHDepth);
+
+    const isBeidellite = d2190 >= 0.035 && d1910 >= 0.030 && d2290 < 0.025;
+    const isNontronite = d2290 >= 0.035 && d1910 >= 0.030 && d2190 < 0.025;
+    const isSolidSolution = d2190 >= 0.025 && d2290 >= 0.025 && d1910 >= 0.025;
+
+    const isSmec = isBeidellite || isNontronite || isSolidSolution;
+
+    let sClass = 'Smectite-Free Basaltic Regolith';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Primordial Terrain';
+
+    if (isSmec) {
+      if (isBeidellite) {
+        sClass = 'Al-Rich Beidellite Smectite Facies';
+        species = 'Beidellite';
+        formula = 'Al2(Si3.67Al0.33)O10(OH)2·nH2O';
+        regime = 'Open-System Leaching / High Al/Fe Pedogenesis (Mawrth Vallis / Claritas Upper Clay Unit)';
+      } else if (isNontronite) {
+        sClass = 'Fe-Rich Nontronite Smectite Facies';
+        species = 'Nontronite';
+        formula = 'Fe3+2Si4O10(OH)2·nH2O';
+        regime = 'Alkaline Anoxic / Low Water-to-Rock Alteration (Oxia Planum / Nili Fossae)';
+      } else {
+        sClass = 'Intermediate Beidellite-Nontronite Solid Solution';
+        species = 'Al-Fe Dioctahedral Smectite';
+        formula = '(Al,Fe3+)2(Si,Al)4O10(OH)2·nH2O';
+        regime = 'Neutral Hydrothermal Subsurface Circulation';
+      }
+    }
+
+    return {
+      isDioctahedralSmectiteDetected: isSmec,
+      smectiteSpeciesClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      geochemicalAlterationRegime: regime
+    };
+  }
 }
 
 

@@ -9991,6 +9991,67 @@ export class KRCEngine {
       dickiteContext: `Dickite Facies at ${TC.toFixed(0)} C, pH=${pH.toFixed(1)} (${(alphaDick * 100).toFixed(1)}% converted, ${wDickitePct.toFixed(1)}% Dickite, TIU=${TIU.toFixed(0)}, ${aClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal/pedogenic dioctahedral smectite (beidellite vs nontronite) solid solution crystallization, interlayer hydration, and clay bed thermal inertia.
+   * Basaltic Ash + Al3+ + Fe3+ + H2O (40-180 C) -> Beidellite (Al2(Si3.67Al0.33)O10(OH)2) - Nontronite (Fe2Si4O10(OH)2)
+   * Reference: Ehlmann et al. (2011), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Dioctahedral Smectite Strata.
+   * @param {number} [initialBasaltPorosity=0.20] - Initial basaltic ash/glass porosity (0.05 to 0.45)
+   * @param {number} [hydrothermalTempC=85.0] - Alteration fluid temperature in C (20 to 220 C)
+   * @param {number} [alFeRatio=1.40] - Fluid Al/Fe cation activity ratio (0.1 to 10.0)
+   * @param {number} [durationYears=400.0] - Smectite crystallization duration in years (0.1 to 5000 yr)
+   * @returns {{smectiteConversionFraction: number, interlayerWaterYieldWeightPercent: number, dominantSmectiteSpecies: string, hydratedClayThermalInertiaTIU: number, smectiteFaciesClass: string, smectiteContext: string}}
+   */
+  static computeMartianBeidelliteNontroniteSmectiteKinetics(initialBasaltPorosity = 0.20, hydrothermalTempC = 85.0, alFeRatio = 1.40, durationYears = 400.0) {
+    const phi0 = Math.max(0.02, Math.min(0.50, initialBasaltPorosity));
+    const TC = Math.max(15.0, Math.min(300.0, hydrothermalTempC));
+    const rAlFe = Math.max(0.05, Math.min(15.0, alFeRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.80e4; // 48 kJ/mol for smectite crystallization
+
+    // Reaction rate constant
+    const kRate = 3.8e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(rAlFe);
+    const alphaSmec = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Interlayer hydration water yield (wt%)
+    const wH2OPct = alphaSmec * 14.50;
+
+    // Swelling pore evolution
+    const phiResidual = phi0 * (1.0 - (0.50 * alphaSmec));
+    const rhoGrain = 2450.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.45; // W/(m K)
+    const Cspec = 1010.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Intermediate Al-Fe Beidellite-Nontronite';
+    let sClass = 'Dioctahedral Smectite Clay Weathering';
+
+    if (rAlFe >= 2.0 && TC <= 140.0) {
+      species = 'Al-Rich Beidellite (Al2(Si3.67Al0.33)O10(OH)2·nH2O)';
+      sClass = 'Al-Smectite Leached Strata (Mawrth Vallis / Claritas Upper Clay Unit)';
+    } else if (rAlFe <= 0.60) {
+      species = 'Fe-Rich Nontronite (Fe3+2Si4O10(OH)2·nH2O)';
+      sClass = 'Alkaline Nontronite Clay Deposits (Oxia Planum / Nili Fossae)';
+    } else {
+      species = 'Mixed Beidellite-Nontronite Solid Solution';
+      sClass = 'Neutral Hydrothermal/Pedogenic Smectite Sequence';
+    }
+
+    return {
+      smectiteConversionFraction: parseFloat(alphaSmec.toFixed(3)),
+      interlayerWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantSmectiteSpecies: species,
+      hydratedClayThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      smectiteFaciesClass: sClass,
+      smectiteContext: `Smectite Facies at ${TC.toFixed(0)} C, Al/Fe=${rAlFe.toFixed(1)} (${(alphaSmec * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% interlayer H2O, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

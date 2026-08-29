@@ -10154,6 +10154,75 @@ export class TrajectoryEngine {
       europaContext: `Mars-to-Europa (${tofYrs.toFixed(2)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EOI=${dvEoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to Jupiter/Io and volcanic moon orbit capture.
+   * a = ( r_mars + r_jupiter ) / 2
+   * e = ( r_jupiter - r_mars ) / ( r_jupiter + r_mars )
+   * Reference: IVIS Mission Concept, McEwen et al. (2014), Curtis (2013) for Inner Jovian System Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [jupiterDistanceAU=5.2044] - Jupiter heliocentric distance in AU (4.9 to 5.5 AU)
+   * @param {number} [ioOrbitAltitudeKm=100.0] - Io science orbit altitude in km (50 to 500 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, ioOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, ioContext: string}}
+   */
+  static computeMarsToIoTransfer(marsParkingAltitudeKm = 300.0, jupiterDistanceAU = 5.2044, ioOrbitAltitudeKm = 100.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rJAU = Math.max(4.5, Math.min(6.0, jupiterDistanceAU));
+    const hpIKm = Math.max(25.0, ioOrbitAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muIo = 5959.91; // km^3/s^2
+    const rIoKm = 1821.6; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rJDistKm = rJAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rJDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rJDistKm - rMarsDistKm) / (rJDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTjiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Io capture
+    const vInfIKmS = 3.120; // km/s in deep Jovian gravity well
+    const rpIKm = rIoKm + hpIKm;
+    const eCap = 0.55; // Science capture orbit
+    const aCapKm = rpIKm / (1.0 - eCap);
+
+    const vHypIKmS = Math.sqrt(Math.pow(vInfIKmS, 2.0) + ((2.0 * muIo) / rpIKm));
+    const vCapIKmS = Math.sqrt(muIo * ((2.0 / rpIKm) - (1.0 / aCapKm)));
+    const dvIoiKmS = vHypIKmS - vCapIKmS;
+
+    const dvTotKmS = dvTjiMarsKmS + dvIoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTjiMarsKmS.toFixed(3)),
+      ioOrbitInsertionDeltaVKmS: parseFloat(dvIoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      ioContext: `Mars-to-Io (${tofYrs.toFixed(2)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, IOI=${dvIoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

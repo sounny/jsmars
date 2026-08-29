@@ -14796,6 +14796,54 @@ describe('Mars-to-Europa Transfer, Dickite Argillic Maturation & Dickite Speciat
     });
 });
 
+describe('Mars-to-Io Transfer, Beidellite Smectite Kinetics & Smectite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to Jupiter/Io and orbit capture', () => {
+        // Mars to Io (300 km Mars alt, 5.2044 AU distance, 100 km capture alt):
+        const ioTr = TrajectoryEngine.computeMarsToIoTransfer(300.0, 5.2044, 100.0);
+        expect(ioTr.semiMajorAxisAU).to.be.closeTo(3.364, 0.1); // ~3.36 AU
+        expect(ioTr.eccentricity).to.be.closeTo(0.5471, 0.01); // e ~ 0.547
+        expect(ioTr.timeOfFlightDays).to.be.closeTo(1126.80, 50.0); // ~1127 days (~3.09 yr)
+        expect(ioTr.marsDepartureDeltaVKmS).to.be.closeTo(3.894, 0.5); // ~3.89 km/s TJI
+        expect(ioTr.ioOrbitInsertionDeltaVKmS).to.be.closeTo(1.800, 0.5); // ~1.80 km/s IOI
+        expect(ioTr.totalMissionDeltaVKmS).to.be.closeTo(5.694, 1.0); // ~5.69 km/s total
+        expect(ioTr.ioContext).to.include('Mars-to-Io');
+    });
+
+    it('should calculate dioctahedral smectite (beidellite-nontronite) solid solution kinetics, interlayer hydration, and clay bed thermal inertia', () => {
+        // 20% initial porosity, 85 C alteration temp, 1.40 Al/Fe ratio, 400 yr duration:
+        const smec = KRCEngine.computeMartianBeidelliteNontroniteSmectiteKinetics(0.20, 85.0, 1.40, 400.0);
+        expect(smec.smectiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(smec.interlayerWaterYieldWeightPercent).to.be.greaterThan(5.0); // > 5.0 wt% interlayer H2O
+        expect(smec.hydratedClayThermalInertiaTIU).to.be.closeTo(1855.1, 200.0); // ~1855 tiu
+        expect(smec.smectiteFaciesClass).to.include('Neutral Hydrothermal/Pedogenic Smectite Sequence');
+        expect(smec.smectiteContext).to.include('Smectite Facies at 85 C');
+    });
+
+    it('should discriminate Al-Beidellite vs Fe-Nontronite vs Intermediate Solid Solution in CRISM spectra', () => {
+        // Al-Beidellite (Mawrth Vallis / Claritas Upper Clay: BD1410 = 0.030, BD1910 = 0.045, BD2190 = 0.055, BD2290 = 0.015):
+        const beid = BandMathEngine.computeCRISMBeidelliteNontroniteSpeciationIndices(0.030, 0.045, 0.055, 0.015);
+        expect(beid.isDioctahedralSmectiteDetected).to.be.true;
+        expect(beid.smectiteSpeciesClass).to.include('Al-Rich Beidellite Smectite Facies');
+        expect(beid.mineralSpecies).to.include('Beidellite');
+        expect(beid.geochemicalAlterationRegime).to.include('Open-System Leaching / High Al/Fe Pedogenesis');
+
+        // Fe-Nontronite (Oxia Planum / Nili: BD1410 = 0.025, BD1910 = 0.040, BD2190 = 0.015, BD2290 = 0.055):
+        const nont = BandMathEngine.computeCRISMBeidelliteNontroniteSpeciationIndices(0.025, 0.040, 0.015, 0.055);
+        expect(nont.isDioctahedralSmectiteDetected).to.be.true;
+        expect(nont.smectiteSpeciesClass).to.include('Fe-Rich Nontronite Smectite Facies');
+        expect(nont.mineralSpecies).to.include('Nontronite');
+
+        // Intermediate Solid Solution (BD1410 = 0.025, BD1910 = 0.035, BD2190 = 0.035, BD2290 = 0.035):
+        const sol = BandMathEngine.computeCRISMBeidelliteNontroniteSpeciationIndices(0.025, 0.035, 0.035, 0.035);
+        expect(sol.isDioctahedralSmectiteDetected).to.be.true;
+        expect(sol.smectiteSpeciesClass).to.include('Intermediate Beidellite-Nontronite Solid Solution');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMBeidelliteNontroniteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isDioctahedralSmectiteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
