@@ -14497,6 +14497,57 @@ describe('Mars-to-Lempo Transfer, Borosilicate Metasomatism & Datolite Speciatio
     });
 });
 
+describe('Mars-to-Altjira Transfer, Rodingite Metasomatism & Vesuvianite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to binary classical KBO (148780) Altjira', () => {
+        // Mars to Altjira (300 km Mars alt, 44.40 AU distance, 50 km capture alt):
+        const altj = TrajectoryEngine.computeMarsToAltjiraTransfer(300.0, 44.40, 50.0);
+        expect(altj.semiMajorAxisAU).to.be.closeTo(22.962, 0.5); // ~22.96 AU
+        expect(altj.eccentricity).to.be.closeTo(0.9336, 0.01); // e ~ 0.934
+        expect(altj.timeOfFlightDays).to.be.closeTo(21795.1, 2500.0); // ~21795 days (~59.7 yr)
+        expect(altj.timeOfFlightYears).to.be.closeTo(59.67, 6.0); // ~59.7 yr
+        expect(altj.marsDepartureDeltaVKmS).to.be.closeTo(7.340, 0.6); // ~7.34 km/s TAI
+        expect(altj.altjiraOrbitInsertionDeltaVKmS).to.be.closeTo(1.822, 1.5); // ~1.82 km/s AOI
+        expect(altj.totalMissionDeltaVKmS).to.be.closeTo(9.162, 2.0); // ~9.16 km/s total
+        expect(altj.altjiraContext).to.include('Mars-to-Altjira');
+    });
+
+    it('should calculate calcium-metasomatic rodingitization of gabbro, vesuvianite yield, and high skarn thermal inertia', () => {
+        // 8% initial porosity, 350 C fluid temp, 4.50 Ca/Mg ratio, 400 yr duration:
+        const rod = KRCEngine.computeMartianRodingiteCalcSilicateMetasomatism(0.08, 350.0, 4.50, 400.0);
+        expect(rod.rodingitizationConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(rod.vesuvianiteYieldWeightPercent).to.be.greaterThan(15.0); // > 15 wt% Vesuvianite
+        expect(rod.rodingiteBulkDensityKgM3).to.be.greaterThan(3200.0); // dense ~3300 kg/m^3
+        expect(rod.crystallineRodingiteThermalInertiaTIU).to.be.closeTo(2835.2, 200.0); // ~2835 tiu
+        expect(rod.rodingiteFaciesClass).to.include('Pervasive Vesuvianite-Grossular-Diopside Rodingite Skarn');
+        expect(rod.rodingiteContext).to.include('Rodingitization at 350 C');
+    });
+
+    it('should discriminate Vesuvianite vs Grossular vs Epidote in CRISM spectra', () => {
+        // Vesuvianite (Nili Fossae / Claritas: BD1430 = 0.030, BD2200 = 0.020, BD2320 = 0.055, BD2350 = 0.025):
+        const ves = BandMathEngine.computeCRISMRodingiteCalcSilicateSpeciationIndices(0.030, 0.020, 0.055, 0.025);
+        expect(ves.isRodingiteDetected).to.be.true;
+        expect(ves.rodingiteMineralClass).to.include('Hydrated Vesuvianite (Idocrase) Calc-Silicate Rodingite');
+        expect(ves.mineralSpecies).to.include('Vesuvianite');
+        expect(ves.metasomaticAureoleContext).to.include('Calcium Metasomatism / Serpentinite Contact Aureole');
+
+        // Grossular (BD1430 = 0.010, BD2200 = 0.040, BD2320 = 0.015, BD2350 = 0.035):
+        const gros = BandMathEngine.computeCRISMRodingiteCalcSilicateSpeciationIndices(0.010, 0.040, 0.015, 0.035);
+        expect(gros.isRodingiteDetected).to.be.true;
+        expect(gros.rodingiteMineralClass).to.include('Grossular Garnet Calc-Silicate Skarn');
+        expect(gros.mineralSpecies).to.include('Grossular Garnet');
+
+        // Epidote (BD1430 = 0.020, BD2200 = 0.015, BD2320 = 0.020, BD2350 = 0.045):
+        const epi = BandMathEngine.computeCRISMRodingiteCalcSilicateSpeciationIndices(0.020, 0.015, 0.020, 0.045);
+        expect(epi.isRodingiteDetected).to.be.true;
+        expect(epi.rodingiteMineralClass).to.include('Epidote-Clinozoisite Rodingite Facies');
+        expect(epi.mineralSpecies).to.include('Epidote');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMRodingiteCalcSilicateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isRodingiteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -8885,6 +8885,60 @@ export class BandMathEngine {
       boronHydrothermalRegime: regime
     };
   }
+
+  /**
+   * Discriminate Metasomatic Rodingite Calc-Silicate Minerals (Vesuvianite vs Grossular vs Epidote vs Diopside) from CRISM 1.430 um, 2.20 um, 2.32 um, and 2.35 um absorption bands.
+   * Reference: Ehlmann et al. (2009, 2011), Viviano-Beck et al. (2014) for Martian Calc-Silicate Alteration.
+   * @param {number} [band1430OHDepth=0.030] - BD1430 vesuvianite narrow OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2200AlOHDepth=0.040] - BD2200 grossular/Al-OH combination depth (0.0 to 0.50)
+   * @param {number} [band2320MetalOHDepth=0.055] - BD2320 vesuvianite diagnostic metal-OH depth (0.0 to 0.50)
+   * @param {number} [band2350CaFeDepth=0.035] - BD2350 grossular/epidote Ca-Fe-Si depth (0.0 to 0.50)
+   * @returns {{isRodingiteDetected: boolean, rodingiteMineralClass: string, mineralSpecies: string, chemicalFormula: string, metasomaticAureoleContext: string}}
+   */
+  static computeCRISMRodingiteCalcSilicateSpeciationIndices(band1430OHDepth = 0.030, band2200AlOHDepth = 0.040, band2320MetalOHDepth = 0.055, band2350CaFeDepth = 0.035) {
+    const d1430 = Math.max(0.0, band1430OHDepth);
+    const d2200 = Math.max(0.0, band2200AlOHDepth);
+    const d2320 = Math.max(0.0, band2320MetalOHDepth);
+    const d2350 = Math.max(0.0, band2350CaFeDepth);
+
+    const isVesuvianite = d1430 >= 0.020 && d2320 >= 0.035;
+    const isGrossular = d2200 >= 0.025 && d2350 >= 0.025 && d1430 < 0.015;
+    const isEpidote = d2350 >= 0.030 && d1430 >= 0.015 && !isVesuvianite;
+
+    const isRoding = isVesuvianite || isGrossular || isEpidote;
+
+    let rClass = 'Calc-Silicate-Free Mafic Regolith';
+    let species = 'Basaltic Gabbro Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Mafic Crust without Detectable Calcium-Metasomatic Rodingitization';
+
+    if (isRoding) {
+      if (isVesuvianite) {
+        rClass = 'Hydrated Vesuvianite (Idocrase) Calc-Silicate Rodingite';
+        species = 'Vesuvianite';
+        formula = 'Ca19(Al,Mg,Fe)13Si18O68(O,OH,F)10';
+        context = 'High-Temperature Calcium Metasomatism / Serpentinite Contact Aureole (Nili Fossae / Claritas Fossae)';
+      } else if (isGrossular) {
+        rClass = 'Grossular Garnet Calc-Silicate Skarn';
+        species = 'Grossular Garnet';
+        formula = 'Ca3Al2(SiO4)3';
+        context = 'High-Temperature Anhydrous Pyrometasomatic Garnet Skarn';
+      } else {
+        rClass = 'Epidote-Clinozoisite Rodingite Facies';
+        species = 'Epidote / Clinozoisite';
+        formula = 'Ca2Al2(Fe,Al)(SiO4)(Si2O7)O(OH)';
+        context = 'Moderate Hydrothermal Rodingitization of Gabbroic Crust';
+      }
+    }
+
+    return {
+      isRodingiteDetected: isRoding,
+      rodingiteMineralClass: rClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metasomaticAureoleContext: context
+    };
+  }
 }
 
 

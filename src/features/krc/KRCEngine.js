@@ -9646,6 +9646,63 @@ export class KRCEngine {
       borosilicateContext: `Borosilicate Metasomatism at ${TC.toFixed(0)} C, a_B=${aB.toFixed(1)} (${(alphaBoro * 100).toFixed(1)}% converted, ${wB2O3Pct.toFixed(2)}% B2O3, TIU=${TIU.toFixed(0)}, ${species})`
     };
   }
+
+  /**
+   * Calculate high-temperature calcium-metasomatic rodingitization of gabbroic protolith in serpentinized crust, vesuvianite-grossular skarn crystallization, and high thermal inertia.
+   * Plagioclase + Pyroxene + Ca2+(fluid) (250-450 C) -> Vesuvianite + Grossular + Diopside + Clinozoisite
+   * Reference: Ehlmann et al. (2009, 2011), Viviano-Beck et al. (2014) for Martian Rodingitized Calc-Silicate Complexes.
+   * @param {number} [maficGabbroPorosity=0.08] - Initial gabbroic protolith porosity (0.01 to 0.25)
+   * @param {number} [rodingitizationTempC=350.0] - Calcium-rich fluid temperature in C (180 to 550 C)
+   * @param {number} [caMgFluidRatio=4.50] - Fluid Ca2+/Mg2+ chemical activity ratio (0.5 to 15.0)
+   * @param {number} [durationYears=400.0] - Rodingitization duration in years (0.1 to 5000 yr)
+   * @returns {{rodingitizationConversionFraction: number, vesuvianiteYieldWeightPercent: number, rodingiteBulkDensityKgM3: number, crystallineRodingiteThermalInertiaTIU: number, rodingiteFaciesClass: string, rodingiteContext: string}}
+   */
+  static computeMartianRodingiteCalcSilicateMetasomatism(maficGabbroPorosity = 0.08, rodingitizationTempC = 350.0, caMgFluidRatio = 4.50, durationYears = 400.0) {
+    const phi0 = Math.max(0.005, Math.min(0.30, maficGabbroPorosity));
+    const TC = Math.max(120.0, Math.min(600.0, rodingitizationTempC));
+    const rCaMg = Math.max(0.2, Math.min(25.0, caMgFluidRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.60e4; // 66 kJ/mol for calc-silicate rodingitization
+
+    // Reaction rate constant
+    const kRate = 5.0e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(rCaMg / 2.0);
+    const alphaRoding = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Vesuvianite mass fraction in rodingite (wt%)
+    const wVesuvPct = alphaRoding * 38.0;
+
+    // Porosity compaction and densification
+    const phiResidual = phi0 * (1.0 - (0.85 * alphaRoding));
+    const rhoGrain = 3350.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    // Thermal inertia of dense crystalline rodingite skarn
+    const kTherm = 2.90; // W/(m K)
+    const Cspec = 840.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let rClass = 'Incipient Calcium Metasomatism';
+    if (alphaRoding >= 0.50 && TC >= 250.0 && TC <= 450.0) {
+      rClass = 'Pervasive Vesuvianite-Grossular-Diopside Rodingite Skarn (Nili Fossae / Claritas Contact Aureoles)';
+    } else if (TC > 450.0) {
+      rClass = 'High-Temperature Pyrometamorphic Granulite Aureole';
+    } else if (alphaRoding >= 0.20) {
+      rClass = 'Moderate Clinozoisite-Prehnite Rodingitization';
+    }
+
+    return {
+      rodingitizationConversionFraction: parseFloat(alphaRoding.toFixed(3)),
+      vesuvianiteYieldWeightPercent: parseFloat(wVesuvPct.toFixed(1)),
+      rodingiteBulkDensityKgM3: parseFloat(rhoBulk.toFixed(1)),
+      crystallineRodingiteThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      rodingiteFaciesClass: rClass,
+      rodingiteContext: `Rodingitization at ${TC.toFixed(0)} C, Ca/Mg=${rCaMg.toFixed(1)} (${(alphaRoding * 100).toFixed(1)}% converted, ${wVesuvPct.toFixed(1)}% Vesuvianite, TIU=${TIU.toFixed(0)}, ${rClass})`
+    };
+  }
 }
 
 
