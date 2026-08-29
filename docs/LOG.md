@@ -794,3 +794,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary direct transfer from Mars to classical Kuiper Belt Cubewano dwarf planet 50000 Quaoar
 ?: AssertionError: expected 2.953 to be close to 1.664 +/- 0.4
     at n.<anonymous> (unit.js:13923:57)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 05:46:18 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate hydrothermal smectite-to-illite conversion kinetics, interlayer water expulsion, and shale thermal inertia
+?: AssertionError: expected +0 to be above 0.2
+    at n.<anonymous> (unit.js:14083:49)

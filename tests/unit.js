@@ -14063,6 +14063,58 @@ describe('Mars-to-Ixion Transfer, Zeolite Alteration Dehydration & Zeolite Speci
     });
 });
 
+describe('Mars-to-Salacia Transfer, Smectite-to-Illite Diagenesis & Clay Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to large classical KBO dwarf planet candidate 120347 Salacia', () => {
+        // Mars to Salacia (300 km Mars alt, 44.80 AU distance, 250 km capture alt):
+        const sal = TrajectoryEngine.computeMarsToSalaciaTransfer(300.0, 44.80, 250.0);
+        expect(sal.semiMajorAxisAU).to.be.closeTo(23.162, 0.5); // ~23.16 AU
+        expect(sal.eccentricity).to.be.closeTo(0.9342, 0.01); // e ~ 0.934
+        expect(sal.timeOfFlightDays).to.be.closeTo(22079.8, 2500.0); // ~22080 days (~60.5 yr)
+        expect(sal.timeOfFlightYears).to.be.closeTo(60.45, 6.0); // ~60.5 yr
+        expect(sal.marsDepartureDeltaVKmS).to.be.closeTo(7.350, 0.6); // ~7.35 km/s TSI
+        expect(sal.salaciaOrbitInsertionDeltaVKmS).to.be.closeTo(1.729, 1.5); // ~1.73 km/s SOI
+        expect(sal.totalMissionDeltaVKmS).to.be.closeTo(9.079, 2.0); // ~9.08 km/s total
+        expect(sal.salaciaContext).to.include('Mars-to-Salacia');
+    });
+
+    it('should calculate hydrothermal smectite-to-illite conversion kinetics, interlayer water expulsion, and shale thermal inertia', () => {
+        // 100% initial smectite, 130 C burial temp, 250 ppm K+, 100 kyr duration:
+        const diag = KRCEngine.computeMartianSmectiteIlliteDiagenesisKinetics(1.0, 130.0, 250.0, 100.0);
+        expect(diag.illiteFractionInClay).to.be.greaterThan(0.20); // > 20% illitized
+        expect(diag.smectiteFractionRemaining).to.be.lessThan(0.80);
+        expect(diag.expelledInterlayerWaterWeightPercent).to.be.greaterThan(2.0); // > 2 wt% H2O expelled
+        expect(diag.illiticShaleThermalInertiaTIU).to.be.closeTo(1787.6, 150.0); // ~1788 tiu
+        expect(diag.clayDiagenesisGradeClass).to.include('Illite');
+        expect(diag.diagenesisContext).to.include('Clay Diagenesis at 130 C');
+    });
+
+    it('should discriminate Expandable Smectite vs Diagenetic Illite / Muscovite from CRISM 1.90 um / 2.20 um hydration ratio', () => {
+        // Hydrated Montmorillonite (Mawrth Vallis: BD1400 = 0.03, BD1900 = 0.10, BD2200 = 0.08, BD2290 = 0.01):
+        const mont = BandMathEngine.computeCRISMSmectiteIlliteSpeciationIndices(0.03, 0.10, 0.08, 0.01);
+        expect(mont.isPhyllosilicateDetected).to.be.true;
+        expect(mont.clayMineralClass).to.include('Hydrated Expandable Al-Smectite (Montmorillonite / Beidellite)');
+        expect(mont.mineralSpecies).to.include('Montmorillonite');
+        expect(mont.hydrationRatio1900To2200).to.be.closeTo(1.25, 0.1);
+
+        // Dehydrated Illite (BD1400 = 0.04, BD1900 = 0.02, BD2200 = 0.08, BD2290 = 0.01):
+        const ill = BandMathEngine.computeCRISMSmectiteIlliteSpeciationIndices(0.04, 0.02, 0.08, 0.01);
+        expect(ill.isPhyllosilicateDetected).to.be.true;
+        expect(ill.clayMineralClass).to.include('Dehydrated Non-Expandable Illite / Sericite / Muscovite');
+        expect(ill.mineralSpecies).to.include('Illite / Muscovite');
+        expect(ill.hydrationRatio1900To2200).to.be.closeTo(0.25, 0.1);
+
+        // Fe/Mg-Nontronite (BD1400 = 0.02, BD1900 = 0.08, BD2200 = 0.01, BD2290 = 0.07):
+        const non = BandMathEngine.computeCRISMSmectiteIlliteSpeciationIndices(0.02, 0.08, 0.01, 0.07);
+        expect(non.isPhyllosilicateDetected).to.be.true;
+        expect(non.clayMineralClass).to.include('Fe/Mg-Smectite (Nontronite / Saponite)');
+        expect(non.mineralSpecies).to.include('Nontronite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMSmectiteIlliteSpeciationIndices(0.005, 0.01, 0.005, 0.005);
+        expect(basalt.isPhyllosilicateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -9187,6 +9187,63 @@ export class KRCEngine {
       zeoliteContext: `Zeolite at ${TC.toFixed(0)} C, pH ${pH.toFixed(1)} (${(alphaZeo * 100).toFixed(1)}% altered, ${wBoundH2O.toFixed(1)}% H2O, TIU=${TIU.toFixed(0)}, ${altClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal/burial diagenesis kinetics of smectite-to-illite conversion, interlayer water expulsion, and consolidated shale thermal inertia.
+   * Smectite + K+ + Al3+ -> Illite + Quartz + H2O (Interlayer Water Release)
+   * Reference: Eberl & Hower (1976), Huang et al. (1993), Tosca et al. (2008), Ehlmann et al. (2011) for Martian Clay Mineral Diagenesis.
+   * @param {number} [initialSmectiteFraction=1.0] - Initial expandable smectite fraction in clay matrix (0.10 to 1.0)
+   * @param {number} [burialTempC=130.0] - Deep burial or hydrothermal fluid temperature in C (40 to 300 C)
+   * @param {number} [poreFluidPotassiumPpm=250.0] - Pore fluid K+ ion concentration in ppm (10 to 2000 ppm)
+   * @param {number} [durationKyr=100.0] - Diagenesis duration in kiloyears (0.1 to 10000 kyr)
+   * @returns {{illiteFractionInClay: number, smectiteFractionRemaining: number, expelledInterlayerWaterWeightPercent: number, illiticShaleThermalInertiaTIU: number, clayDiagenesisGradeClass: string, diagenesisContext: string}}
+   */
+  static computeMartianSmectiteIlliteDiagenesisKinetics(initialSmectiteFraction = 1.0, burialTempC = 130.0, poreFluidPotassiumPpm = 250.0, durationKyr = 100.0) {
+    const S0 = Math.max(0.05, Math.min(1.0, initialSmectiteFraction));
+    const TC = Math.max(20.0, Math.min(350.0, burialTempC));
+    const kPpm = Math.max(5.0, poreFluidPotassiumPpm);
+    const tKyr = Math.max(0.01, durationKyr);
+
+    const TK = TC + 273.15;
+    const tYrs = tKyr * 1000.0;
+    const Rgas = 8.314;
+    const Ea = 7.80e4; // 78 kJ/mol for hydrothermal potassium fixation
+
+    // 2nd-order kinetic rate constant of illitization
+    const kEff = 1.5e6 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(kPpm / 100.0, 0.25);
+
+    // Smectite remaining and Illite formed
+    const SRemain = S0 / (1.0 + (kEff * tYrs * S0));
+    const IFraction = S0 - SRemain;
+    const illitePercentInClay = (IFraction / S0) * 100.0;
+
+    // Expelled interlayer pore water (wt% of clay sediment)
+    const wExpelledH2O = (illitePercentInClay / 100.0) * 10.5;
+
+    // Thermal inertia of compacted illitized claystone/shale
+    const kTherm = 1.65; // W/(m K)
+    const rhoBulk = 2200.0; // kg/m^3
+    const Cspec = 880.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let diagClass = 'Unaltered Expandable Smectite Clay Matrix (< 20% Illite)';
+    if (illitePercentInClay >= 80.0) {
+      diagClass = 'Deep Anchizone Metamorphic / High-Grade Illite Shale (Overpressure Hydrofracturing & Dehydroxylation)';
+    } else if (illitePercentInClay >= 50.0) {
+      diagClass = 'Mixed-Layer Illite/Smectite (I/S) Ordered Interstratified Diagenetic Clay';
+    } else if (illitePercentInClay >= 20.0) {
+      diagClass = 'Incipient Randomly Interstratified Illite/Smectite (I/S)';
+    }
+
+    return {
+      illiteFractionInClay: parseFloat((illitePercentInClay / 100.0).toFixed(3)),
+      smectiteFractionRemaining: parseFloat((SRemain / S0).toFixed(3)),
+      expelledInterlayerWaterWeightPercent: parseFloat(wExpelledH2O.toFixed(2)),
+      illiticShaleThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      clayDiagenesisGradeClass: diagClass,
+      diagenesisContext: `Clay Diagenesis at ${TC.toFixed(0)} C (${illitePercentInClay.toFixed(1)}% Illite in ${tKyr.toFixed(0)} kyr, ${wExpelledH2O.toFixed(1)}% H2O expelled, TIU=${TIU.toFixed(0)}, ${diagClass})`
+    };
+  }
 }
 
 

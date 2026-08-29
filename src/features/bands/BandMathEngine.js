@@ -8417,6 +8417,70 @@ export class BandMathEngine {
       alkalineLacustrineContext: context
     };
   }
+
+  /**
+   * Discriminate Expandable Hydrated Smectite vs Dehydrated Diagenetic Illite / Muscovite from CRISM 1.40 um, 1.90 um, and 2.20 um / 2.29 um metal-OH absorption ratios.
+   * Reference: Bishop et al. (2008), Ehlmann et al. (2009), McKeown et al. (2009), Viviano-Beck et al. (2014) for Martian Phyllosilicate Speciation.
+   * @param {number} [band1400OHDepth=0.03] - BD1400 metal-OH overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.10] - BD1900 molecular interlayer H2O depth (0.0 to 0.60)
+   * @param {number} [band2200AlOHDepth=0.08] - BD2200 Al-OH vibration depth (0.0 to 0.50)
+   * @param {number} [band2290FeMgOHDepth=0.01] - D2300 Fe/Mg-OH vibration depth (0.0 to 0.50)
+   * @returns {{isPhyllosilicateDetected: boolean, clayMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrationRatio1900To2200: number, diagenesisPaleoclimateContext: string}}
+   */
+  static computeCRISMSmectiteIlliteSpeciationIndices(band1400OHDepth = 0.03, band1900WaterDepth = 0.10, band2200AlOHDepth = 0.08, band2290FeMgOHDepth = 0.01) {
+    const d1400 = Math.max(0.0, band1400OHDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2200 = Math.max(0.0, band2200AlOHDepth);
+    const d2290 = Math.max(0.0, band2290FeMgOHDepth);
+
+    const maxPhyllo = Math.max(d2200, d2290);
+    const isPhyllo = maxPhyllo >= 0.025 || d1900 >= 0.040;
+
+    let ratio = 0.0;
+    if (d2200 > 0.005) {
+      ratio = d1900 / d2200;
+    }
+
+    let cClass = 'Phyllosilicate-Free Silicate Regolith';
+    let species = 'Basalt Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Detectable Al/Fe/Mg-OH Clay Absorption';
+
+    if (isPhyllo) {
+      if (d2200 >= 0.030) {
+        if (ratio >= 0.85) {
+          cClass = 'Hydrated Expandable Al-Smectite (Montmorillonite / Beidellite)';
+          species = 'Montmorillonite';
+          formula = '(Na,Ca)0.33(Al,Mg)2(Si4O10)(OH)2 * nH2O';
+          context = 'Low-Temperature Aqueous Alteration / Paleolake Clay Deposit (Mawrth Vallis / Jezero Delta)';
+        } else if (ratio >= 0.40) {
+          cClass = 'Mixed-Layer Illite/Smectite (I/S) Clay';
+          species = 'Illite/Smectite (I/S)';
+          formula = 'K0.5-0.7Al2(Si,Al)4O10(OH)2 * nH2O';
+          context = 'Moderate Burial Diagenesis / Hydrothermal Potassium Metasomatism';
+        } else {
+          cClass = 'Dehydrated Non-Expandable Illite / Sericite / Muscovite';
+          species = 'Illite / Muscovite';
+          formula = 'K0.65Al2.0(Al0.65Si3.35O10)(OH)2';
+          context = 'High-Grade Burial Metamorphism / Hydrothermal Mica Veining (Valles Marineris Uplifted Massifs)';
+        }
+      } else if (d2290 >= 0.030) {
+        cClass = 'Fe/Mg-Smectite (Nontronite / Saponite)';
+        species = 'Nontronite';
+        formula = 'Na0.3Fe2(Si,Al)4O10(OH)2 * nH2O';
+        context = 'Subsurface Anoxic Hydrothermal Alteration of Basaltic Crust (Nili Fossae Basement)';
+      }
+    }
+
+    return {
+      isPhyllosilicateDetected: isPhyllo,
+      clayMineralClass: cClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationRatio1900To2200: parseFloat(ratio.toFixed(2)),
+      diagenesisPaleoclimateContext: context
+    };
+  }
 }
 
 
