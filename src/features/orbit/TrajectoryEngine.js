@@ -10013,6 +10013,78 @@ export class TrajectoryEngine {
       phaethonContext: `Mars-to-Phaethon (${tofDays.toFixed(0)} days TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, POI=${dvPoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to carbonaceous dwarf planet candidate (10) Hygiea and orbit capture.
+   * a = ( r_mars + r_hygiea ) / 2
+   * e = ( r_hygiea - r_mars ) / ( r_hygiea + r_mars )
+   * Reference: Vernazza et al. (2019), Hanuš et al. (2020), Curtis (2013) for Outer Main Belt Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [hygieaDistanceAU=3.140] - Hygiea heliocentric distance in AU (2.5 to 3.8 AU)
+   * @param {number} [hygieaPeriapsisAltitudeKm=50.0] - Hygiea orbit insertion periapsis altitude in km (20 to 1000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, hygieaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, hygieaContext: string}}
+   */
+  static computeMarsToHygieaTransfer(marsParkingAltitudeKm = 300.0, hygieaDistanceAU = 3.140, hygieaPeriapsisAltitudeKm = 50.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rHAU = Math.max(2.0, Math.min(4.5, hygieaDistanceAU));
+    const hpHKm = Math.max(10.0, hygieaPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muHyg = 5.78; // km^3/s^2
+    const rHygKm = 215.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rHDistKm = rHAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rHDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rHDistKm - rMarsDistKm) / (rHDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvThiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Hygiea capture
+    const vHCircKmS = Math.sqrt(muSun / rHDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rHDistKm) - (1.0 / aKm)));
+    const vInfHKmS = Math.abs(vHCircKmS - vArrKmS);
+
+    const rpHKm = rHygKm + hpHKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpHKm / (1.0 - eCap);
+
+    const vHypHKmS = Math.sqrt(Math.pow(vInfHKmS, 2.0) + ((2.0 * muHyg) / rpHKm));
+    const vCapHKmS = Math.sqrt(muHyg * ((2.0 / rpHKm) - (1.0 / aCapKm)));
+    const dvHoiKmS = vHypHKmS - vCapHKmS;
+
+    const dvTotKmS = dvThiMarsKmS + dvHoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvThiMarsKmS.toFixed(3)),
+      hygieaOrbitInsertionDeltaVKmS: parseFloat(dvHoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      hygieaContext: `Mars-to-Hygiea (${tofYrs.toFixed(2)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, HOI=${dvHoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

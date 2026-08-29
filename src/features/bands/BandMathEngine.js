@@ -9101,6 +9101,60 @@ export class BandMathEngine {
       metamorphicFaciesRegime: regime
     };
   }
+
+  /**
+   * Discriminate High-Pressure / Low-Temperature Blueschist Metamorphic Minerals (Lawsonite vs Glaucophane vs Aragonite vs Pumpellyite) from CRISM 1.440 um, 1.660 um, 2.180 um, and 2.350 um absorption bands.
+   * Reference: Ehlmann et al. (2011), Viviano-Beck et al. (2014) for Martian Blueschist Facies Mineralogy.
+   * @param {number} [band1440OHDepth=0.030] - BD1440 lawsonite OH vibration depth (0.0 to 0.40)
+   * @param {number} [band1660H2ODepth=0.035] - BD1660 lawsonite diagnostic bound H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band2180AlOHDepth=0.055] - BD2180 lawsonite/glaucophane Al-OH vibration depth (0.0 to 0.50)
+   * @param {number} [band2350MgOHDepth=0.015] - BD2350 glaucophane Mg-OH amphibole depth (0.0 to 0.50)
+   * @returns {{isBlueschistDetected: boolean, blueschistMineralClass: string, mineralSpecies: string, chemicalFormula: string, metamorphicPressureRegime: string}}
+   */
+  static computeCRISMLawsoniteGlaucophaneSpeciationIndices(band1440OHDepth = 0.030, band1660H2ODepth = 0.035, band2180AlOHDepth = 0.055, band2350MgOHDepth = 0.015) {
+    const d1440 = Math.max(0.0, band1440OHDepth);
+    const d1660 = Math.max(0.0, band1660H2ODepth);
+    const d2180 = Math.max(0.0, band2180AlOHDepth);
+    const d2350 = Math.max(0.0, band2350MgOHDepth);
+
+    const isLawsonite = d1440 >= 0.020 && d1660 >= 0.025 && d2180 >= 0.035;
+    const isGlaucophane = d2180 >= 0.025 && d2350 >= 0.030 && d1660 < 0.020;
+    const isMixedBlueschist = d1660 >= 0.020 && d2350 >= 0.025;
+
+    const isBlue = isLawsonite || isGlaucophane || isMixedBlueschist;
+
+    let bClass = 'Blueschist-Free Basaltic Regolith';
+    let species = 'Basaltic Protolith';
+    let formula = 'Silicate Matrix';
+    let regime = 'Standard Crust without High-Pressure Suture Signatures';
+
+    if (isBlue) {
+      if (isLawsonite) {
+        bClass = 'Lawsonite Blueschist Assemblage';
+        species = 'Lawsonite';
+        formula = 'CaAl2Si2O7(OH)2·H2O';
+        regime = 'High-Pressure/Low-Temperature Subduction or Impact Compression Facies (Ancient Suture Terrane)';
+      } else if (isGlaucophane) {
+        bClass = 'Sodic Amphibole Glaucophane Schist';
+        species = 'Glaucophane';
+        formula = 'Na2(Mg3Al2)Si8O22(OH)2';
+        regime = 'HP-LT Sodic Metasomatism';
+      } else {
+        bClass = 'Composite Lawsonite-Glaucophane-Aragonite Facies';
+        species = 'Lawsonite + Glaucophane';
+        formula = 'CaAl2Si2O7(OH)2·H2O + Na2Mg3Al2Si8O22(OH)2';
+        regime = 'Ultra-High Pressure Crustal Metasomatic Suture';
+      }
+    }
+
+    return {
+      isBlueschistDetected: isBlue,
+      blueschistMineralClass: bClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metamorphicPressureRegime: regime
+    };
+  }
 }
 
 

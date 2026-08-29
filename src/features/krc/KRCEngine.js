@@ -9874,6 +9874,67 @@ export class KRCEngine {
       subGreenschistContext: `Pumpellyite Facies at ${TC.toFixed(0)} C, Mg/Fe=${rMgFe.toFixed(1)} (${(alphaPump * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${pClass})`
     };
   }
+
+  /**
+   * Calculate high-pressure/low-temperature (HP-LT) lawsonite-glaucophane blueschist facies metamorphism, crystal densification, and suture zone thermal inertia.
+   * Calcic Plagioclase + Pyroxene + H2O (150-350 C, 0.6-1.8 GPa) -> Lawsonite (CaAl2Si2O7(OH)2*H2O) + Glaucophane + Aragonite
+   * Reference: Ehlmann et al. (2011), Viviano-Beck et al. (2014) for Martian High-Pressure Blueschist Metamorphic Belts.
+   * @param {number} [oceanicBasaltPorosity=0.12] - Initial oceanic basalt protolith porosity (0.01 to 0.30)
+   * @param {number} [subductionTempC=280.0] - HP-LT metamorphic temperature in C (120 to 450 C)
+   * @param {number} [fluidPressureGigaPa=1.20] - Subsurface lithostatic/fluid pressure in GPa (0.3 to 3.0 GPa)
+   * @param {number} [durationYears=500.0] - Metamorphic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{blueschistConversionFraction: number, boundWaterYieldWeightPercent: number, dominantBlueschistMineral: string, crystallineBlueschistThermalInertiaTIU: number, metamorphicFaciesClass: string, blueschistContext: string}}
+   */
+  static computeMartianLawsoniteBlueschistMetamorphism(oceanicBasaltPorosity = 0.12, subductionTempC = 280.0, fluidPressureGigaPa = 1.20, durationYears = 500.0) {
+    const phi0 = Math.max(0.005, Math.min(0.35, oceanicBasaltPorosity));
+    const TC = Math.max(100.0, Math.min(500.0, subductionTempC));
+    const PGPa = Math.max(0.2, Math.min(4.0, fluidPressureGigaPa));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.30e4; // 63 kJ/mol for lawsonite crystallization
+
+    // Reaction rate constant
+    const kRate = 3.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(PGPa, 0.60);
+    const alphaBlue = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural H2O yield (wt%) - Lawsonite contains 11.5 wt% H2O
+    const wH2OPct = alphaBlue * 11.50;
+
+    // High pressure compaction and pore elimination
+    const phiResidual = phi0 * (1.0 - (0.85 * alphaBlue));
+    const rhoGrain = 3180.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.95; // W/(m K)
+    const Cspec = 870.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let mineral = 'Lawsonite + Glaucophane';
+    let bClass = 'Incipient Blueschist Metamorphism';
+
+    if (PGPa >= 0.80 && TC >= 200.0 && TC <= 350.0) {
+      bClass = 'Pervasive Lawsonite-Blueschist HP-LT Facies (Ancient Noachian Suture Zones)';
+      mineral = 'Lawsonite (CaAl2Si2O7(OH)2·H2O)';
+    } else if (TC > 350.0) {
+      bClass = 'Epidote-Amphibolite / Eclogite Transition';
+      mineral = 'Omphacite + Garnet';
+    } else if (PGPa < 0.80) {
+      bClass = 'Sub-Greenschist Prehnite-Pumpellyite Facies';
+      mineral = 'Prehnite + Pumpellyite';
+    }
+
+    return {
+      blueschistConversionFraction: parseFloat(alphaBlue.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantBlueschistMineral: mineral,
+      crystallineBlueschistThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      metamorphicFaciesClass: bClass,
+      blueschistContext: `Blueschist Facies at ${TC.toFixed(0)} C, P=${PGPa.toFixed(2)} GPa (${(alphaBlue * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${bClass})`
+    };
+  }
 }
 
 

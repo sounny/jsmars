@@ -14697,6 +14697,55 @@ describe('Mars-to-Phaethon Transfer, Pumpellyite Metasomatism & Pumpellyite Spec
     });
 });
 
+describe('Mars-to-Hygiea Transfer, Lawsonite Blueschist Metamorphism & Blueschist Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to carbonaceous dwarf planet candidate (10) Hygiea', () => {
+        // Mars to Hygiea (300 km Mars alt, 3.140 AU distance, 50 km capture alt):
+        const hyg = TrajectoryEngine.computeMarsToHygieaTransfer(300.0, 3.140, 50.0);
+        expect(hyg.semiMajorAxisAU).to.be.closeTo(2.332, 0.1); // ~2.33 AU
+        expect(hyg.eccentricity).to.be.closeTo(0.3466, 0.01); // e ~ 0.347
+        expect(hyg.timeOfFlightDays).to.be.closeTo(649.90, 30.0); // ~650 days (~1.78 yr)
+        expect(hyg.timeOfFlightYears).to.be.closeTo(1.78, 0.1); // ~1.78 yr
+        expect(hyg.marsDepartureDeltaVKmS).to.be.closeTo(2.572, 0.5); // ~2.57 km/s THI
+        expect(hyg.hygieaOrbitInsertionDeltaVKmS).to.be.closeTo(3.189, 0.5); // ~3.19 km/s HOI
+        expect(hyg.totalMissionDeltaVKmS).to.be.closeTo(5.761, 1.0); // ~5.76 km/s total
+        expect(hyg.hygieaContext).to.include('Mars-to-Hygiea');
+    });
+
+    it('should calculate high-pressure/low-temperature lawsonite-glaucophane blueschist metamorphism, crystal densification, and suture zone thermal inertia', () => {
+        // 12% initial porosity, 280 C HP-LT temp, 1.20 GPa lithostatic fluid pressure, 500 yr duration:
+        const blue = KRCEngine.computeMartianLawsoniteBlueschistMetamorphism(0.12, 280.0, 1.20, 500.0);
+        expect(blue.blueschistConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(blue.boundWaterYieldWeightPercent).to.be.greaterThan(5.0); // > 5.0 wt% bound H2O
+        expect(blue.crystallineBlueschistThermalInertiaTIU).to.be.closeTo(2829.8, 200.0); // ~2830 tiu
+        expect(blue.metamorphicFaciesClass).to.include('Pervasive Lawsonite-Blueschist HP-LT Facies');
+        expect(blue.blueschistContext).to.include('Blueschist Facies at 280 C');
+    });
+
+    it('should discriminate Lawsonite vs Glaucophane vs Mixed Blueschist in CRISM spectra', () => {
+        // Lawsonite (Ancient Suture Terrane: BD1440 = 0.030, BD1660 = 0.035, BD2180 = 0.055, BD2350 = 0.015):
+        const law = BandMathEngine.computeCRISMLawsoniteGlaucophaneSpeciationIndices(0.030, 0.035, 0.055, 0.015);
+        expect(law.isBlueschistDetected).to.be.true;
+        expect(law.blueschistMineralClass).to.include('Lawsonite Blueschist Assemblage');
+        expect(law.mineralSpecies).to.include('Lawsonite');
+        expect(law.metamorphicPressureRegime).to.include('High-Pressure/Low-Temperature Subduction');
+
+        // Glaucophane (BD1440 = 0.015, BD1660 = 0.010, BD2180 = 0.035, BD2350 = 0.045):
+        const glau = BandMathEngine.computeCRISMLawsoniteGlaucophaneSpeciationIndices(0.015, 0.010, 0.035, 0.045);
+        expect(glau.isBlueschistDetected).to.be.true;
+        expect(glau.blueschistMineralClass).to.include('Sodic Amphibole Glaucophane Schist');
+        expect(glau.mineralSpecies).to.include('Glaucophane');
+
+        // Mixed Blueschist (BD1440 = 0.020, BD1660 = 0.025, BD2180 = 0.025, BD2350 = 0.030):
+        const mix = BandMathEngine.computeCRISMLawsoniteGlaucophaneSpeciationIndices(0.020, 0.025, 0.025, 0.030);
+        expect(mix.isBlueschistDetected).to.be.true;
+        expect(mix.blueschistMineralClass).to.include('Composite Lawsonite-Glaucophane-Aragonite Facies');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMLawsoniteGlaucophaneSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isBlueschistDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
