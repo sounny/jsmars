@@ -7999,6 +7999,63 @@ export class KRCEngine {
       mudEruptionContext: `Mud Volcano at ${zKm.toFixed(1)}km (${vAscentMS.toFixed(1)} m/s Exit, ${hPlumeM.toFixed(0)}m Flash-Boil Plume, ${runoutKm.toFixed(1)}km Runout)`
     };
   }
+
+  /**
+   * Calculate burial diagenetic illitization kinetics of dioctahedral smectite (montmorillonite), Reichweite ordering (R0->R1->R3), and paleothermometry.
+   * T_burial = T_surf + Gamma_geo * z
+   * k = A * ( [K+] / 100 ) * exp( -E_a / ( R * T ) )
+   * %I = ( 1 - exp( -k * t ) ) * 100
+   * Reference: Pytte & Reynolds (1989), Essene & Peacor (1995), Ehlmann et al. (2011) for Dioctahedral Clay Illitization.
+   * @param {number} [burialDepthKm=5.8] - Crustal burial depth in km (1.0 to 15.0 km)
+   * @param {number} [geothermalGradientKPerKm=30.0] - Geothermal gradient in K/km (10 to 60 K/km)
+   * @param {number} [potassiumActivityPpm=250.0] - Pore fluid K+ activity in ppm (10 to 2000 ppm)
+   * @param {number} [burialDurationMyr=25.0] - Burial diagenesis duration in Myr (0.1 to 100 Myr)
+   * @returns {{burialTemperatureC: number, burialTemperatureK: number, illiteLayerPercent: number, reichweiteOrderingClass: string, expelledInterlayerWaterWtPct: number, diageneticGeothermometerContext: string}}
+   */
+  static computeMartianSmectiteToIlliteDiagenesisKinetics(burialDepthKm = 5.8, geothermalGradientKPerKm = 30.0, potassiumActivityPpm = 250.0, burialDurationMyr = 25.0) {
+    const zKm = Math.max(0.5, burialDepthKm);
+    const gammaGeo = Math.max(5.0, geothermalGradientKPerKm);
+    const Kppm = Math.max(5.0, potassiumActivityPpm);
+    const tMyr = Math.max(0.01, burialDurationMyr);
+
+    const TsurfK = 215.0;
+    const Rgas = 8.314;
+    const Ea = 1.17e5; // 117 kJ/mol
+    const A = 5.2e8; // 1/yr
+
+    // Burial temperature
+    const TburialK = TsurfK + (gammaGeo * zKm);
+    const TburialC = TburialK - 273.15;
+
+    // Rate constant (1/yr)
+    const KFactor = Kppm / 100.0;
+    const kYr = A * KFactor * Math.exp(-Ea / (Rgas * TburialK));
+
+    // Illite layer percentage
+    const tYr = tMyr * 1.0e6;
+    const exponent = Math.min(50.0, kYr * tYr);
+    const fIllite = 1.0 - Math.exp(-exponent);
+    const illitePct = fIllite * 100.0;
+
+    // Interlayer water loss (wt%)
+    const lostWater = fIllite * 8.0;
+
+    let orderClass = 'R0 Random Mixed-Layer Illite/Smectite (Smectite-Dominant)';
+    if (illitePct >= 85.0) {
+      orderClass = 'R3 Highly Ordered Illite / Sericite (ISII Metamorphic Precursor)';
+    } else if (illitePct >= 50.0) {
+      orderClass = 'R1 Regularly Ordered Illite/Smectite (IS-Type Intermediate)';
+    }
+
+    return {
+      burialTemperatureC: parseFloat(TburialC.toFixed(1)),
+      burialTemperatureK: parseFloat(TburialK.toFixed(1)),
+      illiteLayerPercent: parseFloat(illitePct.toFixed(1)),
+      reichweiteOrderingClass: orderClass,
+      expelledInterlayerWaterWtPct: parseFloat(lostWater.toFixed(2)),
+      diageneticGeothermometerContext: `Illite Diagenesis at ${zKm.toFixed(1)}km (${TburialC.toFixed(0)} C, ${illitePct.toFixed(0)}% Illite, ${orderClass})`
+    };
+  }
 }
 
 

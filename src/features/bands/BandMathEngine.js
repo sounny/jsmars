@@ -7425,6 +7425,56 @@ export class BandMathEngine {
       alkalineAlterationContext: context
     };
   }
+
+  /**
+   * Discriminate Dioctahedral Montmorillonite Smectite vs High-Grade Ordered Illite/Sericite from CRISM 1.40 um, 1.90 um, 2.20 um, and 2.35 um absorption bands.
+   * Reference: Clark et al. (1990), Viviano-Beck et al. (2014), Ehlmann et al. (2011) for Martian Dioctahedral Phyllosilicates.
+   * @param {number} [band1400WaterDepth=0.03] - BD1400 molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.03] - BD1900 molecular H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2200AlOHDepth=0.06] - BD2200 Al-OH fundamental vibration depth (0.0 to 0.40)
+   * @param {number} [band2350IlliteShoulderDepth=0.04] - BD2350 diagnostic Illite Al-OH combination shoulder depth (0.0 to 0.40)
+   * @returns {{isAlPhyllosilicateDetected: boolean, illiteSmectiteClass: string, mineralSpecies: string, chemicalFormula: string, burialDiageneticContext: string}}
+   */
+  static computeCRISMIlliteSmectiteOrderingIndices(band1400WaterDepth = 0.03, band1900WaterDepth = 0.03, band2200AlOHDepth = 0.06, band2350IlliteShoulderDepth = 0.04) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2200 = Math.max(0.0, band2200AlOHDepth);
+    const d2350 = Math.max(0.0, band2350IlliteShoulderDepth);
+
+    const isAlClay = d2200 >= 0.030 && (d1400 >= 0.015 || d1900 >= 0.015 || d2350 >= 0.020);
+
+    let clayClass = 'Standard Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Al-OH Absorption';
+
+    if (isAlClay) {
+      if (d2350 >= 0.030 && d1900 < 0.035) {
+        clayClass = 'Highly Ordered Illite / Sericite (R3 Illite/Smectite)';
+        species = 'Illite';
+        formula = '(K,H3O)Al2(Si3Al)O10(OH)2';
+        context = 'High-Temperature Burial Diagenetic Illitization / Hydrothermal Fluid Circulation (Mawrth Vallis Basal Units / Noachis Terra)';
+      } else if (d1900 >= 0.045 && d1400 >= 0.030 && d2350 < 0.020) {
+        clayClass = 'Dioctahedral Smectite (Montmorillonite)';
+        species = 'Montmorillonite';
+        formula = '(Na,Ca)0.33(Al,Mg)2Si4O10(OH)2 * nH2O';
+        context = 'Low-Temperature Aqueous Alteration of Volcaniclastic Glass / Neutral-to-Alkaline Pedogenic Weathering';
+      } else {
+        clayClass = 'Mixed-Layer Illite/Smectite (I/S Intermediate)';
+        species = 'Illite-Smectite Mixed Layer';
+        formula = 'Interstratified (Al,Si)-Phyllosilicates';
+        context = 'Moderate Burial Diagenesis Transition Zone';
+      }
+    }
+
+    return {
+      isAlPhyllosilicateDetected: isAlClay,
+      illiteSmectiteClass: clayClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      burialDiageneticContext: context
+    };
+  }
 }
 
 

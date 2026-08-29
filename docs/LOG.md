@@ -594,3 +594,23 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary Hohmann transfer from Mars to outermost ice giant Neptune and orbit insertion
 ?: AssertionError: expected 6.944 to be close to 7.504 +/- 0.3
     at n.<anonymous> (unit.js:13053:54)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 00:45:55 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate interplanetary Hohmann transfer from Mars to Kuiper Belt dwarf planet Pluto and orbit insertion
+?: AssertionError: expected 16954.7 to be close to 16738.7 +/- 100
+    at n.<anonymous> (unit.js:13098:46)
+- should calculate burial diagenetic smectite illitization kinetics and geothermometry
+?: AssertionError: expected 'R0 Random Mixed-Layer Illite/Smectite?' to include 'Ordered Illite/Smectite'
+    at n.<anonymous> (unit.js:13114:51)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 00:46:16 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate interplanetary Hohmann transfer from Mars to Kuiper Belt dwarf planet Pluto and orbit insertion
+?: AssertionError: expected 7.116 to be close to 7.807 +/- 0.3
+    at n.<anonymous> (unit.js:13100:52)
+- should calculate burial diagenetic smectite illitization kinetics and geothermometry
+?: AssertionError: expected 'R3 Highly Ordered Illite / Sericite (?' to include 'Ordered Illite/Smectite'
+    at n.<anonymous> (unit.js:13114:51)

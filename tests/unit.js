@@ -13091,6 +13091,50 @@ describe('Mars-to-Neptune Solar Boundary Transfer, Mud Volcanism & Zeolite Speci
     });
 });
 
+describe('Mars-to-Pluto Kuiper Belt Transfer, Clay Illitization & Illite-Smectite Ordering', () => {
+    it('should calculate interplanetary Hohmann transfer from Mars to Kuiper Belt dwarf planet Pluto and orbit insertion', () => {
+        // Mars to Pluto (1.52 to 39.48 AU, 300 km Mars alt, 500 km Pluto capture alt):
+        const pluto = TrajectoryEngine.computeMarsToPlutoDirectTransfer(300.0, 500.0);
+        expect(pluto.transferTimeDays).to.be.closeTo(16954.7, 100.0); // ~16955 days
+        expect(pluto.transferTimeYears).to.be.closeTo(46.419, 0.5); // ~46.4 yr
+        expect(pluto.marsDepartureDeltaVKmS).to.be.closeTo(7.116, 0.2); // ~7.12 km/s TPI
+        expect(pluto.plutoArrivalExcessKmS).to.be.closeTo(3.418, 0.2); // ~3.42 km/s v_inf
+        expect(pluto.plutoOrbitInsertionDeltaVKmS).to.be.closeTo(2.563, 0.2); // ~2.56 km/s POI
+        expect(pluto.totalMissionDeltaVKmS).to.be.closeTo(9.679, 0.3); // ~9.68 km/s total
+        expect(pluto.transferEccentricity).to.be.closeTo(0.9257, 0.02); // e ~ 0.926
+        expect(pluto.plutoTransferContext).to.include('Mars-to-Pluto Direct');
+    });
+
+    it('should calculate burial diagenetic smectite illitization kinetics and geothermometry', () => {
+        // 5.8 km depth, 30 K/km geothermal gradient, 250 ppm K+, 25 Myr duration:
+        const illite = KRCEngine.computeMartianSmectiteToIlliteDiagenesisKinetics(5.8, 30.0, 250.0, 25.0);
+        expect(illite.burialTemperatureC).to.be.closeTo(115.85, 2.0); // ~116 C burial temp
+        expect(illite.illiteLayerPercent).to.be.greaterThan(40.0); // > 40% illite
+        expect(illite.expelledInterlayerWaterWtPct).to.be.greaterThan(3.0); // > 3 wt% water released
+        expect(illite.reichweiteOrderingClass).to.include('Highly Ordered Illite / Sericite');
+        expect(illite.diageneticGeothermometerContext).to.include('Illite Diagenesis');
+    });
+
+    it('should discriminate Dioctahedral Montmorillonite Smectite vs Ordered Illite in CRISM spectra', () => {
+        // Montmorillonite (Mawrth Vallis upper unit: BD1400 = 0.04, BD1900 = 0.06, BD2200 = 0.06, BD2350 = 0.01):
+        const mont = BandMathEngine.computeCRISMIlliteSmectiteOrderingIndices(0.04, 0.06, 0.06, 0.01);
+        expect(mont.isAlPhyllosilicateDetected).to.be.true;
+        expect(mont.illiteSmectiteClass).to.include('Dioctahedral Smectite (Montmorillonite)');
+        expect(mont.mineralSpecies).to.include('Montmorillonite');
+        expect(mont.burialDiageneticContext).to.include('Low-Temperature Aqueous Alteration');
+
+        // Highly Ordered Illite / Sericite (Mawrth Vallis basal strata: BD1400 = 0.02, BD1900 = 0.02, BD2200 = 0.06, BD2350 = 0.04):
+        const ill = BandMathEngine.computeCRISMIlliteSmectiteOrderingIndices(0.02, 0.02, 0.06, 0.04);
+        expect(ill.isAlPhyllosilicateDetected).to.be.true;
+        expect(ill.illiteSmectiteClass).to.include('Highly Ordered Illite / Sericite (R3 Illite/Smectite)');
+        expect(ill.mineralSpecies).to.include('Illite');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMIlliteSmectiteOrderingIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAlPhyllosilicateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

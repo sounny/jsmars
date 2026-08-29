@@ -7707,6 +7707,79 @@ export class TrajectoryEngine {
       neptuneTransferContext: `Mars-to-Neptune Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfNeptuneKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
     };
   }
+
+  /**
+   * Calculate interplanetary Hohmann transfer from Mars to Kuiper Belt dwarf planet Pluto and Plutonian elliptical orbit insertion.
+   * a_trans = ( r_mars + r_pluto ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Delta_V_tot = Delta_V_TPI + Delta_V_POI
+   * Reference: Stern et al. (2015), Guo & Farquhar (2008), Curtis (2013) for Kuiper Belt Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [plutoPeriapsisAltitudeKm=500.0] - Pluto capture periapsis altitude in km (100 to 50000 km)
+   * @returns {{transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, plutoArrivalExcessKmS: number, plutoOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, plutoTransferContext: string}}
+   */
+  static computeMarsToPlutoDirectTransfer(marsParkingAltitudeKm = 300.0, plutoPeriapsisAltitudeKm = 500.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpPKm = Math.max(100.0, plutoPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muPluto = 871.0;
+    const rPlutoKm = 1188.3;
+
+    const rMarsAU = 1.52368;
+    const rPlutoAU = 39.482;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rPlutoDistKm = rPlutoAU * AU_KM;
+
+    // Hohmann geometry
+    const aTransKm = (rMarsDistKm + rPlutoDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rPlutoDistKm - rMarsDistKm) / (rPlutoDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTpiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Pluto arrival
+    const vPlutoCircKmS = Math.sqrt(muSun / rPlutoDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rPlutoDistKm) - (1.0 / aTransKm)));
+    const vInfPlutoKmS = Math.abs(vPlutoCircKmS - vArrKmS);
+
+    const rpPKm = rPlutoKm + hpPKm;
+    const eCap = 0.95; // Highly elliptical capture orbit
+    const aCapKm = rpPKm / (1.0 - eCap);
+
+    const vHypPKmS = Math.sqrt(Math.pow(vInfPlutoKmS, 2.0) + ((2.0 * muPluto) / rpPKm));
+    const vCapPKmS = Math.sqrt(muPluto * ((2.0 / rpPKm) - (1.0 / aCapKm)));
+    const dvPoiKmS = vHypPKmS - vCapPKmS;
+
+    const dvTotKmS = dvTpiKmS + dvPoiKmS;
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTpiKmS.toFixed(3)),
+      plutoArrivalExcessKmS: parseFloat(vInfPlutoKmS.toFixed(3)),
+      plutoOrbitInsertionDeltaVKmS: parseFloat(dvPoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      plutoTransferContext: `Mars-to-Pluto Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfPlutoKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 
