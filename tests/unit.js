@@ -14892,6 +14892,55 @@ describe('Mars-to-Callisto Transfer, Alunite-Jarosite Kinetics & Acid Sulfate Sp
     });
 });
 
+describe('Mars-to-Pallas Transfer, Celadonite Metasomatism & Green Mica Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to high-inclination asteroid (2) Pallas and orbit capture', () => {
+        // Mars to Pallas (300 km Mars alt, 2.772 AU distance, 50 km capture alt, 34.84 deg plane change):
+        const pal = TrajectoryEngine.computeMarsToPallasTransfer(300.0, 2.772, 50.0, 34.84);
+        expect(pal.semiMajorAxisAU).to.be.closeTo(2.148, 0.1); // ~2.15 AU
+        expect(pal.eccentricity).to.be.closeTo(0.2906, 0.01); // e ~ 0.291
+        expect(pal.timeOfFlightDays).to.be.closeTo(574.15, 30.0); // ~574 days (~1.57 yr)
+        expect(pal.timeOfFlightYears).to.be.closeTo(1.57, 0.1); // ~1.57 yr
+        expect(pal.marsDepartureDeltaVKmS).to.be.closeTo(12.960, 1.0); // ~12.96 km/s TPI
+        expect(pal.pallasOrbitInsertionDeltaVKmS).to.be.closeTo(2.663, 0.5); // ~2.66 km/s POI
+        expect(pal.totalMissionDeltaVKmS).to.be.closeTo(15.623, 1.5); // ~15.62 km/s total
+        expect(pal.pallasContext).to.include('Mars-to-Pallas');
+    });
+
+    it('should calculate low-temperature alkaline/hydrothermal celadonite green mica metasomatism of basalt vesicles and indurated metabasalt thermal inertia', () => {
+        // 18% initial porosity, 70 C hydrothermal temp, 1.30 Fe/Mg ratio, 500 yr duration:
+        const cel = KRCEngine.computeMartianCeladoniteGlauconiteMetasomatism(0.18, 70.0, 1.30, 500.0);
+        expect(cel.celadoniteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(cel.greenMicaYieldWeightPercent).to.be.greaterThan(25.0); // > 25 wt% mica
+        expect(cel.induratedMetabasaltThermalInertiaTIU).to.be.closeTo(2261.7, 200.0); // ~2262 tiu
+        expect(cel.micaFaciesClass).to.include('Low-Temperature Hydrothermal Celadonite Facies');
+        expect(cel.celadoniteContext).to.include('Celadonite Mica at 70 C');
+    });
+
+    it('should discriminate Celadonite vs Glauconite vs Nontronite in CRISM spectra', () => {
+        // Celadonite (Nili Fossae / Mawrth Basement: BD0750 = 0.015, BD1410 = 0.035, BD2250 = 0.055, BD2300 = 0.045):
+        const cel = BandMathEngine.computeCRISMCeladoniteGlauconiteSpeciationIndices(0.015, 0.035, 0.055, 0.045);
+        expect(cel.isGreenMicaDetected).to.be.true;
+        expect(cel.micaSpeciesClass).to.include('Hydrothermal Celadonite Green Mica Facies');
+        expect(cel.mineralSpecies).to.include('Celadonite');
+        expect(cel.alterationEnvironment).to.include('Low-Temperature Hydrothermal Vesicle Infilling');
+
+        // Glauconite (Eridania / Gale: BD0750 = 0.045, BD1410 = 0.020, BD2250 = 0.040, BD2300 = 0.020):
+        const glau = BandMathEngine.computeCRISMCeladoniteGlauconiteSpeciationIndices(0.045, 0.020, 0.040, 0.020);
+        expect(glau.isGreenMicaDetected).to.be.true;
+        expect(glau.micaSpeciesClass).to.include('Authigenic Lacustrine/Playa Glauconite Facies');
+        expect(glau.mineralSpecies).to.include('Glauconite');
+
+        // Nontronite-Illite (BD0750 = 0.010, BD1410 = 0.020, BD2250 = 0.015, BD2300 = 0.045):
+        const non = BandMathEngine.computeCRISMCeladoniteGlauconiteSpeciationIndices(0.010, 0.020, 0.015, 0.045);
+        expect(non.isGreenMicaDetected).to.be.true;
+        expect(non.micaSpeciesClass).to.include('Ferric Dioctahedral Phyllosilicate Assemblage');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMCeladoniteGlauconiteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isGreenMicaDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

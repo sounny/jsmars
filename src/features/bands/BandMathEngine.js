@@ -9319,6 +9319,60 @@ export class BandMathEngine {
       pHGeochemicalEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Low-Temperature Green Mica Species (Celadonite vs Marine Glauconite vs Nontronite vs Illite) from CRISM 0.750 um, 1.410 um, 2.250 um, and 2.300 um absorption bands.
+   * Reference: Michalski et al. (2017), Ehlmann et al. (2011), Viviano-Beck et al. (2014) for Martian Green Mica Mineralogy.
+   * @param {number} [band0750FeDepth=0.015] - BD750 Fe2+-Fe3+ charge-transfer intervalence depth (0.0 to 0.40)
+   * @param {number} [band1410OHDepth=0.035] - BD1410 celadonite sharp OH doublet depth (0.0 to 0.40)
+   * @param {number} [band2250FeMgOHDepth=0.055] - BD2250 celadonite/glauconite diagnostic Fe3+-Mg-OH depth (0.0 to 0.50)
+   * @param {number} [band2300FeOHDepth=0.045] - BD2300 octahedral Fe-OH vibration depth (0.0 to 0.50)
+   * @returns {{isGreenMicaDetected: boolean, micaSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, alterationEnvironment: string}}
+   */
+  static computeCRISMCeladoniteGlauconiteSpeciationIndices(band0750FeDepth = 0.015, band1410OHDepth = 0.035, band2250FeMgOHDepth = 0.055, band2300FeOHDepth = 0.045) {
+    const d0750 = Math.max(0.0, band0750FeDepth);
+    const d1410 = Math.max(0.0, band1410OHDepth);
+    const d2250 = Math.max(0.0, band2250FeMgOHDepth);
+    const d2300 = Math.max(0.0, band2300FeOHDepth);
+
+    const isCeladonite = d2250 >= 0.035 && d1410 >= 0.025 && d0750 < 0.030;
+    const isGlauconite = d2250 >= 0.030 && d0750 >= 0.035;
+    const isNontroniteMica = d2300 >= 0.035 && d2250 < 0.025;
+
+    const isMica = isCeladonite || isGlauconite || isNontroniteMica;
+
+    let mClass = 'Green-Mica-Free Silicate Regolith';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Standard Unaltered Crust';
+
+    if (isMica) {
+      if (isCeladonite) {
+        mClass = 'Hydrothermal Celadonite Green Mica Facies';
+        species = 'Celadonite';
+        formula = 'K(Mg,Fe2+)Fe3+(Si4O10)(OH)2';
+        env = 'Low-Temperature Hydrothermal Vesicle Infilling / Deep Altered Crust (Nili Fossae / Mawrth Basement)';
+      } else if (isGlauconite) {
+        mClass = 'Authigenic Lacustrine/Playa Glauconite Facies';
+        species = 'Glauconite';
+        formula = 'K(Fe3+,Al,Mg)2(Si,Al)4O10(OH)2';
+        env = 'Alkaline Lacustrine / Marine Diagenesis (Eridania Basin / Gale Playa)';
+      } else {
+        mClass = 'Ferric Dioctahedral Phyllosilicate Assemblage';
+        species = 'Nontronite-Illite Mixed Layer';
+        formula = '(K,Na)Fe3+2(Si,Al)4O10(OH)2·nH2O';
+        env = 'Surface Pedogenic / Anoxic Hydrothermal Alteration';
+      }
+    }
+
+    return {
+      isGreenMicaDetected: isMica,
+      micaSpeciesClass: mClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      alterationEnvironment: env
+    };
+  }
 }
 
 

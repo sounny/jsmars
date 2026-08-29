@@ -10113,6 +10113,67 @@ export class KRCEngine {
       acidSulfateContext: `Acid Sulfate Facies at ${TC.toFixed(0)} C, Al/Fe=${rAlFe.toFixed(1)} (${(alphaSulfate * 100).toFixed(1)}% converted, ${wSulfatePct.toFixed(1)}% Sulfate, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature alkaline/hydrothermal celadonite-glauconite green mica metasomatism of basalt vesicles, void infilling, and indurated metabasalt thermal inertia.
+   * Basalt Voids + K+ + Fe3+ + Mg2+ + SiO2 + H2O (30-120 C) -> Celadonite (K(Mg,Fe2+)Fe3+(Si4O10)(OH)2) + Quartz
+   * Reference: Ehlmann et al. (2011), Michalski et al. (2017), Viviano-Beck et al. (2014) for Martian Green Mica Subsurface Metasomatism.
+   * @param {number} [vesicularBasaltPorosity=0.18] - Initial vesicular basalt porosity (0.02 to 0.40)
+   * @param {number} [hydrothermalTempC=70.0] - Alteration fluid temperature in C (15 to 200 C)
+   * @param {number} [fluidFeMgRatio=1.30] - Fluid Fe/Mg cation activity ratio (0.1 to 10.0)
+   * @param {number} [durationYears=500.0] - Mica alteration duration in years (0.1 to 5000 yr)
+   * @returns {{celadoniteConversionFraction: number, greenMicaYieldWeightPercent: number, dominantMicaSpecies: string, induratedMetabasaltThermalInertiaTIU: number, micaFaciesClass: string, celadoniteContext: string}}
+   */
+  static computeMartianCeladoniteGlauconiteMetasomatism(vesicularBasaltPorosity = 0.18, hydrothermalTempC = 70.0, fluidFeMgRatio = 1.30, durationYears = 500.0) {
+    const phi0 = Math.max(0.01, Math.min(0.45, vesicularBasaltPorosity));
+    const TC = Math.max(10.0, Math.min(250.0, hydrothermalTempC));
+    const rFeMg = Math.max(0.05, Math.min(15.0, fluidFeMgRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.60e4; // 46 kJ/mol for celadonite mica crystallization
+
+    // Reaction rate constant
+    const kRate = 3.5e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(rFeMg);
+    const alphaCel = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Green mica yield (wt%)
+    const wMicaPct = alphaCel * 48.0;
+
+    // Vesicle pore sealing and matrix induration
+    const phiResidual = phi0 * (1.0 - (0.70 * alphaCel));
+    const rhoGrain = 2950.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.15; // W/(m K)
+    const Cspec = 820.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Ferric Celadonite Mica';
+    let mClass = 'Vesicular Green Mica Infilling';
+
+    if (rFeMg >= 1.0 && TC <= 100.0) {
+      species = 'High-Fe Celadonite (K(Mg,Fe2+)Fe3+(Si4O10)(OH)2)';
+      mClass = 'Low-Temperature Hydrothermal Celadonite Facies (Nili Fossae / Mawrth Basement)';
+    } else if (rFeMg < 1.0 && TC <= 60.0) {
+      species = 'Marine/Playa Glauconite Mica (K(Fe3+,Al,Mg)2(Si,Al)4O10(OH)2)';
+      mClass = 'Authigenic Lacustrine/Playa Glauconite Strata (Eridania Basin / Gale Crater)';
+    } else {
+      species = 'Aluminous Illite-Smectite-Celadonite Transition';
+      mClass = 'Intermediate Subsurface Hydrothermal Phyllosilicate Cap';
+    }
+
+    return {
+      celadoniteConversionFraction: parseFloat(alphaCel.toFixed(3)),
+      greenMicaYieldWeightPercent: parseFloat(wMicaPct.toFixed(1)),
+      dominantMicaSpecies: species,
+      induratedMetabasaltThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      micaFaciesClass: mClass,
+      celadoniteContext: `Celadonite Mica at ${TC.toFixed(0)} C, Fe/Mg=${rFeMg.toFixed(1)} (${(alphaCel * 100).toFixed(1)}% converted, ${wMicaPct.toFixed(1)}% Mica, TIU=${TIU.toFixed(0)}, ${mClass})`
+    };
+  }
 }
 
 
