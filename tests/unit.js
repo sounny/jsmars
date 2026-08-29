@@ -15784,6 +15784,56 @@ describe('Mars-to-Kalliope Transfer, Copiapite Metasomatism & Ferric Sulfate Spe
     });
 });
 
+describe('Mars-to-Thalia Transfer, Mirabilite Metasomatism & Sodium Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to high-inclination stony asteroid (23) Thalia and orbit capture', () => {
+        // Mars to Thalia (300 km Mars alt, 2.628 AU distance, 15 km capture alt, 10.14 deg plane change):
+        const th = TrajectoryEngine.computeMarsToThaliaTransfer(300.0, 2.628, 15.0, 10.14);
+        expect(th.semiMajorAxisAU).to.be.closeTo(2.076, 0.1); // ~2.08 AU
+        expect(th.eccentricity).to.be.closeTo(0.2660, 0.01); // e ~ 0.266
+        expect(th.timeOfFlightDays).to.be.closeTo(545.30, 30.0); // ~545 days (~1.49 yr)
+        expect(th.timeOfFlightYears).to.be.closeTo(1.49, 0.1); // ~1.49 yr
+        expect(th.marsDepartureDeltaVKmS).to.be.closeTo(3.806, 0.5); // ~3.81 km/s TThI
+        expect(th.thaliaOrbitInsertionDeltaVKmS).to.be.closeTo(2.438, 0.5); // ~2.44 km/s ThOI
+        expect(th.totalMissionDeltaVKmS).to.be.closeTo(6.244, 1.0); // ~6.24 km/s total
+        expect(th.thaliaContext).to.include('Mars-to-Thalia');
+    });
+
+    it('should calculate cryogenic hydration of thenardite playa into mirabilite decahydrate and thermal inertia', () => {
+        // 30% initial porosity, 5 C ambient temp, 0.65 RH, 120 yr duration:
+        const mrb = KRCEngine.computeMartianMirabiliteMetasomatism(0.30, 5.0, 0.65, 120.0);
+        expect(mrb.mirabiliteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(mrb.boundWaterYieldWeightPercent).to.be.greaterThan(25.0); // > 25 wt% bound H2O
+        expect(mrb.cryogenicEvaporiteThermalInertiaTIU).to.be.closeTo(1119.1, 200.0); // ~1119 tiu
+        expect(mrb.sodiumSulfateFaciesClass).to.include('Cryogenic Mirabilite Evaporite Facies');
+        expect(mrb.mirabiliteContext).to.include('Mirabilite at 5 C');
+    });
+
+    it('should discriminate Mirabilite vs Bloedite vs Thenardite in CRISM spectra', () => {
+        // Mirabilite (Columbus Crater / Juventae / Noctis: BD1450 = 0.050, BD1790 = 0.040, BD1950 = 0.065, BD2240 = 0.025):
+        const mrb = BandMathEngine.computeCRISMMirabiliteSodiumSulfateSpeciationIndices(0.050, 0.040, 0.065, 0.025);
+        expect(mrb.isSodiumSulfateDetected).to.be.true;
+        expect(mrb.sulfateMineralClass).to.include('Decahydrated Mirabilite Facies');
+        expect(mrb.mineralSpecies).to.include('Mirabilite');
+        expect(mrb.cryogenicEnvironment).to.include('Cryogenic Cold-Playa Sodium Sulfate Evaporites');
+
+        // Bloedite (BD1450 = 0.030, BD1790 = 0.015, BD1950 = 0.045, BD2240 = 0.015):
+        const blo = BandMathEngine.computeCRISMMirabiliteSodiumSulfateSpeciationIndices(0.030, 0.015, 0.045, 0.015);
+        expect(blo.isSodiumSulfateDetected).to.be.true;
+        expect(blo.sulfateMineralClass).to.include('Bloedite Mixed Na-Mg Sulfate Facies');
+        expect(blo.mineralSpecies).to.include('Bloedite');
+
+        // Thenardite (BD1450 = 0.010, BD1790 = 0.010, BD1950 = 0.015, BD2240 = 0.035):
+        const the = BandMathEngine.computeCRISMMirabiliteSodiumSulfateSpeciationIndices(0.010, 0.010, 0.015, 0.035);
+        expect(the.isSodiumSulfateDetected).to.be.true;
+        expect(the.sulfateMineralClass).to.include('Anhydrous Thenardite Facies');
+        expect(the.mineralSpecies).to.include('Thenardite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMMirabiliteSodiumSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSodiumSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

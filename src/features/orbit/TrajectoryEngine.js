@@ -11642,6 +11642,81 @@ export class TrajectoryEngine {
       kalliopeContext: `Mars-to-Kalliope (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, KaOI=${dvKaoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to high-inclination stony S-type asteroid (23) Thalia and orbit capture.
+   * a = ( r_mars + r_thalia ) / 2
+   * e = ( r_thalia - r_mars ) / ( r_thalia + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [thaliaDistanceAU=2.628] - Thalia heliocentric distance in AU (1.9 to 3.3 AU)
+   * @param {number} [thaliaPeriapsisAltitudeKm=15.0] - Thalia orbit insertion periapsis altitude in km (5 to 400 km)
+   * @param {number} [inclinationPlaneChangeDeg=10.14] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, thaliaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, thaliaContext: string}}
+   */
+  static computeMarsToThaliaTransfer(marsParkingAltitudeKm = 300.0, thaliaDistanceAU = 2.628, thaliaPeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 10.14) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rThAU = Math.max(1.8, Math.min(3.4, thaliaDistanceAU));
+    const hpThKm = Math.max(5.0, thaliaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muThalia = 3.15; // km^3/s^2
+    const rThaliaKm = 53.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rThDistKm = rThAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rThDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rThDistKm - rMarsDistKm) / (rThDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTthiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Thalia capture
+    const vThCircKmS = Math.sqrt(muSun / rThDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rThDistKm) - (1.0 / aKm)));
+    const vInfThKmS = Math.abs(vThCircKmS - vArrKmS);
+
+    const rpThKm = rThaliaKm + hpThKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpThKm / (1.0 - eCap);
+
+    const vHypThKmS = Math.sqrt(Math.pow(vInfThKmS, 2.0) + ((2.0 * muThalia) / rpThKm));
+    const vCapThKmS = Math.sqrt(muThalia * ((2.0 / rpThKm) - (1.0 / aCapKm)));
+    const dvThoiKmS = vHypThKmS - vCapThKmS;
+
+    const dvTotKmS = dvTthiMarsKmS + dvThoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTthiMarsKmS.toFixed(3)),
+      thaliaOrbitInsertionDeltaVKmS: parseFloat(dvThoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      thaliaContext: `Mars-to-Thalia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, ThOI=${dvThoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

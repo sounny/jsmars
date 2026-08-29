@@ -10291,6 +10291,60 @@ export class BandMathEngine {
       acidityEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Hydrated Sodium Sulfates (Mirabilite Decahydrate vs Bloedite vs Anhydrous Thenardite vs Kieserite) from CRISM 1.450 um, 1.790 um, 1.950 um, and 2.240 um absorption bands.
+   * Reference: Rodriguez et al. (2014), Viviano-Beck et al. (2014), Vaniman et al. (2004) for Martian Cryogenic Sodium Sulfate Speciation.
+   * @param {number} [band1450H2ODepth=0.050] - BD1450 mirabilite intense broad structural water absorption depth (0.0 to 0.60)
+   * @param {number} [band1790H2ODepth=0.040] - BD1790 mirabilite diagnostic decahydrate shoulder overtone depth (0.0 to 0.50)
+   * @param {number} [band1950H2ODepth=0.065] - BD1950 mirabilite fundamental structural H2O depth (0.0 to 0.70)
+   * @param {number} [band2240SO4Depth=0.025] - BD2240 sodium sulfate vibrational shoulder combination depth (0.0 to 0.40)
+   * @returns {{isSodiumSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, cryogenicEnvironment: string}}
+   */
+  static computeCRISMMirabiliteSodiumSulfateSpeciationIndices(band1450H2ODepth = 0.050, band1790H2ODepth = 0.040, band1950H2ODepth = 0.065, band2240SO4Depth = 0.025) {
+    const d1450 = Math.max(0.0, band1450H2ODepth);
+    const d1790 = Math.max(0.0, band1790H2ODepth);
+    const d1950 = Math.max(0.0, band1950H2ODepth);
+    const d2240 = Math.max(0.0, band2240SO4Depth);
+
+    const isMirabilite = d1450 >= 0.035 && d1790 >= 0.025 && d1950 >= 0.045 && d2240 >= 0.015;
+    const isBloedite = d1450 >= 0.025 && d1950 >= 0.035 && d1790 < 0.020;
+    const isThenardite = d2240 >= 0.020 && d1450 < 0.020 && d1790 < 0.020 && d1950 < 0.025;
+
+    const isNaS = isMirabilite || isBloedite || isThenardite;
+
+    let sClass = 'Sodium-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isNaS) {
+      if (isMirabilite) {
+        sClass = 'Decahydrated Mirabilite Facies';
+        species = 'Mirabilite';
+        formula = 'Na2SO4·10H2O';
+        env = 'Cryogenic Cold-Playa Sodium Sulfate Evaporites (Columbus Crater / Juventae / Noctis)';
+      } else if (isBloedite) {
+        sClass = 'Bloedite Mixed Na-Mg Sulfate Facies';
+        species = 'Bloedite';
+        formula = 'Na2Mg(SO4)2·4H2O';
+        env = 'Fractionated Magnesium-Sodium Saline Playa';
+      } else {
+        sClass = 'Anhydrous Thenardite Facies';
+        species = 'Thenardite';
+        formula = 'Na2SO4';
+        env = 'Dehydrated / Desiccated Hyper-Arid Sulfate Crust';
+      }
+    }
+
+    return {
+      isSodiumSulfateDetected: isNaS,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      cryogenicEnvironment: env
+    };
+  }
 }
 
 

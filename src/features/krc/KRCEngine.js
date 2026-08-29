@@ -11212,6 +11212,67 @@ export class KRCEngine {
       copiapiteContext: `Copiapite at ${TC.toFixed(0)} C, a(FeSO4)=${aFeSO4.toFixed(2)} (${(alphaCop * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${cClass})`
     };
   }
+
+  /**
+   * Calculate cryogenic-to-moderate temperature hydration/dehydration of sodium sulfate crust into mirabilite decahydrate, cryogenic expansion, and thermal inertia.
+   * Na2SO4 (Thenardite) + 10 H2O (-20 to 30 C) -> Na2SO4·10H2O (Mirabilite Decahydrate)
+   * Reference: Rodriguez et al. (2014), Viviano-Beck et al. (2014), Vaniman et al. (2004) for Martian Cryogenic Sodium Sulfates.
+   * @param {number} [initialPlayaPorosity=0.30] - Initial thenardite playa sediment porosity (0.05 to 0.60)
+   * @param {number} [ambientTempC=5.0] - Ambient alteration temperature in C (-30 to 45 C)
+   * @param {number} [relativeHumidityFraction=0.65] - Relative humidity / pore moisture (0.02 to 1.0)
+   * @param {number} [durationYears=120.0] - Hydration exposure duration in years (0.1 to 5000 yr)
+   * @returns {{mirabiliteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantSodiumSulfateSpecies: string, cryogenicEvaporiteThermalInertiaTIU: number, sodiumSulfateFaciesClass: string, mirabiliteContext: string}}
+   */
+  static computeMartianMirabiliteMetasomatism(initialPlayaPorosity = 0.30, ambientTempC = 5.0, relativeHumidityFraction = 0.65, durationYears = 120.0) {
+    const phi0 = Math.max(0.01, Math.min(0.65, initialPlayaPorosity));
+    const TC = Math.max(-35.0, Math.min(60.0, ambientTempC));
+    const rh = Math.max(0.01, Math.min(1.0, relativeHumidityFraction));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.60e4; // 36 kJ/mol for mirabilite crystallization
+
+    // Reaction rate constant
+    const kRate = 6.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(rh, 0.45);
+    const alphaMrb = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound crystal water yield (wt%)
+    const wH2OPct = alphaMrb * 55.90;
+
+    // Massive volume expansion (315%) and friable cryogenic texture
+    const phiResidual = (phi0 * (1.0 - (0.45 * alphaMrb))) + (0.12 * alphaMrb);
+    const rhoGrain = 1490.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.72; // W/(m K)
+    const Cspec = 1260.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Mirabilite Decahydrate (Na2SO4·10H2O)';
+    let mClass = 'Decahydrated Sodium Sulfate Facies';
+
+    if (alphaMrb >= 0.50 && TC >= -20.0 && TC <= 30.0 && rh >= 0.40) {
+      species = 'Mirabilite Decahydrate (Na2SO4·10H2O)';
+      mClass = 'Cryogenic Mirabilite Evaporite Facies (Columbus Crater / Juventae / Noctis)';
+    } else if (rh < 0.40 || TC > 30.0) {
+      species = 'Anhydrous Thenardite (Na2SO4)';
+      mClass = 'Dehydrated Anhydrous Sodium Sulfate Residue';
+    } else {
+      species = 'Bloedite-Mirabilite Mixed Cryogenic Solute';
+      mClass = 'Mixed Sodium-Magnesium Sulfate Evaporite';
+    }
+
+    return {
+      mirabiliteConversionFraction: parseFloat(alphaMrb.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantSodiumSulfateSpecies: species,
+      cryogenicEvaporiteThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      sodiumSulfateFaciesClass: mClass,
+      mirabiliteContext: `Mirabilite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaMrb * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${mClass})`
+    };
+  }
 }
 
 
