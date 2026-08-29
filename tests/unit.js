@@ -15884,6 +15884,56 @@ describe('Mars-to-Themis Transfer, Hexahydrite Metasomatism & Magnesium Sulfate 
     });
 });
 
+describe('Mars-to-Phocaea Transfer, Szomolnokite Dehydration & Monohydrate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to highly-inclined asteroid (25) Phocaea and orbit capture', () => {
+        // Mars to Phocaea (300 km Mars alt, 2.400 AU distance, 15 km capture alt, 21.60 deg plane change):
+        const ph = TrajectoryEngine.computeMarsToPhocaeaTransfer(300.0, 2.400, 15.0, 21.60);
+        expect(ph.semiMajorAxisAU).to.be.closeTo(1.962, 0.1); // ~1.96 AU
+        expect(ph.eccentricity).to.be.closeTo(0.2233, 0.01); // e ~ 0.223
+        expect(ph.timeOfFlightDays).to.be.closeTo(501.07, 30.0); // ~501 days (~1.37 yr)
+        expect(ph.timeOfFlightYears).to.be.closeTo(1.37, 0.1); // ~1.37 yr
+        expect(ph.marsDepartureDeltaVKmS).to.be.closeTo(7.485, 0.5); // ~7.49 km/s TPhI
+        expect(ph.phocaeaOrbitInsertionDeltaVKmS).to.be.closeTo(2.193, 0.5); // ~2.19 km/s PhOI
+        expect(ph.totalMissionDeltaVKmS).to.be.closeTo(9.678, 1.0); // ~9.68 km/s total
+        expect(ph.phocaeaContext).to.include('Mars-to-Phocaea');
+    });
+
+    it('should calculate diurnal and desiccation dehydration of rozenite into szomolnokite and thermal inertia', () => {
+        // 35% initial porosity, 28 C surface temp, 0.15 RH, 250 yr duration:
+        const szo = KRCEngine.computeMartianSzomolnokiteMetasomatism(0.35, 28.0, 0.15, 250.0);
+        expect(szo.szomolnokiteConversionFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(szo.boundWaterYieldWeightPercent).to.be.lessThan(22.0); // < 22 wt% bound H2O
+        expect(szo.induratedMonohydrateThermalInertiaTIU).to.be.closeTo(1891.4, 200.0); // ~1891 tiu
+        expect(szo.monohydrateFaciesClass).to.include('Indurated Szomolnokite Monohydrate Facies');
+        expect(szo.szomolnokiteContext).to.include('Szomolnokite at 28 C');
+    });
+
+    it('should discriminate Szomolnokite vs Kieserite vs Polyhydrated Sulfates in CRISM spectra', () => {
+        // Szomolnokite (Aram Chaos / Capri / Mawrth: BD2070 = 0.045, BD2130 = 0.015, BD2400 = 0.040, BD1930 = 0.015):
+        const szo = BandMathEngine.computeCRISMSzomolnokiteMonohydrateSpeciationIndices(0.045, 0.015, 0.040, 0.015);
+        expect(szo.isMonohydrateDetected).to.be.true;
+        expect(szo.sulfateMineralClass).to.include('Monohydrated Szomolnokite Facies');
+        expect(szo.mineralSpecies).to.include('Szomolnokite');
+        expect(szo.hydrationState).to.include('Desiccated Monohydrated Ferrous Sulfate');
+
+        // Kieserite (BD2070 = 0.015, BD2130 = 0.045, BD2400 = 0.040, BD1930 = 0.015):
+        const kie = BandMathEngine.computeCRISMSzomolnokiteMonohydrateSpeciationIndices(0.015, 0.045, 0.040, 0.015);
+        expect(kie.isMonohydrateDetected).to.be.true;
+        expect(kie.sulfateMineralClass).to.include('Monohydrated Kieserite Facies');
+        expect(kie.mineralSpecies).to.include('Kieserite');
+
+        // Polyhydrated Sulfate (BD2070 = 0.010, BD2130 = 0.010, BD2400 = 0.030, BD1930 = 0.050):
+        const poly = BandMathEngine.computeCRISMSzomolnokiteMonohydrateSpeciationIndices(0.010, 0.010, 0.030, 0.050);
+        expect(poly.isMonohydrateDetected).to.be.true;
+        expect(poly.sulfateMineralClass).to.include('Polyhydrated Sulfate Mixed Facies');
+        expect(poly.mineralSpecies).to.include('Polyhydrated Sulfate');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMSzomolnokiteMonohydrateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMonohydrateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

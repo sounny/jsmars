@@ -11334,6 +11334,67 @@ export class KRCEngine {
       hexahydriteContext: `Hexahydrite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaHex * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${hClass})`
     };
   }
+
+  /**
+   * Calculate desiccation and hydrothermal dehydration of polyhydrated ferrous sulfates into monohydrated szomolnokite, crystal contraction, and thermal inertia.
+   * FeSO4·4H2O (Rozenite) -> FeSO4·H2O (Szomolnokite) + 3 H2O (15 to 75 C, low RH)
+   * Reference: Fraeman et al. (2014), Viviano-Beck et al. (2014), Roach et al. (2010) for Martian Monohydrated Ferrous Sulfates.
+   * @param {number} [initialPolyhydrateCrustPorosity=0.35] - Initial polyhydrated sulfate crust porosity (0.05 to 0.60)
+   * @param {number} [surfaceTempC=28.0] - Surface/diurnal desiccation temperature in C (0 to 95 C)
+   * @param {number} [atmosphericPoreHumidity=0.15] - Atmospheric / pore relative humidity (0.001 to 0.80)
+   * @param {number} [durationYears=250.0] - Desiccation exposure duration in years (0.1 to 5000 yr)
+   * @returns {{szomolnokiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantFerrousSulfatePhase: string, induratedMonohydrateThermalInertiaTIU: number, monohydrateFaciesClass: string, szomolnokiteContext: string}}
+   */
+  static computeMartianSzomolnokiteMetasomatism(initialPolyhydrateCrustPorosity = 0.35, surfaceTempC = 28.0, atmosphericPoreHumidity = 0.15, durationYears = 250.0) {
+    const phi0 = Math.max(0.01, Math.min(0.65, initialPolyhydrateCrustPorosity));
+    const TC = Math.max(-10.0, Math.min(110.0, surfaceTempC));
+    const rh = Math.max(0.001, Math.min(0.85, atmosphericPoreHumidity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.20e4; // 42 kJ/mol for szomolnokite dehydration crystallization
+
+    // Reaction rate constant
+    const kRate = 4.9e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(1.0 - rh, 0.60);
+    const alphaSzo = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound crystal water yield (wt%)
+    const wH2OPct = 11.85 + ((1.0 - alphaSzo) * 20.32);
+
+    // Crystal volume contraction and indurated monohydrate compaction
+    const phiResidual = phi0 * (1.0 - (0.40 * alphaSzo));
+    const rhoGrain = 3040.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.75; // W/(m K)
+    const Cspec = 870.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Szomolnokite Monohydrate (FeSO4·H2O)';
+    let sClass = 'Monohydrated Ferrous Sulfate Facies';
+
+    if (alphaSzo >= 0.50 && TC >= 15.0 && rh <= 0.30) {
+      species = 'Szomolnokite Monohydrate (FeSO4·H2O)';
+      sClass = 'Indurated Szomolnokite Monohydrate Facies (Aram Chaos / Capri / Mawrth)';
+    } else if (rh > 0.30) {
+      species = 'Metastable Rozenite-Szomolnokite Mixture';
+      sClass = 'Partially Dehydrated Polyhydrate Transition';
+    } else {
+      species = 'Anhydrous FeSO4 Residue';
+      sClass = 'Hyper-Thermal Desiccation Residue';
+    }
+
+    return {
+      szomolnokiteConversionFraction: parseFloat(alphaSzo.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantFerrousSulfatePhase: species,
+      induratedMonohydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      monohydrateFaciesClass: sClass,
+      szomolnokiteContext: `Szomolnokite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaSzo * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

@@ -10399,6 +10399,60 @@ export class BandMathEngine {
       hydrationEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Monohydrated Sulfates (Szomolnokite vs Kieserite vs Polyhydrated Sulfate Mixtures) from CRISM 2.070 um, 2.130 um, 2.400 um, and 1.930 um absorption bands.
+   * Reference: Fraeman et al. (2014), Viviano-Beck et al. (2014), Roach et al. (2010) for Martian Monohydrated Sulfate Speciation.
+   * @param {number} [band2070FeDepth=0.045] - BD2070 ferrous monohydrate crystal field absorption depth (0.0 to 0.50)
+   * @param {number} [band2130MgDepth=0.015] - BD2130 magnesium monohydrate combination band depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.040] - BD2400 monohydrate diagnostic sulfate doublet depth (0.0 to 0.50)
+   * @param {number} [band1930H2ODepth=0.015] - BD1930 polyhydrated structural H2O absorption depth (0.0 to 0.60)
+   * @returns {{isMonohydrateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrationState: string}}
+   */
+  static computeCRISMSzomolnokiteMonohydrateSpeciationIndices(band2070FeDepth = 0.045, band2130MgDepth = 0.015, band2400SO4Depth = 0.040, band1930H2ODepth = 0.015) {
+    const d2070 = Math.max(0.0, band2070FeDepth);
+    const d2130 = Math.max(0.0, band2130MgDepth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+    const d1930 = Math.max(0.0, band1930H2ODepth);
+
+    const isSzomolnokite = d2070 >= 0.030 && d2400 >= 0.025 && d1930 < 0.025 && d2130 < 0.025;
+    const isKieserite = d2130 >= 0.030 && d2400 >= 0.025 && d2070 < 0.025;
+    const isPolyhydrated = d1930 >= 0.035 && d2400 >= 0.020;
+
+    const isMono = isSzomolnokite || isKieserite || isPolyhydrated;
+
+    let sClass = 'Monohydrate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let state = 'Unaltered Primary Crust';
+
+    if (isMono) {
+      if (isSzomolnokite) {
+        sClass = 'Monohydrated Szomolnokite Facies';
+        species = 'Szomolnokite';
+        formula = 'FeSO4·H2O';
+        state = 'Desiccated Monohydrated Ferrous Sulfate (Aram Chaos / Capri / Mawrth)';
+      } else if (isKieserite) {
+        sClass = 'Monohydrated Kieserite Facies';
+        species = 'Kieserite';
+        formula = 'MgSO4·H2O';
+        state = 'Desiccated Monohydrated Magnesium Sulfate';
+      } else {
+        sClass = 'Polyhydrated Sulfate Mixed Facies';
+        species = 'Polyhydrated Sulfate';
+        formula = 'MSO4·nH2O (n >= 4)';
+        state = 'Hydrated Multi-Water Sulfate Stratum';
+      }
+    }
+
+    return {
+      isMonohydrateDetected: isMono,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationState: state
+    };
+  }
 }
 
 
