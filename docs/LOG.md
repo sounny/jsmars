@@ -829,3 +829,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should discriminate Al-Pumpellyite vs Epidote vs Fe3+-Pumpellyite in CRISM spectra
 ?: AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
     at n.<anonymous> (unit.js:14678:54)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 11:46:42 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate atmospheric desiccation and phase transition of mirabilite into anhydrous thenardite and thermal inertia
+?: AssertionError: expected 1690.6 to be close to 1976.4 +/- 200
+    at n.<anonymous> (unit.js:15307:66)

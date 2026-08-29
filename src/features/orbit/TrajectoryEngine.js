@@ -10892,6 +10892,81 @@ export class TrajectoryEngine {
       hygieaContext: `Mars-to-Hygiea (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, HOI=${dvHoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to stony main-belt asteroid (11) Parthenope and orbit capture.
+   * a = ( r_mars + r_parthenope ) / 2
+   * e = ( r_parthenope - r_mars ) / ( r_parthenope + r_mars )
+   * Reference: Carry et al. (2012), Marsset et al. (2020), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [parthenopeDistanceAU=2.453] - Parthenope heliocentric distance in AU (1.9 to 3.0 AU)
+   * @param {number} [parthenopePeriapsisAltitudeKm=20.0] - Parthenope orbit insertion periapsis altitude in km (5 to 300 km)
+   * @param {number} [inclinationPlaneChangeDeg=4.63] - Orbital plane change angle in degrees (0 to 30 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, parthenopeOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, parthenopeContext: string}}
+   */
+  static computeMarsToParthenopeTransfer(marsParkingAltitudeKm = 300.0, parthenopeDistanceAU = 2.453, parthenopePeriapsisAltitudeKm = 20.0, inclinationPlaneChangeDeg = 4.63) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rPAU = Math.max(1.8, Math.min(3.2, parthenopeDistanceAU));
+    const hpPKm = Math.max(5.0, parthenopePeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muParthenope = 3.44; // km^3/s^2
+    const rParthenopeKm = 76.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rPDistKm = rPAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rPDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rPDistKm - rMarsDistKm) / (rPDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTpiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Parthenope capture
+    const vPCircKmS = Math.sqrt(muSun / rPDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rPDistKm) - (1.0 / aKm)));
+    const vInfPKmS = Math.abs(vPCircKmS - vArrKmS);
+
+    const rpPKm = rParthenopeKm + hpPKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpPKm / (1.0 - eCap);
+
+    const vHypPKmS = Math.sqrt(Math.pow(vInfPKmS, 2.0) + ((2.0 * muParthenope) / rpPKm));
+    const vCapPKmS = Math.sqrt(muParthenope * ((2.0 / rpPKm) - (1.0 / aCapKm)));
+    const dvPoiKmS = vHypPKmS - vCapPKmS;
+
+    const dvTotKmS = dvTpiMarsKmS + dvPoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTpiMarsKmS.toFixed(3)),
+      parthenopeOrbitInsertionDeltaVKmS: parseFloat(dvPoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      parthenopeContext: `Mars-to-Parthenope (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, POI=${dvPoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

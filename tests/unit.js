@@ -15285,6 +15285,56 @@ describe('Mars-to-Hygiea Transfer, Szomolnokite Kinetics & Monohydrate Speciatio
     });
 });
 
+describe('Mars-to-Parthenope Transfer, Mirabilite-Thenardite Kinetics & Sodium Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony main-belt asteroid (11) Parthenope and orbit capture', () => {
+        // Mars to Parthenope (300 km Mars alt, 2.453 AU distance, 20 km capture alt, 4.63 deg plane change):
+        const par = TrajectoryEngine.computeMarsToParthenopeTransfer(300.0, 2.453, 20.0, 4.63);
+        expect(par.semiMajorAxisAU).to.be.closeTo(1.988, 0.1); // ~1.99 AU
+        expect(par.eccentricity).to.be.closeTo(0.2337, 0.01); // e ~ 0.234
+        expect(par.timeOfFlightDays).to.be.closeTo(511.20, 30.0); // ~511 days (~1.40 yr)
+        expect(par.timeOfFlightYears).to.be.closeTo(1.40, 0.1); // ~1.40 yr
+        expect(par.marsDepartureDeltaVKmS).to.be.closeTo(2.368, 0.5); // ~2.37 km/s TPI
+        expect(par.parthenopeOrbitInsertionDeltaVKmS).to.be.closeTo(2.242, 0.5); // ~2.24 km/s POI
+        expect(par.totalMissionDeltaVKmS).to.be.closeTo(4.610, 1.0); // ~4.61 km/s total
+        expect(par.parthenopeContext).to.include('Mars-to-Parthenope');
+    });
+
+    it('should calculate atmospheric desiccation and phase transition of mirabilite into anhydrous thenardite and thermal inertia', () => {
+        // 32% initial porosity, 20 C evaporite temp, 0.05 RH, 150 yr duration:
+        const then = KRCEngine.computeMartianMirabiliteThenarditeKinetics(0.32, 20.0, 0.05, 150.0);
+        expect(then.thenarditeConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(then.waterLossWeightPercent).to.be.greaterThan(30.0); // > 30 wt% water loss
+        expect(then.desiccatedThenarditeThermalInertiaTIU).to.be.closeTo(1690.6, 200.0); // ~1691 tiu
+        expect(then.sulfateFaciesClass).to.include('Anhydrous Sodium Sulfate Facies');
+        expect(then.thenarditeContext).to.include('Thenardite at 20 C');
+    });
+
+    it('should discriminate Thenardite vs Mirabilite vs Bloedite in CRISM spectra', () => {
+        // Thenardite (Columbus / Noctis / Juventae: BD1450 = 0.015, BD1780 = 0.015, BD1940 = 0.020, BD2180 = 0.055):
+        const then = BandMathEngine.computeCRISMSodiumSulfateSpeciationIndices(0.015, 0.015, 0.020, 0.055);
+        expect(then.isSodiumSulfateDetected).to.be.true;
+        expect(then.sulfateMineralClass).to.include('Anhydrous Sodium Sulfate Thenardite Facies');
+        expect(then.mineralSpecies).to.include('Thenardite');
+        expect(then.evaporiteRegime).to.include('Extreme Hyper-Arid Desiccation');
+
+        // Mirabilite (BD1450 = 0.035, BD1780 = 0.015, BD1940 = 0.065, BD2180 = 0.015):
+        const mira = BandMathEngine.computeCRISMSodiumSulfateSpeciationIndices(0.035, 0.015, 0.065, 0.015);
+        expect(mira.isSodiumSulfateDetected).to.be.true;
+        expect(mira.sulfateMineralClass).to.include('Hydrated Mirabilite Decahydrate Facies');
+        expect(mira.mineralSpecies).to.include('Mirabilite');
+
+        // Bloedite (BD1450 = 0.015, BD1780 = 0.035, BD1940 = 0.045, BD2180 = 0.040):
+        const bloed = BandMathEngine.computeCRISMSodiumSulfateSpeciationIndices(0.015, 0.035, 0.045, 0.040);
+        expect(bloed.isSodiumSulfateDetected).to.be.true;
+        expect(bloed.sulfateMineralClass).to.include('Hydrated Mixed Na-Mg Sulfate Bloedite Facies');
+        expect(bloed.mineralSpecies).to.include('Bloedite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMSodiumSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSodiumSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

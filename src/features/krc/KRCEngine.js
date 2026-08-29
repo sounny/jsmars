@@ -10602,6 +10602,67 @@ export class KRCEngine {
       szomolnokiteContext: `Szomolnokite at ${TC.toFixed(0)} C, RH=${rh.toFixed(2)} (${(alphaSzom * 100).toFixed(1)}% converted, ${wSzomPct.toFixed(1)}% Szomolnokite, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate atmospheric desiccation and phase transition kinetics of sodium sulfate decahydrate (mirabilite) into anhydrous thenardite, volume collapse, and thermal inertia.
+   * Na2SO4·10H2O (Mirabilite) -> Na2SO4 (Thenardite) + 10 H2O (g) (5-35 C, low RH)
+   * Reference: Vaniman et al. (2004), Rodriguez et al. (2014), Viviano-Beck et al. (2014) for Martian Sodium Sulfate Evaporites.
+   * @param {number} [initialMirabilitePorosity=0.32] - Initial mirabilite evaporite sediment porosity (0.05 to 0.55)
+   * @param {number} [evaporiteTempC=20.0] - Evaporite surface temperature in C (-5 to 55 C)
+   * @param {number} [relativeHumidityFraction=0.05] - Near-surface atmospheric relative humidity (0.001 to 0.80)
+   * @param {number} [durationYears=150.0] - Exposure duration in years (0.1 to 5000 yr)
+   * @returns {{thenarditeConversionFraction: number, waterLossWeightPercent: number, dominantSulfateSpecies: string, desiccatedThenarditeThermalInertiaTIU: number, sulfateFaciesClass: string, thenarditeContext: string}}
+   */
+  static computeMartianMirabiliteThenarditeKinetics(initialMirabilitePorosity = 0.32, evaporiteTempC = 20.0, relativeHumidityFraction = 0.05, durationYears = 150.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialMirabilitePorosity));
+    const TC = Math.max(-15.0, Math.min(70.0, evaporiteTempC));
+    const rh = Math.max(0.001, Math.min(0.95, relativeHumidityFraction));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.00e4; // 40 kJ/mol for mirabilite dehydration
+
+    // Reaction rate constant
+    const kRate = 7.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(1.0 - Math.min(0.90, rh), 0.45);
+    const alphaThen = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Water loss (wt%)
+    const wLossPct = alphaThen * 55.9;
+
+    // Structural collapse, pulverization, and microporosity generation
+    const phiResidual = phi0 + (0.12 * alphaThen);
+    const rhoGrain = 2660.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.65; // W/(m K)
+    const Cspec = 890.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Anhydrous Thenardite (Na2SO4)';
+    let sClass = 'Desiccated Sodium Sulfate Evaporite';
+
+    if (alphaThen >= 0.50 && rh <= 0.15) {
+      species = 'Anhydrous Thenardite (Na2SO4) Powder';
+      sClass = 'Anhydrous Sodium Sulfate Facies (Columbus Crater / Noctis Labyrinthus / Juventae)';
+    } else if (rh > 0.35) {
+      species = 'Mirabilite Decahydrate (Na2SO4·10H2O) Equilibrium';
+      sClass = 'Hydrated Mirabilite Cryogenic Evaporite Crust';
+    } else {
+      species = 'Incipient Mirabilite-Thenardite Transition';
+      sClass = 'Partially Dehydrated Mirabilite Sequence';
+    }
+
+    return {
+      thenarditeConversionFraction: parseFloat(alphaThen.toFixed(3)),
+      waterLossWeightPercent: parseFloat(wLossPct.toFixed(1)),
+      dominantSulfateSpecies: species,
+      desiccatedThenarditeThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      sulfateFaciesClass: sClass,
+      thenarditeContext: `Thenardite at ${TC.toFixed(0)} C, RH=${rh.toFixed(2)} (${(alphaThen * 100).toFixed(1)}% converted, ${wLossPct.toFixed(1)}% H2O loss, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

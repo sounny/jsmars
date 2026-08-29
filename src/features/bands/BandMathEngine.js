@@ -9751,6 +9751,60 @@ export class BandMathEngine {
       hydrationEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Martian Sodium Sulfates (Anhydrous Thenardite vs Mirabilite Decahydrate vs Bloedite vs Halite) from CRISM 1.450 um, 1.780 um, 1.940 um, and 2.180 um absorption bands.
+   * Reference: Rodriguez et al. (2014), Viviano-Beck et al. (2014), Vaniman et al. (2004) for Martian Alkaline Evaporite Mineralogy.
+   * @param {number} [band1450OHDepth=0.015] - BD1450 mirabilite diagnostic sharp H2O/OH overtone depth (0.0 to 0.40)
+   * @param {number} [band1780H2ODepth=0.015] - BD1780 bloedite hydrous combination depth (0.0 to 0.50)
+   * @param {number} [band1940H2ODepth=0.020] - BD1940 fundamental molecular H2O absorption depth (0.0 to 0.60)
+   * @param {number} [band2180SO4Depth=0.055] - BD2180 thenardite anhydrous sulfate vibrational overtone depth (0.0 to 0.50)
+   * @returns {{isSodiumSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, evaporiteRegime: string}}
+   */
+  static computeCRISMSodiumSulfateSpeciationIndices(band1450OHDepth = 0.015, band1780H2ODepth = 0.015, band1940H2ODepth = 0.020, band2180SO4Depth = 0.055) {
+    const d1450 = Math.max(0.0, band1450OHDepth);
+    const d1780 = Math.max(0.0, band1780H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2180 = Math.max(0.0, band2180SO4Depth);
+
+    const isThenardite = d2180 >= 0.035 && d1450 < 0.025 && d1940 < 0.030;
+    const isMirabilite = d1450 >= 0.030 && d1940 >= 0.050 && d2180 < 0.025;
+    const isBloedite = d1780 >= 0.025 && d2180 >= 0.030 && d1940 >= 0.035;
+
+    const isNaSulf = isThenardite || isMirabilite || isBloedite;
+
+    let sClass = 'Sodium-Sulfate-Free Matrix';
+    let species = 'Silicate/Halite Matrix';
+    let formula = 'NaCl / Silicate';
+    let regime = 'Unaltered Crustal Sequence';
+
+    if (isNaSulf) {
+      if (isThenardite) {
+        sClass = 'Anhydrous Sodium Sulfate Thenardite Facies';
+        species = 'Thenardite';
+        formula = 'Na2SO4';
+        regime = 'Extreme Hyper-Arid Desiccation / Cryogenic Evaporite (Columbus Crater / Noctis Labyrinthus)';
+      } else if (isMirabilite) {
+        sClass = 'Hydrated Mirabilite Decahydrate Facies';
+        species = 'Mirabilite';
+        formula = 'Na2SO4·10H2O';
+        regime = 'High-Water-Activity Alkaline Saline Playa Equilibrium';
+      } else {
+        sClass = 'Hydrated Mixed Na-Mg Sulfate Bloedite Facies';
+        species = 'Bloedite';
+        formula = 'Na2Mg(SO4)2·4H2O';
+        regime = 'Fractional Crystallization of Complex Alkaline Brines';
+      }
+    }
+
+    return {
+      isSodiumSulfateDetected: isNaSulf,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      evaporiteRegime: regime
+    };
+  }
 }
 
 
