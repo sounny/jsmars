@@ -9244,6 +9244,63 @@ export class KRCEngine {
       diagenesisContext: `Clay Diagenesis at ${TC.toFixed(0)} C (${illitePercentInClay.toFixed(1)}% Illite in ${tKyr.toFixed(0)} kyr, ${wExpelledH2O.toFixed(1)}% H2O expelled, TIU=${TIU.toFixed(0)}, ${diagClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal metamorphism kinetics of kaolinite to dickite/pyrophyllite, silica metasomatism, dehydroxylation water release, and hornfels thermal inertia.
+   * Al2Si2O5(OH)4 (Kaolinite) + 2 SiO2(aq) -> Al2Si4O10(OH)2 (Pyrophyllite) + H2O
+   * Reference: Hemley et al. (1980), Ehlmann et al. (2009), Marzo et al. (2010), Sun & Milliken (2015) for High-Temperature Martian Hydrothermal Phyllosilicates.
+   * @param {number} [kaoliniteFraction=0.50] - Initial kaolinite mass fraction in host protolith (0.05 to 0.95)
+   * @param {number} [hydrothermalTempC=260.0] - Hydrothermal fluid temperature in C (100 to 400 C)
+   * @param {number} [dissolvedSilicaActivity=1.20] - Dissolved silica chemical activity (0.1 to 3.0)
+   * @param {number} [durationYears=500.0] - Hydrothermal circulation duration in years (0.1 to 10000 yr)
+   * @returns {{pyrophylliteConversionFraction: number, dickitePolymorphFraction: number, dehydroxylationWaterWeightPercent: number, metamorphicHornfelsThermalInertiaTIU: number, hydrothermalMetamorphismClass: string, metamorphismContext: string}}
+   */
+  static computeMartianKaolinitePyrophylliteHydrothermalMetamorphism(kaoliniteFraction = 0.50, hydrothermalTempC = 260.0, dissolvedSilicaActivity = 1.20, durationYears = 500.0) {
+    const wKaol = Math.max(0.01, Math.min(0.95, kaoliniteFraction));
+    const TC = Math.max(50.0, Math.min(450.0, hydrothermalTempC));
+    const aSiO2 = Math.max(0.05, Math.min(5.0, dissolvedSilicaActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.20e4; // 62 kJ/mol for pyrophyllitization
+
+    // Reaction rate constant
+    const kRate = 5.0e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(aSiO2);
+    const alphaPyro = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Polymorph partitioning: Dickite/Nacrite forms between 180-250 C, Pyrophyllite dominates > 250 C with high silica
+    let alphaDickite = 0.0;
+    if (TC >= 180.0 && TC < 280.0) {
+      alphaDickite = (1.0 - alphaPyro) * 0.75;
+    }
+
+    // Water released during pyrophyllitization (wt% of host rock)
+    const wWaterReleased = alphaPyro * wKaol * 6.98;
+
+    // Thermal inertia of dense silicified pyrophyllite hornfels
+    const kTherm = 2.45; // W/(m K)
+    const rhoBulk = 2450.0; // kg/m^3
+    const Cspec = 890.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let metaClass = 'Low-Temperature Sedimentary Kaolinite Regolith (T < 180 C)';
+    if (alphaPyro >= 0.60 && TC >= 250.0) {
+      metaClass = 'High-Temperature Hydrothermal Pyrophyllite-Quartz Hornfels (Toro Crater / Nili Fossae Central Peaks)';
+    } else if (TC >= 180.0) {
+      metaClass = 'Moderate Hydrothermal Dickite / Nacrite High-Temperature Kaolin Polymorph Alteration';
+    }
+
+    return {
+      pyrophylliteConversionFraction: parseFloat(alphaPyro.toFixed(3)),
+      dickitePolymorphFraction: parseFloat(alphaDickite.toFixed(3)),
+      dehydroxylationWaterWeightPercent: parseFloat(wWaterReleased.toFixed(2)),
+      metamorphicHornfelsThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      hydrothermalMetamorphismClass: metaClass,
+      metamorphismContext: `Kaolin Metamorphism at ${TC.toFixed(0)} C (${(alphaPyro * 100).toFixed(1)}% Pyrophyllite, ${(alphaDickite * 100).toFixed(1)}% Dickite, TIU=${TIU.toFixed(0)}, ${metaClass})`
+    };
+  }
 }
 
 

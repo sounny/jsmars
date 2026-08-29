@@ -9221,6 +9221,78 @@ export class TrajectoryEngine {
       salaciaContext: `Mars-to-Salacia (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, SOI=${dvSoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to large resonant binary Kuiper Belt object 174567 Varda and orbit capture.
+   * a = ( r_mars + r_varda ) / 2
+   * e = ( r_varda - r_mars ) / ( r_varda + r_mars )
+   * Reference: Grundy et al. (2015), Souami et al. (2020), Curtis (2013) for Binary KBO Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [vardaDistanceAU=45.60] - Varda heliocentric distance in AU (35.0 to 55.0 AU)
+   * @param {number} [vardaPeriapsisAltitudeKm=200.0] - Varda orbit insertion periapsis altitude in km (50 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, vardaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, vardaContext: string}}
+   */
+  static computeMarsToVardaTransfer(marsParkingAltitudeKm = 300.0, vardaDistanceAU = 45.60, vardaPeriapsisAltitudeKm = 200.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rVAU = Math.max(30.0, Math.min(60.0, vardaDistanceAU));
+    const hpVKm = Math.max(30.0, vardaPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muVar = 17.7; // km^3/s^2
+    const rVarKm = 370.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rVDistKm = rVAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rVDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rVDistKm - rMarsDistKm) / (rVDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTviKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Varda capture
+    const vVCircKmS = Math.sqrt(muSun / rVDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rVDistKm) - (1.0 / aKm)));
+    const vInfVKmS = Math.abs(vVCircKmS - vArrKmS);
+
+    const rpVKm = rVarKm + hpVKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpVKm / (1.0 - eCap);
+
+    const vHypVKmS = Math.sqrt(Math.pow(vInfVKmS, 2.0) + ((2.0 * muVar) / rpVKm));
+    const vCapVKmS = Math.sqrt(muVar * ((2.0 / rpVKm) - (1.0 / aCapKm)));
+    const dvVoiKmS = vHypVKmS - vCapVKmS;
+
+    const dvTotKmS = dvTviKmS + dvVoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTviKmS.toFixed(3)),
+      vardaOrbitInsertionDeltaVKmS: parseFloat(dvVoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      vardaContext: `Mars-to-Varda (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, VOI=${dvVoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

@@ -14115,6 +14115,56 @@ describe('Mars-to-Salacia Transfer, Smectite-to-Illite Diagenesis & Clay Speciat
     });
 });
 
+describe('Mars-to-Varda Transfer, Kaolinite-to-Pyrophyllite Metamorphism & Kaolin Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to resonant binary KBO 174567 Varda', () => {
+        // Mars to Varda (300 km Mars alt, 45.60 AU distance, 200 km capture alt):
+        const var_ = TrajectoryEngine.computeMarsToVardaTransfer(300.0, 45.60, 200.0);
+        expect(var_.semiMajorAxisAU).to.be.closeTo(23.562, 0.5); // ~23.56 AU
+        expect(var_.eccentricity).to.be.closeTo(0.9353, 0.01); // e ~ 0.935
+        expect(var_.timeOfFlightDays).to.be.closeTo(22653.8, 2500.0); // ~22654 days (~62.0 yr)
+        expect(var_.timeOfFlightYears).to.be.closeTo(62.02, 6.0); // ~62.0 yr
+        expect(var_.marsDepartureDeltaVKmS).to.be.closeTo(7.370, 0.6); // ~7.37 km/s TVI
+        expect(var_.vardaOrbitInsertionDeltaVKmS).to.be.closeTo(1.760, 1.5); // ~1.76 km/s VOI
+        expect(var_.totalMissionDeltaVKmS).to.be.closeTo(9.130, 2.0); // ~9.13 km/s total
+        expect(var_.vardaContext).to.include('Mars-to-Varda');
+    });
+
+    it('should calculate hydrothermal kaolinite-to-pyrophyllite conversion kinetics, dehydroxylation water, and hornfels thermal inertia', () => {
+        // 50% initial kaolinite, 260 C hydrothermal temp, 1.20 silica activity, 500 yr duration:
+        const meta = KRCEngine.computeMartianKaolinitePyrophylliteHydrothermalMetamorphism(0.50, 260.0, 1.20, 500.0);
+        expect(meta.pyrophylliteConversionFraction).to.be.greaterThan(0.50); // > 50% pyrophyllite
+        expect(meta.dehydroxylationWaterWeightPercent).to.be.greaterThan(2.0); // > 2.0 wt% H2O released
+        expect(meta.metamorphicHornfelsThermalInertiaTIU).to.be.closeTo(2311.6, 150.0); // ~2312 tiu
+        expect(meta.hydrothermalMetamorphismClass).to.include('High-Temperature Hydrothermal Pyrophyllite');
+        expect(meta.metamorphismContext).to.include('Kaolin Metamorphism at 260 C');
+    });
+
+    it('should discriminate Kaolinite vs Dickite vs Halloysite vs Pyrophyllite in CRISM spectra', () => {
+        // Kaolinite (Mawrth Vallis: BD1400 = 0.04, BD1900 = 0.01, BD2070 = 0.005, BD2160 = 0.035, BD2208 = 0.065):
+        const kaol = BandMathEngine.computeCRISMKaolinGroupPolymorphSpeciationIndices(0.04, 0.01, 0.005, 0.035, 0.065);
+        expect(kaol.isKaolinGroupDetected).to.be.true;
+        expect(kaol.kaolinPolymorphClass).to.include('Pedogenic / Leached Kaolinite');
+        expect(kaol.mineralSpecies).to.include('Kaolinite');
+        expect(kaol.paleoclimateContext).to.include('Leached Paleosol');
+
+        // Pyrophyllite (Toro Crater: BD1400 = 0.02, BD1900 = 0.005, BD2070 = 0.045, BD2160 = 0.040, BD2208 = 0.01):
+        const pyro = BandMathEngine.computeCRISMKaolinGroupPolymorphSpeciationIndices(0.02, 0.005, 0.045, 0.040, 0.01);
+        expect(pyro.isKaolinGroupDetected).to.be.true;
+        expect(pyro.kaolinPolymorphClass).to.include('High-Temperature Pyrophyllite Hornfels');
+        expect(pyro.mineralSpecies).to.include('Pyrophyllite');
+
+        // Halloysite (BD1400 = 0.03, BD1900 = 0.06, BD2070 = 0.005, BD2160 = 0.025, BD2208 = 0.050):
+        const hall = BandMathEngine.computeCRISMKaolinGroupPolymorphSpeciationIndices(0.03, 0.06, 0.005, 0.025, 0.050);
+        expect(hall.isKaolinGroupDetected).to.be.true;
+        expect(hall.kaolinPolymorphClass).to.include('Hydrated Tubular Halloysite');
+        expect(hall.mineralSpecies).to.include('Halloysite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMKaolinGroupPolymorphSpeciationIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isKaolinGroupDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

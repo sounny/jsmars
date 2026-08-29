@@ -8481,6 +8481,69 @@ export class BandMathEngine {
       diagenesisPaleoclimateContext: context
     };
   }
+
+  /**
+   * Discriminate Kaolin-Group Polymorphs (Kaolinite vs Dickite/Nacrite vs Halloysite vs Pyrophyllite) from CRISM 1.40 um, 1.90 um, 2.07 um, 2.16 um, and 2.208 um absorption bands.
+   * Reference: Bishop et al. (2008), Ehlmann et al. (2009), Marzo et al. (2010), Viviano-Beck et al. (2014), Sun & Milliken (2015) for Martian Kaolin Polymorphs.
+   * @param {number} [band1400OHDepth=0.04] - BD1400 Al-OH overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 molecular interlayer H2O depth (0.0 to 0.60)
+   * @param {number} [band2070PyroDepth=0.005] - BD2070 pyrophyllite diagnostic band depth (0.0 to 0.40)
+   * @param {number} [band2160OHDepth=0.035] - BD2160 kaolin-group doublet shoulder depth (0.0 to 0.40)
+   * @param {number} [band2208OHDepth=0.065] - BD2200/BD2208 Al-OH primary vibration depth (0.0 to 0.50)
+   * @returns {{isKaolinGroupDetected: boolean, kaolinPolymorphClass: string, mineralSpecies: string, chemicalFormula: string, hydrothermalTemperatureRegime: string, paleoclimateContext: string}}
+   */
+  static computeCRISMKaolinGroupPolymorphSpeciationIndices(band1400OHDepth = 0.04, band1900WaterDepth = 0.01, band2070PyroDepth = 0.005, band2160OHDepth = 0.035, band2208OHDepth = 0.065) {
+    const d1400 = Math.max(0.0, band1400OHDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2070 = Math.max(0.0, band2070PyroDepth);
+    const d2160 = Math.max(0.0, band2160OHDepth);
+    const d2208 = Math.max(0.0, band2208OHDepth);
+
+    const isKaolin = (d2208 >= 0.025 && d2160 >= 0.015) || (d2070 >= 0.025 && d2160 >= 0.020);
+
+    let kClass = 'Kaolin-Free Silicate Regolith';
+    let species = 'Basalt Matrix';
+    let formula = 'Silicate Matrix';
+    let tempRegime = 'Ambient Martian Conditions';
+    let context = 'Standard Silicate Bedrock without Diagnostic 2.16-2.21 um Kaolin Doublet';
+
+    if (isKaolin) {
+      if (d2070 >= 0.025) {
+        kClass = 'High-Temperature Pyrophyllite Hornfels';
+        species = 'Pyrophyllite';
+        formula = 'Al2Si4O10(OH)2';
+        tempRegime = 'High-Temperature Hydrothermal Metamorphic (> 250-350 C)';
+        context = 'High-Temperature Hydrothermal Fumarolic / Impact Central Peak Uplift (Toro Crater / Nili Fossae)';
+      } else if (d1900 >= 0.045) {
+        kClass = 'Hydrated Tubular Halloysite';
+        species = 'Halloysite';
+        formula = 'Al2Si2O5(OH)4 * 2H2O';
+        tempRegime = 'Low-Temperature Hydrothermal / Weathering (< 100 C)';
+        context = 'Supergene Aqueous Weathering of Vitric Volcanic Tuff';
+      } else if (d2160 >= d2208 * 0.70) {
+        kClass = 'Hydrothermal Dickite / Nacrite Polymorph';
+        species = 'Dickite / Nacrite';
+        formula = 'Al2Si2O5(OH)4';
+        tempRegime = 'Moderate Hydrothermal System (180-250 C)';
+        context = 'Epithermal / Mesothermal Hydrothermal Conduit Alteration';
+      } else {
+        kClass = 'Pedogenic / Leached Kaolinite';
+        species = 'Kaolinite';
+        formula = 'Al2Si2O5(OH)4';
+        tempRegime = 'Low-Temperature Acidic Leaching / Paleoweathering (< 80 C)';
+        context = 'Intense Leaching / Top Layer of Stratigraphic Leached Paleosol (Mawrth Vallis Cap Layer)';
+      }
+    }
+
+    return {
+      isKaolinGroupDetected: isKaolin,
+      kaolinPolymorphClass: kClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrothermalTemperatureRegime: tempRegime,
+      paleoclimateContext: context
+    };
+  }
 }
 
 
