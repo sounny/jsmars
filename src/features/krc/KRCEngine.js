@@ -10235,6 +10235,67 @@ export class KRCEngine {
       apsContext: `Woodhouseite APS at ${TC.toFixed(0)} C, P/S=${rPS.toFixed(1)} (${(alphaAPS * 100).toFixed(1)}% converted, ${wAPSPct.toFixed(1)}% Woodhouseite, TIU=${TIU.toFixed(0)}, ${aClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal CO2 metasomatism of ultramafic serpentinite into talc-magnesite soapstone assemblage, void occlusion, and indurated soapstone thermal inertia.
+   * 2 Antigorite + 3 CO2 (180-360 C) -> Talc (Mg3Si4O10(OH)2) + 3 Magnesite (MgCO3) + 3 H2O
+   * Reference: Brown et al. (2010), Ehlmann et al. (2010), Viviano-Beck et al. (2014) for Martian Talc-Carbonate Metasomatism in Nili Fossae.
+   * @param {number} [ultramaficSerpentinitePorosity=0.15] - Initial serpentinized ultramafic rock porosity (0.02 to 0.40)
+   * @param {number} [hydrothermalTempC=270.0] - Hydrothermal fluid temperature in C (140 to 420 C)
+   * @param {number} [co2FluidMoleFraction=0.12] - Dissolved CO2 fluid mole fraction (0.01 to 0.50)
+   * @param {number} [durationYears=600.0] - Metasomatic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{talcCarbonateConversionFraction: number, soapstoneYieldWeightPercent: number, dominantSoapstoneSpecies: string, induratedSoapstoneThermalInertiaTIU: number, soapstoneFaciesClass: string, talcCarbonateContext: string}}
+   */
+  static computeMartianTalcCarbonateMetasomatism(ultramaficSerpentinitePorosity = 0.15, hydrothermalTempC = 270.0, co2FluidMoleFraction = 0.12, durationYears = 600.0) {
+    const phi0 = Math.max(0.01, Math.min(0.45, ultramaficSerpentinitePorosity));
+    const TC = Math.max(100.0, Math.min(450.0, hydrothermalTempC));
+    const xCO2 = Math.max(0.005, Math.min(0.80, co2FluidMoleFraction));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.20e4; // 62 kJ/mol for talc-carbonate carbonation
+
+    // Reaction rate constant
+    const kRate = 5.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(xCO2);
+    const alphaTC = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Soapstone yield (wt%)
+    const wSoapPct = alphaTC * 74.0;
+
+    // Void occlusion and soapstone matrix consolidation
+    const phiResidual = phi0 * (1.0 - (0.80 * alphaTC));
+    const rhoGrain = 2980.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.65; // W/(m K)
+    const Cspec = 870.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Talc-Magnesite Soapstone Assemblage';
+    let sClass = 'Pervasive Ultramafic Talc-Carbonate Metasomatism';
+
+    if (xCO2 >= 0.08 && TC >= 220.0 && TC <= 340.0) {
+      species = 'Talc + Magnesite + Quartz (Soapstone)';
+      sClass = 'Pervasive Talc-Carbonate Hydrothermal Facies (Nili Fossae / Isidis Rim)';
+    } else if (TC > 340.0) {
+      species = 'Anthophyllite-Magnesite High-T Facies';
+      sClass = 'High-Grade Metamorphic Ultramafic Transition';
+    } else {
+      species = 'Incipient Serpentine-Talc Carbonation';
+      sClass = 'Low-X(CO2) Serpentinite Weathering Boundary';
+    }
+
+    return {
+      talcCarbonateConversionFraction: parseFloat(alphaTC.toFixed(3)),
+      soapstoneYieldWeightPercent: parseFloat(wSoapPct.toFixed(1)),
+      dominantSoapstoneSpecies: species,
+      induratedSoapstoneThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      soapstoneFaciesClass: sClass,
+      talcCarbonateContext: `Talc-Carbonate Soapstone at ${TC.toFixed(0)} C, X(CO2)=${xCO2.toFixed(2)} (${(alphaTC * 100).toFixed(1)}% converted, ${wSoapPct.toFixed(1)}% Soapstone, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

@@ -14990,6 +14990,56 @@ describe('Mars-to-Juno Transfer, Woodhouseite APS Kinetics & APS Speciation', ()
     });
 });
 
+describe('Mars-to-Astraea Transfer, Talc-Carbonate Metasomatism & Soapstone Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony main-belt asteroid (5) Astraea and orbit capture', () => {
+        // Mars to Astraea (300 km Mars alt, 2.574 AU distance, 20 km capture alt, 5.37 deg plane change):
+        const ast = TrajectoryEngine.computeMarsToAstraeaTransfer(300.0, 2.574, 20.0, 5.37);
+        expect(ast.semiMajorAxisAU).to.be.closeTo(2.049, 0.1); // ~2.05 AU
+        expect(ast.eccentricity).to.be.closeTo(0.2563, 0.01); // e ~ 0.256
+        expect(ast.timeOfFlightDays).to.be.closeTo(534.80, 30.0); // ~535 days (~1.46 yr)
+        expect(ast.timeOfFlightYears).to.be.closeTo(1.46, 0.1); // ~1.46 yr
+        expect(ast.marsDepartureDeltaVKmS).to.be.closeTo(2.615, 0.5); // ~2.62 km/s TAI
+        expect(ast.astraeaOrbitInsertionDeltaVKmS).to.be.closeTo(2.429, 0.5); // ~2.43 km/s AOI
+        expect(ast.totalMissionDeltaVKmS).to.be.closeTo(5.044, 1.0); // ~5.04 km/s total
+        expect(ast.astraeaContext).to.include('Mars-to-Astraea');
+    });
+
+    it('should calculate hydrothermal CO2 metasomatism of ultramafic serpentinite into talc-magnesite soapstone and indurated thermal inertia', () => {
+        // 15% initial porosity, 270 C hydrothermal temp, 0.12 X(CO2), 600 yr duration:
+        const tc = KRCEngine.computeMartianTalcCarbonateMetasomatism(0.15, 270.0, 0.12, 600.0);
+        expect(tc.talcCarbonateConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(tc.soapstoneYieldWeightPercent).to.be.greaterThan(40.0); // > 40 wt% soapstone
+        expect(tc.induratedSoapstoneThermalInertiaTIU).to.be.closeTo(2594.8, 200.0); // ~2595 tiu
+        expect(tc.soapstoneFaciesClass).to.include('Pervasive Talc-Carbonate Hydrothermal Facies');
+        expect(tc.talcCarbonateContext).to.include('Talc-Carbonate Soapstone at 270 C');
+    });
+
+    it('should discriminate Talc vs Magnesite vs Talc-Magnesite Soapstone in CRISM spectra', () => {
+        // Talc-Magnesite Soapstone (Nili Fossae / Isidis Rim: BD1390 = 0.035, BD2290 = 0.040, BD2310 = 0.060, BD2510 = 0.045):
+        const soap = BandMathEngine.computeCRISMTalcCarbonateSpeciationIndices(0.035, 0.040, 0.060, 0.045);
+        expect(soap.isTalcCarbonateDetected).to.be.true;
+        expect(soap.talcCarbonateMineralClass).to.include('Talc-Magnesite Carbonate Soapstone Assemblage');
+        expect(soap.mineralSpecies).to.include('Talc + Magnesite Soapstone');
+        expect(soap.metasomaticEnvironment).to.include('CO2-Rich Hydrothermal Metasomatism of Serpentinite');
+
+        // Pure Talc (BD1390 = 0.035, BD2290 = 0.040, BD2310 = 0.060, BD2510 = 0.010):
+        const talc = BandMathEngine.computeCRISMTalcCarbonateSpeciationIndices(0.035, 0.040, 0.060, 0.010);
+        expect(talc.isTalcCarbonateDetected).to.be.true;
+        expect(talc.talcCarbonateMineralClass).to.include('Pure Hydrothermal Talc Facies');
+        expect(talc.mineralSpecies).to.include('Talc');
+
+        // Magnesite Carbonate (BD1390 = 0.010, BD2290 = 0.015, BD2310 = 0.050, BD2510 = 0.055):
+        const mag = BandMathEngine.computeCRISMTalcCarbonateSpeciationIndices(0.010, 0.015, 0.050, 0.055);
+        expect(mag.isTalcCarbonateDetected).to.be.true;
+        expect(mag.talcCarbonateMineralClass).to.include('Magnesite Carbonate Strata');
+        expect(mag.mineralSpecies).to.include('Magnesite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMTalcCarbonateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isTalcCarbonateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -9427,6 +9427,60 @@ export class BandMathEngine {
       magmaticVolatileEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Ultramafic Hydrothermal Metasomatic Minerals (Pure Talc vs Magnesite Carbonate vs Talc-Magnesite Soapstone vs Serpentine) from CRISM 1.390 um, 2.290 um, 2.310 um, and 2.510 um absorption bands.
+   * Reference: Brown et al. (2010), Ehlmann et al. (2010), Viviano-Beck et al. (2014) for Martian Talc-Carbonate Mineralogy.
+   * @param {number} [band1390OHDepth=0.035] - BD1390 talc diagnostic sharp OH vibrational depth (0.0 to 0.40)
+   * @param {number} [band2290MgOHDepth=0.040] - BD2290 Mg-OH doublet component depth (0.0 to 0.50)
+   * @param {number} [band2310MgOHDepth=0.060] - BD2310 talc/carbonate primary Mg-OH/CO3 vibrational depth (0.0 to 0.50)
+   * @param {number} [band2510CO3Depth=0.045] - BD2510 carbonate fundamental overtone depth (0.0 to 0.50)
+   * @returns {{isTalcCarbonateDetected: boolean, talcCarbonateMineralClass: string, mineralSpecies: string, chemicalFormula: string, metasomaticEnvironment: string}}
+   */
+  static computeCRISMTalcCarbonateSpeciationIndices(band1390OHDepth = 0.035, band2290MgOHDepth = 0.040, band2310MgOHDepth = 0.060, band2510CO3Depth = 0.045) {
+    const d1390 = Math.max(0.0, band1390OHDepth);
+    const d2290 = Math.max(0.0, band2290MgOHDepth);
+    const d2310 = Math.max(0.0, band2310MgOHDepth);
+    const d2510 = Math.max(0.0, band2510CO3Depth);
+
+    const isSoapstone = d1390 >= 0.025 && d2310 >= 0.035 && d2510 >= 0.030;
+    const isPureTalc = d1390 >= 0.030 && d2310 >= 0.035 && d2510 < 0.020;
+    const isMagnesite = d2510 >= 0.035 && d2310 >= 0.035 && d1390 < 0.020;
+
+    const isTC = isSoapstone || isPureTalc || isMagnesite;
+
+    let tcClass = 'Talc-Carbonate-Free Ultramafic Matrix';
+    let species = 'Olivine/Pyroxene Matrix';
+    let formula = '(Mg,Fe)2SiO4';
+    let env = 'Unaltered Primary Ultramafic Crust';
+
+    if (isTC) {
+      if (isSoapstone) {
+        tcClass = 'Talc-Magnesite Carbonate Soapstone Assemblage';
+        species = 'Talc + Magnesite Soapstone';
+        formula = 'Mg3Si4O10(OH)2 + MgCO3';
+        env = 'CO2-Rich Hydrothermal Metasomatism of Serpentinite (Nili Fossae / Isidis Basin Rim)';
+      } else if (isPureTalc) {
+        tcClass = 'Pure Hydrothermal Talc Facies';
+        species = 'Talc';
+        formula = 'Mg3Si4O10(OH)2';
+        env = 'Silica-Rich CO2-Poor Hydrothermal Alteration of Ultramafics';
+      } else {
+        tcClass = 'Magnesite Carbonate Strata';
+        species = 'Magnesite';
+        formula = 'MgCO3';
+        env = 'Alkaline Aqueous Carbonation of Ultramafic Crust';
+      }
+    }
+
+    return {
+      isTalcCarbonateDetected: isTC,
+      talcCarbonateMineralClass: tcClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metasomaticEnvironment: env
+    };
+  }
 }
 
 
