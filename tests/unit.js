@@ -15485,6 +15485,55 @@ describe('Mars-to-Eunomia Transfer, Sepiolite Metasomatism & Fibrous Clay Specia
     });
 });
 
+describe('Mars-to-Psyche Transfer, Glauberite Metasomatism & Polyhaline Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to massive metallic M-type asteroid (16) Psyche and orbit capture', () => {
+        // Mars to Psyche (300 km Mars alt, 2.924 AU distance, 25 km capture alt, 3.09 deg plane change):
+        const psy = TrajectoryEngine.computeMarsToPsycheTransfer(300.0, 2.924, 25.0, 3.09);
+        expect(psy.semiMajorAxisAU).to.be.closeTo(2.224, 0.1); // ~2.22 AU
+        expect(psy.eccentricity).to.be.closeTo(0.3148, 0.01); // e ~ 0.315
+        expect(psy.timeOfFlightDays).to.be.closeTo(604.20, 30.0); // ~604 days (~1.65 yr)
+        expect(psy.timeOfFlightYears).to.be.closeTo(1.65, 0.1); // ~1.65 yr
+        expect(psy.marsDepartureDeltaVKmS).to.be.closeTo(2.617, 0.5); // ~2.62 km/s TPsI
+        expect(psy.psycheOrbitInsertionDeltaVKmS).to.be.closeTo(2.692, 0.5); // ~2.69 km/s PsOI
+        expect(psy.totalMissionDeltaVKmS).to.be.closeTo(5.309, 1.0); // ~5.31 km/s total
+        expect(psy.psycheContext).to.include('Mars-to-Psyche');
+    });
+
+    it('should calculate polyhaline evaporitic diagenesis of gypsum brines into anhydrous glauberite and thermal inertia', () => {
+        // 26% initial porosity, 35 C brine temp, 0.32 a(NaCa), 250 yr duration:
+        const glb = KRCEngine.computeMartianGlauberiteMetasomatism(0.26, 35.0, 0.32, 250.0);
+        expect(glb.glauberiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(glb.anhydrousSulfateYieldWeightPercent).to.be.greaterThan(40.0); // > 40 wt% glauberite
+        expect(glb.induratedGlauberiteThermalInertiaTIU).to.be.closeTo(2302.7, 200.0); // ~2303 tiu
+        expect(glb.evaporiteFaciesClass).to.include('Indurated Glauberite Polyhaline Facies');
+        expect(glb.glauberiteContext).to.include('Glauberite at 35 C');
+    });
+
+    it('should discriminate Glauberite vs Gypsum vs Bassanite in CRISM spectra', () => {
+        // Glauberite (Columbus / Juventae: BD1445 = 0.015, BD1750 = 0.015, BD1940 = 0.020, BD2220 = 0.055):
+        const glb = BandMathEngine.computeCRISMGlauberiteSpeciationIndices(0.015, 0.015, 0.020, 0.055);
+        expect(glb.isSulfateDetected).to.be.true;
+        expect(glb.sulfateMineralClass).to.include('Anhydrous Glauberite Polyhaline Facies');
+        expect(glb.mineralSpecies).to.include('Glauberite');
+        expect(glb.evaporiteSequence).to.include('Advanced Evaporitic Playa Concentration');
+
+        // Gypsum (BD1445 = 0.035, BD1750 = 0.035, BD1940 = 0.060, BD2220 = 0.015):
+        const gyp = BandMathEngine.computeCRISMGlauberiteSpeciationIndices(0.035, 0.035, 0.060, 0.015);
+        expect(gyp.isSulfateDetected).to.be.true;
+        expect(gyp.sulfateMineralClass).to.include('Hydrated Gypsum Dihydrate Facies');
+        expect(gyp.mineralSpecies).to.include('Gypsum');
+
+        // Bassanite (BD1445 = 0.030, BD1750 = 0.010, BD1940 = 0.045, BD2220 = 0.020):
+        const bas = BandMathEngine.computeCRISMGlauberiteSpeciationIndices(0.030, 0.010, 0.045, 0.020);
+        expect(bas.isSulfateDetected).to.be.true;
+        expect(bas.sulfateMineralClass).to.include('Bassanite Hemihydrate Sequence');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMGlauberiteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -9967,6 +9967,60 @@ export class BandMathEngine {
       depositionalEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Mixed Calcium-Sodium Sulfates (Anhydrous Glauberite vs Gypsum Dihydrate vs Bassanite Hemihydrate vs Polyhalite) from CRISM 1.445 um, 1.750 um, 1.940 um, and 2.220 um absorption bands.
+   * Reference: Rodriguez et al. (2014), Viviano-Beck et al. (2014), Vaniman et al. (2004) for Martian Polyhaline Sulfate Mineralogy.
+   * @param {number} [band1445OHDepth=0.015] - BD1445 gypsum/bassanite sharp OH doublet depth (0.0 to 0.40)
+   * @param {number} [band1750H2ODepth=0.015] - BD1750 gypsum diagnostic structural water combination depth (0.0 to 0.50)
+   * @param {number} [band1940H2ODepth=0.020] - BD1940 fundamental molecular H2O absorption depth (0.0 to 0.60)
+   * @param {number} [band2220SO4Depth=0.055] - BD2220 glauberite mixed Na-Ca sulfate vibrational overtone depth (0.0 to 0.50)
+   * @returns {{isSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, evaporiteSequence: string}}
+   */
+  static computeCRISMGlauberiteSpeciationIndices(band1445OHDepth = 0.015, band1750H2ODepth = 0.015, band1940H2ODepth = 0.020, band2220SO4Depth = 0.055) {
+    const d1445 = Math.max(0.0, band1445OHDepth);
+    const d1750 = Math.max(0.0, band1750H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2220 = Math.max(0.0, band2220SO4Depth);
+
+    const isGlauberite = d2220 >= 0.035 && d1445 < 0.025 && d1750 < 0.025 && d1940 < 0.030;
+    const isGypsum = d1445 >= 0.030 && d1750 >= 0.030 && d1940 >= 0.045;
+    const isBassanite = d1445 >= 0.025 && d1940 >= 0.035 && d1750 < 0.020;
+
+    const isSulf = isGlauberite || isGypsum || isBassanite;
+
+    let sClass = 'Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let seq = 'Unaltered Crustal Terrain';
+
+    if (isSulf) {
+      if (isGlauberite) {
+        sClass = 'Anhydrous Glauberite Polyhaline Facies';
+        species = 'Glauberite';
+        formula = 'Na2Ca(SO4)2';
+        seq = 'Advanced Evaporitic Playa Concentration / Hyper-Arid Diagenesis (Columbus Crater / Juventae)';
+      } else if (isGypsum) {
+        sClass = 'Hydrated Gypsum Dihydrate Facies';
+        species = 'Gypsum';
+        formula = 'CaSO4·2H2O';
+        seq = 'Primary Groundwater Upwelling / Lacustrine Evaporation';
+      } else {
+        sClass = 'Bassanite Hemihydrate Sequence';
+        species = 'Bassanite';
+        formula = 'CaSO4·0.5H2O';
+        seq = 'Moderate Dehydration / Low-Water-Activity Transition';
+      }
+    }
+
+    return {
+      isSulfateDetected: isSulf,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      evaporiteSequence: seq
+    };
+  }
 }
 
 

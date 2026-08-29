@@ -10846,6 +10846,67 @@ export class KRCEngine {
       sepioliteContext: `Sepiolite at ${TC.toFixed(0)} C, a(MgSi)=${aMgSi.toFixed(2)} (${(alphaSep * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% channel H2O, TIU=${TIU.toFixed(0)}, ${fClass})`
     };
   }
+
+  /**
+   * Calculate polyhaline evaporitic diagenesis of gypsum and sodium sulfate brines into anhydrous glauberite, crystalline pore cementation, and thermal inertia.
+   * CaSO4·2H2O (Gypsum) + 2 Na+ + SO4(2-) -> Na2Ca(SO4)2 (Glauberite) + 2 H2O (15-65 C)
+   * Reference: Rodriguez et al. (2014), Viviano-Beck et al. (2014), Vaniman et al. (2004) for Martian Mixed Sulfate Evaporites.
+   * @param {number} [initialPlayaPorosity=0.26] - Initial gypsum playa evaporite porosity (0.05 to 0.50)
+   * @param {number} [brineTempC=35.0] - Evaporite brine temperature in C (5 to 85 C)
+   * @param {number} [sodiumCalciumActivityProduct=0.32] - Dissolved Na-Ca ion activity product (0.01 to 1.0)
+   * @param {number} [durationYears=250.0] - Evaporitic exposure duration in years (0.1 to 5000 yr)
+   * @returns {{glauberiteConversionFraction: number, anhydrousSulfateYieldWeightPercent: number, dominantEvaporiteSpecies: string, induratedGlauberiteThermalInertiaTIU: number, evaporiteFaciesClass: string, glauberiteContext: string}}
+   */
+  static computeMartianGlauberiteMetasomatism(initialPlayaPorosity = 0.26, brineTempC = 35.0, sodiumCalciumActivityProduct = 0.32, durationYears = 250.0) {
+    const phi0 = Math.max(0.01, Math.min(0.55, initialPlayaPorosity));
+    const TC = Math.max(-5.0, Math.min(100.0, brineTempC));
+    const aNaCa = Math.max(0.005, Math.min(1.0, sodiumCalciumActivityProduct));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.10e4; // 41 kJ/mol for glauberite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aNaCa, 0.35);
+    const alphaGlb = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Anhydrous sulfate yield (wt%)
+    const wGlbPct = alphaGlb * 80.8;
+
+    // Pore occlusion, crystalline cementation, and densification
+    const phiResidual = phi0 * (1.0 - (0.65 * alphaGlb));
+    const rhoGrain = 2780.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.30; // W/(m K)
+    const Cspec = 880.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Anhydrous Glauberite (Na2Ca(SO4)2)';
+    let gClass = 'Mixed Sodium-Calcium Sulfate Facies';
+
+    if (alphaGlb >= 0.50 && TC >= 15.0 && TC <= 65.0 && aNaCa >= 0.15) {
+      species = 'Glauberite (Na2Ca(SO4)2) + Anhydrite';
+      gClass = 'Indurated Glauberite Polyhaline Facies (Columbus Crater / Juventae / Valles Marineris)';
+    } else if (TC < 15.0) {
+      species = 'Gypsum-Mirabilite Hydrated Equilibrium';
+      gClass = 'Cryogenic Hydrated Sulfate Sequence';
+    } else {
+      species = 'Bassanite-Thenardite Intermediate Assemblage';
+      gClass = 'Partially Dehydrated Polyhaline Crust';
+    }
+
+    return {
+      glauberiteConversionFraction: parseFloat(alphaGlb.toFixed(3)),
+      anhydrousSulfateYieldWeightPercent: parseFloat(wGlbPct.toFixed(1)),
+      dominantEvaporiteSpecies: species,
+      induratedGlauberiteThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      evaporiteFaciesClass: gClass,
+      glauberiteContext: `Glauberite at ${TC.toFixed(0)} C, a(NaCa)=${aNaCa.toFixed(2)} (${(alphaGlb * 100).toFixed(1)}% converted, ${wGlbPct.toFixed(1)}% Glauberite, TIU=${TIU.toFixed(0)}, ${gClass})`
+    };
+  }
 }
 
 
