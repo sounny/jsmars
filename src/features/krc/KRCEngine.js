@@ -12432,6 +12432,67 @@ export class KRCEngine {
       slavkiteDehydrationContext: `Anhydrous Slavkite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaSdh * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal desiccation and dehydration of tetrahydrated wattevillite into anhydrous sodium-calcium sulfate, crystal sintering, and thermal inertia.
+   * Na2Ca(SO4)2·4H2O -> Na2Ca(SO4)2 + 4 H2O (30 to 110 C, low RH)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Alkali-Alkaline Earth Sulfates.
+   * @param {number} [initialWattevillitePorosity=0.25] - Initial wattevillite host rock porosity (0.05 to 0.55)
+   * @param {number} [surfaceTempC=45.0] - Surface/hydrothermal desiccation temperature in C (15 to 120 C)
+   * @param {number} [atmosphericRelativeHumidity=0.08] - Atmospheric / pore relative humidity (0.001 to 0.70)
+   * @param {number} [durationYears=240.0] - Desiccation exposure duration in years (0.1 to 5000 yr)
+   * @returns {{wattevilliteDehydrationFraction: number, boundWaterYieldWeightPercent: number, dominantSodiumCalciumPhase: string, induratedAnhydrousThermalInertiaTIU: number, sodiumCalciumDehydrationFaciesClass: string, wattevilliteDehydrationContext: string}}
+   */
+  static computeMartianWattevilliteDehydration(initialWattevillitePorosity = 0.25, surfaceTempC = 45.0, atmosphericRelativeHumidity = 0.08, durationYears = 240.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialWattevillitePorosity));
+    const TC = Math.max(0.0, Math.min(135.0, surfaceTempC));
+    const rh = Math.max(0.001, Math.min(0.75, atmosphericRelativeHumidity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.20e4; // 42.0 kJ/mol for wattevillite dehydration crystallization
+
+    // Reaction rate constant
+    const kRate = 4.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(1.0 - rh, 0.50);
+    const alphaWdh = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound water yield (wt%)
+    const wH2OPct = (1.0 - alphaWdh) * 20.45;
+
+    // Crystal volume contraction and indurated anhydrous compaction
+    const phiResidual = phi0 * (1.0 - (0.42 * alphaWdh));
+    const rhoGrain = 2650.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.50; // W/(m K)
+    const Cspec = 850.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Anhydrous Sodium-Calcium Sulfate (Na2Ca(SO4)2)';
+    let wClass = 'Anhydrous Sodium-Calcium Sulfate Facies';
+
+    if (alphaWdh >= 0.50 && TC >= 30.0 && rh <= 0.25) {
+      species = 'Anhydrous Sodium-Calcium Sulfate (Na2Ca(SO4)2)';
+      wClass = 'Indurated Anhydrous Wattevillite Facies (Columbus / Cross / Gale)';
+    } else if (rh > 0.25) {
+      species = 'Metastable Wattevillite-Glauberite Composite';
+      wClass = 'Partially Dehydrated Transition Matrix';
+    } else {
+      species = 'Thenardite-Anhydrite Calcination Matrix';
+      wClass = 'Hyper-Thermal Calcination Crust';
+    }
+
+    return {
+      wattevilliteDehydrationFraction: parseFloat(alphaWdh.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantSodiumCalciumPhase: species,
+      induratedAnhydrousThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      sodiumCalciumDehydrationFaciesClass: wClass,
+      wattevilliteDehydrationContext: `Anhydrous Wattevillite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaWdh * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${wClass})`
+    };
+  }
 }
 
 

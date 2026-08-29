@@ -13142,6 +13142,81 @@ export class TrajectoryEngine {
       isisContext: `Mars-to-Isis (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, IsOI=${dvIsoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to inner main-belt Flora-family stony S-type asteroid (43) Ariadne and orbit capture.
+   * a = ( r_mars + r_ariadne ) / 2
+   * e = ( r_ariadne - r_mars ) / ( r_ariadne + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [ariadneDistanceAU=2.204] - Ariadne heliocentric distance in AU (1.6 to 3.1 AU)
+   * @param {number} [ariadnePeriapsisAltitudeKm=15.0] - Ariadne orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=3.47] - Orbital plane change angle in degrees (0 to 30 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, ariadneOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, ariadneContext: string}}
+   */
+  static computeMarsToAriadneTransfer(marsParkingAltitudeKm = 300.0, ariadneDistanceAU = 2.204, ariadnePeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 3.47) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rArAU = Math.max(1.55, Math.min(3.3, ariadneDistanceAU));
+    const hpArKm = Math.max(5.0, ariadnePeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muAriadne = 1.20; // km^3/s^2 (Flora-family stony asteroid, D~71.0 km)
+    const rAriadneKm = 35.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rArDistKm = rArAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rArDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rArDistKm - rMarsDistKm) / (rArDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTariMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Ariadne capture
+    const vArCircKmS = Math.sqrt(muSun / rArDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rArDistKm) - (1.0 / aKm)));
+    const vInfArKmS = Math.abs(vArCircKmS - vArrKmS);
+
+    const rpArKm = rAriadneKm + hpArKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpArKm / (1.0 - eCap);
+
+    const vHypArKmS = Math.sqrt(Math.pow(vInfArKmS, 2.0) + ((2.0 * muAriadne) / rpArKm));
+    const vCapArKmS = Math.sqrt(muAriadne * ((2.0 / rpArKm) - (1.0 / aCapKm)));
+    const dvAroiKmS = vHypArKmS - vCapArKmS;
+
+    const dvTotKmS = dvTariMarsKmS + dvAroiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTariMarsKmS.toFixed(3)),
+      ariadneOrbitInsertionDeltaVKmS: parseFloat(dvAroiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      ariadneContext: `Mars-to-Ariadne (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, ArOI=${dvAroiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

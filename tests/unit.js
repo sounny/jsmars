@@ -16787,8 +16787,57 @@ describe('Mars-to-Isis Transfer, Slavkite Dehydration & Multi-Cation Speciation'
 
         // Basalt baseline:
         const basalt = BandMathEngine.computeCRISMAnhydrousSlavkiteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
-        expect(blo.isAnhydrousMultiCationSulfateDetected).to.be.true;
         expect(basalt.isAnhydrousMultiCationSulfateDetected).to.be.false;
+    });
+});
+
+describe('Mars-to-Ariadne Transfer, Wattevillite Dehydration & Na-Ca Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony asteroid (43) Ariadne and orbit capture', () => {
+        // Mars to Ariadne (300 km Mars alt, 2.204 AU distance, 15 km capture alt, 3.47 deg plane change):
+        const ar = TrajectoryEngine.computeMarsToAriadneTransfer(300.0, 2.204, 15.0, 3.47);
+        expect(ar.semiMajorAxisAU).to.be.closeTo(1.864, 0.1); // ~1.86 AU
+        expect(ar.eccentricity).to.be.closeTo(0.1825, 0.01); // e ~ 0.182
+        expect(ar.timeOfFlightDays).to.be.closeTo(464.12, 30.0); // ~464 days (~1.27 yr)
+        expect(ar.timeOfFlightYears).to.be.closeTo(1.27, 0.1); // ~1.27 yr
+        expect(ar.marsDepartureDeltaVKmS).to.be.closeTo(2.006, 0.5); // ~2.01 km/s TArI
+        expect(ar.ariadneOrbitInsertionDeltaVKmS).to.be.closeTo(1.836, 0.5); // ~1.84 km/s ArOI
+        expect(ar.totalMissionDeltaVKmS).to.be.closeTo(3.842, 1.0); // ~3.84 km/s total
+        expect(ar.ariadneContext).to.include('Mars-to-Ariadne');
+    });
+
+    it('should calculate hydrothermal dehydration of tetrahydrated wattevillite into anhydrous sodium-calcium sulfate and thermal inertia', () => {
+        // 25% initial porosity, 45 C surface temp, 0.08 RH, 240 yr duration:
+        const wdh = KRCEngine.computeMartianWattevilliteDehydration(0.25, 45.0, 0.08, 240.0);
+        expect(wdh.wattevilliteDehydrationFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(wdh.boundWaterYieldWeightPercent).to.be.lessThan(10.0); // < 10 wt% bound H2O
+        expect(wdh.induratedAnhydrousThermalInertiaTIU).to.be.closeTo(1745.6, 200.0); // ~1746 tiu
+        expect(wdh.sodiumCalciumDehydrationFaciesClass).to.include('Indurated Anhydrous Wattevillite Facies');
+        expect(wdh.wattevilliteDehydrationContext).to.include('Anhydrous Wattevillite at 45 C');
+    });
+
+    it('should discriminate Anhydrous Wattevillite vs Wattevillite Tetrahydrate vs Glauberite in CRISM spectra', () => {
+        // Anhydrous Wattevillite (Columbus / Cross / Gale: BD1440 = 0.010, BD1940 = 0.015, BD2190 = 0.040, BD2400 = 0.045):
+        const anhWat = BandMathEngine.computeCRISMAnhydrousWattevilliteSpeciationIndices(0.010, 0.015, 0.040, 0.045);
+        expect(anhWat.isAnhydrousSodiumCalciumSulfateDetected).to.be.true;
+        expect(anhWat.sulfateMineralClass).to.include('Anhydrous Sodium-Calcium Sulfate Facies');
+        expect(anhWat.mineralSpecies).to.include('Anhydrous Wattevillite');
+        expect(anhWat.evaporiteEnvironment).to.include('Desiccated High-Temperature Sodium-Calcium Evaporite Crust');
+
+        // Wattevillite Tetrahydrate (BD1440 = 0.035, BD1940 = 0.045, BD2190 = 0.040, BD2400 = 0.035):
+        const wat = BandMathEngine.computeCRISMAnhydrousWattevilliteSpeciationIndices(0.035, 0.045, 0.040, 0.035);
+        expect(wat.isAnhydrousSodiumCalciumSulfateDetected).to.be.true;
+        expect(wat.sulfateMineralClass).to.include('Tetrahydrated Wattevillite Sodium-Calcium Sulfate Facies');
+        expect(wat.mineralSpecies).to.include('Wattevillite');
+
+        // Glauberite (BD1440 = 0.010, BD1940 = 0.010, BD2190 = 0.010, BD2400 = 0.045):
+        const gla = BandMathEngine.computeCRISMAnhydrousWattevilliteSpeciationIndices(0.010, 0.010, 0.010, 0.045);
+        expect(gla.isAnhydrousSodiumCalciumSulfateDetected).to.be.true;
+        expect(gla.sulfateMineralClass).to.include('Anhydrous Glauberite Primary Sulfate Facies');
+        expect(gla.mineralSpecies).to.include('Glauberite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMAnhydrousWattevilliteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAnhydrousSodiumCalciumSulfateDetected).to.be.false;
     });
 });
 
