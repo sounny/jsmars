@@ -11456,6 +11456,67 @@ export class KRCEngine {
       starkeyiteContext: `Starkeyite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaSta * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature acidic alteration of aluminous crust into superhydrated pickeringite alum, crystal swelling, and thermal inertia.
+   * Al-Crust + Mg2+ + 2 Al3+ + 4 SO4(2-) + 22 H2O (-10 to 30 C) -> Pickeringite (MgAl2(SO4)4·22H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Polyhydrated Alums.
+   * @param {number} [initialAluminousCrustPorosity=0.32] - Initial aluminous host rock porosity (0.05 to 0.60)
+   * @param {number} [ambientTempC=8.0] - Ambient alteration temperature in C (-20 to 50 C)
+   * @param {number} [acidAlumFluidActivityProduct=0.38] - Dissolved acid alum fluid activity product (0.01 to 1.0)
+   * @param {number} [durationYears=190.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{pickeringiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantAlumSpecies: string, superhydratedAlumThermalInertiaTIU: number, alumFaciesClass: string, pickeringiteContext: string}}
+   */
+  static computeMartianPickeringiteMetasomatism(initialAluminousCrustPorosity = 0.32, ambientTempC = 8.0, acidAlumFluidActivityProduct = 0.38, durationYears = 190.0) {
+    const phi0 = Math.max(0.01, Math.min(0.65, initialAluminousCrustPorosity));
+    const TC = Math.max(-25.0, Math.min(60.0, ambientTempC));
+    const aAlum = Math.max(0.005, Math.min(1.0, acidAlumFluidActivityProduct));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.65e4; // 36.5 kJ/mol for pickeringite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.8e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aAlum, 0.35);
+    const alphaPck = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound crystal water yield (wt%)
+    const wH2OPct = alphaPck * 44.86;
+
+    // Superhydration crystal expansion and friable porous texture
+    const phiResidual = (phi0 * (1.0 - (0.35 * alphaPck))) + (0.11 * alphaPck);
+    const rhoGrain = 1730.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.74; // W/(m K)
+    const Cspec = 1060.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Pickeringite (MgAl2(SO4)4·22H2O)';
+    let aClass = 'Superhydrated Magnesium-Aluminum Alum Facies';
+
+    if (alphaPck >= 0.50 && TC >= -10.0 && TC <= 30.0 && aAlum >= 0.15) {
+      species = 'Pickeringite (MgAl2(SO4)4·22H2O)';
+      aClass = 'Acidic Evaporite Pickeringite Facies (Melas / Capri / Juventae)';
+    } else if (TC > 30.0) {
+      species = 'Alunogen Hydrated Sulfate (Al2(SO4)3·17H2O)';
+      aClass = 'Moderate-Temperature Aluminum Sulfate Facies';
+    } else {
+      species = 'Halotrichite-Pickeringite Solid Solution';
+      aClass = 'Mixed Iron-Magnesium Alum Crust';
+    }
+
+    return {
+      pickeringiteConversionFraction: parseFloat(alphaPck.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantAlumSpecies: species,
+      superhydratedAlumThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      alumFaciesClass: aClass,
+      pickeringiteContext: `Pickeringite at ${TC.toFixed(0)} C, a(Alum)=${aAlum.toFixed(2)} (${(alphaPck * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${aClass})`
+    };
+  }
 }
 
 

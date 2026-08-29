@@ -11942,6 +11942,81 @@ export class TrajectoryEngine {
       proserpinaContext: `Mars-to-Proserpina (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, PrOI=${dvProiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to inner-belt stony S-type asteroid (27) Euterpe and orbit capture.
+   * a = ( r_mars + r_euterpe ) / 2
+   * e = ( r_euterpe - r_mars ) / ( r_euterpe + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [euterpeDistanceAU=2.347] - Euterpe heliocentric distance in AU (1.7 to 3.0 AU)
+   * @param {number} [euterpePeriapsisAltitudeKm=15.0] - Euterpe orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=1.58] - Orbital plane change angle in degrees (0 to 25 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, euterpeOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, euterpeContext: string}}
+   */
+  static computeMarsToEuterpeTransfer(marsParkingAltitudeKm = 300.0, euterpeDistanceAU = 2.347, euterpePeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 1.58) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rEuAU = Math.max(1.6, Math.min(3.1, euterpeDistanceAU));
+    const hpEuKm = Math.max(5.0, euterpePeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muEuterpe = 1.90; // km^3/s^2
+    const rEuterpeKm = 48.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rEuDistKm = rEuAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rEuDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rEuDistKm - rMarsDistKm) / (rEuDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTeuiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Euterpe capture
+    const vEuCircKmS = Math.sqrt(muSun / rEuDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rEuDistKm) - (1.0 / aKm)));
+    const vInfEuKmS = Math.abs(vEuCircKmS - vArrKmS);
+
+    const rpEuKm = rEuterpeKm + hpEuKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpEuKm / (1.0 - eCap);
+
+    const vHypEuKmS = Math.sqrt(Math.pow(vInfEuKmS, 2.0) + ((2.0 * muEuterpe) / rpEuKm));
+    const vCapEuKmS = Math.sqrt(muEuterpe * ((2.0 / rpEuKm) - (1.0 / aCapKm)));
+    const dvEuoiKmS = vHypEuKmS - vCapEuKmS;
+
+    const dvTotKmS = dvTeuiMarsKmS + dvEuoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTeuiMarsKmS.toFixed(3)),
+      euterpeOrbitInsertionDeltaVKmS: parseFloat(dvEuoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      euterpeContext: `Mars-to-Euterpe (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EuOI=${dvEuoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

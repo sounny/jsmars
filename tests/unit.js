@@ -15991,6 +15991,56 @@ describe('Mars-to-Proserpina Transfer, Starkeyite Metasomatism & Tetrahydrate Sp
     });
 });
 
+describe('Mars-to-Euterpe Transfer, Pickeringite Metasomatism & Superhydrated Alum Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to inner-belt asteroid (27) Euterpe and orbit capture', () => {
+        // Mars to Euterpe (300 km Mars alt, 2.347 AU distance, 15 km capture alt, 1.58 deg plane change):
+        const eu = TrajectoryEngine.computeMarsToEuterpeTransfer(300.0, 2.347, 15.0, 1.58);
+        expect(eu.semiMajorAxisAU).to.be.closeTo(1.935, 0.1); // ~1.94 AU
+        expect(eu.eccentricity).to.be.closeTo(0.2127, 0.01); // e ~ 0.213
+        expect(eu.timeOfFlightDays).to.be.closeTo(490.95, 30.0); // ~491 days (~1.34 yr)
+        expect(eu.timeOfFlightYears).to.be.closeTo(1.34, 0.1); // ~1.34 yr
+        expect(eu.marsDepartureDeltaVKmS).to.be.closeTo(1.955, 0.5); // ~1.96 km/s TEuI
+        expect(eu.euterpeOrbitInsertionDeltaVKmS).to.be.closeTo(2.068, 0.5); // ~2.07 km/s EuOI
+        expect(eu.totalMissionDeltaVKmS).to.be.closeTo(4.023, 1.0); // ~4.02 km/s total
+        expect(eu.euterpeContext).to.include('Mars-to-Euterpe');
+    });
+
+    it('should calculate low-temperature acid alteration into superhydrated pickeringite alum and thermal inertia', () => {
+        // 32% initial porosity, 8 C ambient temp, 0.38 alum activity product, 190 yr duration:
+        const pck = KRCEngine.computeMartianPickeringiteMetasomatism(0.32, 8.0, 0.38, 190.0);
+        expect(pck.pickeringiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(pck.boundWaterYieldWeightPercent).to.be.greaterThan(22.0); // > 22 wt% bound H2O
+        expect(pck.superhydratedAlumThermalInertiaTIU).to.be.closeTo(1081.1, 200.0); // ~1081 tiu
+        expect(pck.alumFaciesClass).to.include('Acidic Evaporite Pickeringite Facies');
+        expect(pck.pickeringiteContext).to.include('Pickeringite at 8 C');
+    });
+
+    it('should discriminate Pickeringite vs Halotrichite vs Alunogen in CRISM spectra', () => {
+        // Pickeringite (Melas / Capri / Juventae: BD1440 = 0.045, BD1760 = 0.035, BD1940 = 0.065, BD2160 = 0.040):
+        const pck = BandMathEngine.computeCRISMPickeringiteAlumSpeciationIndices(0.045, 0.035, 0.065, 0.040);
+        expect(pck.isAlumDetected).to.be.true;
+        expect(pck.alumMineralClass).to.include('Superhydrated Pickeringite Alum Facies');
+        expect(pck.mineralSpecies).to.include('Pickeringite');
+        expect(pck.acidityEnvironment).to.include('Extreme Acidic Evaporite Alum Outcrops');
+
+        // Halotrichite (BD1440 = 0.045, BD1760 = 0.010, BD1940 = 0.060, BD2160 = 0.015):
+        const halo = BandMathEngine.computeCRISMPickeringiteAlumSpeciationIndices(0.045, 0.010, 0.060, 0.015);
+        expect(halo.isAlumDetected).to.be.true;
+        expect(halo.alumMineralClass).to.include('Superhydrated Halotrichite Iron-Alum Facies');
+        expect(halo.mineralSpecies).to.include('Halotrichite');
+
+        // Alunogen (BD1440 = 0.045, BD1760 = 0.010, BD1940 = 0.030, BD2160 = 0.040):
+        const alu = BandMathEngine.computeCRISMPickeringiteAlumSpeciationIndices(0.045, 0.010, 0.030, 0.040);
+        expect(alu.isAlumDetected).to.be.true;
+        expect(alu.alumMineralClass).to.include('Alunogen Hydrated Aluminum Sulfate Facies');
+        expect(alu.mineralSpecies).to.include('Alunogen');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMPickeringiteAlumSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAlumDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

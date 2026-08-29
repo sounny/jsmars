@@ -10507,6 +10507,60 @@ export class BandMathEngine {
       hydrationEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Superhydrated Alums (Pickeringite vs Halotrichite vs Alunogen vs Jarosite) from CRISM 1.440 um, 1.760 um, 1.940 um, and 2.160 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Polyhydrated Alum Speciation.
+   * @param {number} [band1440H2ODepth=0.045] - BD1440 alum structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1760H2ODepth=0.035] - BD1760 pickeringite diagnostic icositetrahydrate shoulder depth (0.0 to 0.50)
+   * @param {number} [band1940H2ODepth=0.065] - BD1940 superhydrated structural H2O fundamental depth (0.0 to 0.70)
+   * @param {number} [band2160AlSO4Depth=0.040] - BD2160 aluminum sulfate-hydroxyl vibrational combination depth (0.0 to 0.50)
+   * @returns {{isAlumDetected: boolean, alumMineralClass: string, mineralSpecies: string, chemicalFormula: string, acidityEnvironment: string}}
+   */
+  static computeCRISMPickeringiteAlumSpeciationIndices(band1440H2ODepth = 0.045, band1760H2ODepth = 0.035, band1940H2ODepth = 0.065, band2160AlSO4Depth = 0.040) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1760 = Math.max(0.0, band1760H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2160 = Math.max(0.0, band2160AlSO4Depth);
+
+    const isPickeringite = d1440 >= 0.025 && d1760 >= 0.020 && d1940 >= 0.040 && d2160 >= 0.025;
+    const isHalotrichite = d1440 >= 0.025 && d1940 >= 0.035 && d1760 < 0.020 && d2160 < 0.025;
+    const isAlunogen = d1440 >= 0.025 && d2160 >= 0.025 && d1760 < 0.020;
+
+    const isAlum = isPickeringite || isHalotrichite || isAlunogen;
+
+    let sClass = 'Alum-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isAlum) {
+      if (isPickeringite) {
+        sClass = 'Superhydrated Pickeringite Alum Facies';
+        species = 'Pickeringite';
+        formula = 'MgAl2(SO4)4·22H2O';
+        env = 'Extreme Acidic Evaporite Alum Outcrops (Melas / Capri / Juventae)';
+      } else if (isHalotrichite) {
+        sClass = 'Superhydrated Halotrichite Iron-Alum Facies';
+        species = 'Halotrichite';
+        formula = 'Fe2+Al2(SO4)4·22H2O';
+        env = 'Reducing Acid-Sulfate Hydrothermal Spring';
+      } else {
+        sClass = 'Alunogen Hydrated Aluminum Sulfate Facies';
+        species = 'Alunogen';
+        formula = 'Al2(SO4)3·17H2O';
+        env = 'Hyper-Acidic Low-Cation Alteration Solfataras';
+      }
+    }
+
+    return {
+      isAlumDetected: isAlum,
+      alumMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      acidityEnvironment: env
+    };
+  }
 }
 
 
