@@ -10419,6 +10419,67 @@ export class KRCEngine {
       pyrophylliteContext: `Pyrophyllite Facies at ${TC.toFixed(0)} C, pH=${pH.toFixed(1)} (${(alphaPyro * 100).toFixed(1)}% converted, ${wPyroPct.toFixed(1)}% Pyrophyllite, TIU=${TIU.toFixed(0)}, ${aClass})`
     };
   }
+
+  /**
+   * Calculate high-temperature hydrothermal metasomatism of calcic anorthositic crust into brittle calcium-mica margarite, recrystallization, and thermal inertia.
+   * Anorthite + Corundum + H2O (300-480 C) -> Margarite (CaAl2(Al2Si2O10)(OH)2) + Quartz Sinter
+   * Reference: Carter et al. (2013), Viviano-Beck et al. (2014), Ehlmann et al. (2016) for Martian Calcic Mica Metasomatism.
+   * @param {number} [anorthositePorosity=0.15] - Initial anorthositic/calcic crust porosity (0.02 to 0.45)
+   * @param {number} [hydrothermalTempC=360.0] - Hydrothermal fluid temperature in C (220 to 580 C)
+   * @param {number} [calciumActivityRatio=0.18] - Dissolved Ca2+/H+ activity ratio (0.01 to 0.80)
+   * @param {number} [durationYears=500.0] - Metasomatic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{margariteConversionFraction: number, margariteYieldWeightPercent: number, dominantMicaSpecies: string, induratedMicaThermalInertiaTIU: number, micaFaciesClass: string, margariteContext: string}}
+   */
+  static computeMartianMargariteMetasomatism(anorthositePorosity = 0.15, hydrothermalTempC = 360.0, calciumActivityRatio = 0.18, durationYears = 500.0) {
+    const phi0 = Math.max(0.01, Math.min(0.50, anorthositePorosity));
+    const TC = Math.max(180.0, Math.min(650.0, hydrothermalTempC));
+    const aCa = Math.max(0.005, Math.min(1.0, calciumActivityRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.20e4; // 62 kJ/mol for margarite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aCa, 0.35);
+    const alphaMarg = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Margarite yield (wt%)
+    const wMargPct = alphaMarg * 58.0;
+
+    // Metasomatic recrystallization and porosity reduction
+    const phiResidual = phi0 * (1.0 - (0.75 * alphaMarg));
+    const rhoGrain = 2980.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.90; // W/(m K)
+    const Cspec = 870.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Margarite + Quartz Assemblage';
+    let mClass = 'Calcic Brittle-Mica Margarite Facies';
+
+    if (alphaMarg >= 0.50 && TC >= 300.0 && TC <= 480.0 && aCa >= 0.10) {
+      species = 'Margarite (CaAl2(Al2Si2O10)(OH)2) + Corundum';
+      mClass = 'High-Temperature Calcic Mica Hydrothermal Facies (Nili Fossae / Claritas Fossae)';
+    } else if (TC > 480.0) {
+      species = 'Anorthite-Corundum Pyrometamorphic Facies';
+      mClass = 'Granulite-Grade Pyrometamorphic Hornfels';
+    } else {
+      species = 'Incipient Prehnite-Margarite Boundary';
+      mClass = 'Moderate-Temperature Sub-Greenschist Boundary';
+    }
+
+    return {
+      margariteConversionFraction: parseFloat(alphaMarg.toFixed(3)),
+      margariteYieldWeightPercent: parseFloat(wMargPct.toFixed(1)),
+      dominantMicaSpecies: species,
+      induratedMicaThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      micaFaciesClass: mClass,
+      margariteContext: `Margarite Facies at ${TC.toFixed(0)} C, a(Ca)=${aCa.toFixed(2)} (${(alphaMarg * 100).toFixed(1)}% converted, ${wMargPct.toFixed(1)}% Margarite, TIU=${TIU.toFixed(0)}, ${mClass})`
+    };
+  }
 }
 
 

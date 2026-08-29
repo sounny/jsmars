@@ -15138,6 +15138,55 @@ describe('Mars-to-Iris Transfer, Pyrophyllite Metasomatism & Pyrophyllite Specia
     });
 });
 
+describe('Mars-to-Flora Transfer, Margarite Metasomatism & Margarite Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to inner main-belt progenitor asteroid (8) Flora and orbit capture', () => {
+        // Mars to Flora (300 km Mars alt, 2.201 AU distance, 20 km capture alt, 5.89 deg plane change):
+        const flo = TrajectoryEngine.computeMarsToFloraTransfer(300.0, 2.201, 20.0, 5.89);
+        expect(flo.semiMajorAxisAU).to.be.closeTo(1.862, 0.1); // ~1.86 AU
+        expect(flo.eccentricity).to.be.closeTo(0.1818, 0.01); // e ~ 0.182
+        expect(flo.timeOfFlightDays).to.be.closeTo(463.20, 30.0); // ~463 days (~1.27 yr)
+        expect(flo.timeOfFlightYears).to.be.closeTo(1.27, 0.1); // ~1.27 yr
+        expect(flo.marsDepartureDeltaVKmS).to.be.closeTo(2.392, 0.5); // ~2.39 km/s TFI
+        expect(flo.floraOrbitInsertionDeltaVKmS).to.be.closeTo(1.756, 0.5); // ~1.76 km/s FOI
+        expect(flo.totalMissionDeltaVKmS).to.be.closeTo(4.148, 1.0); // ~4.15 km/s total
+        expect(flo.floraContext).to.include('Mars-to-Flora');
+    });
+
+    it('should calculate high-temperature hydrothermal metasomatism of calcic anorthosite into brittle calcium-mica margarite and indurated thermal inertia', () => {
+        // 15% initial porosity, 360 C hydrothermal temp, 0.18 a(Ca2+), 500 yr duration:
+        const marg = KRCEngine.computeMartianMargariteMetasomatism(0.15, 360.0, 0.18, 500.0);
+        expect(marg.margariteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(marg.margariteYieldWeightPercent).to.be.greaterThan(30.0); // > 30 wt% margarite
+        expect(marg.induratedMicaThermalInertiaTIU).to.be.closeTo(2741.7, 200.0); // ~2742 tiu
+        expect(marg.micaFaciesClass).to.include('High-Temperature Calcic Mica Hydrothermal Facies');
+        expect(marg.margariteContext).to.include('Margarite Facies at 360 C');
+    });
+
+    it('should discriminate Margarite vs Muscovite vs Phlogopite in CRISM spectra', () => {
+        // Margarite (Nili Fossae / Claritas: BD1410 = 0.035, BD2190 = 0.060, BD2205 = 0.020, BD2330 = 0.015):
+        const marg = BandMathEngine.computeCRISMMargariteSpeciationIndices(0.035, 0.060, 0.020, 0.015);
+        expect(marg.isMicaDetected).to.be.true;
+        expect(marg.micaMineralClass).to.include('Brittle Calcium-Mica Margarite Facies');
+        expect(marg.mineralSpecies).to.include('Margarite');
+        expect(marg.metasomaticEnvironment).to.include('High-Temperature Hydrothermal Metasomatism of Anorthosite');
+
+        // Muscovite (BD1410 = 0.015, BD2190 = 0.015, BD2205 = 0.055, BD2330 = 0.015):
+        const musc = BandMathEngine.computeCRISMMargariteSpeciationIndices(0.015, 0.015, 0.055, 0.015);
+        expect(musc.isMicaDetected).to.be.true;
+        expect(musc.micaMineralClass).to.include('Phyllic Potassium-Mica Muscovite Facies');
+        expect(musc.mineralSpecies).to.include('Muscovite');
+
+        // Phlogopite (BD1410 = 0.010, BD2190 = 0.010, BD2205 = 0.015, BD2330 = 0.055):
+        const phlog = BandMathEngine.computeCRISMMargariteSpeciationIndices(0.010, 0.010, 0.015, 0.055);
+        expect(phlog.isMicaDetected).to.be.true;
+        expect(phlog.micaMineralClass).to.include('Magnesian-Mica Phlogopite Skarn Facies');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMMargariteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMicaDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

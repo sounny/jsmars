@@ -9589,6 +9589,60 @@ export class BandMathEngine {
       hydrothermalTemperatureRegime: regime
     };
   }
+
+  /**
+   * Discriminate High-Temperature Phyllosilicates / Micas (Brittle Ca-Mica Margarite vs K-Mica Muscovite vs Na-Mica Paragonite vs Mg-Mica Phlogopite) from CRISM 1.410 um, 2.190 um, 2.205 um, and 2.330 um absorption bands.
+   * Reference: Carter et al. (2013), Viviano-Beck et al. (2014), Ehlmann et al. (2016) for Martian Mica/Phyllosilicate Mineralogy.
+   * @param {number} [band1410OHDepth=0.035] - BD1410 margarite diagnostic sharp OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2190AlOHDepth=0.060] - BD2190 margarite short-wavelength Al-Al-OH vibrational depth (0.0 to 0.50)
+   * @param {number} [band2205AlOHDepth=0.020] - BD2205 muscovite/illite standard Al-OH vibrational depth (0.0 to 0.50)
+   * @param {number} [band2330MgFeOHDepth=0.015] - BD2330 phlogopite/biotite Mg-OH combination depth (0.0 to 0.50)
+   * @returns {{isMicaDetected: boolean, micaMineralClass: string, mineralSpecies: string, chemicalFormula: string, metasomaticEnvironment: string}}
+   */
+  static computeCRISMMargariteSpeciationIndices(band1410OHDepth = 0.035, band2190AlOHDepth = 0.060, band2205AlOHDepth = 0.020, band2330MgFeOHDepth = 0.015) {
+    const d1410 = Math.max(0.0, band1410OHDepth);
+    const d2190 = Math.max(0.0, band2190AlOHDepth);
+    const d2205 = Math.max(0.0, band2205AlOHDepth);
+    const d2330 = Math.max(0.0, band2330MgFeOHDepth);
+
+    const isMargarite = d1410 >= 0.025 && d2190 >= 0.035 && d2190 > d2205;
+    const isMuscovite = d2205 >= 0.035 && d2205 > d2190;
+    const isPhlogopite = d2330 >= 0.035 && d2190 < 0.020 && d2205 < 0.020;
+
+    const isMica = isMargarite || isMuscovite || isPhlogopite;
+
+    let mClass = 'Mica-Free Anorthositic/Basaltic Matrix';
+    let species = 'Anorthosite Matrix';
+    let formula = 'CaAl2Si2O8';
+    let env = 'Unaltered Primary Crust';
+
+    if (isMica) {
+      if (isMargarite) {
+        mClass = 'Brittle Calcium-Mica Margarite Facies';
+        species = 'Margarite';
+        formula = 'CaAl2(Al2Si2O10)(OH)2';
+        env = 'High-Temperature Hydrothermal Metasomatism of Anorthosite (300-480 C, Nili Fossae / Claritas Fossae)';
+      } else if (isMuscovite) {
+        mClass = 'Phyllic Potassium-Mica Muscovite Facies';
+        species = 'Muscovite';
+        formula = 'KAl2(AlSi3O10)(OH)2';
+        env = 'Late-Stage Magmatic Hydrothermal Fluid Circulation';
+      } else {
+        mClass = 'Magnesian-Mica Phlogopite Skarn Facies';
+        species = 'Phlogopite';
+        formula = 'KMg3(AlSi3O10)(OH)2';
+        env = 'Alkaline Ultramafic Contact Hydrothermal Zone';
+      }
+    }
+
+    return {
+      isMicaDetected: isMica,
+      micaMineralClass: mClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metasomaticEnvironment: env
+    };
+  }
 }
 
 

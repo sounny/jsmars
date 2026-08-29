@@ -10667,6 +10667,81 @@ export class TrajectoryEngine {
       irisContext: `Mars-to-Iris (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, IOI=${dvIoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to inner main-belt progenitor asteroid (8) Flora and orbit capture.
+   * a = ( r_mars + r_flora ) / 2
+   * e = ( r_flora - r_mars ) / ( r_flora + r_mars )
+   * Reference: Carry et al. (2012), Nesvorný et al. (2015), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [floraDistanceAU=2.201] - Flora heliocentric distance in AU (1.8 to 2.8 AU)
+   * @param {number} [floraPeriapsisAltitudeKm=20.0] - Flora orbit insertion periapsis altitude in km (5 to 300 km)
+   * @param {number} [inclinationPlaneChangeDeg=5.89] - Orbital plane change angle in degrees (0 to 30 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, floraOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, floraContext: string}}
+   */
+  static computeMarsToFloraTransfer(marsParkingAltitudeKm = 300.0, floraDistanceAU = 2.201, floraPeriapsisAltitudeKm = 20.0, inclinationPlaneChangeDeg = 5.89) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rFAU = Math.max(1.6, Math.min(3.0, floraDistanceAU));
+    const hpFKm = Math.max(5.0, floraPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muFlora = 4.80; // km^3/s^2
+    const rFloraKm = 73.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rFDistKm = rFAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rFDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rFDistKm - rMarsDistKm) / (rFDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTfiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Flora capture
+    const vFCircKmS = Math.sqrt(muSun / rFDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rFDistKm) - (1.0 / aKm)));
+    const vInfFKmS = Math.abs(vFCircKmS - vArrKmS);
+
+    const rpFKm = rFloraKm + hpFKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpFKm / (1.0 - eCap);
+
+    const vHypFKmS = Math.sqrt(Math.pow(vInfFKmS, 2.0) + ((2.0 * muFlora) / rpFKm));
+    const vCapFKmS = Math.sqrt(muFlora * ((2.0 / rpFKm) - (1.0 / aCapKm)));
+    const dvFoiKmS = vHypFKmS - vCapFKmS;
+
+    const dvTotKmS = dvTfiMarsKmS + dvFoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTfiMarsKmS.toFixed(3)),
+      floraOrbitInsertionDeltaVKmS: parseFloat(dvFoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      floraContext: `Mars-to-Flora (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, FOI=${dvFoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
