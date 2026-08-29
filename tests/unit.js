@@ -16641,6 +16641,56 @@ describe('Mars-to-Laetitia Transfer, Metahohmannite Dehydration & Sesquihydrate 
     });
 });
 
+describe('Mars-to-Harmonia Transfer, Ransomite Dehydration & Anhydrous Cu-Fe Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony asteroid (40) Harmonia and orbit capture', () => {
+        // Mars to Harmonia (300 km Mars alt, 2.268 AU distance, 15 km capture alt, 4.26 deg plane change):
+        const ha = TrajectoryEngine.computeMarsToHarmoniaTransfer(300.0, 2.268, 15.0, 4.26);
+        expect(ha.semiMajorAxisAU).to.be.closeTo(1.896, 0.1); // ~1.90 AU
+        expect(ha.eccentricity).to.be.closeTo(0.1963, 0.01); // e ~ 0.196
+        expect(ha.timeOfFlightDays).to.be.closeTo(476.12, 30.0); // ~476 days (~1.30 yr)
+        expect(ha.timeOfFlightYears).to.be.closeTo(1.30, 0.1); // ~1.30 yr
+        expect(ha.marsDepartureDeltaVKmS).to.be.closeTo(2.176, 0.5); // ~2.18 km/s THaI
+        expect(ha.harmoniaOrbitInsertionDeltaVKmS).to.be.closeTo(1.884, 0.5); // ~1.88 km/s HaOI
+        expect(ha.totalMissionDeltaVKmS).to.be.closeTo(4.060, 1.0); // ~4.06 km/s total
+        expect(ha.harmoniaContext).to.include('Mars-to-Harmonia');
+    });
+
+    it('should calculate hydrothermal dehydration of ransomite into anhydrous copper-ferric sulfate and thermal inertia', () => {
+        // 22% initial porosity, 48 C surface temp, 0.08 RH, 250 yr duration:
+        const rdh = KRCEngine.computeMartianRansomiteDehydration(0.22, 48.0, 0.08, 250.0);
+        expect(rdh.ransomiteDehydrationFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(rdh.boundWaterYieldWeightPercent).to.be.lessThan(8.0); // < 8 wt% bound H2O
+        expect(rdh.induratedAnhydrousThermalInertiaTIU).to.be.closeTo(2057.4, 200.0); // ~2057 tiu
+        expect(rdh.anhydrousSulfateFaciesClass).to.include('Indurated Anhydrous Cu-Fe Gossan Facies');
+        expect(rdh.ransomiteDehydrationContext).to.include('Anhydrous Cu-Fe at 48 C');
+    });
+
+    it('should discriminate Anhydrous Cu-Fe Sulfate vs Ransomite vs Chalcanthite in CRISM spectra', () => {
+        // Anhydrous Cu-Fe Sulfate (Nili Fossae / Terra Sabaea / Noctis: BD800 = 0.045, BD1440 = 0.010, BD1940 = 0.015, BD2400 = 0.045):
+        const anh = BandMathEngine.computeCRISMAnhydrousCopperFerricSulfateSpeciationIndices(0.045, 0.010, 0.015, 0.045);
+        expect(anh.isAnhydrousCopperFerricSulfateDetected).to.be.true;
+        expect(anh.sulfateMineralClass).to.include('Anhydrous Copper-Ferric Sulfate Gossan Facies');
+        expect(anh.mineralSpecies).to.include('Anhydrous Copper-Ferric Sulfate');
+        expect(anh.gossanHydrationState).to.include('Desiccated High-Temperature Sulfide Gossan Outcrop');
+
+        // Ransomite (BD800 = 0.045, BD1440 = 0.035, BD1940 = 0.045, BD2400 = 0.035):
+        const ran = BandMathEngine.computeCRISMAnhydrousCopperFerricSulfateSpeciationIndices(0.045, 0.035, 0.045, 0.035);
+        expect(ran.isAnhydrousCopperFerricSulfateDetected).to.be.true;
+        expect(ran.sulfateMineralClass).to.include('Hexahydrated Ransomite Copper-Ferric Sulfate Facies');
+        expect(ran.mineralSpecies).to.include('Ransomite');
+
+        // Chalcanthite (BD800 = 0.050, BD1440 = 0.035, BD1940 = 0.055, BD2400 = 0.010):
+        const chc = BandMathEngine.computeCRISMAnhydrousCopperFerricSulfateSpeciationIndices(0.050, 0.035, 0.055, 0.010);
+        expect(chc.isAnhydrousCopperFerricSulfateDetected).to.be.true;
+        expect(chc.sulfateMineralClass).to.include('Pentahydrated Chalcanthite Copper Sulfate Facies');
+        expect(chc.mineralSpecies).to.include('Chalcanthite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMAnhydrousCopperFerricSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAnhydrousCopperFerricSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

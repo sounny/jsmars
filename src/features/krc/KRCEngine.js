@@ -12249,6 +12249,67 @@ export class KRCEngine {
       metahohmanniteContext: `Metahohmannite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaMet * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${mClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal desiccation and high-temperature dehydration of hexahydrated ransomite into anhydrous copper-ferric sulfate gossan, crystal contraction, and thermal inertia.
+   * CuFe2(SO4)4·6H2O -> CuFe2(SO4)4 + 6 H2O (35 to 110 C, low RH)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Copper-Bearing Sulfates.
+   * @param {number} [initialRansomitePorosity=0.22] - Initial ransomite evaporite porosity (0.05 to 0.55)
+   * @param {number} [surfaceTempC=48.0] - Surface/hydrothermal desiccation temperature in C (15 to 120 C)
+   * @param {number} [atmosphericRelativeHumidity=0.08] - Atmospheric / pore relative humidity (0.001 to 0.70)
+   * @param {number} [durationYears=250.0] - Desiccation exposure duration in years (0.1 to 5000 yr)
+   * @returns {{ransomiteDehydrationFraction: number, boundWaterYieldWeightPercent: number, dominantCopperFerricPhase: string, induratedAnhydrousThermalInertiaTIU: number, anhydrousSulfateFaciesClass: string, ransomiteDehydrationContext: string}}
+   */
+  static computeMartianRansomiteDehydration(initialRansomitePorosity = 0.22, surfaceTempC = 48.0, atmosphericRelativeHumidity = 0.08, durationYears = 250.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialRansomitePorosity));
+    const TC = Math.max(0.0, Math.min(135.0, surfaceTempC));
+    const rh = Math.max(0.001, Math.min(0.75, atmosphericRelativeHumidity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.35e4; // 43.5 kJ/mol for ransomite dehydration crystallization
+
+    // Reaction rate constant
+    const kRate = 4.0e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(1.0 - rh, 0.50);
+    const alphaRdh = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound water yield (wt%)
+    const wH2OPct = (1.0 - alphaRdh) * 16.89;
+
+    // Crystal volume contraction and indurated anhydrous compaction
+    const phiResidual = phi0 * (1.0 - (0.45 * alphaRdh));
+    const rhoGrain = 2950.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.95; // W/(m K)
+    const Cspec = 810.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Anhydrous Copper-Ferric Sulfate (CuFe2(SO4)4)';
+    let aClass = 'Anhydrous Copper-Ferric Sulfate Gossan Facies';
+
+    if (alphaRdh >= 0.50 && TC >= 35.0 && rh <= 0.20) {
+      species = 'Anhydrous Copper-Ferric Sulfate (CuFe2(SO4)4)';
+      aClass = 'Indurated Anhydrous Cu-Fe Gossan Facies (Nili Fossae / Terra Sabaea / Noctis)';
+    } else if (rh > 0.20) {
+      species = 'Metastable Ransomite-Anhydrous Mixture';
+      aClass = 'Partially Dehydrated Transition Phase';
+    } else {
+      species = 'Chalcocyanite-Yavapaiite Calcination Matrix';
+      aClass = 'Hyper-Thermal Calcination Residue';
+    }
+
+    return {
+      ransomiteDehydrationFraction: parseFloat(alphaRdh.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantCopperFerricPhase: species,
+      induratedAnhydrousThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      anhydrousSulfateFaciesClass: aClass,
+      ransomiteDehydrationContext: `Anhydrous Cu-Fe at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaRdh * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${aClass})`
+    };
+  }
 }
 
 
