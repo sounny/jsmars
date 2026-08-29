@@ -10785,6 +10785,67 @@ export class KRCEngine {
       dickiteContext: `Dickite at ${TC.toFixed(0)} C, a(SiO2)=${aSiO2.toFixed(2)} (${(alphaDck * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% OH, TIU=${TIU.toFixed(0)}, ${dClass})`
     };
   }
+
+  /**
+   * Calculate low-to-moderate temperature alkaline lacustrine / hydrothermal metasomatism of basalt into fibrous sepiolite, open channel microporosity, and thermal inertia.
+   * Basalt + 4 Mg2+ + 6 SiO2(aq) + 7 H2O (40-130 C) -> Sepiolite (Mg4Si6O15(OH)2·6H2O) (Fibrous Clay)
+   * Reference: Bristow et al. (2015), Viviano-Beck et al. (2014), Ehlmann et al. (2011) for Martian Alkaline Clay Terranes.
+   * @param {number} [initialPorousBasaltPorosity=0.30] - Initial basaltic tuff/sediment porosity (0.05 to 0.55)
+   * @param {number} [alkalineTempC=75.0] - Alkaline alteration temperature in C (20 to 180 C)
+   * @param {number} [magnesiumSilicaActivityRatio=0.28] - Dissolved Mg-Si fluid activity ratio (0.01 to 0.80)
+   * @param {number} [durationYears=300.0] - Metasomatic exposure duration in years (0.1 to 5000 yr)
+   * @returns {{sepioliteConversionFraction: number, channelWaterYieldWeightPercent: number, dominantFibrousSpecies: string, fibrousClayThermalInertiaTIU: number, fibrousFaciesClass: string, sepioliteContext: string}}
+   */
+  static computeMartianSepioliteMetasomatism(initialPorousBasaltPorosity = 0.30, alkalineTempC = 75.0, magnesiumSilicaActivityRatio = 0.28, durationYears = 300.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialPorousBasaltPorosity));
+    const TC = Math.max(10.0, Math.min(220.0, alkalineTempC));
+    const aMgSi = Math.max(0.005, Math.min(1.0, magnesiumSilicaActivityRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.40e4; // 44 kJ/mol for sepiolite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.4e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aMgSi, 0.40);
+    const alphaSep = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Channel and structural water yield (wt%)
+    const wH2OPct = alphaSep * 17.50;
+
+    // Fibrous morphology and continuous channel porosity preservation
+    const phiResidual = (phi0 * (1.0 - (0.40 * alphaSep))) + (0.10 * alphaSep);
+    const rhoGrain = 2260.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.10; // W/(m K)
+    const Cspec = 980.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Fibrous Hydrated Sepiolite (Mg4Si6O15(OH)2·6H2O)';
+    let fClass = 'Fibrous Magnesium Silicate Facies';
+
+    if (alphaSep >= 0.50 && TC >= 40.0 && TC <= 130.0 && aMgSi >= 0.15) {
+      species = 'Fibrous Sepiolite (Mg4Si6O15(OH)2·6H2O)';
+      fClass = 'Alkaline Lacustrine Sepiolite Facies (Eberswalde / Gale / Terra Sirenum)';
+    } else if (TC > 130.0) {
+      species = 'Tri-octahedral Saponite / Talc Metasomatite';
+      fClass = 'Moderate-Temperature Smectite Facies';
+    } else {
+      species = 'Amorphous Magnesian Silicate Gel';
+      fClass = 'Incipient Alkaline Smectite Precursor';
+    }
+
+    return {
+      sepioliteConversionFraction: parseFloat(alphaSep.toFixed(3)),
+      channelWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantFibrousSpecies: species,
+      fibrousClayThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      fibrousFaciesClass: fClass,
+      sepioliteContext: `Sepiolite at ${TC.toFixed(0)} C, a(MgSi)=${aMgSi.toFixed(2)} (${(alphaSep * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% channel H2O, TIU=${TIU.toFixed(0)}, ${fClass})`
+    };
+  }
 }
 
 

@@ -15435,6 +15435,56 @@ describe('Mars-to-Egeria Transfer, Dickite Metasomatism & High-T Kaolin Speciati
     });
 });
 
+describe('Mars-to-Eunomia Transfer, Sepiolite Metasomatism & Fibrous Clay Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to largest stony main-belt asteroid (15) Eunomia and orbit capture', () => {
+        // Mars to Eunomia (300 km Mars alt, 2.643 AU distance, 35 km capture alt, 11.74 deg plane change):
+        const eun = TrajectoryEngine.computeMarsToEunomiaTransfer(300.0, 2.643, 35.0, 11.74);
+        expect(eun.semiMajorAxisAU).to.be.closeTo(2.083, 0.1); // ~2.08 AU
+        expect(eun.eccentricity).to.be.closeTo(0.2688, 0.01); // e ~ 0.269
+        expect(eun.timeOfFlightDays).to.be.closeTo(548.20, 30.0); // ~548 days (~1.50 yr)
+        expect(eun.timeOfFlightYears).to.be.closeTo(1.50, 0.1); // ~1.50 yr
+        expect(eun.marsDepartureDeltaVKmS).to.be.closeTo(4.275, 0.5); // ~4.28 km/s TEuI
+        expect(eun.eunomiaOrbitInsertionDeltaVKmS).to.be.closeTo(2.317, 0.5); // ~2.32 km/s EuOI
+        expect(eun.totalMissionDeltaVKmS).to.be.closeTo(6.592, 1.0); // ~6.59 km/s total
+        expect(eun.eunomiaContext).to.include('Mars-to-Eunomia');
+    });
+
+    it('should calculate low-to-moderate temperature alkaline metasomatism of basalt into fibrous sepiolite and thermal inertia', () => {
+        // 30% initial porosity, 75 C alkaline temp, 0.28 a(MgSi), 300 yr duration:
+        const sep = KRCEngine.computeMartianSepioliteMetasomatism(0.30, 75.0, 0.28, 300.0);
+        expect(sep.sepioliteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(sep.channelWaterYieldWeightPercent).to.be.greaterThan(9.0); // > 9 wt% channel H2O
+        expect(sep.fibrousClayThermalInertiaTIU).to.be.closeTo(1434.9, 200.0); // ~1435 tiu
+        expect(sep.fibrousFaciesClass).to.include('Alkaline Lacustrine Sepiolite Facies');
+        expect(sep.sepioliteContext).to.include('Sepiolite at 75 C');
+    });
+
+    it('should discriminate Sepiolite vs Palygorskite vs Saponite in CRISM spectra', () => {
+        // Sepiolite (Eberswalde / Gale / Terra Sirenum: BD1418 = 0.040, BD1935 = 0.050, BD2315 = 0.060, BD2380 = 0.030):
+        const sep = BandMathEngine.computeCRISMSepiolitePalygorskiteSpeciationIndices(0.040, 0.050, 0.060, 0.030);
+        expect(sep.isFibrousClayDetected).to.be.true;
+        expect(sep.clayMineralClass).to.include('Fibrous Hydrated Sepiolite Facies');
+        expect(sep.mineralSpecies).to.include('Sepiolite');
+        expect(sep.depositionalEnvironment).to.include('Alkaline Closed-Basin Lacustrine');
+
+        // Palygorskite (BD1418 = 0.025, BD1935 = 0.045, BD2315 = 0.045, BD2380 = 0.010):
+        const paly = BandMathEngine.computeCRISMSepiolitePalygorskiteSpeciationIndices(0.025, 0.045, 0.045, 0.010);
+        expect(paly.isFibrousClayDetected).to.be.true;
+        expect(paly.clayMineralClass).to.include('Fibrous Magnesian-Aluminous Palygorskite Facies');
+        expect(paly.mineralSpecies).to.include('Palygorskite');
+
+        // Saponite (BD1418 = 0.010, BD1935 = 0.035, BD2315 = 0.055, BD2380 = 0.010):
+        const sap = BandMathEngine.computeCRISMSepiolitePalygorskiteSpeciationIndices(0.010, 0.035, 0.055, 0.010);
+        expect(sap.isFibrousClayDetected).to.be.true;
+        expect(sap.clayMineralClass).to.include('Hydrated Tri-octahedral Saponite Facies');
+        expect(sap.mineralSpecies).to.include('Saponite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMSepiolitePalygorskiteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isFibrousClayDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

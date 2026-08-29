@@ -9913,6 +9913,60 @@ export class BandMathEngine {
       metasomaticGrade: grade
     };
   }
+
+  /**
+   * Discriminate Fibrous Magnesium Silicates (Sepiolite vs Palygorskite vs Saponite vs Serpentine) from CRISM 1.418 um, 1.935 um, 2.315 um, and 2.380 um absorption bands.
+   * Reference: Bristow et al. (2015), Viviano-Beck et al. (2014), Ehlmann et al. (2011) for Martian Fibrous Clay Speciation.
+   * @param {number} [band1418OHDepth=0.040] - BD1418 sepiolite sharp free OH overtone depth (0.0 to 0.40)
+   * @param {number} [band1935H2ODepth=0.050] - BD1935 fibrous channel molecular H2O depth (0.0 to 0.50)
+   * @param {number} [band2315MgOHDepth=0.060] - BD2315 primary Mg-OH octahedral combination depth (0.0 to 0.50)
+   * @param {number} [band2380MgOHDepth=0.030] - BD2380 sepiolite secondary Mg-OH combination doublet depth (0.0 to 0.50)
+   * @returns {{isFibrousClayDetected: boolean, clayMineralClass: string, mineralSpecies: string, chemicalFormula: string, depositionalEnvironment: string}}
+   */
+  static computeCRISMSepiolitePalygorskiteSpeciationIndices(band1418OHDepth = 0.040, band1935H2ODepth = 0.050, band2315MgOHDepth = 0.060, band2380MgOHDepth = 0.030) {
+    const d1418 = Math.max(0.0, band1418OHDepth);
+    const d1935 = Math.max(0.0, band1935H2ODepth);
+    const d2315 = Math.max(0.0, band2315MgOHDepth);
+    const d2380 = Math.max(0.0, band2380MgOHDepth);
+
+    const isSepiolite = d1418 >= 0.025 && d1935 >= 0.035 && d2315 >= 0.040 && d2380 >= 0.020;
+    const isPalygorskite = d1935 >= 0.030 && d2315 >= 0.030 && d2380 < 0.020 && d1418 >= 0.020;
+    const isSaponite = d2315 >= 0.035 && d1935 >= 0.025 && d2380 < 0.015 && d1418 < 0.025;
+
+    const isFib = isSepiolite || isPalygorskite || isSaponite;
+
+    let cClass = 'Magnesian-Clay-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Basalt';
+
+    if (isFib) {
+      if (isSepiolite) {
+        cClass = 'Fibrous Hydrated Sepiolite Facies';
+        species = 'Sepiolite';
+        formula = 'Mg4Si6O15(OH)2·6H2O';
+        env = 'Alkaline Closed-Basin Lacustrine Evaporation / Hydrothermal Infilling (Eberswalde / Gale / Terra Sirenum)';
+      } else if (isPalygorskite) {
+        cClass = 'Fibrous Magnesian-Aluminous Palygorskite Facies';
+        species = 'Palygorskite';
+        formula = '(Mg,Al)4Si8O20(OH)2·8H2O';
+        env = 'Alkaline Semi-Arid Soil / Playa Authigenesis';
+      } else {
+        cClass = 'Hydrated Tri-octahedral Saponite Facies';
+        species = 'Saponite';
+        formula = 'Ca0.25(Mg,Fe)3(Si,Al)4O10(OH)2·nH2O';
+        env = 'Circum-Neutral Subsurface Hydrothermal Metasomatism';
+      }
+    }
+
+    return {
+      isFibrousClayDetected: isFib,
+      clayMineralClass: cClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      depositionalEnvironment: env
+    };
+  }
 }
 
 

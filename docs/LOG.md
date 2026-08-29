@@ -843,3 +843,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate hydrothermal alteration and nanotubular crystallization kinetics of weathered volcanic ash into hydrated halloysite and thermal inertia
 ?: AssertionError: expected 'Nanotubular Halloysite Kaolin Facies ?' to include 'Hydrated Kaolin Nanomaterial Facies'
     at n.<anonymous> (unit.js:15358:42)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 12:31:22 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate low-to-moderate temperature alkaline metasomatism of basalt into fibrous sepiolite and thermal inertia
+?: AssertionError: expected 'Alkaline Lacustrine Sepiolite Facies ?' to include 'Fibrous Magnesium Silicate Facies'
+    at n.<anonymous> (unit.js:15458:43)

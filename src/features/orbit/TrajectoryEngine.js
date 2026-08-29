@@ -11117,6 +11117,81 @@ export class TrajectoryEngine {
       egeriaContext: `Mars-to-Egeria (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EOI=${dvEoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to largest stony S-type asteroid (15) Eunomia and orbit capture.
+   * a = ( r_mars + r_eunomia ) / 2
+   * e = ( r_eunomia - r_mars ) / ( r_eunomia + r_mars )
+   * Reference: Carry et al. (2012), Nathues et al. (2005), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [eunomiaDistanceAU=2.643] - Eunomia heliocentric distance in AU (2.0 to 3.3 AU)
+   * @param {number} [eunomiaPeriapsisAltitudeKm=35.0] - Eunomia orbit insertion periapsis altitude in km (5 to 500 km)
+   * @param {number} [inclinationPlaneChangeDeg=11.74] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, eunomiaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, eunomiaContext: string}}
+   */
+  static computeMarsToEunomiaTransfer(marsParkingAltitudeKm = 300.0, eunomiaDistanceAU = 2.643, eunomiaPeriapsisAltitudeKm = 35.0, inclinationPlaneChangeDeg = 11.74) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rEuAU = Math.max(1.9, Math.min(3.5, eunomiaDistanceAU));
+    const hpEuKm = Math.max(5.0, eunomiaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muEunomia = 20.80; // km^3/s^2
+    const rEunomiaKm = 134.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rEuDistKm = rEuAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rEuDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rEuDistKm - rMarsDistKm) / (rEuDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTeuiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Eunomia capture
+    const vEuCircKmS = Math.sqrt(muSun / rEuDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rEuDistKm) - (1.0 / aKm)));
+    const vInfEuKmS = Math.abs(vEuCircKmS - vArrKmS);
+
+    const rpEuKm = rEunomiaKm + hpEuKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpEuKm / (1.0 - eCap);
+
+    const vHypEuKmS = Math.sqrt(Math.pow(vInfEuKmS, 2.0) + ((2.0 * muEunomia) / rpEuKm));
+    const vCapEuKmS = Math.sqrt(muEunomia * ((2.0 / rpEuKm) - (1.0 / aCapKm)));
+    const dvEuoiKmS = vHypEuKmS - vCapEuKmS;
+
+    const dvTotKmS = dvTeuiMarsKmS + dvEuoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTeuiMarsKmS.toFixed(3)),
+      eunomiaOrbitInsertionDeltaVKmS: parseFloat(dvEuoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      eunomiaContext: `Mars-to-Eunomia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EuOI=${dvEuoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
