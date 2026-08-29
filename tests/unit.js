@@ -15089,6 +15089,55 @@ describe('Mars-to-Hebe Transfer, Topaz Greisen Metasomatism & Topaz Speciation',
     });
 });
 
+describe('Mars-to-Iris Transfer, Pyrophyllite Metasomatism & Pyrophyllite Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to bright stony main-belt asteroid (7) Iris and orbit capture', () => {
+        // Mars to Iris (300 km Mars alt, 2.386 AU distance, 25 km capture alt, 5.52 deg plane change):
+        const iris = TrajectoryEngine.computeMarsToIrisTransfer(300.0, 2.386, 25.0, 5.52);
+        expect(iris.semiMajorAxisAU).to.be.closeTo(1.955, 0.1); // ~1.95 AU
+        expect(iris.eccentricity).to.be.closeTo(0.2206, 0.01); // e ~ 0.221
+        expect(iris.timeOfFlightDays).to.be.closeTo(498.40, 30.0); // ~498 days (~1.36 yr)
+        expect(iris.timeOfFlightYears).to.be.closeTo(1.36, 0.1); // ~1.36 yr
+        expect(iris.marsDepartureDeltaVKmS).to.be.closeTo(2.482, 0.5); // ~2.48 km/s TII
+        expect(iris.irisOrbitInsertionDeltaVKmS).to.be.closeTo(2.074, 0.5); // ~2.07 km/s IOI
+        expect(iris.totalMissionDeltaVKmS).to.be.closeTo(4.556, 1.0); // ~4.56 km/s total
+        expect(iris.irisContext).to.include('Mars-to-Iris');
+    });
+
+    it('should calculate high-temperature acid-hydrothermal advanced argillic alteration of aluminous crust into pyrophyllite-quartz sinter and thermal inertia', () => {
+        // 20% initial porosity, 320 C hydrothermal temp, 2.5 pH, 450 yr duration:
+        const pyro = KRCEngine.computeMartianPyrophylliteArgillicMetasomatism(0.20, 320.0, 2.5, 450.0);
+        expect(pyro.pyrophylliteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(pyro.pyrophylliteYieldWeightPercent).to.be.greaterThan(30.0); // > 30 wt% pyrophyllite
+        expect(pyro.induratedArgillicThermalInertiaTIU).to.be.closeTo(2621.6, 200.0); // ~2622 tiu
+        expect(pyro.advancedArgillicFaciesClass).to.include('High-Temperature Advanced Argillic Hydrothermal Facies');
+        expect(pyro.pyrophylliteContext).to.include('Pyrophyllite Facies at 320 C');
+    });
+
+    it('should discriminate Pyrophyllite vs Diaspore vs Intermediate Argillic in CRISM spectra', () => {
+        // Pyrophyllite (Nili Fossae / Toro Crater: BD1395 = 0.035, BD2060 = 0.040, BD2165 = 0.060, BD2320 = 0.035):
+        const pyro = BandMathEngine.computeCRISMPyrophylliteSpeciationIndices(0.035, 0.040, 0.060, 0.035);
+        expect(pyro.isAdvancedArgillicDetected).to.be.true;
+        expect(pyro.argillicMineralClass).to.include('High-Temperature Pyrophyllite Advanced Argillic Facies');
+        expect(pyro.mineralSpecies).to.include('Pyrophyllite');
+        expect(pyro.hydrothermalTemperatureRegime).to.include('High-Temperature Acid Hydrothermal Activity');
+
+        // Diaspore (BD1395 = 0.015, BD2060 = 0.045, BD2165 = 0.035, BD2320 = 0.010):
+        const dias = BandMathEngine.computeCRISMPyrophylliteSpeciationIndices(0.015, 0.045, 0.035, 0.010);
+        expect(dias.isAdvancedArgillicDetected).to.be.true;
+        expect(dias.argillicMineralClass).to.include('Hydrothermal Diaspore Sinter Facies');
+        expect(dias.mineralSpecies).to.include('Diaspore');
+
+        // Intermediate Dickite-Kaolinite (BD1395 = 0.010, BD2060 = 0.015, BD2165 = 0.030, BD2320 = 0.010):
+        const inter = BandMathEngine.computeCRISMPyrophylliteSpeciationIndices(0.010, 0.015, 0.030, 0.010);
+        expect(inter.isAdvancedArgillicDetected).to.be.true;
+        expect(inter.argillicMineralClass).to.include('Intermediate Argillic Dickite-Kaolinite Boundary');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMPyrophylliteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAdvancedArgillicDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

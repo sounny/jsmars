@@ -9535,6 +9535,60 @@ export class BandMathEngine {
       pneumatolyticEnvironment: env
     };
   }
+
+  /**
+   * Discriminate High-Temperature Advanced Argillic Minerals (Pyrophyllite vs Diaspore vs Dickite/Kaolinite vs Andalusite) from CRISM 1.395 um, 2.060 um, 2.165 um, and 2.320 um absorption bands.
+   * Reference: Ehlmann et al. (2009), Viviano-Beck et al. (2014), Carter et al. (2013) for Martian Pyrophyllite Advanced Argillic Mineralogy.
+   * @param {number} [band1395OHDepth=0.035] - BD1395 pyrophyllite diagnostic sharp OH doublet depth (0.0 to 0.40)
+   * @param {number} [band2060OHDepth=0.040] - BD2060 diaspore/pyrophyllite OH combination depth (0.0 to 0.50)
+   * @param {number} [band2165AlOHDepth=0.060] - BD2165 pyrophyllite primary Al-OH doublet component depth (0.0 to 0.50)
+   * @param {number} [band2320AlOHDepth=0.035] - BD2320 pyrophyllite secondary Al-OH doublet component depth (0.0 to 0.50)
+   * @returns {{isAdvancedArgillicDetected: boolean, argillicMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrothermalTemperatureRegime: string}}
+   */
+  static computeCRISMPyrophylliteSpeciationIndices(band1395OHDepth = 0.035, band2060OHDepth = 0.040, band2165AlOHDepth = 0.060, band2320AlOHDepth = 0.035) {
+    const d1395 = Math.max(0.0, band1395OHDepth);
+    const d2060 = Math.max(0.0, band2060OHDepth);
+    const d2165 = Math.max(0.0, band2165AlOHDepth);
+    const d2320 = Math.max(0.0, band2320AlOHDepth);
+
+    const isPyrophyllite = d1395 >= 0.025 && d2165 >= 0.035 && d2320 >= 0.020;
+    const isDiaspore = d2060 >= 0.035 && d2165 >= 0.030 && d2320 < 0.015;
+    const isIntermediateArgillic = d2165 >= 0.025 && d1395 < 0.020 && d2320 < 0.020;
+
+    const isArgillic = isPyrophyllite || isDiaspore || isIntermediateArgillic;
+
+    let aClass = 'Advanced-Argillic-Free Crustal Protolith';
+    let species = 'Basaltic Protolith';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Crustal Terrain';
+
+    if (isArgillic) {
+      if (isPyrophyllite) {
+        aClass = 'High-Temperature Pyrophyllite Advanced Argillic Facies';
+        species = 'Pyrophyllite';
+        formula = 'Al2Si4O10(OH)2';
+        regime = 'High-Temperature Acid Hydrothermal Activity (> 280 C, Nili Fossae / Toro Crater)';
+      } else if (isDiaspore) {
+        aClass = 'Hydrothermal Diaspore Sinter Facies';
+        species = 'Diaspore';
+        formula = 'AlO(OH)';
+        regime = 'Silica-Leached Acid Hydrothermal System';
+      } else {
+        aClass = 'Intermediate Argillic Dickite-Kaolinite Boundary';
+        species = 'Dickite / Kaolinite Assemblage';
+        formula = 'Al2Si2O5(OH)4';
+        regime = 'Moderate-Temperature Acid Hydrothermal System (140-280 C)';
+      }
+    }
+
+    return {
+      isAdvancedArgillicDetected: isArgillic,
+      argillicMineralClass: aClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrothermalTemperatureRegime: regime
+    };
+  }
 }
 
 

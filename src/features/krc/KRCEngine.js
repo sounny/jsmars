@@ -10357,6 +10357,68 @@ export class KRCEngine {
       topazContext: `Topaz Greisen at ${TC.toFixed(0)} C, a(HF)=${aHF.toFixed(2)} (${(alphaGreisen * 100).toFixed(1)}% converted, ${wTopazPct.toFixed(1)}% Topaz, TIU=${TIU.toFixed(0)}, ${gClass})`
     };
   }
+
+  /**
+   * Calculate high-temperature acid-hydrothermal advanced argillic alteration of aluminous crust into pyrophyllite-quartz sinter, silica induration, and thermal inertia.
+   * Kaolinite + 2 SiO2 (280-450 C, pH 1.5-3.5) -> Pyrophyllite (Al2Si4O10(OH)2) + Quartz Sinter + H2O
+   * Reference: Ehlmann et al. (2009), Viviano-Beck et al. (2014), Carter et al. (2013) for Martian Advanced Argillic Hydrothermal Systems.
+   * @param {number} [aluminousBasaltPorosity=0.20] - Initial aluminous ash/crust porosity (0.02 to 0.45)
+   * @param {number} [hydrothermalTempC=320.0] - Hydrothermal fluid temperature in C (200 to 550 C)
+   * @param {number} [fluidAcidityPH=2.5] - Fluid acidity pH (1.0 to 6.0)
+   * @param {number} [durationYears=450.0] - Hydrothermal alteration duration in years (0.1 to 5000 yr)
+   * @returns {{pyrophylliteConversionFraction: number, pyrophylliteYieldWeightPercent: number, dominantArgillicSpecies: string, induratedArgillicThermalInertiaTIU: number, advancedArgillicFaciesClass: string, pyrophylliteContext: string}}
+   */
+  static computeMartianPyrophylliteArgillicMetasomatism(aluminousBasaltPorosity = 0.20, hydrothermalTempC = 320.0, fluidAcidityPH = 2.5, durationYears = 450.0) {
+    const phi0 = Math.max(0.01, Math.min(0.50, aluminousBasaltPorosity));
+    const TC = Math.max(150.0, Math.min(600.0, hydrothermalTempC));
+    const pH = Math.max(0.5, Math.min(7.0, fluidAcidityPH));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.00e4; // 60 kJ/mol for pyrophyllite crystallization
+
+    const aHPlus = Math.pow(10.0, -pH);
+    // Reaction rate constant
+    const kRate = 5.0e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aHPlus * 1000.0, 0.35);
+    const alphaPyro = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Pyrophyllite yield (wt%)
+    const wPyroPct = alphaPyro * 65.0;
+
+    // Quartz sinter cementation and pore compaction
+    const phiResidual = phi0 * (1.0 - (0.70 * alphaPyro));
+    const rhoGrain = 2840.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.75; // W/(m K)
+    const Cspec = 880.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Pyrophyllite + Quartz Sinter';
+    let aClass = 'Advanced Argillic Pyrophyllite Facies';
+
+    if (alphaPyro >= 0.50 && TC >= 280.0 && TC <= 450.0 && pH <= 3.5) {
+      species = 'Pyrophyllite (Al2Si4O10(OH)2) + Diaspore + Quartz';
+      aClass = 'High-Temperature Advanced Argillic Hydrothermal Facies (Nili Fossae / Toro Crater)';
+    } else if (TC > 450.0) {
+      species = 'Andalusite-Quartz High-T Metamorphic Facies';
+      aClass = 'High-Temperature Metamorphic Hornfels Transition';
+    } else {
+      species = 'Dickite-Kaolinite Intermediate Argillic Sinter';
+      aClass = 'Moderate-Temperature Acid Argillic Boundary';
+    }
+
+    return {
+      pyrophylliteConversionFraction: parseFloat(alphaPyro.toFixed(3)),
+      pyrophylliteYieldWeightPercent: parseFloat(wPyroPct.toFixed(1)),
+      dominantArgillicSpecies: species,
+      induratedArgillicThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      advancedArgillicFaciesClass: aClass,
+      pyrophylliteContext: `Pyrophyllite Facies at ${TC.toFixed(0)} C, pH=${pH.toFixed(1)} (${(alphaPyro * 100).toFixed(1)}% converted, ${wPyroPct.toFixed(1)}% Pyrophyllite, TIU=${TIU.toFixed(0)}, ${aClass})`
+    };
+  }
 }
 
 
