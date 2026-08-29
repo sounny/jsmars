@@ -16591,6 +16591,56 @@ describe('Mars-to-Leda Transfer, Hohmannite Dehydration & Hydrothermal Oxysulfat
     });
 });
 
+describe('Mars-to-Laetitia Transfer, Metahohmannite Dehydration & Sesquihydrate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to bright stony asteroid (39) Laetitia and orbit capture', () => {
+        // Mars to Laetitia (300 km Mars alt, 2.769 AU distance, 15 km capture alt, 10.38 deg plane change):
+        const la = TrajectoryEngine.computeMarsToLaetitiaTransfer(300.0, 2.769, 15.0, 10.38);
+        expect(la.semiMajorAxisAU).to.be.closeTo(2.146, 0.1); // ~2.15 AU
+        expect(la.eccentricity).to.be.closeTo(0.2897, 0.01); // e ~ 0.290
+        expect(la.timeOfFlightDays).to.be.closeTo(573.36, 30.0); // ~573 days (~1.57 yr)
+        expect(la.timeOfFlightYears).to.be.closeTo(1.57, 0.1); // ~1.57 yr
+        expect(la.marsDepartureDeltaVKmS).to.be.closeTo(3.974, 0.5); // ~3.97 km/s TLaI
+        expect(la.laetitiaOrbitInsertionDeltaVKmS).to.be.closeTo(2.419, 0.5); // ~2.42 km/s LaOI
+        expect(la.totalMissionDeltaVKmS).to.be.closeTo(6.393, 1.0); // ~6.39 km/s total
+        expect(la.laetitiaContext).to.include('Mars-to-Laetitia');
+    });
+
+    it('should calculate extreme thermal desiccation of hohmannite into metahohmannite and thermal inertia', () => {
+        // 25% initial porosity, 55 C surface temp, 0.05 RH, 280 yr duration:
+        const met = KRCEngine.computeMartianMetahohmanniteDehydration(0.25, 55.0, 0.05, 280.0);
+        expect(met.metahohmanniteConversionFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(met.boundWaterYieldWeightPercent).to.be.lessThan(15.0); // < 15 wt% bound H2O
+        expect(met.induratedSesquihydrateThermalInertiaTIU).to.be.closeTo(1875.9, 200.0); // ~1876 tiu
+        expect(met.sesquihydrateFaciesClass).to.include('Indurated Metahohmannite Facies');
+        expect(met.metahohmanniteContext).to.include('Metahohmannite at 55 C');
+    });
+
+    it('should discriminate Metahohmannite vs Hohmannite vs Butlerite in CRISM spectra', () => {
+        // Metahohmannite (Coprates / Ganges / Valles Marineris: BD1440 = 0.015, BD1940 = 0.015, BD2160 = 0.045, BD2400 = 0.050):
+        const met = BandMathEngine.computeCRISMMetahohmanniteFerricOxysulfateSpeciationIndices(0.015, 0.015, 0.045, 0.050);
+        expect(met.isExtremeDesiccatedOxysulfateDetected).to.be.true;
+        expect(met.sulfateMineralClass).to.include('Sesquihydrated Metahohmannite Ferric Oxysulfate Facies');
+        expect(met.mineralSpecies).to.include('Metahohmannite');
+        expect(met.parageneticFacies).to.include('Hyper-Thermal Sublimation & Desiccation Sinter');
+
+        // Hohmannite (BD1440 = 0.015, BD1940 = 0.030, BD2160 = 0.045, BD2400 = 0.050):
+        const hoh = BandMathEngine.computeCRISMMetahohmanniteFerricOxysulfateSpeciationIndices(0.015, 0.030, 0.045, 0.050);
+        expect(hoh.isExtremeDesiccatedOxysulfateDetected).to.be.true;
+        expect(hoh.sulfateMineralClass).to.include('Tetrahydrated Hohmannite Oxysulfate Facies');
+        expect(hoh.mineralSpecies).to.include('Hohmannite');
+
+        // Butlerite (BD1440 = 0.015, BD1940 = 0.030, BD2160 = 0.010, BD2400 = 0.050):
+        const but = BandMathEngine.computeCRISMMetahohmanniteFerricOxysulfateSpeciationIndices(0.015, 0.030, 0.010, 0.050);
+        expect(but.isExtremeDesiccatedOxysulfateDetected).to.be.true;
+        expect(but.sulfateMineralClass).to.include('Monohydrated Butlerite Hydroxyl-Sulfate Facies');
+        expect(but.mineralSpecies).to.include('Butlerite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMMetahohmanniteFerricOxysulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isExtremeDesiccatedOxysulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

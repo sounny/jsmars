@@ -11155,6 +11155,60 @@ export class BandMathEngine {
       desiccationEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Extreme Desiccation Sesquihydrated Ferric Oxysulfates (Metahohmannite vs Hohmannite vs Butlerite) from CRISM 1.440 um, 1.940 um, 2.160 um, and 2.400 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Iron-Oxysulfates.
+   * @param {number} [band1440H2ODepth=0.015] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.015] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2160FeOHDepth=0.045] - BD2160 metahohmannite diagnostic ferric oxysulfate vibrational combination depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.050] - BD2400 sulfate vibrational combination overtone depth (0.0 to 0.50)
+   * @returns {{isExtremeDesiccatedOxysulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, parageneticFacies: string}}
+   */
+  static computeCRISMMetahohmanniteFerricOxysulfateSpeciationIndices(band1440H2ODepth = 0.015, band1940H2ODepth = 0.015, band2160FeOHDepth = 0.045, band2400SO4Depth = 0.050) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2160 = Math.max(0.0, band2160FeOHDepth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isMetahohmannite = d2160 >= 0.025 && d1940 < 0.020 && d2400 >= 0.035;
+    const isHohmannite = d2160 >= 0.025 && d1940 >= 0.020 && d2400 >= 0.030;
+    const isButlerite = d2400 >= 0.030 && d1940 >= 0.025 && d2160 < 0.020;
+
+    const isMetDes = isMetahohmannite || isHohmannite || isButlerite;
+
+    let sClass = 'Extreme-Desiccation-Oxysulfate-Free Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let facies = 'Unaltered Primary Crust';
+
+    if (isMetDes) {
+      if (isMetahohmannite) {
+        sClass = 'Sesquihydrated Metahohmannite Ferric Oxysulfate Facies';
+        species = 'Metahohmannite';
+        formula = 'Fe2(SO4)2O·1.5H2O';
+        facies = 'Hyper-Thermal Sublimation & Desiccation Sinter (Coprates / Ganges / Valles Marineris)';
+      } else if (isHohmannite) {
+        sClass = 'Tetrahydrated Hohmannite Oxysulfate Facies';
+        species = 'Hohmannite';
+        formula = 'Fe2(SO4)2O·4H2O';
+        facies = 'Hydrothermal Acid-Sulfate Desiccation Outcrop';
+      } else {
+        sClass = 'Monohydrated Butlerite Hydroxyl-Sulfate Facies';
+        species = 'Butlerite';
+        formula = 'Fe(SO4)(OH)·H2O';
+        facies = 'Acid Mine Drainage / Epithermal Hydroxyl-Sulfate Efflorescence';
+      }
+    }
+
+    return {
+      isExtremeDesiccatedOxysulfateDetected: isMetDes,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      parageneticFacies: facies
+    };
+  }
 }
 
 
