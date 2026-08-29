@@ -11700,6 +11700,67 @@ export class KRCEngine {
       sideronatriteContext: `Sideronatrite at ${TC.toFixed(0)} C, a(NaFeOH)=${aNaFeOH.toFixed(2)} (${(alphaSid * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate desiccation and hydrothermal dehydration of trihydrated sideronatrite into monohydrated metasideronatrite, crystal contraction, and thermal inertia.
+   * Na2Fe(SO4)2(OH)·3H2O -> Na2Fe(SO4)2(OH)·H2O + 2 H2O (20 to 80 C, low RH)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Hydroxyl-Bearing Sulfates.
+   * @param {number} [initialSideronatritePorosity=0.32] - Initial sideronatrite evaporite crust porosity (0.05 to 0.60)
+   * @param {number} [surfaceTempC=34.0] - Surface/diurnal desiccation temperature in C (0 to 90 C)
+   * @param {number} [atmosphericRelativeHumidity=0.12] - Atmospheric / pore relative humidity (0.001 to 0.80)
+   * @param {number} [durationYears=220.0] - Desiccation exposure duration in years (0.1 to 5000 yr)
+   * @returns {{metasideronatriteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantFerricHydroxylPhase: string, induratedMonohydrateThermalInertiaTIU: number, monohydrateFaciesClass: string, metasideronatriteContext: string}}
+   */
+  static computeMartianMetasideronatriteDehydration(initialSideronatritePorosity = 0.32, surfaceTempC = 34.0, atmosphericRelativeHumidity = 0.12, durationYears = 220.0) {
+    const phi0 = Math.max(0.01, Math.min(0.65, initialSideronatritePorosity));
+    const TC = Math.max(-10.0, Math.min(105.0, surfaceTempC));
+    const rh = Math.max(0.001, Math.min(0.85, atmosphericRelativeHumidity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.10e4; // 41.0 kJ/mol for metasideronatrite dehydration crystallization
+
+    // Reaction rate constant
+    const kRate = 4.4e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(1.0 - rh, 0.55);
+    const alphaMsid = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound water and OH yield (wt%)
+    const wH2OPct = 7.15 + ((1.0 - alphaMsid) * 10.43);
+
+    // Crystal volume contraction and indurated monohydrate compaction
+    const phiResidual = phi0 * (1.0 - (0.38 * alphaMsid));
+    const rhoGrain = 2710.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.55; // W/(m K)
+    const Cspec = 890.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Metasideronatrite (Na2Fe(SO4)2(OH)·H2O)';
+    let mClass = 'Monohydrated Sodium-Ferric Hydroxyl-Sulfate Facies';
+
+    if (alphaMsid >= 0.50 && TC >= 20.0 && rh <= 0.25) {
+      species = 'Metasideronatrite (Na2Fe(SO4)2(OH)·H2O)';
+      mClass = 'Indurated Metasideronatrite Facies (Valles Marineris / Mawrth / Noctis)';
+    } else if (rh > 0.25) {
+      species = 'Metastable Sideronatrite-Metasideronatrite Mixture';
+      sClass = 'Partially Dehydrated Polyhydrate Transition';
+    } else {
+      species = 'Anhydrous Sodium-Ferric Sulfate Residue';
+      mClass = 'Hyper-Thermal Desiccation Residue';
+    }
+
+    return {
+      metasideronatriteConversionFraction: parseFloat(alphaMsid.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantFerricHydroxylPhase: species,
+      induratedMonohydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      monohydrateFaciesClass: mClass,
+      metasideronatriteContext: `Metasideronatrite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaMsid * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${mClass})`
+    };
+  }
 }
 
 

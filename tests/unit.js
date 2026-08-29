@@ -16191,6 +16191,56 @@ describe('Mars-to-Urania Transfer, Sideronatrite Metasomatism & Hydroxyl-Sulfate
     });
 });
 
+describe('Mars-to-Euphrosyne Transfer, Metasideronatrite Dehydration & Dehydrated Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to large C-type asteroid (31) Euphrosyne and orbit capture', () => {
+        // Mars to Euphrosyne (300 km Mars alt, 3.156 AU distance, 30 km capture alt, 26.32 deg plane change):
+        const eu = TrajectoryEngine.computeMarsToEuphrosyneTransfer(300.0, 3.156, 30.0, 26.32);
+        expect(eu.semiMajorAxisAU).to.be.closeTo(2.340, 0.1); // ~2.34 AU
+        expect(eu.eccentricity).to.be.closeTo(0.3488, 0.01); // e ~ 0.349
+        expect(eu.timeOfFlightDays).to.be.closeTo(651.96, 30.0); // ~652 days (~1.79 yr)
+        expect(eu.timeOfFlightYears).to.be.closeTo(1.79, 0.1); // ~1.79 yr
+        expect(eu.marsDepartureDeltaVKmS).to.be.closeTo(9.968, 0.5); // ~9.97 km/s TEuI
+        expect(eu.euphrosyneOrbitInsertionDeltaVKmS).to.be.closeTo(2.898, 0.5); // ~2.90 km/s EuOI
+        expect(eu.totalMissionDeltaVKmS).to.be.closeTo(12.866, 1.0); // ~12.87 km/s total
+        expect(eu.euphrosyneContext).to.include('Mars-to-Euphrosyne');
+    });
+
+    it('should calculate diurnal and desiccation dehydration of sideronatrite into metasideronatrite and thermal inertia', () => {
+        // 32% initial porosity, 34 C surface temp, 0.12 RH, 220 yr duration:
+        const msid = KRCEngine.computeMartianMetasideronatriteDehydration(0.32, 34.0, 0.12, 220.0);
+        expect(msid.metasideronatriteConversionFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(msid.boundWaterYieldWeightPercent).to.be.lessThan(15.0); // < 15 wt% bound H2O+OH
+        expect(msid.induratedMonohydrateThermalInertiaTIU).to.be.closeTo(1746.2, 200.0); // ~1746 tiu
+        expect(msid.monohydrateFaciesClass).to.include('Indurated Metasideronatrite Facies');
+        expect(msid.metasideronatriteContext).to.include('Metasideronatrite at 34 C');
+    });
+
+    it('should discriminate Metasideronatrite vs Natrojarosite vs Sideronatrite Trihydrate in CRISM spectra', () => {
+        // Metasideronatrite (Valles Marineris / Mawrth / Noctis: BD1440 = 0.030, BD1940 = 0.015, BD2220 = 0.045, BD2265 = 0.015):
+        const msid = BandMathEngine.computeCRISMMetasideronatriteSpeciationIndices(0.030, 0.015, 0.045, 0.015);
+        expect(msid.isDesiccatedHydroxylSulfateDetected).to.be.true;
+        expect(msid.sulfateMineralClass).to.include('Monohydrated Metasideronatrite Facies');
+        expect(msid.mineralSpecies).to.include('Metasideronatrite');
+        expect(msid.hydrationState).to.include('Indurated Desiccated Monohydrated Hydroxyl-Sulfate');
+
+        // Natrojarosite (BD1440 = 0.030, BD1940 = 0.015, BD2220 = 0.015, BD2265 = 0.045):
+        const jar = BandMathEngine.computeCRISMMetasideronatriteSpeciationIndices(0.030, 0.015, 0.015, 0.045);
+        expect(jar.isDesiccatedHydroxylSulfateDetected).to.be.true;
+        expect(jar.sulfateMineralClass).to.include('Alunite-Supergroup Natrojarosite Facies');
+        expect(jar.mineralSpecies).to.include('Natrojarosite');
+
+        // Sideronatrite Trihydrate (BD1440 = 0.040, BD1940 = 0.045, BD2220 = 0.035, BD2265 = 0.015):
+        const sid = BandMathEngine.computeCRISMMetasideronatriteSpeciationIndices(0.040, 0.045, 0.035, 0.015);
+        expect(sid.isDesiccatedHydroxylSulfateDetected).to.be.true;
+        expect(sid.sulfateMineralClass).to.include('Trihydrated Sideronatrite Facies');
+        expect(sid.mineralSpecies).to.include('Sideronatrite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMMetasideronatriteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isDesiccatedHydroxylSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

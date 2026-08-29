@@ -12242,6 +12242,81 @@ export class TrajectoryEngine {
       uraniaContext: `Mars-to-Urania (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, UrOI=${dvUroiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to large high-inclination carbonaceous C-type asteroid (31) Euphrosyne and orbit capture.
+   * a = ( r_mars + r_euphrosyne ) / 2
+   * e = ( r_euphrosyne - r_mars ) / ( r_euphrosyne + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [euphrosyneDistanceAU=3.156] - Euphrosyne heliocentric distance in AU (2.2 to 3.8 AU)
+   * @param {number} [euphrosynePeriapsisAltitudeKm=30.0] - Euphrosyne orbit insertion periapsis altitude in km (5 to 450 km)
+   * @param {number} [inclinationPlaneChangeDeg=26.32] - Orbital plane change angle in degrees (0 to 45 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, euphrosyneOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, euphrosyneContext: string}}
+   */
+  static computeMarsToEuphrosyneTransfer(marsParkingAltitudeKm = 300.0, euphrosyneDistanceAU = 3.156, euphrosynePeriapsisAltitudeKm = 30.0, inclinationPlaneChangeDeg = 26.32) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rEuAU = Math.max(2.0, Math.min(4.0, euphrosyneDistanceAU));
+    const hpEuKm = Math.max(5.0, euphrosynePeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muEuphrosyne = 12.50; // km^3/s^2 (large C-type asteroid, D~268 km)
+    const rEuphrosyneKm = 134.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rEuDistKm = rEuAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rEuDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rEuDistKm - rMarsDistKm) / (rEuDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTeuiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Euphrosyne capture
+    const vEuCircKmS = Math.sqrt(muSun / rEuDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rEuDistKm) - (1.0 / aKm)));
+    const vInfEuKmS = Math.abs(vEuCircKmS - vArrKmS);
+
+    const rpEuKm = rEuphrosyneKm + hpEuKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpEuKm / (1.0 - eCap);
+
+    const vHypEuKmS = Math.sqrt(Math.pow(vInfEuKmS, 2.0) + ((2.0 * muEuphrosyne) / rpEuKm));
+    const vCapEuKmS = Math.sqrt(muEuphrosyne * ((2.0 / rpEuKm) - (1.0 / aCapKm)));
+    const dvEuoiKmS = vHypEuKmS - vCapEuKmS;
+
+    const dvTotKmS = dvTeuiMarsKmS + dvEuoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTeuiMarsKmS.toFixed(3)),
+      euphrosyneOrbitInsertionDeltaVKmS: parseFloat(dvEuoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      euphrosyneContext: `Mars-to-Euphrosyne (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EuOI=${dvEuoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

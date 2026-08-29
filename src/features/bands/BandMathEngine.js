@@ -10723,6 +10723,60 @@ export class BandMathEngine {
       depositionalFacies: facies
     };
   }
+
+  /**
+   * Discriminate Desiccated Monohydrated Hydroxyl-Sulfates (Metasideronatrite vs Natrojarosite vs Sideronatrite Trihydrate) from CRISM 1.440 um, 1.940 um, 2.220 um, and 2.265 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Hydroxyl-Bearing Sulfates.
+   * @param {number} [band1440H2ODepth=0.030] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.015] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2220FeOHDepth=0.045] - BD2220 metasideronatrite diagnostic ferric iron-hydroxyl combination depth (0.0 to 0.50)
+   * @param {number} [band2265FeOHDepth=0.015] - BD2265 natrojarosite iron-hydroxyl triplet combination depth (0.0 to 0.50)
+   * @returns {{isDesiccatedHydroxylSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrationState: string}}
+   */
+  static computeCRISMMetasideronatriteSpeciationIndices(band1440H2ODepth = 0.030, band1940H2ODepth = 0.015, band2220FeOHDepth = 0.045, band2265FeOHDepth = 0.015) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2220 = Math.max(0.0, band2220FeOHDepth);
+    const d2265 = Math.max(0.0, band2265FeOHDepth);
+
+    const isMetasideronatrite = d2220 >= 0.030 && d1440 >= 0.020 && d1940 < 0.025 && d2265 < 0.025;
+    const isNatrojarosite = d2265 >= 0.035 && d2220 < 0.025;
+    const isSideronatrite = d1940 >= 0.035 && d2220 >= 0.025;
+
+    const isOHSO4 = isMetasideronatrite || isNatrojarosite || isSideronatrite;
+
+    let sClass = 'Hydroxyl-Bearing-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let state = 'Unaltered Primary Crust';
+
+    if (isOHSO4) {
+      if (isMetasideronatrite) {
+        sClass = 'Monohydrated Metasideronatrite Facies';
+        species = 'Metasideronatrite';
+        formula = 'Na2Fe(SO4)2(OH)·H2O';
+        state = 'Indurated Desiccated Monohydrated Hydroxyl-Sulfate (Valles Marineris / Mawrth)';
+      } else if (isNatrojarosite) {
+        sClass = 'Alunite-Supergroup Natrojarosite Facies';
+        species = 'Natrojarosite';
+        formula = 'NaFe3(SO4)2(OH)6';
+        state = 'Acid-Saline Hydrothermal Hydroxyl-Sulfate Stratum';
+      } else {
+        sClass = 'Trihydrated Sideronatrite Facies';
+        species = 'Sideronatrite';
+        formula = 'Na2Fe(SO4)2(OH)·3H2O';
+        state = 'Hydrated Multi-Water Hydroxyl-Sulfate Evaporite';
+      }
+    }
+
+    return {
+      isDesiccatedHydroxylSulfateDetected: isOHSO4,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationState: state
+    };
+  }
 }
 
 
