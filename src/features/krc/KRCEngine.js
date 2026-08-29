@@ -10174,6 +10174,67 @@ export class KRCEngine {
       celadoniteContext: `Celadonite Mica at ${TC.toFixed(0)} C, Fe/Mg=${rFeMg.toFixed(1)} (${(alphaCel * 100).toFixed(1)}% converted, ${wMicaPct.toFixed(1)}% Mica, TIU=${TIU.toFixed(0)}, ${mClass})`
     };
   }
+
+  /**
+   * Calculate extreme acid-sulfate-phosphate hydrothermal alteration of aluminous crust into aluminium-phosphate-sulfate (APS) woodhouseite, quartz sinter, and indurated sinter crust thermal inertia.
+   * Aluminous Crust + Ca2+ + H2PO4- + SO4(2-) + H2O (140-280 C) -> Woodhouseite (CaAl3(PO4)(SO4)(OH)6) + Quartz Sinter
+   * Reference: Ehlmann et al. (2016), Viviano-Beck et al. (2014) for Martian APS (Alunite-Woodhouseite) Hydrothermal Formations.
+   * @param {number} [porousRhyolitePorosity=0.22] - Initial rhyolitic/aluminous ash porosity (0.05 to 0.45)
+   * @param {number} [hydrothermalTempC=210.0] - Hydrothermal fluid temperature in C (100 to 350 C)
+   * @param {number} [phosphateSulfateRatio=1.10] - Fluid PO4/SO4 activity ratio (0.1 to 10.0)
+   * @param {number} [durationYears=300.0] - APS alteration duration in years (0.1 to 5000 yr)
+   * @returns {{apsConversionFraction: number, woodhouseiteYieldWeightPercent: number, dominantAPSMineralSpecies: string, induratedAPSThermalInertiaTIU: number, apsFaciesClass: string, apsContext: string}}
+   */
+  static computeMartianWoodhouseitePhosphateSulfateKinetics(porousRhyolitePorosity = 0.22, hydrothermalTempC = 210.0, phosphateSulfateRatio = 1.10, durationYears = 300.0) {
+    const phi0 = Math.max(0.02, Math.min(0.50, porousRhyolitePorosity));
+    const TC = Math.max(80.0, Math.min(400.0, hydrothermalTempC));
+    const rPS = Math.max(0.05, Math.min(15.0, phosphateSulfateRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.60e4; // 56 kJ/mol for APS woodhouseite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.8e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(rPS, 0.40);
+    const alphaAPS = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Woodhouseite yield (wt%)
+    const wAPSPct = alphaAPS * 58.0;
+
+    // Pore reduction and silica-APS cementation
+    const phiResidual = phi0 * (1.0 - (0.65 * alphaAPS));
+    const rhoGrain = 3050.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.35; // W/(m K)
+    const Cspec = 830.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Woodhouseite APS Phase';
+    let aClass = 'Pervasive Aluminium-Phosphate-Sulfate (APS) Sinter';
+
+    if (rPS >= 1.5 && TC >= 160.0) {
+      species = 'Woodhouseite-Svanbergite (Ca,Sr)Al3(PO4)(SO4)(OH)6';
+      aClass = 'High-Temperature Hydrothermal APS Sinter Facies (Mawrth / Columbus Crater)';
+    } else if (rPS < 0.50) {
+      species = 'Phosphate-Bearing Alunite (KAl3(SO4,PO4)2(OH)6)';
+      aClass = 'Transitional Alunite-Woodhouseite Acid-Sulfate Cap';
+    } else {
+      species = 'Equilibrated Woodhouseite-Alunite Solid Solution';
+      aClass = 'Acid Magmatic Volatiles Hydrothermal Sequence';
+    }
+
+    return {
+      apsConversionFraction: parseFloat(alphaAPS.toFixed(3)),
+      woodhouseiteYieldWeightPercent: parseFloat(wAPSPct.toFixed(1)),
+      dominantAPSMineralSpecies: species,
+      induratedAPSThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      apsFaciesClass: aClass,
+      apsContext: `Woodhouseite APS at ${TC.toFixed(0)} C, P/S=${rPS.toFixed(1)} (${(alphaAPS * 100).toFixed(1)}% converted, ${wAPSPct.toFixed(1)}% Woodhouseite, TIU=${TIU.toFixed(0)}, ${aClass})`
+    };
+  }
 }
 
 

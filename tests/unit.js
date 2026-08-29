@@ -14941,6 +14941,55 @@ describe('Mars-to-Pallas Transfer, Celadonite Metasomatism & Green Mica Speciati
     });
 });
 
+describe('Mars-to-Juno Transfer, Woodhouseite APS Kinetics & APS Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony main-belt asteroid (3) Juno and orbit capture', () => {
+        // Mars to Juno (300 km Mars alt, 2.670 AU distance, 30 km capture alt, 12.98 deg plane change):
+        const jun = TrajectoryEngine.computeMarsToJunoTransfer(300.0, 2.670, 30.0, 12.98);
+        expect(jun.semiMajorAxisAU).to.be.closeTo(2.097, 0.1); // ~2.10 AU
+        expect(jun.eccentricity).to.be.closeTo(0.2733, 0.01); // e ~ 0.273
+        expect(jun.timeOfFlightDays).to.be.closeTo(553.80, 30.0); // ~554 days (~1.52 yr)
+        expect(jun.timeOfFlightYears).to.be.closeTo(1.52, 0.1); // ~1.52 yr
+        expect(jun.marsDepartureDeltaVKmS).to.be.closeTo(4.654, 0.5); // ~4.65 km/s TJI
+        expect(jun.junoOrbitInsertionDeltaVKmS).to.be.closeTo(2.384, 0.5); // ~2.38 km/s JOI
+        expect(jun.totalMissionDeltaVKmS).to.be.closeTo(7.038, 1.0); // ~7.04 km/s total
+        expect(jun.junoContext).to.include('Mars-to-Juno');
+    });
+
+    it('should calculate acid-sulfate-phosphate hydrothermal alteration of aluminous crust into APS woodhouseite and indurated sinter thermal inertia', () => {
+        // 22% initial porosity, 210 C hydrothermal temp, 1.10 P/S ratio, 300 yr duration:
+        const wood = KRCEngine.computeMartianWoodhouseitePhosphateSulfateKinetics(0.22, 210.0, 1.10, 300.0);
+        expect(wood.apsConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(wood.woodhouseiteYieldWeightPercent).to.be.greaterThan(30.0); // > 30 wt% woodhouseite
+        expect(wood.induratedAPSThermalInertiaTIU).to.be.closeTo(2410.5, 200.0); // ~2411 tiu
+        expect(wood.apsFaciesClass).to.include('Acid Magmatic Volatiles Hydrothermal Sequence');
+        expect(wood.apsContext).to.include('Woodhouseite APS at 210 C');
+    });
+
+    it('should discriminate Woodhouseite vs Pure Alunite vs Hydrated Phosphate in CRISM spectra', () => {
+        // Woodhouseite (Mawrth / Columbus: BD1480 = 0.035, BD1760 = 0.035, BD2170 = 0.055, BD2310 = 0.045):
+        const aps = BandMathEngine.computeCRISMWoodhouseiteAPSSpeciationIndices(0.035, 0.035, 0.055, 0.045);
+        expect(aps.isAPSDetected).to.be.true;
+        expect(aps.apsMineralClass).to.include('Aluminium-Phosphate-Sulfate (APS) Woodhouseite Facies');
+        expect(aps.mineralSpecies).to.include('Woodhouseite');
+        expect(aps.magmaticVolatileEnvironment).to.include('Extreme Magmatic-Hydrothermal Acid-Sulfate Leaching of Apatite');
+
+        // Pure Alunite (BD1480 = 0.035, BD1760 = 0.035, BD2170 = 0.055, BD2310 = 0.010):
+        const alu = BandMathEngine.computeCRISMWoodhouseiteAPSSpeciationIndices(0.035, 0.035, 0.055, 0.010);
+        expect(alu.isAPSDetected).to.be.true;
+        expect(alu.apsMineralClass).to.include('Pure High-Alumina Alunite Sulfate Facies');
+        expect(alu.mineralSpecies).to.include('Alunite');
+
+        // Secondary Phosphate (BD1480 = 0.015, BD1760 = 0.010, BD2170 = 0.020, BD2310 = 0.045):
+        const phos = BandMathEngine.computeCRISMWoodhouseiteAPSSpeciationIndices(0.015, 0.010, 0.020, 0.045);
+        expect(phos.isAPSDetected).to.be.true;
+        expect(phos.apsMineralClass).to.include('Secondary Hydrated Phosphate Sinter');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMWoodhouseiteAPSSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAPSDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

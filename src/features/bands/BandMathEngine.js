@@ -9373,6 +9373,60 @@ export class BandMathEngine {
       alterationEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Aluminium-Phosphate-Sulfate (APS) Minerals (Woodhouseite vs Svanbergite vs Pure Alunite vs Hydrated Phosphates) from CRISM 1.480 um, 1.760 um, 2.170 um, and 2.310 um absorption bands.
+   * Reference: Ehlmann et al. (2016), Viviano-Beck et al. (2014) for Martian APS Mineral Speciation.
+   * @param {number} [band1480OHDepth=0.035] - BD1480 APS OH vibration depth (0.0 to 0.40)
+   * @param {number} [band1760OHDepth=0.035] - BD1760 alunite-supergroup diagnostic OH combination band depth (0.0 to 0.40)
+   * @param {number} [band2170AlOHDepth=0.055] - BD2170 woodhouseite shifted Al-OH doublet depth (0.0 to 0.50)
+   * @param {number} [band2310PO4Depth=0.045] - BD2310 phosphate PO4-OH combination depth (0.0 to 0.50)
+   * @returns {{isAPSDetected: boolean, apsMineralClass: string, mineralSpecies: string, chemicalFormula: string, magmaticVolatileEnvironment: string}}
+   */
+  static computeCRISMWoodhouseiteAPSSpeciationIndices(band1480OHDepth = 0.035, band1760OHDepth = 0.035, band2170AlOHDepth = 0.055, band2310PO4Depth = 0.045) {
+    const d1480 = Math.max(0.0, band1480OHDepth);
+    const d1760 = Math.max(0.0, band1760OHDepth);
+    const d2170 = Math.max(0.0, band2170AlOHDepth);
+    const d2310 = Math.max(0.0, band2310PO4Depth);
+
+    const isWoodhouseite = d1760 >= 0.025 && d2170 >= 0.035 && d2310 >= 0.030;
+    const isAluniteNoP = d1760 >= 0.025 && d2170 >= 0.035 && d2310 < 0.020;
+    const isPhosphate = d2310 >= 0.035 && d1760 < 0.020;
+
+    const isAPS = isWoodhouseite || isAluniteNoP || isPhosphate;
+
+    let aClass = 'Phosphate-Sulfate-Free Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Standard Crustal Environment';
+
+    if (isAPS) {
+      if (isWoodhouseite) {
+        aClass = 'Aluminium-Phosphate-Sulfate (APS) Woodhouseite Facies';
+        species = 'Woodhouseite';
+        formula = 'CaAl3(PO4)(SO4)(OH)6';
+        env = 'Extreme Magmatic-Hydrothermal Acid-Sulfate Leaching of Apatite (Mawrth / Columbus Crater)';
+      } else if (isAluniteNoP) {
+        aClass = 'Pure High-Alumina Alunite Sulfate Facies';
+        species = 'Alunite';
+        formula = 'KAl3(SO4)2(OH)6';
+        env = 'Phosphate-Depleted Acid-Sulfate Hydrothermal Sinter';
+      } else {
+        aClass = 'Secondary Hydrated Phosphate Sinter';
+        species = 'Brushite-Apatite Assemblage';
+        formula = 'CaHPO4·2H2O';
+        env = 'Neutral-to-Mildly Acid Hydrothermal Phosphate Veining';
+      }
+    }
+
+    return {
+      isAPSDetected: isAPS,
+      apsMineralClass: aClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      magmaticVolatileEnvironment: env
+    };
+  }
 }
 
 
