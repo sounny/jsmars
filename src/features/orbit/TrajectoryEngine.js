@@ -11492,6 +11492,81 @@ export class TrajectoryEngine {
       massaliaContext: `Mars-to-Massalia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, MaOI=${dvMaoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to dense primitive M-type asteroid (21) Lutetia and orbit capture.
+   * a = ( r_mars + r_lutetia ) / 2
+   * e = ( r_lutetia - r_mars ) / ( r_lutetia + r_mars )
+   * Reference: Sierks et al. (2011), Pätzold et al. (2011), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [lutetiaDistanceAU=2.435] - Lutetia heliocentric distance in AU (1.8 to 3.0 AU)
+   * @param {number} [lutetiaPeriapsisAltitudeKm=15.0] - Lutetia orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=3.06] - Orbital plane change angle in degrees (0 to 25 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, lutetiaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, lutetiaContext: string}}
+   */
+  static computeMarsToLutetiaTransfer(marsParkingAltitudeKm = 300.0, lutetiaDistanceAU = 2.435, lutetiaPeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 3.06) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rLuAU = Math.max(1.7, Math.min(3.1, lutetiaDistanceAU));
+    const hpLuKm = Math.max(5.0, lutetiaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muLutetia = 1.70; // km^3/s^2
+    const rLutetiaKm = 49.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rLuDistKm = rLuAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rLuDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rLuDistKm - rMarsDistKm) / (rLuDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTluiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Lutetia capture
+    const vLuCircKmS = Math.sqrt(muSun / rLuDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rLuDistKm) - (1.0 / aKm)));
+    const vInfLuKmS = Math.abs(vLuCircKmS - vArrKmS);
+
+    const rpLuKm = rLutetiaKm + hpLuKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpLuKm / (1.0 - eCap);
+
+    const vHypLuKmS = Math.sqrt(Math.pow(vInfLuKmS, 2.0) + ((2.0 * muLutetia) / rpLuKm));
+    const vCapLuKmS = Math.sqrt(muLutetia * ((2.0 / rpLuKm) - (1.0 / aCapKm)));
+    const dvLuoiKmS = vHypLuKmS - vCapLuKmS;
+
+    const dvTotKmS = dvTluiMarsKmS + dvLuoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTluiMarsKmS.toFixed(3)),
+      lutetiaOrbitInsertionDeltaVKmS: parseFloat(dvLuoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      lutetiaContext: `Mars-to-Lutetia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, LuOI=${dvLuoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

@@ -10183,6 +10183,60 @@ export class BandMathEngine {
       metasomaticRegime: regime
     };
   }
+
+  /**
+   * Discriminate Hydrated Ferrous Sulfates (Rozenite Tetrahydrate vs Melanterite Heptahydrate vs Szomolnokite Monohydrate vs Jarosite) from CRISM 1.430 um, 1.970 um, 2.100 um, and 2.400 um absorption bands.
+   * Reference: Fraeman et al. (2014), Viviano-Beck et al. (2014), Roach et al. (2010) for Martian Polyhydrated Ferrous Sulfate Speciation.
+   * @param {number} [band1430OHDepth=0.040] - BD1430 rozenite sharp OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1970H2ODepth=0.050] - BD1970 rozenite diagnostic shifted structural H2O depth (0.0 to 0.50)
+   * @param {number} [band2100FeDepth=0.040] - BD2100 ferrous iron crystal field absorption depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.035] - BD2400 sulfate vibrational combination overtone depth (0.0 to 0.50)
+   * @returns {{isFerrousSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrationEnvironment: string}}
+   */
+  static computeCRISMRozeniteFerrousSulfateSpeciationIndices(band1430OHDepth = 0.040, band1970H2ODepth = 0.050, band2100FeDepth = 0.040, band2400SO4Depth = 0.035) {
+    const d1430 = Math.max(0.0, band1430OHDepth);
+    const d1970 = Math.max(0.0, band1970H2ODepth);
+    const d2100 = Math.max(0.0, band2100FeDepth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isRozenite = d1430 >= 0.025 && d1970 >= 0.035 && d2100 >= 0.030 && d2400 >= 0.025;
+    const isMelanterite = d1430 >= 0.025 && d2100 >= 0.025 && d1970 < 0.025 && d2400 < 0.025;
+    const isSzomolnokite = d2100 >= 0.030 && d2400 >= 0.030 && d1430 < 0.020 && d1970 < 0.020;
+
+    const isFeS = isRozenite || isMelanterite || isSzomolnokite;
+
+    let sClass = 'Ferrous-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isFeS) {
+      if (isRozenite) {
+        sClass = 'Equilibrium Rozenite Tetrahydrate Facies';
+        species = 'Rozenite';
+        formula = 'FeSO4·4H2O';
+        env = 'Moderate Relative Humidity Evaporitic Sulfate Deposits (Juventae / Capri / Aram Chaos)';
+      } else if (isMelanterite) {
+        sClass = 'Superhydrated Melanterite Heptahydrate Facies';
+        species = 'Melanterite';
+        formula = 'FeSO4·7H2O';
+        env = 'High Water Activity Cryogenic Aqueous Saturated Brine';
+      } else {
+        sClass = 'Desiccated Szomolnokite Monohydrate Facies';
+        species = 'Szomolnokite';
+        formula = 'FeSO4·H2O';
+        env = 'Hyper-Arid Dehydration / Low-Water-Activity Transition';
+      }
+    }
+
+    return {
+      isFerrousSulfateDetected: isFeS,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationEnvironment: env
+    };
+  }
 }
 
 

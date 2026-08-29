@@ -15684,6 +15684,56 @@ describe('Mars-to-Massalia Transfer, Ilvaite Skarn Metasomatism & Calc-Silicate 
     });
 });
 
+describe('Mars-to-Lutetia Transfer, Rozenite Metasomatism & Ferrous Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to dense primitive M-type asteroid (21) Lutetia and orbit capture', () => {
+        // Mars to Lutetia (300 km Mars alt, 2.435 AU distance, 15 km capture alt, 3.06 deg plane change):
+        const lu = TrajectoryEngine.computeMarsToLutetiaTransfer(300.0, 2.435, 15.0, 3.06);
+        expect(lu.semiMajorAxisAU).to.be.closeTo(1.979, 0.1); // ~1.98 AU
+        expect(lu.eccentricity).to.be.closeTo(0.2302, 0.01); // e ~ 0.230
+        expect(lu.timeOfFlightDays).to.be.closeTo(507.80, 30.0); // ~508 days (~1.39 yr)
+        expect(lu.timeOfFlightYears).to.be.closeTo(1.39, 0.1); // ~1.39 yr
+        expect(lu.marsDepartureDeltaVKmS).to.be.closeTo(2.165, 0.5); // ~2.17 km/s TLuI
+        expect(lu.lutetiaOrbitInsertionDeltaVKmS).to.be.closeTo(2.238, 0.5); // ~2.24 km/s LuOI
+        expect(lu.totalMissionDeltaVKmS).to.be.closeTo(4.403, 1.0); // ~4.40 km/s total
+        expect(lu.lutetiaContext).to.include('Mars-to-Lutetia');
+    });
+
+    it('should calculate low-temperature oxidative hydration of sulfide crust into rozenite tetrahydrate and thermal inertia', () => {
+        // 28% initial porosity, 12 C ambient temp, 0.45 RH, 150 yr duration:
+        const roz = KRCEngine.computeMartianRozeniteMetasomatism(0.28, 12.0, 0.45, 150.0);
+        expect(roz.rozeniteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(roz.boundWaterYieldWeightPercent).to.be.greaterThan(16.0); // > 16 wt% bound H2O
+        expect(roz.hydratedSulfateThermalInertiaTIU).to.be.closeTo(1306.0, 200.0); // ~1306 tiu
+        expect(roz.hydrationFaciesClass).to.include('Equilibrium Rozenite Evaporite Facies');
+        expect(roz.rozeniteContext).to.include('Rozenite at 12 C');
+    });
+
+    it('should discriminate Rozenite vs Melanterite vs Szomolnokite in CRISM spectra', () => {
+        // Rozenite (Juventae / Capri / Aram Chaos: BD1430 = 0.040, BD1970 = 0.050, BD2100 = 0.040, BD2400 = 0.035):
+        const roz = BandMathEngine.computeCRISMRozeniteFerrousSulfateSpeciationIndices(0.040, 0.050, 0.040, 0.035);
+        expect(roz.isFerrousSulfateDetected).to.be.true;
+        expect(roz.sulfateMineralClass).to.include('Equilibrium Rozenite Tetrahydrate Facies');
+        expect(roz.mineralSpecies).to.include('Rozenite');
+        expect(roz.hydrationEnvironment).to.include('Moderate Relative Humidity Evaporitic Sulfate Deposits');
+
+        // Melanterite (BD1430 = 0.035, BD1970 = 0.015, BD2100 = 0.035, BD2400 = 0.015):
+        const mel = BandMathEngine.computeCRISMRozeniteFerrousSulfateSpeciationIndices(0.035, 0.015, 0.035, 0.015);
+        expect(mel.isFerrousSulfateDetected).to.be.true;
+        expect(mel.sulfateMineralClass).to.include('Superhydrated Melanterite Heptahydrate Facies');
+        expect(mel.mineralSpecies).to.include('Melanterite');
+
+        // Szomolnokite (BD1430 = 0.010, BD1970 = 0.010, BD2100 = 0.045, BD2400 = 0.045):
+        const szo = BandMathEngine.computeCRISMRozeniteFerrousSulfateSpeciationIndices(0.010, 0.010, 0.045, 0.045);
+        expect(szo.isFerrousSulfateDetected).to.be.true;
+        expect(szo.sulfateMineralClass).to.include('Desiccated Szomolnokite Monohydrate Facies');
+        expect(szo.mineralSpecies).to.include('Szomolnokite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMRozeniteFerrousSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isFerrousSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

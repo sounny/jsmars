@@ -11090,6 +11090,67 @@ export class KRCEngine {
       ilvaiteContext: `Ilvaite at ${TC.toFixed(0)} C, a(FeCa)=${aFeCa.toFixed(2)} (${(alphaIlv * 100).toFixed(1)}% converted, ${wOHPct.toFixed(2)}% OH, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature oxidative hydration of sulfide-bearing crust into rozenite tetrahydrate, evaporitic micro-expansion, and thermal inertia.
+   * FeS2 + O2 + 4 H2O (-10 to 45 C) -> Rozenite (FeSO4·4H2O) (Hydrated Ferrous Sulfate)
+   * Reference: Fraeman et al. (2014), Viviano-Beck et al. (2014), Roach et al. (2010) for Martian Polyhydrated Ferrous Sulfates.
+   * @param {number} [initialSulfidicBrecciaPorosity=0.28] - Initial porous sulfidic host rock porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=12.0] - Ambient alteration temperature in C (-20 to 65 C)
+   * @param {number} [relativeHumidityFraction=0.45] - Atmospheric / pore relative humidity (0.02 to 1.0)
+   * @param {number} [durationYears=150.0] - Hydration exposure duration in years (0.1 to 5000 yr)
+   * @returns {{rozeniteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantSulfateSpecies: string, hydratedSulfateThermalInertiaTIU: number, hydrationFaciesClass: string, rozeniteContext: string}}
+   */
+  static computeMartianRozeniteMetasomatism(initialSulfidicBrecciaPorosity = 0.28, ambientTempC = 12.0, relativeHumidityFraction = 0.45, durationYears = 150.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialSulfidicBrecciaPorosity));
+    const TC = Math.max(-25.0, Math.min(80.0, ambientTempC));
+    const rh = Math.max(0.01, Math.min(1.0, relativeHumidityFraction));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.90e4; // 39 kJ/mol for rozenite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.6e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(rh, 0.40);
+    const alphaRoz = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound crystal water yield (wt%)
+    const wH2OPct = alphaRoz * 32.17;
+
+    // Volume expansion and friable evaporitic porosity retention
+    const phiResidual = (phi0 * (1.0 - (0.35 * alphaRoz))) + (0.08 * alphaRoz);
+    const rhoGrain = 2290.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.98; // W/(m K)
+    const Cspec = 940.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Rozenite Tetrahydrate (FeSO4·4H2O)';
+    let rClass = 'Polyhydrated Ferrous Sulfate Facies';
+
+    if (alphaRoz >= 0.50 && TC >= -10.0 && TC <= 45.0 && rh >= 0.20 && rh <= 0.70) {
+      species = 'Rozenite Tetrahydrate (FeSO4·4H2O)';
+      rClass = 'Equilibrium Rozenite Evaporite Facies (Juventae / Capri / Aram Chaos)';
+    } else if (rh > 0.70 && TC < 25.0) {
+      species = 'Melanterite Heptahydrate (FeSO4·7H2O)';
+      rClass = 'Superhydrated Ferrous Sulfate Facies';
+    } else {
+      species = 'Szomolnokite Monohydrate (FeSO4·H2O)';
+      rClass = 'Desiccated Monohydrated Sulfate Residue';
+    }
+
+    return {
+      rozeniteConversionFraction: parseFloat(alphaRoz.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantSulfateSpecies: species,
+      hydratedSulfateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      hydrationFaciesClass: rClass,
+      rozeniteContext: `Rozenite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaRoz * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${rClass})`
+    };
+  }
 }
 
 
