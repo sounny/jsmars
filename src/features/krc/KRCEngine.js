@@ -9419,6 +9419,64 @@ export class KRCEngine {
       metamorphismContext: `Prehnite-Pumpellyite Metamorphism at ${TC.toFixed(0)} C, ${PMPa.toFixed(0)} MPa (${(alphaMeta * 100).toFixed(1)}% altered, phi=${(phiResidual * 100).toFixed(1)}%, TIU=${TIU.toFixed(0)}, ${faciesClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal talc-carbonate (soapstone) alteration kinetics of serpentinized ultramafic crust, CO2 carbon sequestration yield, and rock thermal inertia.
+   * 2 Mg3Si2O5(OH)4 (Serpentine) + 3 CO2 -> Mg3Si4O10(OH)2 (Talc) + 3 MgCO3 (Magnesite) + 3 H2O
+   * Reference: Ehlmann et al. (2008), Viviano-Beck et al. (2014), Brown et al. (2020) for Martian Hydrothermal Carbon Sequestration.
+   * @param {number} [ultramaficSerpentiniteFraction=0.60] - Initial serpentinite mass fraction in ultramafic protolith (0.05 to 0.95)
+   * @param {number} [hydrothermalTempC=220.0] - Hydrothermal fluid temperature in C (80 to 380 C)
+   * @param {number} [co2PartialPressureBar=25.0] - Dissolved CO2 partial pressure in bar (1 to 200 bar)
+   * @param {number} [durationYears=500.0] - Hydrothermal carbonation duration in years (0.1 to 10000 yr)
+   * @returns {{carbonationConversionFraction: number, sequesteredCO2KgPerM3: number, magnesiteYieldWeightPercent: number, soapstoneThermalInertiaTIU: number, carbonationRegimeClass: string, sequestrationContext: string}}
+   */
+  static computeMartianTalcCarbonateAlterationCarbonSequestration(ultramaficSerpentiniteFraction = 0.60, hydrothermalTempC = 220.0, co2PartialPressureBar = 25.0, durationYears = 500.0) {
+    const wSerp = Math.max(0.01, Math.min(0.95, ultramaficSerpentiniteFraction));
+    const TC = Math.max(50.0, Math.min(450.0, hydrothermalTempC));
+    const PCO2 = Math.max(0.5, Math.min(500.0, co2PartialPressureBar));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.00e4; // 60 kJ/mol for serpentine carbonation
+
+    // Reaction rate constant
+    const kRate = 2.5e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(PCO2 / 10.0);
+    const alphaCarb = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // CO2 sequestered per m^3 of rock (kg CO2 / m^3)
+    const rhoRock = 2700.0; // kg/m^3
+    const stoichiometricCO2Ratio = 0.2382; // (3 * 44.01) / (2 * 277.11)
+    const kgCO2SeqM3 = alphaCarb * wSerp * rhoRock * stoichiometricCO2Ratio;
+
+    // Magnesite precipitate yield (wt% of altered rock)
+    const wMagnesitePct = alphaCarb * wSerp * 45.6;
+
+    // Thermal inertia of dense talc-magnesite soapstone
+    const kTherm = 1.95; // W/(m K)
+    const rhoBulk = 2750.0; // kg/m^3
+    const Cspec = 890.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let carbClass = 'Incipient Serpentine Carbonation';
+    if (alphaCarb >= 0.50 && TC >= 180.0 && TC <= 300.0) {
+      carbClass = 'Pervasive Hydrothermal Talc-Magnesite Carbonation (Nili Fossae / Jezero Deep Basement)';
+    } else if (TC > 300.0) {
+      carbClass = 'High-Temperature Metamorphic Decarbonation Equilibrium';
+    } else if (alphaCarb >= 0.20) {
+      carbClass = 'Moderate Carbonate Veining in Serpentinized Ultramafics';
+    }
+
+    return {
+      carbonationConversionFraction: parseFloat(alphaCarb.toFixed(3)),
+      sequesteredCO2KgPerM3: parseFloat(kgCO2SeqM3.toFixed(1)),
+      magnesiteYieldWeightPercent: parseFloat(wMagnesitePct.toFixed(1)),
+      soapstoneThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      carbonationRegimeClass: carbClass,
+      sequestrationContext: `Talc-Carbonate at ${TC.toFixed(0)} C, P_CO2=${PCO2.toFixed(0)} bar (${(alphaCarb * 100).toFixed(1)}% converted, ${kgCO2SeqM3.toFixed(0)} kg CO2/m3 sequestered, TIU=${TIU.toFixed(0)}, ${carbClass})`
+    };
+  }
 }
 
 

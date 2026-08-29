@@ -8661,6 +8661,63 @@ export class BandMathEngine {
       metamorphicFaciesContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrothermally Carbonated Ultramafics (Talc vs Magnesite vs Serpentine vs Chlorite) from CRISM 1.39 um, 2.31 um, 2.38 um, and 2.51 um absorption bands.
+   * Reference: Ehlmann et al. (2008), Viviano-Beck et al. (2014), Brown et al. (2020) for Martian Talc-Carbonate Systems.
+   * @param {number} [band1390OHDepth=0.035] - BD1390 sharp talc OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2310MgOHDepth=0.060] - BD2300/BD2310 Mg-OH primary vibration depth (0.0 to 0.50)
+   * @param {number} [band2380OHDepth=0.030] - BD2380 diagnostic talc shoulder depth (0.0 to 0.40)
+   * @param {number} [band2510CO3Depth=0.045] - BD2500/BD2510 carbonate combination band depth (0.0 to 0.50)
+   * @returns {{isUltramaficAlterationDetected: boolean, alterationMineralClass: string, mineralSpecies: string, chemicalFormula: string, carbonationPaleoEnvironment: string}}
+   */
+  static computeCRISMTalcMagnesiteCarbonateSpeciationIndices(band1390OHDepth = 0.035, band2310MgOHDepth = 0.060, band2380OHDepth = 0.030, band2510CO3Depth = 0.045) {
+    const d1390 = Math.max(0.0, band1390OHDepth);
+    const d2310 = Math.max(0.0, band2310MgOHDepth);
+    const d2380 = Math.max(0.0, band2380OHDepth);
+    const d2510 = Math.max(0.0, band2510CO3Depth);
+
+    const isTalc = d1390 >= 0.020 && d2310 >= 0.030 && d2380 >= 0.015;
+    const isMagnesite = d2510 >= 0.025 && d2310 >= 0.025;
+    const isUltramafic = isTalc || isMagnesite || (d2310 >= 0.035);
+
+    let aClass = 'Unaltered Ultramafic / Silicate Regolith';
+    let species = 'Basaltic Olivine Matrix';
+    let formula = 'Silicate Matrix';
+    let paleo = 'Standard Primordial Crust without Detectable Carbonation/Talc Alteration';
+
+    if (isUltramafic) {
+      if (isTalc && isMagnesite) {
+        aClass = 'Talc-Magnesite Hydrothermal Carbonated Complex (Soapstone)';
+        species = 'Talc + Magnesite';
+        formula = 'Mg3Si4O10(OH)2 + MgCO3';
+        paleo = 'High-Temperature Hydrothermal Carbon Sequestration / Carbonated Serpentinite (Nili Fossae / Jezero Deep Strata)';
+      } else if (isTalc) {
+        aClass = 'Hydrothermal Talc Alteration';
+        species = 'Talc';
+        formula = 'Mg3Si4O10(OH)2';
+        paleo = 'Silica-Rich Moderate Hydrothermal Alteration of Ultramafic Crust';
+      } else if (isMagnesite) {
+        aClass = 'Pure Magnesite Carbonate Deposit';
+        species = 'Magnesite';
+        formula = 'MgCO3';
+        paleo = 'Alkaline Lacustrine Carbonate Precipitation / Serpentinite Weathering Crust';
+      } else {
+        aClass = 'Hydrated Serpentine / Chlorite Alteration';
+        species = 'Serpentine / Chlorite';
+        formula = 'Mg3Si2O5(OH)4';
+        paleo = 'Subsurface Low-CO2 Hydrothermal Serpentinization';
+      }
+    }
+
+    return {
+      isUltramaficAlterationDetected: isUltramafic,
+      alterationMineralClass: aClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      carbonationPaleoEnvironment: paleo
+    };
+  }
 }
 
 

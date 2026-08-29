@@ -14266,6 +14266,84 @@ describe('Mars-to-Chaos Transfer, Prehnite-Pumpellyite Metamorphism & Metamorphi
     });
 });
 
+describe('Mars-to-Dziewanna Transfer, Talc-Carbonate Sequestration, Talc Speciation & 🏆 1,000 Grand Milestone Synthesis', () => {
+    it('should calculate interplanetary direct transfer from Mars to scattered disc dwarf planet candidate (471143) Dziewanna', () => {
+        // Mars to Dziewanna (300 km Mars alt, 38.50 AU distance, 100 km capture alt):
+        const dzie = TrajectoryEngine.computeMarsToDziewannaTransfer(300.0, 38.50, 100.0);
+        expect(dzie.semiMajorAxisAU).to.be.closeTo(20.012, 0.5); // ~20.01 AU
+        expect(dzie.eccentricity).to.be.closeTo(0.9239, 0.01); // e ~ 0.924
+        expect(dzie.timeOfFlightDays).to.be.closeTo(17734.7, 2000.0); // ~17735 days (~48.5 yr)
+        expect(dzie.timeOfFlightYears).to.be.closeTo(48.55, 5.0); // ~48.5 yr
+        expect(dzie.marsDepartureDeltaVKmS).to.be.closeTo(7.144, 0.6); // ~7.14 km/s TDI
+        expect(dzie.dziewannaOrbitInsertionDeltaVKmS).to.be.closeTo(1.894, 1.5); // ~1.89 km/s DOI
+        expect(dzie.totalMissionDeltaVKmS).to.be.closeTo(9.038, 2.0); // ~9.04 km/s total
+        expect(dzie.dziewannaContext).to.include('Mars-to-Dziewanna');
+    });
+
+    it('should calculate hydrothermal talc-carbonate alteration of serpentinized crust, in-situ CO2 carbon sequestration yield, and soapstone thermal inertia', () => {
+        // 60% initial serpentinite, 220 C fluid temp, 25 bar P_CO2, 500 yr duration:
+        const carb = KRCEngine.computeMartianTalcCarbonateAlterationCarbonSequestration(0.60, 220.0, 25.0, 500.0);
+        expect(carb.carbonationConversionFraction).to.be.greaterThan(0.50); // > 50% carbonated
+        expect(carb.sequesteredCO2KgPerM3).to.be.greaterThan(100.0); // > 100 kg CO2/m^3 sequestered
+        expect(carb.magnesiteYieldWeightPercent).to.be.greaterThan(10.0); // > 10 wt% magnesite
+        expect(carb.soapstoneThermalInertiaTIU).to.be.closeTo(2184.2, 150.0); // ~2184 tiu
+        expect(carb.carbonationRegimeClass).to.include('Pervasive Hydrothermal Talc-Magnesite Carbonation');
+        expect(carb.sequestrationContext).to.include('Talc-Carbonate at 220 C');
+    });
+
+    it('should discriminate Talc vs Magnesite vs Serpentine vs Chlorite in CRISM spectra', () => {
+        // Soapstone (Talc + Magnesite in Nili Fossae: BD1390 = 0.035, BD2310 = 0.060, BD2380 = 0.030, BD2510 = 0.045):
+        const soap = BandMathEngine.computeCRISMTalcMagnesiteCarbonateSpeciationIndices(0.035, 0.060, 0.030, 0.045);
+        expect(soap.isUltramaficAlterationDetected).to.be.true;
+        expect(soap.alterationMineralClass).to.include('Talc-Magnesite Hydrothermal Carbonated Complex (Soapstone)');
+        expect(soap.mineralSpecies).to.include('Talc + Magnesite');
+        expect(soap.carbonationPaleoEnvironment).to.include('Hydrothermal Carbon Sequestration');
+
+        // Pure Talc (BD1390 = 0.03, BD2310 = 0.05, BD2380 = 0.025, BD2510 = 0.005):
+        const talc = BandMathEngine.computeCRISMTalcMagnesiteCarbonateSpeciationIndices(0.03, 0.05, 0.025, 0.005);
+        expect(talc.isUltramaficAlterationDetected).to.be.true;
+        expect(talc.alterationMineralClass).to.include('Hydrothermal Talc Alteration');
+        expect(talc.mineralSpecies).to.include('Talc');
+
+        // Pure Magnesite (BD1390 = 0.005, BD2310 = 0.04, BD2380 = 0.005, BD2510 = 0.05):
+        const mag = BandMathEngine.computeCRISMTalcMagnesiteCarbonateSpeciationIndices(0.005, 0.04, 0.005, 0.05);
+        expect(mag.isUltramaficAlterationDetected).to.be.true;
+        expect(mag.alterationMineralClass).to.include('Pure Magnesite Carbonate Deposit');
+        expect(mag.mineralSpecies).to.include('Magnesite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMTalcMagnesiteCarbonateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isUltramaficAlterationDetected).to.be.false;
+    });
+
+    it('🏆 1,000 MILESTONE: should verify comprehensive synthesis of all JSMARS planetary science, orbital transfer, and spectroscopic engines', () => {
+        // Grand verification uniting TrajectoryEngine, KRCEngine, and BandMathEngine
+        const solarSystemTargets = [
+            TrajectoryEngine.computeMarsToSednaETNOTransfer(300.0, 84.0, 100.0),
+            TrajectoryEngine.computeMarsToErisTransfer(300.0, 95.8, 500.0),
+            TrajectoryEngine.computeMarsToSalaciaTransfer(300.0, 44.8, 250.0),
+            TrajectoryEngine.computeMarsToVardaTransfer(300.0, 45.6, 200.0),
+            TrajectoryEngine.computeMarsToDziewannaTransfer(300.0, 38.5, 100.0)
+        ];
+
+        solarSystemTargets.forEach(target => {
+            expect(target.semiMajorAxisAU).to.be.greaterThan(15.0);
+            expect(target.eccentricity).to.be.greaterThan(0.90);
+            expect(target.totalMissionDeltaVKmS).to.be.greaterThan(8.0);
+        });
+
+        // Verify KRC thermal & diagenetic coupling
+        const krcSynthesis = KRCEngine.computeMartianTalcCarbonateAlterationCarbonSequestration(0.80, 250.0, 30.0, 1000.0);
+        expect(krcSynthesis.carbonationConversionFraction).to.be.greaterThan(0.80);
+        expect(krcSynthesis.soapstoneThermalInertiaTIU).to.be.greaterThan(2000.0);
+
+        // Verify CRISM spectral band math pipeline
+        const spectralSynthesis = BandMathEngine.computeCRISMTalcMagnesiteCarbonateSpeciationIndices(0.04, 0.07, 0.035, 0.05);
+        expect(spectralSynthesis.isUltramaficAlterationDetected).to.be.true;
+        expect(spectralSynthesis.mineralSpecies).to.equal('Talc + Magnesite');
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -9437,6 +9437,78 @@ export class TrajectoryEngine {
       chaosContext: `Mars-to-Chaos (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, COI=${dvCoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to scattered disc dwarf planet candidate (471143) Dziewanna and orbit capture.
+   * a = ( r_mars + r_dziewanna ) / 2
+   * e = ( r_dziewanna - r_mars ) / ( r_dziewanna + r_mars )
+   * Reference: Pál et al. (2012), Müller et al. (2018), Curtis (2013) for Scattered Disc Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [dziewannaDistanceAU=38.50] - Dziewanna heliocentric distance in AU (30.0 to 55.0 AU)
+   * @param {number} [dziewannaPeriapsisAltitudeKm=100.0] - Dziewanna orbit insertion periapsis altitude in km (30 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, dziewannaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, dziewannaContext: string}}
+   */
+  static computeMarsToDziewannaTransfer(marsParkingAltitudeKm = 300.0, dziewannaDistanceAU = 38.50, dziewannaPeriapsisAltitudeKm = 100.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rDAU = Math.max(30.0, Math.min(60.0, dziewannaDistanceAU));
+    const hpDKm = Math.max(30.0, dziewannaPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muDzie = 12.0; // km^3/s^2
+    const rDzieKm = 250.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rDDistKm = rDAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rDDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rDDistKm - rMarsDistKm) / (rDDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTdiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Dziewanna capture
+    const vDCircKmS = Math.sqrt(muSun / rDDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rDDistKm) - (1.0 / aKm)));
+    const vInfDKmS = Math.abs(vDCircKmS - vArrKmS);
+
+    const rpDKm = rDzieKm + hpDKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpDKm / (1.0 - eCap);
+
+    const vHypDKmS = Math.sqrt(Math.pow(vInfDKmS, 2.0) + ((2.0 * muDzie) / rpDKm));
+    const vCapDKmS = Math.sqrt(muDzie * ((2.0 / rpDKm) - (1.0 / aCapKm)));
+    const dvDoiKmS = vHypDKmS - vCapDKmS;
+
+    const dvTotKmS = dvTdiKmS + dvDoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTdiKmS.toFixed(3)),
+      dziewannaOrbitInsertionDeltaVKmS: parseFloat(dvDoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      dziewannaContext: `Mars-to-Dziewanna (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, DOI=${dvDoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
