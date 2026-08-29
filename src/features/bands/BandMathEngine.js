@@ -8161,6 +8161,60 @@ export class BandMathEngine {
       polarVolatileContext: context
     };
   }
+
+  /**
+   * Discriminate Hexagonal Crystalline Water Ice (Ih) vs Amorphous Solid Water (ASW) and invert surface ice grain size from CRISM 1.25 um, 1.50 um, 1.65 um, and 2.00 um bands.
+   * Reference: Grundy & Schmitt (1998), Mastrapa et al. (2008, 2009), Langevin et al. (2005), Viviano-Beck et al. (2014) for Martian & Planetary Water Ice.
+   * @param {number} [band1250IceDepth=0.03] - BD1250 weak water ice overtone depth (0.0 to 0.40)
+   * @param {number} [band1500IceDepth=0.35] - BD1500 primary water ice absorption depth (0.0 to 0.90)
+   * @param {number} [band1650CrystallineDepth=0.06] - BD1650 crystalline ice diagnostic lattice phonon depth (0.0 to 0.40)
+   * @param {number} [band2000IceDepth=0.45] - BD2000 deep water ice combination band depth (0.0 to 0.95)
+   * @returns {{isWaterIceDetected: boolean, iceCrystallinityClass: string, estimatedGrainSizeMicrons: number, grainSizeRegimeClass: string, polarCryosphereContext: string}}
+   */
+  static computeCRISMCrystallineAmorphousWaterIceGrainSizeIndices(band1250IceDepth = 0.03, band1500IceDepth = 0.35, band1650CrystallineDepth = 0.06, band2000IceDepth = 0.45) {
+    const d1250 = Math.max(0.0, band1250IceDepth);
+    const d1500 = Math.max(0.0, band1500IceDepth);
+    const d1650 = Math.max(0.0, band1650CrystallineDepth);
+    const d2000 = Math.max(0.0, band2000IceDepth);
+
+    const isIce = d1500 >= 0.10 || d2000 >= 0.15;
+    const isCrystalline = isIce && d1650 >= 0.025;
+
+    let crystClass = 'Ice-Free Silicate Regolith';
+    let grainSizeClass = 'Non-Icy Surface';
+    let grainSizeUm = 0.0;
+    let context = 'Standard Silicate Regolith without Detectable H2O Ice Absorption';
+
+    if (isIce) {
+      // Invert grain size from absorption depth (microns)
+      grainSizeUm = 80.0 * Math.exp(6.5 * d1250) * (d1500 / 0.30);
+      grainSizeUm = Math.max(10.0, Math.min(5000.0, grainSizeUm));
+
+      if (grainSizeUm >= 500.0) {
+        grainSizeClass = 'Coarse-Grained Dense Glacial Ice (> 500 um)';
+      } else if (grainSizeUm >= 120.0) {
+        grainSizeClass = 'Medium-Grained Sintered Polar Firn (120-500 um)';
+      } else {
+        grainSizeClass = 'Fine-Grained Fresh Seasonal Frost (< 120 um)';
+      }
+
+      if (isCrystalline) {
+        crystClass = 'Hexagonal Crystalline Water Ice (Ih)';
+        context = `Thermally Annealed Crystalline Water Ice (${grainSizeUm.toFixed(0)} um grain size in North Polar Layered Deposits / Korolev Crater Glacier)`;
+      } else {
+        crystClass = 'Amorphous Solid Water (ASW)';
+        context = `Vapor-Deposited Amorphous Ice (${grainSizeUm.toFixed(0)} um grain size, Cryogenic Outer Solar System / Unannealed Frost)`;
+      }
+    }
+
+    return {
+      isWaterIceDetected: isIce,
+      iceCrystallinityClass: crystClass,
+      estimatedGrainSizeMicrons: parseFloat(grainSizeUm.toFixed(1)),
+      grainSizeRegimeClass: grainSizeClass,
+      polarCryosphereContext: context
+    };
+  }
 }
 
 

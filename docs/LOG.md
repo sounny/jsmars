@@ -752,3 +752,14 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary direct transfer from Mars to massive scattered disc dwarf planet 136199 Eris and orbit capture
 ?: AssertionError: expected 1.647 to be close to 2.45 +/- 0.5
     at n.<anonymous> (unit.js:13771:56)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 04:31:06 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate interplanetary direct transfer from Mars to resonant scattered disc dwarf planet 225088 Gonggong
+?: AssertionError: expected 2.144 to be close to 1.03 +/- 0.4
+    at n.<anonymous> (unit.js:13825:60)
+- should calculate cryomagma chamber freezing, volumetric overpressure, and hydrofracture eruption threshold
+?: ReferenceError: regimeClass is not defined
+    at KRCEngine.computeMartianCryochamberFreezingPressurization (http://127.0.0.1:51715/src/features/krc/KRCEngine.js:8932:21)
+    at n.<anonymous> (unit.js:13832:32)

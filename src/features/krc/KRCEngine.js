@@ -8883,6 +8883,68 @@ export class KRCEngine {
       iceLagContext: `Ice Table at ${TK.toFixed(0)}K under ${zLag.toFixed(2)}m Lag (${dzDtMmYr.toFixed(3)} mm/yr retreat, Lag TIU=${TIULag.toFixed(0)}, Ice TIU=${TIUIce.toFixed(0)}, ${stabClass})`
     };
   }
+
+  /**
+   * Calculate subsurface brine cryomagma chamber freezing, volumetric expansion overpressure, hydrofracture dike ascent, and cryovolcanic eruption threshold.
+   * Delta_P = ( Delta_V / V ) / ( 1 / K_fluid + 3 / ( 4 * G_rock ) )
+   * Reference: Quick et al. (2019), Lesage et al. (2020), Fagents (2003) for Planetary Cryovolcanism.
+   * @param {number} [chamberRadiusM=250.0] - Cryomagma pocket spherical radius in meters (50 to 2000 m)
+   * @param {number} [initialSalinityWtPct=15.0] - Brine salinity in wt% (1.0 to 30.0 wt%)
+   * @param {number} [chamberDepthM=2500.0] - Burial depth beneath surface in meters (500 to 10000 m)
+   * @param {number} [hostCryosphereTempK=210.0] - Ambient country rock cryosphere temperature in K (170 to 260 K)
+   * @returns {{volumetricExpansionFraction: number, hydraulicOverpressureMPa: number, lithostaticStressMPa: number, isCryodikeErupting: boolean, frozenShellThermalInertiaTIU: number, cryovolcanicRegimeClass: string, cryochamberContext: string}}
+   */
+  static computeMartianCryochamberFreezingPressurization(chamberRadiusM = 250.0, initialSalinityWtPct = 15.0, chamberDepthM = 2500.0, hostCryosphereTempK = 210.0) {
+    const Rch = Math.max(10.0, chamberRadiusM);
+    const S0 = Math.max(0.5, Math.min(32.0, initialSalinityWtPct));
+    const zCh = Math.max(100.0, chamberDepthM);
+    const Thost = Math.max(150.0, Math.min(270.0, hostCryosphereTempK));
+
+    // Fractional freezing crystallization to eutectic (fraction of liquid remaining)
+    const chiEutectic = Math.max(0.10, Math.min(0.85, S0 / 30.0));
+    const dVOverV = 0.09 * (1.0 - chiEutectic); // 9% volume expansion of pure water component
+
+    const Kfluid = 2.2e9; // Pa
+    const Grock = 8.0e9; // Pa
+
+    // Hydrostatic / hydraulic overpressure build-up (Pa -> MPa)
+    const deltaPPa = dVOverV / ((1.0 / Kfluid) + (3.0 / (4.0 * Grock)));
+    const deltaPMPa = deltaPPa / 1.0e6;
+
+    // Lithostatic overburden stress and failure criterion (MPa)
+    const rhoRock = 2700.0;
+    const gMars = 3.72;
+    const sigmaLithMPa = (rhoRock * gMars * zCh) / 1.0e6;
+    const sigmaTensileMPa = 5.0; // Basalt tensile strength
+    const sigmaCritMPa = sigmaLithMPa + sigmaTensileMPa;
+
+    const isErupting = deltaPMPa >= sigmaCritMPa;
+
+    // Thermal inertia of crystallized eutectic salt-ice shell
+    const kTherm = 2.25; // W/(m K)
+    const rhoBulk = 1850.0; // kg/m^3
+    const Cspec = 1350.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let regimeClass = 'Contained Subsurface Cryointrusion (Stable Freezing without Surface Rupture)';
+    if (isErupting) {
+      if (deltaPMPa >= sigmaCritMPa * 2.0) {
+        regimeClass = 'Catastrophic Cryovolcanic Dike Hydrofracturing & Explosive Effusive Cryolava Eruption (Cerberus Fossae / Occator-Scale)';
+      } else {
+        regimeClass = 'Active Cryovolcanic Dike Propagation & Surface Brine Spring Venting';
+      }
+    }
+
+    return {
+      volumetricExpansionFraction: parseFloat(dVOverV.toFixed(4)),
+      hydraulicOverpressureMPa: parseFloat(deltaPMPa.toFixed(1)),
+      lithostaticStressMPa: parseFloat(sigmaLithMPa.toFixed(1)),
+      isCryodikeErupting: isErupting,
+      frozenShellThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      cryovolcanicRegimeClass: regimeClass,
+      cryochamberContext: `Cryomagma Chamber R=${Rch.toFixed(0)}m at z=${zCh.toFixed(0)}m (P_over=${deltaPMPa.toFixed(1)}MPa vs P_lith=${sigmaLithMPa.toFixed(1)}MPa, Erupting=${isErupting})`
+    };
+  }
 }
 
 

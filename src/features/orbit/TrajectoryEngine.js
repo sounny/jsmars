@@ -8789,6 +8789,78 @@ export class TrajectoryEngine {
       erisContext: `Mars-to-Eris (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EOI=${dvEoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to resonant scattered disc dwarf planet 225088 Gonggong (2007 OR10) and orbit capture.
+   * a = ( r_mars + r_gonggong ) / 2
+   * e = ( r_gonggong - r_mars ) / ( r_gonggong + r_mars )
+   * Reference: Schwamb et al. (2010), Kiss et al. (2019), Curtis (2013) for Scattered Disc Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [gonggongDistanceAU=88.70] - Gonggong heliocentric distance in AU (70.0 to 110.0 AU)
+   * @param {number} [gonggongPeriapsisAltitudeKm=300.0] - Gonggong orbit insertion periapsis altitude in km (100 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, gonggongOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, gonggongContext: string}}
+   */
+  static computeMarsToGonggongTransfer(marsParkingAltitudeKm = 300.0, gonggongDistanceAU = 88.70, gonggongPeriapsisAltitudeKm = 300.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rGAU = Math.max(60.0, Math.min(120.0, gonggongDistanceAU));
+    const hpGKm = Math.max(50.0, gonggongPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muGong = 116.7; // km^3/s^2
+    const rGongKm = 615.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rGDistKm = rGAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rGDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rGDistKm - rMarsDistKm) / (rGDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTgiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Gonggong capture
+    const vGCircKmS = Math.sqrt(muSun / rGDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rGDistKm) - (1.0 / aKm)));
+    const vInfGKmS = Math.abs(vGCircKmS - vArrKmS);
+
+    const rpGKm = rGongKm + hpGKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpGKm / (1.0 - eCap);
+
+    const vHypGKmS = Math.sqrt(Math.pow(vInfGKmS, 2.0) + ((2.0 * muGong) / rpGKm));
+    const vCapGKmS = Math.sqrt(muGong * ((2.0 / rpGKm) - (1.0 / aCapKm)));
+    const dvGoiKmS = vHypGKmS - vCapGKmS;
+
+    const dvTotKmS = dvTgiKmS + dvGoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTgiKmS.toFixed(3)),
+      gonggongOrbitInsertionDeltaVKmS: parseFloat(dvGoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      gonggongContext: `Mars-to-Gonggong (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, GOI=${dvGoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

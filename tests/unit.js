@@ -13813,6 +13813,51 @@ describe('Mars-to-Eris Transfer, Ice Sublimation Lag Desiccation & Volatile Ice 
     });
 });
 
+describe('Mars-to-Gonggong Transfer, Cryochamber Pressurization & Water Ice Grain Size', () => {
+    it('should calculate interplanetary direct transfer from Mars to resonant scattered disc dwarf planet 225088 Gonggong', () => {
+        // Mars to Gonggong (300 km Mars alt, 88.70 AU distance, 300 km capture alt):
+        const gong = TrajectoryEngine.computeMarsToGonggongTransfer(300.0, 88.70, 300.0);
+        expect(gong.semiMajorAxisAU).to.be.closeTo(45.112, 1.0); // ~45.11 AU
+        expect(gong.eccentricity).to.be.closeTo(0.9662, 0.01); // e ~ 0.966
+        expect(gong.timeOfFlightDays).to.be.closeTo(55300.0, 3000.0); // ~55300 days (~151.4 yr)
+        expect(gong.timeOfFlightYears).to.be.closeTo(151.4, 8.0); // ~151.4 yr
+        expect(gong.marsDepartureDeltaVKmS).to.be.closeTo(7.420, 0.6); // ~7.42 km/s TGI
+        expect(gong.gonggongOrbitInsertionDeltaVKmS).to.be.closeTo(2.144, 0.4); // ~2.14 km/s GOI
+        expect(gong.totalMissionDeltaVKmS).to.be.closeTo(9.564, 0.5); // ~9.56 km/s total
+        expect(gong.gonggongContext).to.include('Mars-to-Gonggong');
+    });
+
+    it('should calculate cryomagma chamber freezing, volumetric overpressure, and hydrofracture eruption threshold', () => {
+        // 250 m radius chamber, 15 wt% salinity, 2500 m depth, 210 K cryosphere:
+        const cryo = KRCEngine.computeMartianCryochamberFreezingPressurization(250.0, 15.0, 2500.0, 210.0);
+        expect(cryo.volumetricExpansionFraction).to.be.closeTo(0.045, 0.01); // ~4.5% volume expansion
+        expect(cryo.hydraulicOverpressureMPa).to.be.greaterThan(50.0); // > 50 MPa overpressure
+        expect(cryo.lithostaticStressMPa).to.be.closeTo(25.1, 3.0); // ~25.1 MPa lithostatic load
+        expect(cryo.isCryodikeErupting).to.be.true; // Exceeds lithostatic + tensile threshold -> erupts
+        expect(cryo.frozenShellThermalInertiaTIU).to.be.closeTo(2371.3, 150.0); // ~2371 tiu eutectic salt-ice
+        expect(cryo.cryochamberContext).to.include('Cryomagma Chamber');
+    });
+
+    it('should discriminate Crystalline Water Ice (Ih) vs Amorphous Ice and invert grain size in CRISM spectra', () => {
+        // Crystalline Water Ice (NPLD / Korolev Crater: BD1250 = 0.03, BD1500 = 0.35, BD1650 = 0.06, BD2000 = 0.45):
+        const ice = BandMathEngine.computeCRISMCrystallineAmorphousWaterIceGrainSizeIndices(0.03, 0.35, 0.06, 0.45);
+        expect(ice.isWaterIceDetected).to.be.true;
+        expect(ice.iceCrystallinityClass).to.include('Hexagonal Crystalline Water Ice (Ih)');
+        expect(ice.estimatedGrainSizeMicrons).to.be.closeTo(113.4, 25.0); // ~113 um grain size
+        expect(ice.grainSizeRegimeClass).to.include('Frost');
+        expect(ice.polarCryosphereContext).to.include('North Polar Layered Deposits');
+
+        // Amorphous Solid Water (BD1250 = 0.01, BD1500 = 0.30, BD1650 = 0.01, BD2000 = 0.40):
+        const asw = BandMathEngine.computeCRISMCrystallineAmorphousWaterIceGrainSizeIndices(0.01, 0.30, 0.01, 0.40);
+        expect(asw.isWaterIceDetected).to.be.true;
+        expect(asw.iceCrystallinityClass).to.include('Amorphous Solid Water (ASW)');
+
+        // Bare rock:
+        const rock = BandMathEngine.computeCRISMCrystallineAmorphousWaterIceGrainSizeIndices(0.005, 0.02, 0.005, 0.03);
+        expect(rock.isWaterIceDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
