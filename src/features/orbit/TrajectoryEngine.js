@@ -9509,6 +9509,78 @@ export class TrajectoryEngine {
       dziewannaContext: `Mars-to-Dziewanna (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, DOI=${dvDoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to binary Centaur / scattered disc object (65489) Ceto-Phorcys and orbit capture.
+   * a = ( r_mars + r_ceto ) / 2
+   * e = ( r_ceto - r_mars ) / ( r_ceto + r_mars )
+   * Reference: Grundy et al. (2007), Carry et al. (2012), Curtis (2013) for Binary Centaur / Trans-Neptunian Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [cetoDistanceAU=30.10] - Ceto heliocentric distance in AU (20.0 to 45.0 AU)
+   * @param {number} [cetoPeriapsisAltitudeKm=50.0] - Ceto orbit insertion periapsis altitude in km (20 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, cetoOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, cetoContext: string}}
+   */
+  static computeMarsToCetoTransfer(marsParkingAltitudeKm = 300.0, cetoDistanceAU = 30.10, cetoPeriapsisAltitudeKm = 50.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rCAU = Math.max(15.0, Math.min(50.0, cetoDistanceAU));
+    const hpCKm = Math.max(20.0, cetoPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muCeto = 3.60; // km^3/s^2
+    const rCetoKm = 110.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rCDistKm = rCAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rCDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rCDistKm - rMarsDistKm) / (rCDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTciKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Ceto capture
+    const vCCircKmS = Math.sqrt(muSun / rCDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rCDistKm) - (1.0 / aKm)));
+    const vInfCKmS = Math.abs(vCCircKmS - vArrKmS);
+
+    const rpCKm = rCetoKm + hpCKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpCKm / (1.0 - eCap);
+
+    const vHypCKmS = Math.sqrt(Math.pow(vInfCKmS, 2.0) + ((2.0 * muCeto) / rpCKm));
+    const vCapCKmS = Math.sqrt(muCeto * ((2.0 / rpCKm) - (1.0 / aCapKm)));
+    const dvCoiKmS = vHypCKmS - vCapCKmS;
+
+    const dvTotKmS = dvTciKmS + dvCoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTciKmS.toFixed(3)),
+      cetoOrbitInsertionDeltaVKmS: parseFloat(dvCoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      cetoContext: `Mars-to-Ceto (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, COI=${dvCoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

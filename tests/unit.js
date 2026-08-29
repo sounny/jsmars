@@ -14344,6 +14344,57 @@ describe('Mars-to-Dziewanna Transfer, Talc-Carbonate Sequestration, Talc Speciat
     });
 });
 
+describe('Mars-to-Ceto Transfer, Fluorine Greisen Metamorphism & Topaz Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to binary Centaur / scattered disc object (65489) Ceto-Phorcys', () => {
+        // Mars to Ceto (300 km Mars alt, 30.10 AU distance, 50 km capture alt):
+        const ceto = TrajectoryEngine.computeMarsToCetoTransfer(300.0, 30.10, 50.0);
+        expect(ceto.semiMajorAxisAU).to.be.closeTo(15.812, 0.5); // ~15.81 AU
+        expect(ceto.eccentricity).to.be.closeTo(0.9036, 0.01); // e ~ 0.904
+        expect(ceto.timeOfFlightDays).to.be.closeTo(11482.0, 1500.0); // ~11482 days (~31.4 yr)
+        expect(ceto.timeOfFlightYears).to.be.closeTo(31.44, 4.0); // ~31.4 yr
+        expect(ceto.marsDepartureDeltaVKmS).to.be.closeTo(6.782, 0.6); // ~6.78 km/s TCI
+        expect(ceto.cetoOrbitInsertionDeltaVKmS).to.be.closeTo(2.111, 1.5); // ~2.11 km/s COI
+        expect(ceto.totalMissionDeltaVKmS).to.be.closeTo(8.893, 2.0); // ~8.89 km/s total
+        expect(ceto.cetoContext).to.include('Mars-to-Ceto');
+    });
+
+    it('should calculate pneumatolytic fluorine greisen metamorphism of felsic crust, topaz yield, and high greisen thermal inertia', () => {
+        // 10% initial granite porosity, 380 C pneumatolytic temp, 1.50 fluorine activity, 200 yr duration:
+        const greisen = KRCEngine.computeMartianFluorineRichGreisenMetamorphism(0.10, 380.0, 1.50, 200.0);
+        expect(greisen.greisenConversionFraction).to.be.greaterThan(0.50); // > 50% greisenized
+        expect(greisen.topazYieldWeightPercent).to.be.greaterThan(20.0); // > 20 wt% topaz
+        expect(greisen.greisenThermalConductivityWMK).to.be.closeTo(4.10, 0.5); // ~4.10 W/(m K)
+        expect(greisen.crystallineGreisenThermalInertiaTIU).to.be.closeTo(3178.4, 250.0); // ~3178 tiu
+        expect(greisen.greisenAlterationClass).to.include('Pervasive High-Temperature Quartz-Topaz Greisen');
+        expect(greisen.greisenContext).to.include('Fluorine Greisen at 380 C');
+    });
+
+    it('should discriminate Topaz vs Fluor-Muscovite vs Tourmaline in CRISM spectra', () => {
+        // Topaz (Syrtis Major / Apollinaris Mons: BD1405 = 0.030, BD2080 = 0.045, BD2210 = 0.060, BD2360 = 0.035):
+        const top = BandMathEngine.computeCRISMFluorineGreisenSpeciationIndices(0.030, 0.045, 0.060, 0.035);
+        expect(top.isGreisenMineralDetected).to.be.true;
+        expect(top.greisenMineralClass).to.include('Pneumatolytic Fluor-Topaz Greisen Assemblage');
+        expect(top.mineralSpecies).to.include('Topaz');
+        expect(top.pneumatolyticContext).to.include('Pneumatolytic Fumarolic Condensation');
+
+        // Fluor-Muscovite (BD1405 = 0.025, BD2080 = 0.010, BD2210 = 0.055, BD2360 = 0.035):
+        const mica = BandMathEngine.computeCRISMFluorineGreisenSpeciationIndices(0.025, 0.010, 0.055, 0.035);
+        expect(mica.isGreisenMineralDetected).to.be.true;
+        expect(mica.greisenMineralClass).to.include('Fluor-Muscovite Greisen Mica');
+        expect(mica.mineralSpecies).to.include('Fluor-Muscovite');
+
+        // Tourmaline (BD1405 = 0.005, BD2080 = 0.005, BD2210 = 0.015, BD2360 = 0.045):
+        const tour = BandMathEngine.computeCRISMFluorineGreisenSpeciationIndices(0.005, 0.005, 0.015, 0.045);
+        expect(tour.isGreisenMineralDetected).to.be.true;
+        expect(tour.greisenMineralClass).to.include('Tourmaline / Borosilicate Veining');
+        expect(tour.mineralSpecies).to.include('Tourmaline');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMFluorineGreisenSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isGreisenMineralDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

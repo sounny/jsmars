@@ -9477,6 +9477,59 @@ export class KRCEngine {
       sequestrationContext: `Talc-Carbonate at ${TC.toFixed(0)} C, P_CO2=${PCO2.toFixed(0)} bar (${(alphaCarb * 100).toFixed(1)}% converted, ${kgCO2SeqM3.toFixed(0)} kg CO2/m3 sequestered, TIU=${TIU.toFixed(0)}, ${carbClass})`
     };
   }
+
+  /**
+   * Calculate high-temperature pneumatolytic fluorine-rich greisen metamorphism of felsic plutonic crust, topaz-quartz crystallization, and high greisen thermal inertia.
+   * K-Feldspar + HF + H2O (300-500 C) -> Topaz (Al2SiO4F2) + Quartz + Fluor-Muscovite + Fluorite
+   * Reference: Wray et al. (2013), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Felsic Pneumatolytic Greisens.
+   * @param {number} [felsicGranitePorosity=0.10] - Initial felsic granite porosity (0.01 to 0.30)
+   * @param {number} [pneumatolyticTempC=380.0] - Pneumatolytic/magmatic fluid temperature in C (200 to 600 C)
+   * @param {number} [fluorineActivity=1.50] - Hydrothermal fluid HF/F- chemical activity (0.1 to 5.0)
+   * @param {number} [durationYears=200.0] - Pneumatolytic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{greisenConversionFraction: number, topazYieldWeightPercent: number, greisenThermalConductivityWMK: number, crystallineGreisenThermalInertiaTIU: number, greisenAlterationClass: string, greisenContext: string}}
+   */
+  static computeMartianFluorineRichGreisenMetamorphism(felsicGranitePorosity = 0.10, pneumatolyticTempC = 380.0, fluorineActivity = 1.50, durationYears = 200.0) {
+    const phi0 = Math.max(0.005, Math.min(0.35, felsicGranitePorosity));
+    const TC = Math.max(150.0, Math.min(650.0, pneumatolyticTempC));
+    const aF = Math.max(0.05, Math.min(10.0, fluorineActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 7.00e4; // 70 kJ/mol for greisenization
+
+    // Reaction rate constant
+    const kRate = 6.0e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aF, 0.60);
+    const alphaGreisen = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Topaz mass fraction in greisen (wt%)
+    const wTopazPct = alphaGreisen * 42.5;
+
+    // Thermal properties of highly conductive quartz-topaz greisen
+    const kTherm = 4.10; // W/(m K)
+    const rhoBulk = 2800.0; // kg/m^3
+    const Cspec = 880.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let gClass = 'Incipient Fluorine Metasomatism';
+    if (alphaGreisen >= 0.50 && TC >= 300.0 && TC <= 500.0) {
+      gClass = 'Pervasive High-Temperature Quartz-Topaz Greisen (Syrtis Major / Apollinaris Caldera Fumaroles)';
+    } else if (TC > 500.0) {
+      gClass = 'Magmatic-Hydrothermal Pegmatitic Transition';
+    } else if (alphaGreisen >= 0.20) {
+      gClass = 'Moderate Fluor-Muscovite Greisenization';
+    }
+
+    return {
+      greisenConversionFraction: parseFloat(alphaGreisen.toFixed(3)),
+      topazYieldWeightPercent: parseFloat(wTopazPct.toFixed(1)),
+      greisenThermalConductivityWMK: parseFloat(kTherm.toFixed(2)),
+      crystallineGreisenThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      greisenAlterationClass: gClass,
+      greisenContext: `Fluorine Greisen at ${TC.toFixed(0)} C, a_F=${aF.toFixed(1)} (${(alphaGreisen * 100).toFixed(1)}% greisenized, ${wTopazPct.toFixed(1)}% Topaz, TIU=${TIU.toFixed(0)}, ${gClass})`
+    };
+  }
 }
 
 

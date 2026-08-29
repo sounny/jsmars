@@ -8718,6 +8718,65 @@ export class BandMathEngine {
       carbonationPaleoEnvironment: paleo
     };
   }
+
+  /**
+   * Discriminate Pneumatolytic Fluorine Metasomatized Minerals (Topaz vs Fluor-Muscovite Greisen vs Tourmaline) from CRISM 1.405 um, 2.08 um, 2.21 um, and 2.36 um absorption bands.
+   * Reference: Wray et al. (2013), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Pneumatolytic Felsic Systems.
+   * @param {number} [band1405OHDepth=0.030] - BD1400/BD1405 OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2080TopazDepth=0.045] - BD2080 topaz diagnostic OH/F combination band depth (0.0 to 0.40)
+   * @param {number} [band2210AlOHDepth=0.060] - BD2210 Al-OH vibration depth (0.0 to 0.50)
+   * @param {number} [band2360GreisenDepth=0.035] - BD2360 greisen mica combination band depth (0.0 to 0.40)
+   * @returns {{isGreisenMineralDetected: boolean, greisenMineralClass: string, mineralSpecies: string, chemicalFormula: string, metasomaticFluidRegime: string, pneumatolyticContext: string}}
+   */
+  static computeCRISMFluorineGreisenSpeciationIndices(band1405OHDepth = 0.030, band2080TopazDepth = 0.045, band2210AlOHDepth = 0.060, band2360GreisenDepth = 0.035) {
+    const d1405 = Math.max(0.0, band1405OHDepth);
+    const d2080 = Math.max(0.0, band2080TopazDepth);
+    const d2210 = Math.max(0.0, band2210AlOHDepth);
+    const d2360 = Math.max(0.0, band2360GreisenDepth);
+
+    const isTopaz = d2080 >= 0.030 && (d1405 >= 0.020 || d2210 >= 0.030);
+    const isFluorMica = d2210 >= 0.035 && d2360 >= 0.025 && !isTopaz;
+    const isTourmaline = d2360 >= 0.030 && d1405 < 0.015;
+
+    const isGreisen = isTopaz || isFluorMica || isTourmaline;
+
+    let gClass = 'Greisen-Free Silicate Regolith';
+    let species = 'Basaltic Felsic Matrix';
+    let formula = 'Silicate Matrix';
+    let fluid = 'Ambient Volcanic Degassing';
+    let context = 'Standard Silicate Crust without Detectable Pneumatolytic Fluorine Greisen Doublet';
+
+    if (isGreisen) {
+      if (isTopaz) {
+        gClass = 'Pneumatolytic Fluor-Topaz Greisen Assemblage';
+        species = 'Topaz';
+        formula = 'Al2SiO4F2';
+        fluid = 'Supercritical HF-Rich Magmatic Vapor (300-500 C)';
+        context = 'High-Temperature Pneumatolytic Fumarolic Condensation / Felsic Caldera Greisen (Syrtis Major / Apollinaris Mons)';
+      } else if (isFluorMica) {
+        gClass = 'Fluor-Muscovite Greisen Mica';
+        species = 'Fluor-Muscovite (Zinnwaldite)';
+        formula = 'KAl2(AlSi3O10)(F,OH)2';
+        fluid = 'Fluorine-Metasomatized Hydrothermal Brine (250-400 C)';
+        context = 'Hydrothermal Acid-Greisen Alteration of Granitic Basement';
+      } else {
+        gClass = 'Tourmaline / Borosilicate Veining';
+        species = 'Tourmaline (Schorl / Dravite)';
+        formula = 'NaFe3Al6(BO3)3Si6O18(OH)4';
+        fluid = 'Boron-Fluorine Hydrothermal Fluid';
+        context = 'Late-Stage Pneumatolytic Tourmaline Sunburst Veins in Felsic Plutons';
+      }
+    }
+
+    return {
+      isGreisenMineralDetected: isGreisen,
+      greisenMineralClass: gClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metasomaticFluidRegime: fluid,
+      pneumatolyticContext: context
+    };
+  }
 }
 
 
