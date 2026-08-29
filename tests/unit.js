@@ -16042,6 +16042,17 @@ describe('Mars-to-Euterpe Transfer, Pickeringite Metasomatism & Superhydrated Al
 });
 
 if (typeof mocha !== 'undefined') {
-    mocha.run();
+    const runner = mocha.run();
+    if (typeof window !== 'undefined') {
+        window.__mochaRunner = runner;
+        runner.on('end', () => {
+            window.__mochaDone = true;
+            window.__mochaStats = {
+                passes: runner.stats.passes,
+                failures: runner.stats.failures,
+                total: runner.stats.tests
+            };
+        });
+    }
 }
 

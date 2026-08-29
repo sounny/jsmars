@@ -69,12 +69,12 @@ def run_tests():
         # 1. Mocha Unit Test Suite
         print("[TESTS] Running unit tests in tests/index.html...")
         page.goto(f"http://127.0.0.1:{port}/tests/index.html")
-        page.wait_for_selector("#mocha-stats .duration", timeout=45000)
-        page.wait_for_function("() => !document.querySelector('.running')", timeout=15000)
-        page.wait_for_timeout(500)
+        page.wait_for_function("() => window.__mochaDone === true", timeout=45000)
+        page.wait_for_timeout(300)
 
-        passes = int(page.locator(".passes em").inner_text() or 0)
-        failures = int(page.locator(".failures em").inner_text() or 0)
+        stats = page.evaluate("() => window.__mochaStats || { passes: parseInt(document.querySelector('.passes em').innerText || 0), failures: parseInt(document.querySelector('.failures em').innerText || 0) }")
+        passes = int(stats.get('passes', 0))
+        failures = int(stats.get('failures', 0))
 
         if failures > 0:
             fails = page.locator(".test.fail").all()
