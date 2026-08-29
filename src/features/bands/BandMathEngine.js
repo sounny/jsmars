@@ -9805,6 +9805,60 @@ export class BandMathEngine {
       evaporiteRegime: regime
     };
   }
+
+  /**
+   * Discriminate Martian Kaolin Minerals (Nanotubular Halloysite vs Ordered Kaolinite vs Dickite vs Al-Smectite) from CRISM 1.410 um, 1.920 um, 2.165 um, and 2.208 um absorption bands.
+   * Reference: Ehlmann et al. (2011), Bishop et al. (2013), Viviano-Beck et al. (2014) for Martian Kaolin-Group Nanomineral Speciation.
+   * @param {number} [band1410OHDepth=0.040] - BD1410 halloysite asymmetric Al-OH overtone depth (0.0 to 0.40)
+   * @param {number} [band1920H2ODepth=0.045] - BD1920 interlayer/structural molecular H2O depth (0.0 to 0.50)
+   * @param {number} [band2165AlOHDepth=0.020] - BD2165 kaolin high-frequency doublet shoulder depth (0.0 to 0.50)
+   * @param {number} [band2208AlOHDepth=0.060] - BD2208 primary Al-OH octahedral combination depth (0.0 to 0.50)
+   * @returns {{isKaolinDetected: boolean, clayMineralClass: string, mineralSpecies: string, chemicalFormula: string, alterationRegime: string}}
+   */
+  static computeCRISMHalloysiteKaolinSpeciationIndices(band1410OHDepth = 0.040, band1920H2ODepth = 0.045, band2165AlOHDepth = 0.020, band2208AlOHDepth = 0.060) {
+    const d1410 = Math.max(0.0, band1410OHDepth);
+    const d1920 = Math.max(0.0, band1920H2ODepth);
+    const d2165 = Math.max(0.0, band2165AlOHDepth);
+    const d2208 = Math.max(0.0, band2208AlOHDepth);
+
+    const isHalloysite = d1410 >= 0.025 && d1920 >= 0.030 && d2208 >= 0.035 && d2165 <= 0.025;
+    const isKaolinite = d2165 >= 0.025 && d2208 >= 0.035 && d1920 < 0.025;
+    const isSmectite = d2208 >= 0.035 && d1920 >= 0.030 && d2165 < 0.015 && d1410 < 0.025;
+
+    const isClay = isHalloysite || isKaolinite || isSmectite;
+
+    let cClass = 'Clay-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Primary Basalt';
+
+    if (isClay) {
+      if (isHalloysite) {
+        cClass = 'Nanotubular Hydrated Halloysite Facies';
+        species = 'Halloysite-10A';
+        formula = 'Al2Si2O5(OH)4·2H2O';
+        regime = 'Low-Temperature Hydrothermal Ash Alteration / Leaching (Mawrth Vallis / Nili Fossae / Terby)';
+      } else if (isKaolinite) {
+        cClass = 'Ordered Platy Kaolinite Facies';
+        species = 'Kaolinite';
+        formula = 'Al2Si2O5(OH)4';
+        regime = 'Extensive Subaerial Top-Down Weathering / Pedogenesis';
+      } else {
+        cClass = 'Hydrated Dioctahedral Smectite Facies';
+        species = 'Montmorillonite / Al-Smectite';
+        formula = '(Na,Ca)0.33(Al,Mg)2Si4O10(OH)2·nH2O';
+        regime = 'Alkaline Closed-Basin Lacustrine Weathering';
+      }
+    }
+
+    return {
+      isKaolinDetected: isClay,
+      clayMineralClass: cClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      alterationRegime: regime
+    };
+  }
 }
 
 

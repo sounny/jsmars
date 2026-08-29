@@ -836,3 +836,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate atmospheric desiccation and phase transition of mirabilite into anhydrous thenardite and thermal inertia
 ?: AssertionError: expected 1690.6 to be close to 1976.4 +/- 200
     at n.<anonymous> (unit.js:15307:66)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 12:00:49 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate hydrothermal alteration and nanotubular crystallization kinetics of weathered volcanic ash into hydrated halloysite and thermal inertia
+?: AssertionError: expected 'Nanotubular Halloysite Kaolin Facies ?' to include 'Hydrated Kaolin Nanomaterial Facies'
+    at n.<anonymous> (unit.js:15358:42)

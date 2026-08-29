@@ -10663,6 +10663,67 @@ export class KRCEngine {
       thenarditeContext: `Thenardite at ${TC.toFixed(0)} C, RH=${rh.toFixed(2)} (${(alphaThen * 100).toFixed(1)}% converted, ${wLossPct.toFixed(1)}% H2O loss, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal alteration and nanotubular crystallization kinetics of weathered volcanic ash into hydrated halloysite (10 A / 7 A), lumen porosity, and claystone thermal inertia.
+   * Volcanic Ash + Al3+ + SiO2(aq) + H2O (80-180 C) -> Halloysite (Al2Si2O5(OH)4·2H2O) (Nanotubes)
+   * Reference: Ehlmann et al. (2011), Bishop et al. (2013), Viviano-Beck et al. (2014) for Martian Kaolin-Group Nanominerals.
+   * @param {number} [initialPorousAshPorosity=0.35] - Initial volcanic ash/glass porosity (0.05 to 0.55)
+   * @param {number} [hydrothermalTempC=120.0] - Hydrothermal alteration temperature in C (50 to 240 C)
+   * @param {number} [interlayerHydrationRatio=0.85] - Interlayer aqueous activity / hydration ratio (0.05 to 1.0)
+   * @param {number} [durationYears=250.0] - Alteration duration in years (0.1 to 5000 yr)
+   * @returns {{halloysiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantKaolinSpecies: string, claystoneThermalInertiaTIU: number, kaolinFaciesClass: string, halloysiteContext: string}}
+   */
+  static computeMartianHalloysiteKinetics(initialPorousAshPorosity = 0.35, hydrothermalTempC = 120.0, interlayerHydrationRatio = 0.85, durationYears = 250.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialPorousAshPorosity));
+    const TC = Math.max(40.0, Math.min(260.0, hydrothermalTempC));
+    const aH2O = Math.max(0.01, Math.min(1.0, interlayerHydrationRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.60e4; // 46 kJ/mol for halloysite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.6e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aH2O, 0.40);
+    const alphaHal = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound water yield (wt%)
+    const wH2OPct = alphaHal * 13.90;
+
+    // Nanotube lumen formation and intraparticle claystone porosity
+    const phiResidual = (phi0 * (1.0 - (0.45 * alphaHal))) + (0.08 * alphaHal);
+    const rhoGrain = 2180.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.25; // W/(m K)
+    const Cspec = 960.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Nanotubular Hydrated Halloysite-10A';
+    let kClass = 'Hydrated Kaolin Nanomaterial Facies';
+
+    if (alphaHal >= 0.50 && TC >= 80.0 && TC <= 180.0 && aH2O >= 0.50) {
+      species = 'Hydrated Halloysite-10A (Al2Si2O5(OH)4·2H2O)';
+      kClass = 'Nanotubular Halloysite Kaolin Facies (Mawrth Vallis / Nili Fossae / Terby)';
+    } else if (TC > 180.0 || aH2O < 0.30) {
+      species = 'Meta-Halloysite-7A / Kaolinite Polytype';
+      kClass = 'Dehydrated Platy Kaolinite Sequence';
+    } else {
+      species = 'Amorphous Aluminosilicate Precursor';
+      kClass = 'Allophane-Halloysite Incipient Transition';
+    }
+
+    return {
+      halloysiteConversionFraction: parseFloat(alphaHal.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantKaolinSpecies: species,
+      claystoneThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      kaolinFaciesClass: kClass,
+      halloysiteContext: `Halloysite at ${TC.toFixed(0)} C, a(H2O)=${aH2O.toFixed(2)} (${(alphaHal * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${kClass})`
+    };
+  }
 }
 
 

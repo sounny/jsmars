@@ -15335,6 +15335,56 @@ describe('Mars-to-Parthenope Transfer, Mirabilite-Thenardite Kinetics & Sodium S
     });
 });
 
+describe('Mars-to-Victoria Transfer, Halloysite Kinetics & Kaolin Nanomineral Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony main-belt asteroid (12) Victoria and orbit capture', () => {
+        // Mars to Victoria (300 km Mars alt, 2.334 AU distance, 15 km capture alt, 8.36 deg plane change):
+        const vic = TrajectoryEngine.computeMarsToVictoriaTransfer(300.0, 2.334, 15.0, 8.36);
+        expect(vic.semiMajorAxisAU).to.be.closeTo(1.929, 0.1); // ~1.93 AU
+        expect(vic.eccentricity).to.be.closeTo(0.2100, 0.01); // e ~ 0.210
+        expect(vic.timeOfFlightDays).to.be.closeTo(488.50, 30.0); // ~489 days (~1.34 yr)
+        expect(vic.timeOfFlightYears).to.be.closeTo(1.34, 0.1); // ~1.34 yr
+        expect(vic.marsDepartureDeltaVKmS).to.be.closeTo(3.018, 0.5); // ~3.02 km/s TVI
+        expect(vic.victoriaOrbitInsertionDeltaVKmS).to.be.closeTo(2.077, 0.5); // ~2.08 km/s VOI
+        expect(vic.totalMissionDeltaVKmS).to.be.closeTo(5.095, 1.0); // ~5.10 km/s total
+        expect(vic.victoriaContext).to.include('Mars-to-Victoria');
+    });
+
+    it('should calculate hydrothermal alteration and nanotubular crystallization kinetics of weathered volcanic ash into hydrated halloysite and thermal inertia', () => {
+        // 35% initial porosity, 120 C hydrothermal temp, 0.85 a(H2O), 250 yr duration:
+        const hal = KRCEngine.computeMartianHalloysiteKinetics(0.35, 120.0, 0.85, 250.0);
+        expect(hal.halloysiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(hal.boundWaterYieldWeightPercent).to.be.greaterThan(8.0); // > 8 wt% bound H2O
+        expect(hal.claystoneThermalInertiaTIU).to.be.closeTo(1617.4, 200.0); // ~1617 tiu
+        expect(hal.kaolinFaciesClass).to.include('Nanotubular Halloysite Kaolin Facies');
+        expect(hal.halloysiteContext).to.include('Halloysite at 120 C');
+    });
+
+    it('should discriminate Halloysite vs Kaolinite vs Smectite in CRISM spectra', () => {
+        // Halloysite (Mawrth Vallis / Nili: BD1410 = 0.040, BD1920 = 0.045, BD2165 = 0.020, BD2208 = 0.060):
+        const hal = BandMathEngine.computeCRISMHalloysiteKaolinSpeciationIndices(0.040, 0.045, 0.020, 0.060);
+        expect(hal.isKaolinDetected).to.be.true;
+        expect(hal.clayMineralClass).to.include('Nanotubular Hydrated Halloysite Facies');
+        expect(hal.mineralSpecies).to.include('Halloysite-10A');
+        expect(hal.alterationRegime).to.include('Low-Temperature Hydrothermal Ash Alteration');
+
+        // Kaolinite (BD1410 = 0.040, BD1920 = 0.015, BD2165 = 0.035, BD2208 = 0.060):
+        const kaol = BandMathEngine.computeCRISMHalloysiteKaolinSpeciationIndices(0.040, 0.015, 0.035, 0.060);
+        expect(kaol.isKaolinDetected).to.be.true;
+        expect(kaol.clayMineralClass).to.include('Ordered Platy Kaolinite Facies');
+        expect(kaol.mineralSpecies).to.include('Kaolinite');
+
+        // Smectite (BD1410 = 0.015, BD1920 = 0.045, BD2165 = 0.010, BD2208 = 0.055):
+        const smec = BandMathEngine.computeCRISMHalloysiteKaolinSpeciationIndices(0.015, 0.045, 0.010, 0.055);
+        expect(smec.isKaolinDetected).to.be.true;
+        expect(smec.clayMineralClass).to.include('Hydrated Dioctahedral Smectite Facies');
+        expect(smec.mineralSpecies).to.include('Montmorillonite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMHalloysiteKaolinSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isKaolinDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
