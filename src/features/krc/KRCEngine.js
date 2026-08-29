@@ -11029,6 +11029,67 @@ export class KRCEngine {
       prehniteContext: `Prehnite at ${TC.toFixed(0)} C, a(CaAl)=${aCaAl.toFixed(2)} (${(alphaPrh * 100).toFixed(1)}% converted, ${wOHPct.toFixed(2)}% OH, TIU=${TIU.toFixed(0)}, ${pClass})`
     };
   }
+
+  /**
+   * Calculate moderate-to-high temperature reducing calc-silicate skarn metasomatism of ferromagnesian crust into ilvaite, dense recrystallization, and thermal inertia.
+   * Fe-Crust + Ca2+ + 2 Fe2+ + Fe3+ + 2 SiO2(aq) + 2 H2O (200-360 C) -> Ilvaite (CaFe2+2Fe3+(Si2O7)O(OH))
+   * Reference: Viviano-Beck et al. (2014), Ehlmann et al. (2011), Michalski et al. (2015) for Martian High-T Skarn Terranes.
+   * @param {number} [initialCalcSilicatePorosity=0.20] - Initial calc-silicate / basalt porosity (0.02 to 0.45)
+   * @param {number} [hydrothermalTempC=260.0] - Skarn metasomatic fluid temperature in C (160 to 420 C)
+   * @param {number} [ironCalciumFluidActivityProduct=0.42] - Dissolved Fe-Ca fluid activity product (0.01 to 0.90)
+   * @param {number} [durationYears=350.0] - Skarn metasomatic duration in years (0.1 to 5000 yr)
+   * @returns {{ilvaiteConversionFraction: number, boundHydroxylYieldWeightPercent: number, dominantSkarnSpecies: string, denseSkarnThermalInertiaTIU: number, skarnFaciesClass: string, ilvaiteContext: string}}
+   */
+  static computeMartianIlvaiteMetasomatism(initialCalcSilicatePorosity = 0.20, hydrothermalTempC = 260.0, ironCalciumFluidActivityProduct = 0.42, durationYears = 350.0) {
+    const phi0 = Math.max(0.01, Math.min(0.50, initialCalcSilicatePorosity));
+    const TC = Math.max(120.0, Math.min(480.0, hydrothermalTempC));
+    const aFeCa = Math.max(0.005, Math.min(1.0, ironCalciumFluidActivityProduct));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.20e4; // 52 kJ/mol for ilvaite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.7e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aFeCa, 0.35);
+    const alphaIlv = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound hydroxyl yield (wt%)
+    const wOHPct = alphaIlv * 2.22;
+
+    // High-density calc-silicate recrystallization and porosity occlusion
+    const phiResidual = phi0 * (1.0 - (0.85 * alphaIlv));
+    const rhoGrain = 4050.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.70; // W/(m K)
+    const Cspec = 730.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Ilvaite (CaFe2+2Fe3+(Si2O7)O(OH))';
+    let sClass = 'Calc-Silicate Skarn Metasomatic Facies';
+
+    if (alphaIlv >= 0.50 && TC >= 200.0 && TC <= 360.0 && aFeCa >= 0.15) {
+      species = 'Ilvaite (CaFe2+2Fe3+(Si2O7)O(OH)) + Hedenbergite';
+      sClass = 'Reducing Iron-Rich Calc-Silicate Skarn Facies (Nili Fossae / Sirenum / Valles Marineris)';
+    } else if (TC > 360.0) {
+      species = 'Hedenbergite-Magnetite High-Grade Skarn';
+      sClass = 'Anhydrous Pyroxene-Oxide Skarn Facies';
+    } else {
+      species = 'Chlorite-Actinolite Low-Grade Metasomatite';
+      sClass = 'Propylitic Alteration Crust';
+    }
+
+    return {
+      ilvaiteConversionFraction: parseFloat(alphaIlv.toFixed(3)),
+      boundHydroxylYieldWeightPercent: parseFloat(wOHPct.toFixed(2)),
+      dominantSkarnSpecies: species,
+      denseSkarnThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      skarnFaciesClass: sClass,
+      ilvaiteContext: `Ilvaite at ${TC.toFixed(0)} C, a(FeCa)=${aFeCa.toFixed(2)} (${(alphaIlv * 100).toFixed(1)}% converted, ${wOHPct.toFixed(2)}% OH, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

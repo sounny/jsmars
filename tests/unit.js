@@ -15634,6 +15634,56 @@ describe('Mars-to-Melpomene Transfer, Prehnite Metasomatism & Metamorphic Minera
     });
 });
 
+describe('Mars-to-Massalia Transfer, Ilvaite Skarn Metasomatism & Calc-Silicate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to high-density stony main-belt asteroid (20) Massalia and orbit capture', () => {
+        // Mars to Massalia (300 km Mars alt, 2.409 AU distance, 20 km capture alt, 0.71 deg plane change):
+        const mas = TrajectoryEngine.computeMarsToMassaliaTransfer(300.0, 2.409, 20.0, 0.71);
+        expect(mas.semiMajorAxisAU).to.be.closeTo(1.966, 0.1); // ~1.97 AU
+        expect(mas.eccentricity).to.be.closeTo(0.2251, 0.01); // e ~ 0.225
+        expect(mas.timeOfFlightDays).to.be.closeTo(502.80, 30.0); // ~503 days (~1.38 yr)
+        expect(mas.timeOfFlightYears).to.be.closeTo(1.38, 0.1); // ~1.38 yr
+        expect(mas.marsDepartureDeltaVKmS).to.be.closeTo(1.972, 0.5); // ~1.97 km/s TMaI
+        expect(mas.massaliaOrbitInsertionDeltaVKmS).to.be.closeTo(2.158, 0.5); // ~2.16 km/s MaOI
+        expect(mas.totalMissionDeltaVKmS).to.be.closeTo(4.130, 1.0); // ~4.13 km/s total
+        expect(mas.massaliaContext).to.include('Mars-to-Massalia');
+    });
+
+    it('should calculate moderate-to-high temperature reducing calc-silicate skarn metasomatism into ilvaite and thermal inertia', () => {
+        // 20% initial porosity, 260 C hydrothermal temp, 0.42 a(FeCa), 350 yr duration:
+        const ilv = KRCEngine.computeMartianIlvaiteMetasomatism(0.20, 260.0, 0.42, 350.0);
+        expect(ilv.ilvaiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(ilv.boundHydroxylYieldWeightPercent).to.be.greaterThan(1.0); // > 1 wt% OH
+        expect(ilv.denseSkarnThermalInertiaTIU).to.be.closeTo(2779.0, 200.0); // ~2779 tiu
+        expect(ilv.skarnFaciesClass).to.include('Reducing Iron-Rich Calc-Silicate Skarn Facies');
+        expect(ilv.ilvaiteContext).to.include('Ilvaite at 260 C');
+    });
+
+    it('should discriminate Ilvaite vs Hedenbergite vs Fayalite in CRISM spectra', () => {
+        // Ilvaite (Nili Fossae / Sirenum / Valles Marineris: BD1050 = 0.050, BD1350 = 0.055, BD2150 = 0.040, BD2300 = 0.030):
+        const ilv = BandMathEngine.computeCRISMIlvaiteSkarnSpeciationIndices(0.050, 0.055, 0.040, 0.030);
+        expect(ilv.isSkarnDetected).to.be.true;
+        expect(ilv.skarnMineralClass).to.include('Reducing Ilvaite Calc-Silicate Skarn Facies');
+        expect(ilv.mineralSpecies).to.include('Ilvaite');
+        expect(ilv.metasomaticRegime).to.include('High-Temperature Reducing Calc-Silicate Metasomatism');
+
+        // Hedenbergite (BD1050 = 0.045, BD1350 = 0.015, BD2150 = 0.025, BD2300 = 0.035):
+        const hed = BandMathEngine.computeCRISMIlvaiteSkarnSpeciationIndices(0.045, 0.015, 0.025, 0.035);
+        expect(hed.isSkarnDetected).to.be.true;
+        expect(hed.skarnMineralClass).to.include('High-Calcium Pyroxene Skarn Facies');
+        expect(hed.mineralSpecies).to.include('Hedenbergite');
+
+        // Fayalite (BD1050 = 0.060, BD1350 = 0.040, BD2150 = 0.010, BD2300 = 0.010):
+        const fay = BandMathEngine.computeCRISMIlvaiteSkarnSpeciationIndices(0.060, 0.040, 0.010, 0.010);
+        expect(fay.isSkarnDetected).to.be.true;
+        expect(fay.skarnMineralClass).to.include('Iron-Rich Olivine Fayalite Facies');
+        expect(fay.mineralSpecies).to.include('Fayalite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMIlvaiteSkarnSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSkarnDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

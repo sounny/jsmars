@@ -11417,6 +11417,81 @@ export class TrajectoryEngine {
       melpomeneContext: `Mars-to-Melpomene (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, MeOI=${dvMeoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to high-density stony S-type asteroid (20) Massalia and orbit capture.
+   * a = ( r_mars + r_massalia ) / 2
+   * e = ( r_massalia - r_mars ) / ( r_massalia + r_mars )
+   * Reference: Carry et al. (2012), Bange (1998), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [massaliaDistanceAU=2.409] - Massalia heliocentric distance in AU (1.8 to 3.0 AU)
+   * @param {number} [massaliaPeriapsisAltitudeKm=20.0] - Massalia orbit insertion periapsis altitude in km (5 to 400 km)
+   * @param {number} [inclinationPlaneChangeDeg=0.71] - Orbital plane change angle in degrees (0 to 25 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, massaliaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, massaliaContext: string}}
+   */
+  static computeMarsToMassaliaTransfer(marsParkingAltitudeKm = 300.0, massaliaDistanceAU = 2.409, massaliaPeriapsisAltitudeKm = 20.0, inclinationPlaneChangeDeg = 0.71) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rMaAU = Math.max(1.7, Math.min(3.1, massaliaDistanceAU));
+    const hpMaKm = Math.max(5.0, massaliaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muMassalia = 3.47; // km^3/s^2
+    const rMassaliaKm = 72.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rMaDistKm = rMaAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rMaDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rMaDistKm - rMarsDistKm) / (rMaDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTmaiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Massalia capture
+    const vMaCircKmS = Math.sqrt(muSun / rMaDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rMaDistKm) - (1.0 / aKm)));
+    const vInfMaKmS = Math.abs(vMaCircKmS - vArrKmS);
+
+    const rpMaKm = rMassaliaKm + hpMaKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpMaKm / (1.0 - eCap);
+
+    const vHypMaKmS = Math.sqrt(Math.pow(vInfMaKmS, 2.0) + ((2.0 * muMassalia) / rpMaKm));
+    const vCapMaKmS = Math.sqrt(muMassalia * ((2.0 / rpMaKm) - (1.0 / aCapKm)));
+    const dvMaoiKmS = vHypMaKmS - vCapMaKmS;
+
+    const dvTotKmS = dvTmaiMarsKmS + dvMaoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTmaiMarsKmS.toFixed(3)),
+      massaliaOrbitInsertionDeltaVKmS: parseFloat(dvMaoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      massaliaContext: `Mars-to-Massalia (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, MaOI=${dvMaoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

@@ -10129,6 +10129,60 @@ export class BandMathEngine {
       metamorphicGrade: grade
     };
   }
+
+  /**
+   * Discriminate High-Temperature Calc-Silicate Skarn Minerals (Ilvaite vs Hedenbergite vs Fayalite vs Augite) from CRISM 1.050 um, 1.350 um, 2.150 um, and 2.300 um absorption bands.
+   * Reference: Viviano-Beck et al. (2014), Ehlmann et al. (2011), Michalski et al. (2015) for Martian High-T Skarn Mineralogy.
+   * @param {number} [band1050Fe2Depth=0.050] - BD1050 primary Fe2+ crystal field absorption depth (0.0 to 0.60)
+   * @param {number} [band1350Fe2Fe3Depth=0.055] - BD1350 ilvaite diagnostic Fe2+-Fe3+ intervalence charge-transfer depth (0.0 to 0.60)
+   * @param {number} [band2150FeDepth=0.040] - BD2150 secondary Fe2+ crystal field combination depth (0.0 to 0.50)
+   * @param {number} [band2300OHDepth=0.030] - BD2300 ilvaite/pyroxene structural OH/vibrational combination depth (0.0 to 0.50)
+   * @returns {{isSkarnDetected: boolean, skarnMineralClass: string, mineralSpecies: string, chemicalFormula: string, metasomaticRegime: string}}
+   */
+  static computeCRISMIlvaiteSkarnSpeciationIndices(band1050Fe2Depth = 0.050, band1350Fe2Fe3Depth = 0.055, band2150FeDepth = 0.040, band2300OHDepth = 0.030) {
+    const d1050 = Math.max(0.0, band1050Fe2Depth);
+    const d1350 = Math.max(0.0, band1350Fe2Fe3Depth);
+    const d2150 = Math.max(0.0, band2150FeDepth);
+    const d2300 = Math.max(0.0, band2300OHDepth);
+
+    const isIlvaite = d1050 >= 0.035 && d1350 >= 0.040 && d2150 >= 0.030 && d2300 >= 0.020;
+    const isHedenbergite = d1050 >= 0.035 && d2300 >= 0.025 && d1350 < 0.025;
+    const isFayalite = d1050 >= 0.040 && d1350 >= 0.025 && d2150 < 0.020 && d2300 < 0.020;
+
+    const isSk = isIlvaite || isHedenbergite || isFayalite;
+
+    let sClass = 'Skarn-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Crustal Terrain';
+
+    if (isSk) {
+      if (isIlvaite) {
+        sClass = 'Reducing Ilvaite Calc-Silicate Skarn Facies';
+        species = 'Ilvaite';
+        formula = 'CaFe2+2Fe3+(Si2O7)O(OH)';
+        regime = 'High-Temperature Reducing Calc-Silicate Metasomatism (200-360 C, Nili Fossae / Sirenum / Valles Marineris)';
+      } else if (isHedenbergite) {
+        sClass = 'High-Calcium Pyroxene Skarn Facies';
+        species = 'Hedenbergite';
+        formula = 'CaFe2+Si2O6';
+        regime = 'Anhydrous High-Temperature Contact Metamorphism';
+      } else {
+        sClass = 'Iron-Rich Olivine Fayalite Facies';
+        species = 'Fayalite';
+        formula = 'Fe2SiO4';
+        regime = 'Differentiated Crustal Cumulate / Volcanic Lava';
+      }
+    }
+
+    return {
+      isSkarnDetected: isSk,
+      skarnMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metasomaticRegime: regime
+    };
+  }
 }
 
 
