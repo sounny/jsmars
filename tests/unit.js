@@ -13759,6 +13759,60 @@ describe('Mars-to-Sedna ETNO Transfer, Lava Tube Thermal Stability & Chloride Sa
     });
 });
 
+describe('Mars-to-Eris Transfer, Ice Sublimation Lag Desiccation & Volatile Ice Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to massive scattered disc dwarf planet 136199 Eris and orbit capture', () => {
+        // Mars to Eris (300 km Mars alt, 95.88 AU distance, 500 km capture alt):
+        const eris = TrajectoryEngine.computeMarsToErisTransfer(300.0, 95.88, 500.0);
+        expect(eris.semiMajorAxisAU).to.be.closeTo(48.702, 1.0); // ~48.70 AU
+        expect(eris.eccentricity).to.be.closeTo(0.9687, 0.01); // e ~ 0.969
+        expect(eris.timeOfFlightDays).to.be.closeTo(62088.3, 3000.0); // ~62000 days (~170.0 yr)
+        expect(eris.timeOfFlightYears).to.be.closeTo(170.0, 8.0); // ~170 yr
+        expect(eris.marsDepartureDeltaVKmS).to.be.closeTo(7.427, 0.6); // ~7.43 km/s TEI
+        expect(eris.erisOrbitInsertionDeltaVKmS).to.be.closeTo(1.647, 0.4); // ~1.65 km/s EOI
+        expect(eris.totalMissionDeltaVKmS).to.be.closeTo(9.074, 0.5); // ~9.07 km/s total
+        expect(eris.erisContext).to.include('Mars-to-Eris');
+    });
+
+    it('should calculate Fickian vapor diffusion, sublimation lag retreat velocity, and ground ice stability', () => {
+        // 0.10 m lag thickness, 20% RH, 210 K ground temp, 40% porosity:
+        const lag = KRCEngine.computeMartianSubsurfaceIceLagDesiccationRate(0.10, 0.20, 210.0, 0.40);
+        expect(lag.sublimationFluxKgPerM2S).to.be.greaterThan(1e-11); // active vapor diffusion
+        expect(lag.iceRetreatRateMmPerYear).to.be.closeTo(0.157, 0.03); // ~0.157 mm/yr retreat rate
+        expect(lag.desiccatedLagThermalInertiaTIU).to.be.closeTo(156.5, 30.0); // ~156 tiu dry lag
+        expect(lag.iceCementedThermalInertiaTIU).to.be.closeTo(2216.8, 150.0); // ~2217 tiu frozen ground
+        expect(lag.cryosphericStabilityClass).to.include('Slowly Retreating Ice Table');
+        expect(lag.iceLagContext).to.include('Ice Table at 210K');
+    });
+
+    it('should discriminate Solid Carbon Dioxide Ice (Dry Ice) vs CO Ice vs N2 Ice in CRISM spectra', () => {
+        // CO2 Ice (SPRC swiss-cheese terrain: BD1435 = 0.06, BD1970 = 0.08, BD2000 = 0.09):
+        const co2 = BandMathEngine.computeCRISMCO2COVolatileIceSpeciationIndices(0.06, 0.08, 0.09, 0.01, 0.01);
+        expect(co2.isVolatileIceDetected).to.be.true;
+        expect(co2.iceSpeciesClass).to.include('Solid Carbon Dioxide Ice (Dry Ice)');
+        expect(co2.chemicalSpecies).to.include('Carbon Dioxide Ice');
+        expect(co2.chemicalFormula).to.include('CO2');
+        expect(co2.polarVolatileContext).to.include('South Polar Residual Cap');
+
+        // CO Ice (BD1435 = 0.01, BD2150 = 0.05):
+        const co = BandMathEngine.computeCRISMCO2COVolatileIceSpeciationIndices(0.01, 0.01, 0.01, 0.05, 0.01);
+        expect(co.isVolatileIceDetected).to.be.true;
+        expect(co.iceSpeciesClass).to.include('Solid Carbon Monoxide Ice');
+        expect(co.chemicalSpecies).to.include('Carbon Monoxide Ice');
+        expect(co.chemicalFormula).to.include('CO');
+
+        // N2 Ice (BD1435 = 0.01, BD2000 = 0.01, BD2350 = 0.04):
+        const n2 = BandMathEngine.computeCRISMCO2COVolatileIceSpeciationIndices(0.01, 0.01, 0.01, 0.01, 0.04);
+        expect(n2.isVolatileIceDetected).to.be.true;
+        expect(n2.iceSpeciesClass).to.include('Solid Molecular Nitrogen Ice');
+        expect(n2.chemicalSpecies).to.include('Nitrogen Ice');
+        expect(n2.chemicalFormula).to.include('N2');
+
+        // Bare rock:
+        const rock = BandMathEngine.computeCRISMCO2COVolatileIceSpeciationIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(rock.isVolatileIceDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

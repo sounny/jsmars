@@ -8109,6 +8109,58 @@ export class BandMathEngine {
       playaPaleolakeContext: context
     };
   }
+
+  /**
+   * Discriminate Carbon Dioxide Ice (Dry Ice) vs Carbon Monoxide Ice vs Nitrogen Ice from CRISM / outer solar system 1.435 um, 1.97 um, 2.00 um, 2.15 um, and 2.35 um bands.
+   * Reference: Bibring et al. (2004), Langevin et al. (2005, 2007), Grundy et al. (2016), Viviano-Beck et al. (2014) for Polar & Planetary Volatile Ices.
+   * @param {number} [band1435CO2Depth=0.06] - BD1435 CO2 diagnostic overtone depth (0.0 to 0.50)
+   * @param {number} [band1970CO2Depth=0.08] - BD1970 CO2 combination band depth (0.0 to 0.60)
+   * @param {number} [band2000CO2Depth=0.09] - BD2000 CO2 primary triplet depth (0.0 to 0.70)
+   * @param {number} [band2150CODepth=0.01] - BD2150 CO ice 2.148 um singlet depth (0.0 to 0.40)
+   * @param {number} [band2350N2Depth=0.01] - BD2350 N2 ice combination depth (0.0 to 0.30)
+   * @returns {{isVolatileIceDetected: boolean, iceSpeciesClass: string, chemicalSpecies: string, chemicalFormula: string, polarVolatileContext: string}}
+   */
+  static computeCRISMCO2COVolatileIceSpeciationIndices(band1435CO2Depth = 0.06, band1970CO2Depth = 0.08, band2000CO2Depth = 0.09, band2150CODepth = 0.01, band2350N2Depth = 0.01) {
+    const d1435 = Math.max(0.0, band1435CO2Depth);
+    const d1970 = Math.max(0.0, band1970CO2Depth);
+    const d2000 = Math.max(0.0, band2000CO2Depth);
+    const d2150 = Math.max(0.0, band2150CODepth);
+    const d2350 = Math.max(0.0, band2350N2Depth);
+
+    const isCO2 = d1435 >= 0.030 && d1970 >= 0.040 && d2000 >= 0.045;
+    const isCO = d2150 >= 0.025 && d1435 < 0.020;
+    const isN2 = d2350 >= 0.020 && d1435 < 0.020 && d2000 < 0.020;
+
+    let iClass = 'Volatile-Free Bare Regolith / Rock';
+    let species = 'Silicate Regolith';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Bedrock without Detectable Condensed Volatile Ice Absorption';
+
+    if (isCO2) {
+      iClass = 'Solid Carbon Dioxide Ice (Dry Ice)';
+      species = 'Carbon Dioxide Ice';
+      formula = 'CO2';
+      context = 'Martian South Polar Residual Cap (SPRC) Swiss-Cheese Terrain / Seasonal Polar Cap Condensation Slabs';
+    } else if (isCO) {
+      iClass = 'Solid Carbon Monoxide Ice';
+      species = 'Carbon Monoxide Ice';
+      formula = 'CO';
+      context = 'Ultra-Cold Planetary Cryosphere Volatile Ice Deposit (Pluto Sputnik Planitia / Triton Nitrogen-CO Glacier)';
+    } else if (isN2) {
+      iClass = 'Solid Molecular Nitrogen Ice';
+      species = 'Nitrogen Ice';
+      formula = 'N2';
+      context = 'Deep Cryogenic Nitrogen Ice Glacier / Convective Nitrogen Cell Surface Slab';
+    }
+
+    return {
+      isVolatileIceDetected: isCO2 || isCO || isN2,
+      iceSpeciesClass: iClass,
+      chemicalSpecies: species,
+      chemicalFormula: formula,
+      polarVolatileContext: context
+    };
+  }
 }
 
 

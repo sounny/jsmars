@@ -8822,6 +8822,67 @@ export class KRCEngine {
       lavaTubeContext: `Lava Tube Roof ${zRoof.toFixed(0)}m (T_cave=${Tmean.toFixed(0)}+/-${caveAmpAnnual.toFixed(1)}K, TIU=${TIU.toFixed(0)}, ${habitClass})`
     };
   }
+
+  /**
+   * Calculate Fickian water vapor diffusion through porous regolith, sublimation lag desiccation front retreat rate, and thermal inertia contrast.
+   * J_vapor = D_eff * ( P_sat - P_atm ) / ( R_spec * T * z_lag )
+   * dz_dt = J_vapor / ( rho_ice * phi_ice )
+   * Reference: Mellon et al. (2004, 2009), Schorghofer & Aharonson (2005), Dundas et al. (2018) for Martian Ground Ice.
+   * @param {number} [lagThicknessM=0.10] - Porous desiccated dust/soil lag thickness in meters (0.01 to 5.0 m)
+   * @param {number} [surfaceRelativeHumidity=0.20] - Near-surface atmospheric relative humidity (0.0 to 1.0)
+   * @param {number} [groundTempK=210.0] - Ice table subsurface temperature in K (160 to 240 K)
+   * @param {number} [regolithPorosity=0.40] - Regolith volumetric pore fraction (0.15 to 0.60)
+   * @returns {{sublimationFluxKgPerM2S: number, iceRetreatRateMmPerYear: number, timeToRetreat1MeterKyr: number, desiccatedLagThermalInertiaTIU: number, iceCementedThermalInertiaTIU: number, cryosphericStabilityClass: string, iceLagContext: string}}
+   */
+  static computeMartianSubsurfaceIceLagDesiccationRate(lagThicknessM = 0.10, surfaceRelativeHumidity = 0.20, groundTempK = 210.0, regolithPorosity = 0.40) {
+    const zLag = Math.max(0.005, lagThicknessM);
+    const rh = Math.max(0.0, Math.min(1.0, surfaceRelativeHumidity));
+    const TK = Math.max(140.0, Math.min(270.0, groundTempK));
+    const phi = Math.max(0.10, Math.min(0.70, regolithPorosity));
+
+    const Rspec = 461.5; // J/(kg K)
+    const tauTort = 2.5; // Tortuosity
+    const Dmol = 2.0e-4; // Molecular diffusion coefficient in low-pressure CO2 (m^2/s)
+    const Deff = (phi / tauTort) * Dmol;
+
+    // Saturated vapor pressure over ice (Pa)
+    const Psat = Math.exp(28.87 - (6140.0 / TK));
+    const Patm = rh * Psat;
+    const deltaP = Math.max(0.0, Psat - Patm);
+
+    // Sublimation mass flux (kg/(m^2 s))
+    const Jvapor = (Deff * deltaP) / (Rspec * TK * zLag);
+
+    // Ice front retreat rate (m/s -> mm/yr)
+    const rhoIce = 920.0;
+    const phiIce = phi;
+    const dzDtMS = Jvapor / (rhoIce * phiIce);
+    const dzDtMmYr = dzDtMS * (365.25 * 86400.0 * 1000.0);
+
+    // Time to desiccate 1 meter of ice-rich ground (kyr)
+    const t1mKyr = dzDtMmYr > 1e-8 ? 1000.0 / (dzDtMmYr * 1000.0) : 1e6;
+
+    // Thermal inertia contrast
+    const TIULag = Math.sqrt(0.025 * 1400.0 * 700.0);
+    const TIUIce = Math.sqrt(2.10 * 1950.0 * 1200.0);
+
+    let stabClass = 'Metastable Rapid Ice Sublimation Front (> 1 mm/yr)';
+    if (dzDtMmYr < 0.05) {
+      stabClass = 'Ultra-Stable Perennial Cryosphere (Millennial Ice Preservation in Utopia / Arcadia / Phoenix Site)';
+    } else if (dzDtMmYr < 0.50) {
+      stabClass = 'Slowly Retreating Ice Table Protected by Protective Sublimation Lag';
+    }
+
+    return {
+      sublimationFluxKgPerM2S: parseFloat(Jvapor.toExponential(3)),
+      iceRetreatRateMmPerYear: parseFloat(dzDtMmYr.toFixed(3)),
+      timeToRetreat1MeterKyr: parseFloat(t1mKyr.toFixed(1)),
+      desiccatedLagThermalInertiaTIU: parseFloat(TIULag.toFixed(1)),
+      iceCementedThermalInertiaTIU: parseFloat(TIUIce.toFixed(1)),
+      cryosphericStabilityClass: stabClass,
+      iceLagContext: `Ice Table at ${TK.toFixed(0)}K under ${zLag.toFixed(2)}m Lag (${dzDtMmYr.toFixed(3)} mm/yr retreat, Lag TIU=${TIULag.toFixed(0)}, Ice TIU=${TIUIce.toFixed(0)}, ${stabClass})`
+    };
+  }
 }
 
 
