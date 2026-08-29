@@ -10453,6 +10453,60 @@ export class BandMathEngine {
       hydrationState: state
     };
   }
+
+  /**
+   * Discriminate Intermediate Hydrated Magnesium Sulfates (Starkeyite Tetrahydrate vs Hexahydrite vs Kieserite) from CRISM 1.440 um, 1.970 um, 2.130 um, and 2.400 um absorption bands.
+   * Reference: Vaniman et al. (2004), Viviano-Beck et al. (2014), Roach et al. (2010) for Martian Intermediate Hydrated Sulfate Speciation.
+   * @param {number} [band1440H2ODepth=0.040] - BD1440 starkeyite structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1970H2ODepth=0.050] - BD1970 starkeyite diagnostic shifted structural H2O depth (0.0 to 0.50)
+   * @param {number} [band2130SO4Depth=0.035] - BD2130 magnesium sulfate combination band depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.035] - BD2400 sulfate vibrational overtone depth (0.0 to 0.50)
+   * @returns {{isIntermediateHydrateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrationEnvironment: string}}
+   */
+  static computeCRISMStarkeyiteMgSulfateSpeciationIndices(band1440H2ODepth = 0.040, band1970H2ODepth = 0.050, band2130SO4Depth = 0.035, band2400SO4Depth = 0.035) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1970 = Math.max(0.0, band1970H2ODepth);
+    const d2130 = Math.max(0.0, band2130SO4Depth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isStarkeyite = d1440 >= 0.025 && d1970 >= 0.035 && d2130 >= 0.020 && d2400 >= 0.020;
+    const isHexahydrite = d1440 >= 0.025 && d2130 >= 0.025 && d2400 >= 0.025 && d1970 < 0.025;
+    const isKieserite = d2130 >= 0.030 && d2400 >= 0.030 && d1440 < 0.020 && d1970 < 0.020;
+
+    const isHyd = isStarkeyite || isHexahydrite || isKieserite;
+
+    let sClass = 'Magnesium-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isHyd) {
+      if (isStarkeyite) {
+        sClass = 'Tetrahydrated Starkeyite Facies';
+        species = 'Starkeyite';
+        formula = 'MgSO4·4H2O';
+        env = 'Intermediate Relative Humidity Sulfate Evaporites (Juventae / Ganges / Noctis)';
+      } else if (isHexahydrite) {
+        sClass = 'Polyhydrated Hexahydrite Facies';
+        species = 'Hexahydrite';
+        formula = 'MgSO4·6H2O';
+        env = 'High-Hydration Polyhydrated Sulfate Sequence';
+      } else {
+        sClass = 'Monohydrated Kieserite Facies';
+        species = 'Kieserite';
+        formula = 'MgSO4·H2O';
+        env = 'Hyper-Arid Monohydrate Dehydration State';
+      }
+    }
+
+    return {
+      isIntermediateHydrateDetected: isHyd,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationEnvironment: env
+    };
+  }
 }
 
 

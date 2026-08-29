@@ -11395,6 +11395,67 @@ export class KRCEngine {
       szomolnokiteContext: `Szomolnokite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaSzo * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate intermediate low-temperature hydration of kieserite into starkeyite tetrahydrate, intermediate expansion, and thermal inertia.
+   * MgSO4·H2O (Kieserite) + 3 H2O (5 to 35 C, moderate RH) -> MgSO4·4H2O (Starkeyite)
+   * Reference: Vaniman et al. (2004), Viviano-Beck et al. (2014), Roach et al. (2010) for Martian Intermediate Hydrated Sulfates.
+   * @param {number} [initialKieseritePorosity=0.28] - Initial monohydrated kieserite crust porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=18.0] - Ambient alteration temperature in C (-10 to 50 C)
+   * @param {number} [relativeHumidityFraction=0.35] - Relative humidity / pore moisture (0.02 to 0.85)
+   * @param {number} [durationYears=160.0] - Hydration exposure duration in years (0.1 to 5000 yr)
+   * @returns {{starkeyiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantHydratedPhase: string, intermediateHydrateThermalInertiaTIU: number, intermediateHydrateFaciesClass: string, starkeyiteContext: string}}
+   */
+  static computeMartianStarkeyiteMetasomatism(initialKieseritePorosity = 0.28, ambientTempC = 18.0, relativeHumidityFraction = 0.35, durationYears = 160.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialKieseritePorosity));
+    const TC = Math.max(-20.0, Math.min(65.0, ambientTempC));
+    const rh = Math.max(0.01, Math.min(0.95, relativeHumidityFraction));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.80e4; // 38 kJ/mol for starkeyite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(rh, 0.45);
+    const alphaSta = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound crystal water yield (wt%)
+    const wH2OPct = alphaSta * 37.44;
+
+    // Intermediate volumetric expansion (130%) and porous matrix retention
+    const phiResidual = (phi0 * (1.0 - (0.32 * alphaSta))) + (0.07 * alphaSta);
+    const rhoGrain = 2010.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.92; // W/(m K)
+    const Cspec = 1030.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Starkeyite Tetrahydrate (MgSO4·4H2O)';
+    let sClass = 'Tetrahydrated Magnesium Sulfate Facies';
+
+    if (alphaSta >= 0.50 && TC >= 5.0 && TC <= 35.0 && rh >= 0.20 && rh <= 0.50) {
+      species = 'Starkeyite Tetrahydrate (MgSO4·4H2O)';
+      sClass = 'Equilibrium Starkeyite Evaporite Facies (Juventae / Ganges / Noctis)';
+    } else if (rh > 0.50) {
+      species = 'Hexahydrite Polyhydrate (MgSO4·6H2O)';
+      sClass = 'High-Hydration Sulfate Overprint';
+    } else {
+      species = 'Monohydrated Kieserite (MgSO4·H2O)';
+      sClass = 'Arid Monohydrate Precursor Residue';
+    }
+
+    return {
+      starkeyiteConversionFraction: parseFloat(alphaSta.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantHydratedPhase: species,
+      intermediateHydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      intermediateHydrateFaciesClass: sClass,
+      starkeyiteContext: `Starkeyite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaSta * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

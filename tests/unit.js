@@ -15934,6 +15934,56 @@ describe('Mars-to-Phocaea Transfer, Szomolnokite Dehydration & Monohydrate Speci
     });
 });
 
+describe('Mars-to-Proserpina Transfer, Starkeyite Metasomatism & Tetrahydrate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony main-belt asteroid (26) Proserpina and orbit capture', () => {
+        // Mars to Proserpina (300 km Mars alt, 2.585 AU distance, 15 km capture alt, 3.56 deg plane change):
+        const pr = TrajectoryEngine.computeMarsToProserpinaTransfer(300.0, 2.585, 15.0, 3.56);
+        expect(pr.semiMajorAxisAU).to.be.closeTo(2.054, 0.1); // ~2.05 AU
+        expect(pr.eccentricity).to.be.closeTo(0.2583, 0.01); // e ~ 0.258
+        expect(pr.timeOfFlightDays).to.be.closeTo(536.81, 30.0); // ~537 days (~1.47 yr)
+        expect(pr.timeOfFlightYears).to.be.closeTo(1.47, 0.1); // ~1.47 yr
+        expect(pr.marsDepartureDeltaVKmS).to.be.closeTo(2.393, 0.5); // ~2.39 km/s TPrI
+        expect(pr.proserpinaOrbitInsertionDeltaVKmS).to.be.closeTo(2.403, 0.5); // ~2.40 km/s PrOI
+        expect(pr.totalMissionDeltaVKmS).to.be.closeTo(4.796, 1.0); // ~4.80 km/s total
+        expect(pr.proserpinaContext).to.include('Mars-to-Proserpina');
+    });
+
+    it('should calculate intermediate low-temperature hydration of kieserite into starkeyite tetrahydrate and thermal inertia', () => {
+        // 28% initial porosity, 18 C ambient temp, 0.35 RH, 160 yr duration:
+        const sta = KRCEngine.computeMartianStarkeyiteMetasomatism(0.28, 18.0, 0.35, 160.0);
+        expect(sta.starkeyiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(sta.boundWaterYieldWeightPercent).to.be.greaterThan(18.0); // > 18 wt% bound H2O
+        expect(sta.intermediateHydrateThermalInertiaTIU).to.be.closeTo(1350.5, 200.0); // ~1351 tiu
+        expect(sta.intermediateHydrateFaciesClass).to.include('Equilibrium Starkeyite Evaporite Facies');
+        expect(sta.starkeyiteContext).to.include('Starkeyite at 18 C');
+    });
+
+    it('should discriminate Starkeyite vs Hexahydrite vs Kieserite in CRISM spectra', () => {
+        // Starkeyite (Juventae / Ganges / Noctis: BD1440 = 0.040, BD1970 = 0.050, BD2130 = 0.035, BD2400 = 0.035):
+        const sta = BandMathEngine.computeCRISMStarkeyiteMgSulfateSpeciationIndices(0.040, 0.050, 0.035, 0.035);
+        expect(sta.isIntermediateHydrateDetected).to.be.true;
+        expect(sta.sulfateMineralClass).to.include('Tetrahydrated Starkeyite Facies');
+        expect(sta.mineralSpecies).to.include('Starkeyite');
+        expect(sta.hydrationEnvironment).to.include('Intermediate Relative Humidity Sulfate Evaporites');
+
+        // Hexahydrite (BD1440 = 0.040, BD1970 = 0.015, BD2130 = 0.035, BD2400 = 0.035):
+        const hex = BandMathEngine.computeCRISMStarkeyiteMgSulfateSpeciationIndices(0.040, 0.015, 0.035, 0.035);
+        expect(hex.isIntermediateHydrateDetected).to.be.true;
+        expect(hex.sulfateMineralClass).to.include('Polyhydrated Hexahydrite Facies');
+        expect(hex.mineralSpecies).to.include('Hexahydrite');
+
+        // Kieserite (BD1440 = 0.010, BD1970 = 0.010, BD2130 = 0.045, BD2400 = 0.045):
+        const kie = BandMathEngine.computeCRISMStarkeyiteMgSulfateSpeciationIndices(0.010, 0.010, 0.045, 0.045);
+        expect(kie.isIntermediateHydrateDetected).to.be.true;
+        expect(kie.sulfateMineralClass).to.include('Monohydrated Kieserite Facies');
+        expect(kie.mineralSpecies).to.include('Kieserite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMStarkeyiteMgSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isIntermediateHydrateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

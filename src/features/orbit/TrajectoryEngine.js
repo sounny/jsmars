@@ -11867,6 +11867,81 @@ export class TrajectoryEngine {
       phocaeaContext: `Mars-to-Phocaea (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, PhOI=${dvPhoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to main-belt stony S-type asteroid (26) Proserpina and orbit capture.
+   * a = ( r_mars + r_proserpina ) / 2
+   * e = ( r_proserpina - r_mars ) / ( r_proserpina + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [proserpinaDistanceAU=2.585] - Proserpina heliocentric distance in AU (1.8 to 3.3 AU)
+   * @param {number} [proserpinaPeriapsisAltitudeKm=15.0] - Proserpina orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=3.56] - Orbital plane change angle in degrees (0 to 30 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, proserpinaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, proserpinaContext: string}}
+   */
+  static computeMarsToProserpinaTransfer(marsParkingAltitudeKm = 300.0, proserpinaDistanceAU = 2.585, proserpinaPeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 3.56) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rPrAU = Math.max(1.7, Math.min(3.4, proserpinaDistanceAU));
+    const hpPrKm = Math.max(5.0, proserpinaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muProserpina = 2.10; // km^3/s^2
+    const rProserpinaKm = 47.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rPrDistKm = rPrAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rPrDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rPrDistKm - rMarsDistKm) / (rPrDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTpriMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Proserpina capture
+    const vPrCircKmS = Math.sqrt(muSun / rPrDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rPrDistKm) - (1.0 / aKm)));
+    const vInfPrKmS = Math.abs(vPrCircKmS - vArrKmS);
+
+    const rpPrKm = rProserpinaKm + hpPrKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpPrKm / (1.0 - eCap);
+
+    const vHypPrKmS = Math.sqrt(Math.pow(vInfPrKmS, 2.0) + ((2.0 * muProserpina) / rpPrKm));
+    const vCapPrKmS = Math.sqrt(muProserpina * ((2.0 / rpPrKm) - (1.0 / aCapKm)));
+    const dvProiKmS = vHypPrKmS - vCapPrKmS;
+
+    const dvTotKmS = dvTpriMarsKmS + dvProiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTpriMarsKmS.toFixed(3)),
+      proserpinaOrbitInsertionDeltaVKmS: parseFloat(dvProiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      proserpinaContext: `Mars-to-Proserpina (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, PrOI=${dvProiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
