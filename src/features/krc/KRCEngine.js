@@ -11944,6 +11944,67 @@ export class KRCEngine {
       ransomiteContext: `Ransomite at ${TC.toFixed(0)} C, a(CuFe)=${aCuFe.toFixed(2)} (${(alphaRan * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${rClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature acidic alteration of copper-ferric silicate matrix into guildite, tetrahydrate crystallization, and thermal inertia.
+   * Host + Cu2+ + Fe3+ + 2 SO4(2-) + OH- + 4 H2O (-10 to 35 C) -> Guildite (CuFe(SO4)2(OH)·4H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Copper-Bearing Sulfates.
+   * @param {number} [initialHostPorosity=0.30] - Initial copper-rich host porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=16.0] - Ambient alteration temperature in C (-20 to 50 C)
+   * @param {number} [copperFerricHydroxyActivity=0.38] - Dissolved copper-ferric hydroxy-sulfate fluid activity product (0.01 to 1.0)
+   * @param {number} [durationYears=185.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{guilditeConversionFraction: number, boundWaterYieldWeightPercent: number, dominantCopperFerricHydroxyPhase: string, tetrahydrateThermalInertiaTIU: number, hydroxylSulfateFaciesClass: string, guilditeContext: string}}
+   */
+  static computeMartianGuilditeMetasomatism(initialHostPorosity = 0.30, ambientTempC = 16.0, copperFerricHydroxyActivity = 0.38, durationYears = 185.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialHostPorosity));
+    const TC = Math.max(-25.0, Math.min(60.0, ambientTempC));
+    const aCuFeOH = Math.max(0.005, Math.min(1.0, copperFerricHydroxyActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.85e4; // 38.5 kJ/mol for guildite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.0e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aCuFeOH, 0.42);
+    const alphaGui = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural water and hydroxyl yield (wt%)
+    const wH2OPct = alphaGui * 24.35;
+
+    // Tetrahydrate crystal volume growth and consolidated matrix retention
+    const phiResidual = (phi0 * (1.0 - (0.35 * alphaGui))) + (0.08 * alphaGui);
+    const rhoGrain = 2480.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.98; // W/(m K)
+    const Cspec = 920.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Guildite (CuFe(SO4)2(OH)·4H2O)';
+    let gClass = 'Tetrahydrated Copper-Ferric Hydroxyl-Sulfate Facies';
+
+    if (alphaGui >= 0.50 && TC >= -10.0 && TC <= 35.0 && aCuFeOH >= 0.15) {
+      species = 'Guildite (CuFe(SO4)2(OH)·4H2O)';
+      gClass = 'Hydrothermal Guildite Facies (Syrtis Major / Coprates / Noctis)';
+    } else if (TC > 35.0) {
+      species = 'Antlerite-Brochantite Basic Copper Association';
+      gClass = 'Basic Copper Sulfate Weathering Sequence';
+    } else {
+      species = 'Natrojarosite-Chalcanthite Composite';
+      gClass = 'Mixed Acid Sulfate Hydrothermal Residue';
+    }
+
+    return {
+      guilditeConversionFraction: parseFloat(alphaGui.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantCopperFerricHydroxyPhase: species,
+      tetrahydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      hydroxylSulfateFaciesClass: gClass,
+      guilditeContext: `Guildite at ${TC.toFixed(0)} C, a(CuFeOH)=${aCuFeOH.toFixed(2)} (${(alphaGui * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${gClass})`
+    };
+  }
 }
 
 

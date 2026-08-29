@@ -12542,6 +12542,81 @@ export class TrajectoryEngine {
       circeContext: `Mars-to-Circe (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, CiOI=${dvCioiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to main-belt low-albedo carbonaceous C-type asteroid (35) Leukothea and orbit capture.
+   * a = ( r_mars + r_leukothea ) / 2
+   * e = ( r_leukothea - r_mars ) / ( r_leukothea + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [leukotheaDistanceAU=2.990] - Leukothea heliocentric distance in AU (1.9 to 3.8 AU)
+   * @param {number} [leukotheaPeriapsisAltitudeKm=15.0] - Leukothea orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=7.94] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, leukotheaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, leukotheaContext: string}}
+   */
+  static computeMarsToLeukotheaTransfer(marsParkingAltitudeKm = 300.0, leukotheaDistanceAU = 2.990, leukotheaPeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 7.94) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rLeAU = Math.max(1.8, Math.min(3.9, leukotheaDistanceAU));
+    const hpLeKm = Math.max(5.0, leukotheaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muLeukothea = 2.95; // km^3/s^2 (low-albedo C-type asteroid, D~103 km)
+    const rLeukotheaKm = 51.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rLeDistKm = rLeAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rLeDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rLeDistKm - rMarsDistKm) / (rLeDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTleiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Leukothea capture
+    const vLeCircKmS = Math.sqrt(muSun / rLeDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rLeDistKm) - (1.0 / aKm)));
+    const vInfLeKmS = Math.abs(vLeCircKmS - vArrKmS);
+
+    const rpLeKm = rLeukotheaKm + hpLeKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpLeKm / (1.0 - eCap);
+
+    const vHypLeKmS = Math.sqrt(Math.pow(vInfLeKmS, 2.0) + ((2.0 * muLeukothea) / rpLeKm));
+    const vCapLeKmS = Math.sqrt(muLeukothea * ((2.0 / rpLeKm) - (1.0 / aCapKm)));
+    const dvLeoiKmS = vHypLeKmS - vCapLeKmS;
+
+    const dvTotKmS = dvTleiMarsKmS + dvLeoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTleiMarsKmS.toFixed(3)),
+      leukotheaOrbitInsertionDeltaVKmS: parseFloat(dvLeoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      leukotheaContext: `Mars-to-Leukothea (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, LeOI=${dvLeoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

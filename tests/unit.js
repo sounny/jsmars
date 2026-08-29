@@ -16391,6 +16391,56 @@ describe('Mars-to-Circe Transfer, Ransomite Metasomatism & Copper-Ferric Speciat
     });
 });
 
+describe('Mars-to-Leukothea Transfer, Guildite Metasomatism & Hydroxyl-Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to carbonaceous asteroid (35) Leukothea and orbit capture', () => {
+        // Mars to Leukothea (300 km Mars alt, 2.990 AU distance, 15 km capture alt, 7.94 deg plane change):
+        const le = TrajectoryEngine.computeMarsToLeukotheaTransfer(300.0, 2.990, 15.0, 7.94);
+        expect(le.semiMajorAxisAU).to.be.closeTo(2.257, 0.1); // ~2.26 AU
+        expect(le.eccentricity).to.be.closeTo(0.3248, 0.01); // e ~ 0.325
+        expect(le.timeOfFlightDays).to.be.closeTo(617.96, 30.0); // ~618 days (~1.69 yr)
+        expect(le.timeOfFlightYears).to.be.closeTo(1.69, 0.1); // ~1.69 yr
+        expect(le.marsDepartureDeltaVKmS).to.be.closeTo(3.563, 0.5); // ~3.56 km/s TLeI
+        expect(le.leukotheaOrbitInsertionDeltaVKmS).to.be.closeTo(2.795, 0.5); // ~2.80 km/s LeOI
+        expect(le.totalMissionDeltaVKmS).to.be.closeTo(6.358, 1.0); // ~6.36 km/s total
+        expect(le.leukotheaContext).to.include('Mars-to-Leukothea');
+    });
+
+    it('should calculate low-temperature acid alteration into guildite copper-ferric hydroxyl-sulfate and thermal inertia', () => {
+        // 30% initial porosity, 16 C ambient temp, 0.38 copper-ferric-hydroxy activity product, 185 yr duration:
+        const gui = KRCEngine.computeMartianGuilditeMetasomatism(0.30, 16.0, 0.38, 185.0);
+        expect(gui.guilditeConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(gui.boundWaterYieldWeightPercent).to.be.greaterThan(12.0); // > 12 wt% bound H2O+OH
+        expect(gui.tetrahydrateThermalInertiaTIU).to.be.closeTo(1369.3, 200.0); // ~1369 tiu
+        expect(gui.hydroxylSulfateFaciesClass).to.include('Hydrothermal Guildite Facies');
+        expect(gui.guilditeContext).to.include('Guildite at 16 C');
+    });
+
+    it('should discriminate Guildite vs Antlerite vs Ransomite in CRISM spectra', () => {
+        // Guildite (Syrtis Major / Coprates / Noctis: BD800 = 0.040, BD1440 = 0.035, BD1940 = 0.045, BD2220 = 0.040):
+        const gui = BandMathEngine.computeCRISMGuilditeCopperFerricSpeciationIndices(0.040, 0.035, 0.045, 0.040);
+        expect(gui.isCopperFerricHydroxylSulfateDetected).to.be.true;
+        expect(gui.sulfateMineralClass).to.include('Tetrahydrated Guildite Copper-Ferric Hydroxyl-Sulfate Facies');
+        expect(gui.mineralSpecies).to.include('Guildite');
+        expect(gui.parageneticEnvironment).to.include('Hydrothermal Acid-Sulfate Oxidation Zone');
+
+        // Antlerite (BD800 = 0.045, BD1440 = 0.035, BD1940 = 0.015, BD2220 = 0.015):
+        const ant = BandMathEngine.computeCRISMGuilditeCopperFerricSpeciationIndices(0.045, 0.035, 0.015, 0.015);
+        expect(ant.isCopperFerricHydroxylSulfateDetected).to.be.true;
+        expect(ant.sulfateMineralClass).to.include('Basic Antlerite Copper Hydroxyl-Sulfate Facies');
+        expect(ant.mineralSpecies).to.include('Antlerite');
+
+        // Ransomite (BD800 = 0.040, BD1440 = 0.035, BD1940 = 0.045, BD2220 = 0.010):
+        const ran = BandMathEngine.computeCRISMGuilditeCopperFerricSpeciationIndices(0.040, 0.035, 0.045, 0.010);
+        expect(ran.isCopperFerricHydroxylSulfateDetected).to.be.true;
+        expect(ran.sulfateMineralClass).to.include('Neutral Hexahydrated Ransomite Facies');
+        expect(ran.mineralSpecies).to.include('Ransomite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMGuilditeCopperFerricSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isCopperFerricHydroxylSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

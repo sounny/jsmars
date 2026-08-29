@@ -10939,6 +10939,60 @@ export class BandMathEngine {
       gossanParagenesis: gossan
     };
   }
+
+  /**
+   * Discriminate Tetrahydrated Copper-Ferric Hydroxyl-Sulfates (Guildite vs Ransomite vs Antlerite) from CRISM 0.800 um, 1.440 um, 1.940 um, and 2.220 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Copper-Bearing Sulfates.
+   * @param {number} [band800CuDepth=0.040] - BD800 copper crystal field electronic absorption depth (0.0 to 0.50)
+   * @param {number} [band1440H2ODepth=0.035] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.045] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2220FeOHDepth=0.040] - BD2220 guildite diagnostic ferric iron-hydroxyl combination depth (0.0 to 0.50)
+   * @returns {{isCopperFerricHydroxylSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, parageneticEnvironment: string}}
+   */
+  static computeCRISMGuilditeCopperFerricSpeciationIndices(band800CuDepth = 0.040, band1440H2ODepth = 0.035, band1940H2ODepth = 0.045, band2220FeOHDepth = 0.040) {
+    const d800 = Math.max(0.0, band800CuDepth);
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2220 = Math.max(0.0, band2220FeOHDepth);
+
+    const isGuildite = d800 >= 0.025 && d1440 >= 0.020 && d1940 >= 0.025 && d2220 >= 0.025;
+    const isAntlerite = d800 >= 0.030 && d1440 >= 0.025 && d1940 < 0.020;
+    const isRansomite = d800 >= 0.025 && d1440 >= 0.020 && d1940 >= 0.025 && d2220 < 0.020;
+
+    const isCuOHSO4 = isGuildite || isAntlerite || isRansomite;
+
+    let sClass = 'Copper-Hydroxyl-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isCuOHSO4) {
+      if (isGuildite) {
+        sClass = 'Tetrahydrated Guildite Copper-Ferric Hydroxyl-Sulfate Facies';
+        species = 'Guildite';
+        formula = 'CuFe(SO4)2(OH)·4H2O';
+        env = 'Hydrothermal Acid-Sulfate Oxidation Zone (Syrtis Major / Coprates / Noctis)';
+      } else if (isAntlerite) {
+        sClass = 'Basic Antlerite Copper Hydroxyl-Sulfate Facies';
+        species = 'Antlerite';
+        formula = 'Cu3(SO4)(OH)4';
+        env = 'Supergene Basic Copper Alteration Zone';
+      } else {
+        sClass = 'Neutral Hexahydrated Ransomite Facies';
+        species = 'Ransomite';
+        formula = 'CuFe2(SO4)4·6H2O';
+        env = 'Indurated Acid Gossan Sulfide Cap';
+      }
+    }
+
+    return {
+      isCopperFerricHydroxylSulfateDetected: isCuOHSO4,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      parageneticEnvironment: env
+    };
+  }
 }
 
 
