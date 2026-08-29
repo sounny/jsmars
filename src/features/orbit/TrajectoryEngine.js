@@ -8023,6 +8023,66 @@ export class TrajectoryEngine {
       interceptContext: `1I/'Oumuamua Chase at ${rIntAU.toFixed(1)}AU (${tofsYrs.toFixed(1)} yr TOF, ${dvTiiKmS.toFixed(2)} km/s TII, ${vRelKmS.toFixed(1)} km/s Rel Flyby)`
     };
   }
+
+  /**
+   * Calculate interplanetary chase transfer from Mars to intercept retrograde interstellar comet 2I/Borisov and relative encounter velocity.
+   * a_trans = ( r_mars + r_intercept ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * v_rel = sqrt( v_comet^2 + v_sc^2 - 2 * v_comet * v_sc * cos( inclination ) )
+   * Reference: Guzik et al. (2020), Jewitt & Luu (2019), Curtis (2013) for Interstellar Comet Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [interceptDistanceAU=2.0] - Intercept heliocentric distance in AU (1.6 to 10.0 AU)
+   * @returns {{transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, borisovRelativeEncounterVelocityKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, borisovInterceptContext: string}}
+   */
+  static computeMarsToBorisovHyperbolicIntercept(marsParkingAltitudeKm = 300.0, interceptDistanceAU = 2.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rIntAU = Math.max(1.55, interceptDistanceAU);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rIntDistKm = rIntAU * AU_KM;
+
+    // Hohmann geometry
+    const aTransKm = (rMarsDistKm + rIntDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rIntDistKm - rMarsDistKm) / (rIntDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTiiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Intercept
+    const vInfBorisovKmS = 32.20; // Hyperbolic excess of 2I/Borisov
+    const vBorisovKmS = Math.sqrt(Math.pow(vInfBorisovKmS, 2.0) + ((2.0 * muSun) / rIntDistKm));
+    const vScKmS = Math.sqrt(muSun * ((2.0 / rIntDistKm) - (1.0 / aTransKm)));
+    const incRad = (44.05 * Math.PI) / 180.0; // 44.05 deg inclination
+    const vRelKmS = Math.sqrt(Math.pow(vBorisovKmS, 2.0) + Math.pow(vScKmS, 2.0) - (2.0 * vBorisovKmS * vScKmS * Math.cos(incRad)));
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTiiKmS.toFixed(3)),
+      borisovRelativeEncounterVelocityKmS: parseFloat(vRelKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      borisovInterceptContext: `2I/Borisov Chase at ${rIntAU.toFixed(1)}AU (${tofsYrs.toFixed(1)} yr TOF, ${dvTiiKmS.toFixed(2)} km/s TII, ${vRelKmS.toFixed(1)} km/s Rel Flyby)`
+    };
+  }
 }
 
 

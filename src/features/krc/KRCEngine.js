@@ -8312,6 +8312,66 @@ export class KRCEngine {
       subglacialLakeContext: `Subglacial Bed at ${HKm.toFixed(1)}km (T_base=${TbaseC.toFixed(1)} C, T_melt=${(TmeltK - 273.15).toFixed(1)} C, Margin=${marginK.toFixed(1)}K, ${hydroClass})`
     };
   }
+
+  /**
+   * Calculate impact/volcanic thermal dehydrogenation and oxidation kinetics of Fe(II)-smectite clays into nanophase hematite and thermally altered regolith.
+   * k = A * exp( -E_a / ( R * T ) )
+   * alpha = 1 - exp( -( k * t )^n )
+   * w_npHm = alpha * w_clay * 0.22
+   * Reference: Gavin et al. (2013), Chemtob et al. (2017), Morris et al. (2008) for Thermally Altered Martian Clays.
+   * @param {number} [smectiteClayMassFraction=0.80] - Initial Fe-smectite mass fraction (0.10 to 1.0)
+   * @param {number} [thermalPulseTempC=550.0] - Thermal baking / impact melt temperature in C (200 to 900 C)
+   * @param {number} [durationHours=2.0] - Heating duration in hours (0.01 to 24.0 hours)
+   * @returns {{dehydrogenationFraction: number, nanophaseHematiteWeightPercent: number, residualClayWeightPercent: number, alteredThermalInertiaTIU: number, thermalAlterationFaciesClass: string, thermalClayContext: string}}
+   */
+  static computeMartianClayThermalDehydrogenationKinetics(smectiteClayMassFraction = 0.80, thermalPulseTempC = 550.0, durationHours = 2.0) {
+    const wClay = Math.max(0.05, Math.min(1.0, smectiteClayMassFraction));
+    const TC = Math.max(100.0, Math.min(1100.0, thermalPulseTempC));
+    const tHrs = Math.max(0.001, durationHours);
+
+    const TK = TC + 273.15;
+    const tSec = tHrs * 3600.0;
+    const Rgas = 8.314;
+    const Ea = 1.65e5; // 165 kJ/mol
+    const A = 1.2e11; // 1/s
+    const n = 1.5; // Avrami exponent
+
+    // Kinetic rate constant (1/s)
+    const kRate = A * Math.exp(-Ea / (Rgas * TK));
+
+    // Reaction extent alpha (0 to 1)
+    const kt = kRate * tSec;
+    const alpha = 1.0 - Math.exp(-Math.pow(Math.min(25.0, kt), n));
+
+    // Mineral mass fractions
+    const wNpHmPct = alpha * wClay * 22.0; // wt% nanophase hematite
+    const wResClayPct = (wClay * (1.0 - (0.22 * alpha))) * 100.0;
+    const wHostPct = (1.0 - wClay) * 100.0;
+
+    // Thermal inertia of baked clay-hematite aggregate
+    const rhoGrain = ((wNpHmPct / 100.0) * 5260.0) + ((wResClayPct / 100.0) * 2600.0) + ((wHostPct / 100.0) * 2900.0);
+    const phi = 0.18;
+    const rhoBulk = rhoGrain * (1.0 - phi);
+    const kTherm = (0.35 * (1.0 - phi)) + (0.90 * (wNpHmPct / 100.0));
+    const Cspec = 820.0;
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let faciesClass = 'Unaltered Low-Temperature Smectite Clay';
+    if (alpha >= 0.85) {
+      faciesClass = 'High-Grade Thermally Dehydrogenated Red Clay / Nanophase Hematite Bloom (Impact Melt Sheet / Lava Contact)';
+    } else if (alpha >= 0.25) {
+      faciesClass = 'Partially Dehydroxylated Brown Smectite Clay (Sub-Magmatic Hydrothermal Aureole)';
+    }
+
+    return {
+      dehydrogenationFraction: parseFloat(alpha.toFixed(3)),
+      nanophaseHematiteWeightPercent: parseFloat(wNpHmPct.toFixed(1)),
+      residualClayWeightPercent: parseFloat(wResClayPct.toFixed(1)),
+      alteredThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      thermalAlterationFaciesClass: faciesClass,
+      thermalClayContext: `Thermal Baking at ${TC.toFixed(0)} C (${(alpha * 100).toFixed(0)}% Dehydrogenated, ${wNpHmPct.toFixed(1)}% np-Hm, TIU=${TIU.toFixed(0)}, ${faciesClass})`
+    };
+  }
 }
 
 

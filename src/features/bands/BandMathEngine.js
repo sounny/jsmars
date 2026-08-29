@@ -7662,6 +7662,50 @@ export class BandMathEngine {
       cryogenicVolatileContext: context
     };
   }
+
+  /**
+   * Discriminate Nanophase Hematite (np-Hm, Red Dust) vs Coarse Crystalline Grey Hematite (Blueberries) from CRISM VNIR 0.53 um / 0.86 um bands and THEMIS/TES TIR reststrahlen features.
+   * Reference: Christensen et al. (2000, 2001), Morris et al. (2005), Viviano-Beck et al. (2014) for Martian Hematite Mineralogy.
+   * @param {number} [band530Fe3PlusDepth=0.06] - BD530 Fe3+ charge transfer slope depth (0.0 to 0.40)
+   * @param {number} [band860Fe3PlusDepth=0.05] - BD860 Fe3+ 4T1g crystalline hematite band depth (0.0 to 0.40)
+   * @param {number} [band980Fe2PlusDepth=0.01] - BD980 Fe2+ olivine/pyroxene band depth (0.0 to 0.40)
+   * @param {number} [tirHematiteEmissivityMinDepth=0.06] - THEMIS/TES 300-500 cm-1 hematite lattice vibration depth (0.0 to 0.40)
+   * @returns {{isHematiteDetected: boolean, hematiteCrystallinityClass: string, mineralSpecies: string, chemicalFormula: string, diageneticFaciesContext: string}}
+   */
+  static computeCRISMHematiteSpeciationIndices(band530Fe3PlusDepth = 0.06, band860Fe3PlusDepth = 0.05, band980Fe2PlusDepth = 0.01, tirHematiteEmissivityMinDepth = 0.06) {
+    const d530 = Math.max(0.0, band530Fe3PlusDepth);
+    const d860 = Math.max(0.0, band860Fe3PlusDepth);
+    const d980 = Math.max(0.0, band980Fe2PlusDepth);
+    const dTIR = Math.max(0.0, tirHematiteEmissivityMinDepth);
+
+    const isGreyHematite = d860 >= 0.035 && dTIR >= 0.040;
+    const isNanophaseHematite = d530 >= 0.040 && !isGreyHematite;
+
+    let hmClass = 'Unaltered Basaltic Crust';
+    let species = 'Basaltic Augite / Olivine';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Ferrous Silicate Matrix without Diagnostic Ferric Hematite Absorption';
+
+    if (isGreyHematite) {
+      hmClass = 'Coarse Crystalline Grey Hematite (Diagenetic Concretions / Blueberries)';
+      species = 'Crystalline Grey Hematite';
+      formula = 'alpha-Fe2O3 (Coarse > 10 um)';
+      context = 'Sedimentary Groundwater Diagenesis / Hydrothermal Mineral Precipitation (Meridiani Planum / Aram Chaos / Opportunity Landing Site)';
+    } else if (isNanophaseHematite) {
+      hmClass = 'Nanophase Hematite (np-Hm, Bright Red Martian Dust)';
+      species = 'Nanophase Ferric Oxide / Hematite';
+      formula = 'Fe2O3 (Nanocrystalline < 10 nm)';
+      context = 'Subaerial Atmospheric Oxidation / Global Dust Mantle / Thermal Dehydroxylation of Smectite Clays';
+    }
+
+    return {
+      isHematiteDetected: isGreyHematite || isNanophaseHematite,
+      hematiteCrystallinityClass: hmClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      diageneticFaciesContext: context
+    };
+  }
 }
 
 

@@ -13315,6 +13315,49 @@ describe("Mars-to-'Oumuamua Interstellar Chase, Subglacial Lakes & Volatile Ice 
     });
 });
 
+describe('Mars-to-2I/Borisov Interstellar Comet Intercept, Clay Dehydrogenation & Hematite', () => {
+    it('should calculate interplanetary chase transfer from Mars to interstellar comet 2I/Borisov and relative encounter velocity', () => {
+        // Mars to Borisov at 2.0 AU intercept, 300 km Mars alt:
+        const borisov = TrajectoryEngine.computeMarsToBorisovHyperbolicIntercept(300.0, 2.0);
+        expect(borisov.transferTimeDays).to.be.closeTo(427.0, 30.0); // ~427 days
+        expect(borisov.transferTimeYears).to.be.closeTo(1.169, 0.1); // ~1.17 yr
+        expect(borisov.marsDepartureDeltaVKmS).to.be.closeTo(1.708, 0.3); // ~1.71 km/s TII
+        expect(borisov.borisovRelativeEncounterVelocityKmS).to.be.closeTo(32.709, 1.0); // ~32.7 km/s relative flyby
+        expect(borisov.transferEccentricity).to.be.closeTo(0.1352, 0.02); // e ~ 0.135
+        expect(borisov.borisovInterceptContext).to.include('2I/Borisov Chase');
+    });
+
+    it('should calculate impact/volcanic thermal dehydrogenation kinetics of Fe-smectite clays and nanophase hematite exsolution', () => {
+        // 80 wt% smectite clay, 550 C baking, 2.0 hours duration:
+        const baked = KRCEngine.computeMartianClayThermalDehydrogenationKinetics(0.80, 550.0, 2.0);
+        expect(baked.dehydrogenationFraction).to.be.greaterThan(0.90); // > 90% reacted
+        expect(baked.nanophaseHematiteWeightPercent).to.be.closeTo(17.5, 2.0); // ~17.5 wt% np-Hm
+        expect(baked.residualClayWeightPercent).to.be.closeTo(62.5, 3.0); // ~62.5 wt% dehydroxylated clay
+        expect(baked.alteredThermalInertiaTIU).to.be.closeTo(967.0, 80.0); // ~967 tiu baked clay
+        expect(baked.thermalAlterationFaciesClass).to.include('High-Grade Thermally Dehydrogenated Red Clay');
+        expect(baked.thermalClayContext).to.include('Thermal Baking');
+    });
+
+    it('should discriminate Nanophase Hematite (np-Hm, Red Dust) vs Coarse Crystalline Grey Hematite in CRISM/TES spectra', () => {
+        // Coarse Crystalline Grey Hematite (Meridiani Blueberries: BD530 = 0.01, BD860 = 0.06, BD980 = 0.01, TIR = 0.06):
+        const greyHm = BandMathEngine.computeCRISMHematiteSpeciationIndices(0.01, 0.06, 0.01, 0.06);
+        expect(greyHm.isHematiteDetected).to.be.true;
+        expect(greyHm.hematiteCrystallinityClass).to.include('Coarse Crystalline Grey Hematite');
+        expect(greyHm.mineralSpecies).to.include('Crystalline Grey Hematite');
+        expect(greyHm.diageneticFaciesContext).to.include('Sedimentary Groundwater Diagenesis');
+
+        // Nanophase Hematite (Global Bright Red Dust: BD530 = 0.06, BD860 = 0.02, BD980 = 0.01, TIR = 0.01):
+        const npHm = BandMathEngine.computeCRISMHematiteSpeciationIndices(0.06, 0.02, 0.01, 0.01);
+        expect(npHm.isHematiteDetected).to.be.true;
+        expect(npHm.hematiteCrystallinityClass).to.include('Nanophase Hematite (np-Hm, Bright Red Martian Dust)');
+        expect(npHm.mineralSpecies).to.include('Nanophase Ferric Oxide / Hematite');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMHematiteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isHematiteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
