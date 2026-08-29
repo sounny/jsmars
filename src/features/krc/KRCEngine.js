@@ -9069,6 +9069,66 @@ export class KRCEngine {
       clathrateContext: `Clathrate Dissociation at ${qMw.toFixed(0)} mW/m^2 (${vDissMmYr.toFixed(2)} mm/yr, ${QSolKg.toFixed(0)} kg CH4/sol per 100km2, TIU=${TIU.toFixed(0)}, ${regClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal silica sinter precipitation kinetics, supersaturation upon cooling, mound accretion rate, and deposit thermal inertia.
+   * log10( C_sat ) = 4.52 - 731 / T_K
+   * M_sinter = Q_fluid * ( C_SiO2 - C_sat )
+   * Reference: Rimstidt & Barnes (1980), Ruff et al. (2011), Skok et al. (2010), Squyres et al. (2008) for Martian Opaline Sinters.
+   * @param {number} [dissolvedSilicaPpm=450.0] - Hydrothermal fluid dissolved silica in ppm (50 to 1200 ppm)
+   * @param {number} [dischargeTempC=120.0] - Thermal spring orifice temperature in C (40 to 300 C)
+   * @param {number} [ambientSurfaceTempC=0.0] - Ambient surface environment temperature in C (-50 to 50 C)
+   * @param {number} [dischargeRateKgPerS=5.0] - Hydrothermal spring mass discharge in kg/s (0.1 to 100 kg/s)
+   * @returns {{supersaturationRatio: number, annualSilicaYieldTonnesPerYear: number, sinterMoundAccretionRateMmPerYear: number, opalineSinterThermalInertiaTIU: number, silicaHydrothermalClass: string, sinterContext: string}}
+   */
+  static computeMartianHydrothermalSilicificationSinterPrecipitation(dissolvedSilicaPpm = 450.0, dischargeTempC = 120.0, ambientSurfaceTempC = 0.0, dischargeRateKgPerS = 5.0) {
+    const cSiO2 = Math.max(10.0, dissolvedSilicaPpm);
+    const TdisC = Math.max(20.0, Math.min(350.0, dischargeTempC));
+    const TambC = Math.max(-60.0, Math.min(60.0, ambientSurfaceTempC));
+    const qKgS = Math.max(0.01, dischargeRateKgPerS);
+
+    const TambK = TambC + 273.15;
+
+    // Amorphous silica solubility at ambient temperature (ppm)
+    const logCsat = 4.52 - (731.0 / TambK);
+    const cSatPpm = Math.pow(10.0, logCsat);
+
+    // Supersaturation ratio
+    const sRatio = cSiO2 / cSatPpm;
+    const deltaCPpm = Math.max(0.0, cSiO2 - cSatPpm);
+
+    // Annual silica mass precipitated (tonnes/yr)
+    const secPerYear = 365.25 * 86400.0;
+    const mSinterKgYr = qKgS * (deltaCPpm * 1.0e-6) * secPerYear;
+    const mSinterTonnesYr = mSinterKgYr / 1000.0;
+
+    // Sinter mound vertical accumulation rate over 250 m^2 vent apron (mm/yr)
+    const rhoSinter = 1900.0; // kg/m^3
+    const ventAreaM2 = 250.0;
+    const dzDtMmYr = (mSinterKgYr / (rhoSinter * ventAreaM2)) * 1000.0;
+
+    // Thermal inertia of cemented opaline silica sinter
+    const kTherm = 1.85; // W/(m K)
+    const rhoBulk = 2100.0; // kg/m^3
+    const Cspec = 850.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let hydClass = 'Sub-Saturated Thermal Spring (No Sinter Precipitation)';
+    if (sRatio >= 3.0 && mSinterTonnesYr >= 10.0) {
+      hydClass = 'Vigorous Silica Sinter-Building Geyser / Hot Spring Apron (Gusev Home Plate / Nili Patera Analogue)';
+    } else if (sRatio >= 1.2) {
+      hydClass = 'Moderate Opaline Sinter Precipitation & Bedrock Silicification';
+    }
+
+    return {
+      supersaturationRatio: parseFloat(sRatio.toFixed(2)),
+      annualSilicaYieldTonnesPerYear: parseFloat(mSinterTonnesYr.toFixed(1)),
+      sinterMoundAccretionRateMmPerYear: parseFloat(dzDtMmYr.toFixed(1)),
+      opalineSinterThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      silicaHydrothermalClass: hydClass,
+      sinterContext: `Silica Sinter (${sRatio.toFixed(1)}x supersat, ${mSinterTonnesYr.toFixed(1)} t/yr SiO2, ${dzDtMmYr.toFixed(1)} mm/yr accretion, TIU=${TIU.toFixed(0)}, ${hydClass})`
+    };
+  }
 }
 
 

@@ -8312,6 +8312,61 @@ export class BandMathEngine {
       crustalPetrogenesisContext: context
     };
   }
+
+  /**
+   * Discriminate Carbonate Cation Endmembers (Magnesite vs Siderite vs Calcite vs Dolomite) from CRISM 2.30-2.35 um and 2.50-2.55 um CO3(2-) vibrational combination band centers.
+   * Reference: Ehlmann et al. (2008), Morris et al. (2010), Horgan et al. (2020), Viviano-Beck et al. (2014), Bultel et al. (2019) for Martian Carbonates.
+   * @param {number} [band2300CO3CenterUm=2.305] - First CO3 overtone band center in um (2.280 to 2.360 um)
+   * @param {number} [band2500CO3CenterUm=2.510] - Second CO3 combination band center in um (2.480 to 2.570 um)
+   * @param {number} [band2300Depth=0.08] - BD2300 carbonate band depth (0.0 to 0.50)
+   * @param {number} [band2500Depth=0.09] - BD2500 primary carbonate band depth (0.0 to 0.60)
+   * @returns {{isCarbonateDetected: boolean, carbonateCationClass: string, mineralSpecies: string, chemicalFormula: string, co2AtmosphericSequesterContext: string}}
+   */
+  static computeCRISMCarbonateEndmemberPartitioningIndices(band2300CO3CenterUm = 2.305, band2500CO3CenterUm = 2.510, band2300Depth = 0.08, band2500Depth = 0.09) {
+    const c2300 = Math.max(2.280, Math.min(2.370, band2300CO3CenterUm));
+    const c2500 = Math.max(2.480, Math.min(2.580, band2500CO3CenterUm));
+    const d2300 = Math.max(0.0, band2300Depth);
+    const d2500 = Math.max(0.0, band2500Depth);
+
+    const isCarb = d2300 >= 0.025 && d2500 >= 0.030;
+
+    let cClass = 'Carbonate-Free Silicate Matrix';
+    let species = 'Basalt Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Bedrock without Detectable CO3 Carbonate Absorption Doublet';
+
+    if (isCarb) {
+      if (c2300 <= 2.316 && c2500 <= 2.516) {
+        cClass = 'Magnesium Carbonate (Magnesite)';
+        species = 'Magnesite';
+        formula = 'MgCO3';
+        context = 'Olivine Carbonation / Hydrothermal Alkaline Fluid Weathering (Nili Fossae Basement / Jezero Crater Rim)';
+      } else if (c2300 <= 2.329 && c2500 <= 2.532) {
+        cClass = 'Calcium-Magnesium Carbonate (Dolomite)';
+        species = 'Dolomite';
+        formula = 'CaMg(CO3)2';
+        context = 'Diagenetically Matured Evaporitic Carbonate Basin / Dolomitization';
+      } else if (c2300 >= 2.338 && c2500 >= 2.538) {
+        cClass = 'Calcium Carbonate (Calcite / Aragonite)';
+        species = 'Calcite';
+        formula = 'CaCO3';
+        context = 'Neutral-to-Alkaline Hydrothermal Spring Vein Precipitation';
+      } else {
+        cClass = 'Iron Carbonate (Siderite)';
+        species = 'Siderite';
+        formula = 'FeCO3';
+        context = 'Anoxic Reducing Paleolake / Ground Water Carbonate Precipitation (Gusev Crater Comanche Outcrop)';
+      }
+    }
+
+    return {
+      isCarbonateDetected: isCarb,
+      carbonateCationClass: cClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      co2AtmosphericSequesterContext: context
+    };
+  }
 }
 
 

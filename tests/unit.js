@@ -13956,6 +13956,63 @@ describe('Mars-to-Quaoar Transfer, Clathrate Dissociation Plumes & Plagioclase A
     });
 });
 
+describe('Mars-to-Varuna Transfer, Silica Sinter Precipitation & Carbonate Cation Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to rapidly rotating classical KBO 20000 Varuna', () => {
+        // Mars to Varuna (300 km Mars alt, 43.05 AU distance, 200 km capture alt):
+        const varuna = TrajectoryEngine.computeMarsToVarunaTransfer(300.0, 43.05, 200.0);
+        expect(varuna.semiMajorAxisAU).to.be.closeTo(22.287, 0.5); // ~22.29 AU
+        expect(varuna.eccentricity).to.be.closeTo(0.9316, 0.01); // e ~ 0.932
+        expect(varuna.timeOfFlightDays).to.be.closeTo(20836.8, 2000.0); // ~20837 days (~57.0 yr)
+        expect(varuna.timeOfFlightYears).to.be.closeTo(57.05, 5.0); // ~57.0 yr
+        expect(varuna.marsDepartureDeltaVKmS).to.be.closeTo(7.298, 0.6); // ~7.30 km/s TVI
+        expect(varuna.varunaOrbitInsertionDeltaVKmS).to.be.closeTo(2.946, 1.5); // ~2.95 km/s VOI
+        expect(varuna.totalMissionDeltaVKmS).to.be.closeTo(10.242, 2.0); // ~10.24 km/s total
+        expect(varuna.varunaContext).to.include('Mars-to-Varuna');
+    });
+
+    it('should calculate hydrothermal silica supersaturation, sinter precipitation rate, and mound accretion', () => {
+        // 450 ppm dissolved silica, 120 C discharge temp, 0 C ambient temp, 5 kg/s flow rate:
+        const sinter = KRCEngine.computeMartianHydrothermalSilicificationSinterPrecipitation(450.0, 120.0, 0.0, 5.0);
+        expect(sinter.supersaturationRatio).to.be.greaterThan(4.0); // > 4x supersaturated
+        expect(sinter.annualSilicaYieldTonnesPerYear).to.be.closeTo(60.0, 10.0); // ~60 tonnes/yr SiO2
+        expect(sinter.sinterMoundAccretionRateMmPerYear).to.be.closeTo(126.3, 20.0); // ~126 mm/yr accretion
+        expect(sinter.opalineSinterThermalInertiaTIU).to.be.closeTo(1817.0, 150.0); // ~1817 tiu sinter
+        expect(sinter.silicaHydrothermalClass).to.include('Vigorous Silica Sinter-Building Geyser');
+        expect(sinter.sinterContext).to.include('Silica Sinter');
+    });
+
+    it('should discriminate Magnesite vs Siderite vs Calcite vs Dolomite from CRISM 2.30 um / 2.50 um combination bands', () => {
+        // Magnesite (Nili Fossae / Jezero Rim: 2.305 um, 2.510 um, BD2300 = 0.08, BD2500 = 0.09):
+        const mag = BandMathEngine.computeCRISMCarbonateEndmemberPartitioningIndices(2.305, 2.510, 0.08, 0.09);
+        expect(mag.isCarbonateDetected).to.be.true;
+        expect(mag.carbonateCationClass).to.include('Magnesium Carbonate (Magnesite)');
+        expect(mag.mineralSpecies).to.include('Magnesite');
+        expect(mag.co2AtmosphericSequesterContext).to.include('Olivine Carbonation');
+
+        // Dolomite (2.325 um, 2.525 um, BD2300 = 0.07, BD2500 = 0.08):
+        const dol = BandMathEngine.computeCRISMCarbonateEndmemberPartitioningIndices(2.325, 2.525, 0.07, 0.08);
+        expect(dol.isCarbonateDetected).to.be.true;
+        expect(dol.carbonateCationClass).to.include('Calcium-Magnesium Carbonate (Dolomite)');
+        expect(dol.mineralSpecies).to.include('Dolomite');
+
+        // Calcite (2.345 um, 2.545 um, BD2300 = 0.06, BD2500 = 0.07):
+        const cal = BandMathEngine.computeCRISMCarbonateEndmemberPartitioningIndices(2.345, 2.545, 0.06, 0.07);
+        expect(cal.isCarbonateDetected).to.be.true;
+        expect(cal.carbonateCationClass).to.include('Calcium Carbonate (Calcite / Aragonite)');
+        expect(cal.mineralSpecies).to.include('Calcite');
+
+        // Siderite (2.335 um, 2.535 um, BD2300 = 0.06, BD2500 = 0.07):
+        const sid = BandMathEngine.computeCRISMCarbonateEndmemberPartitioningIndices(2.335, 2.535, 0.06, 0.07);
+        expect(sid.isCarbonateDetected).to.be.true;
+        expect(sid.carbonateCationClass).to.include('Iron Carbonate (Siderite)');
+        expect(sid.mineralSpecies).to.include('Siderite');
+
+        // Silicate baseline:
+        const basalt = BandMathEngine.computeCRISMCarbonateEndmemberPartitioningIndices(2.305, 2.510, 0.01, 0.01);
+        expect(basalt.isCarbonateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
