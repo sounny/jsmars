@@ -9819,6 +9819,61 @@ export class KRCEngine {
       acidVaporContext: `Acid Vapor at ${TC.toFixed(0)} C, HF/H2SO4=${rAcid.toFixed(1)} (${(alphaFum * 100).toFixed(1)}% converted, ${wTopazAlunitePct.toFixed(1)}% Topaz+Alunite, TIU=${TIU.toFixed(0)}, ${fClass})`
     };
   }
+
+  /**
+   * Calculate low-grade hydrothermal/burial pumpellyite-epidote-chlorite facies metamorphism of basaltic crust, structural hydration, and metabasalt thermal inertia.
+   * Pyroxene + Plagioclase + H2O (180-320 C) -> Pumpellyite (Ca4(Mg,Fe)Al5O(Si2O7)2(SiO4)2(OH)3*2H2O) + Epidote + Chlorite
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Sub-Greenschist Metamorphism.
+   * @param {number} [basaltPorosity=0.15] - Initial vesicular basalt protolith porosity (0.02 to 0.35)
+   * @param {number} [metasomaticTempC=260.0] - Sub-greenschist metamorphic fluid temperature in C (150 to 400 C)
+   * @param {number} [fluidMgFeRatio=1.80] - Metasomatic fluid Mg/Fe activity ratio (0.2 to 10.0)
+   * @param {number} [durationYears=600.0] - Metamorphic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{pumpellyiteConversionFraction: number, boundWaterYieldWeightPercent: number, pumpellyiteFaciesClass: string, crystallineMetabasaltThermalInertiaTIU: number, subGreenschistContext: string}}
+   */
+  static computeMartianPumpellyiteEpidoteMetasomatism(basaltPorosity = 0.15, metasomaticTempC = 260.0, fluidMgFeRatio = 1.80, durationYears = 600.0) {
+    const phi0 = Math.max(0.01, Math.min(0.40, basaltPorosity));
+    const TC = Math.max(100.0, Math.min(500.0, metasomaticTempC));
+    const rMgFe = Math.max(0.1, Math.min(15.0, fluidMgFeRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.10e4; // 61 kJ/mol for pumpellyite crystallization
+
+    // Reaction rate constant
+    const kRate = 3.6e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(rMgFe);
+    const alphaPump = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural H2O yield (wt%)
+    const wH2OPct = alphaPump * 6.20;
+
+    // Vesicle infilling and pore reduction
+    const phiResidual = phi0 * (1.0 - (0.75 * alphaPump));
+    const rhoGrain = 3250.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.45; // W/(m K)
+    const Cspec = 810.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let pClass = 'Incipient Sub-Greenschist Metasomatism';
+    if (alphaPump >= 0.50 && TC >= 200.0 && TC <= 320.0) {
+      pClass = 'Pervasive Pumpellyite-Epidote-Chlorite Sub-Greenschist Facies (Mawrth Vallis / Nili Deep Basement)';
+    } else if (TC > 320.0) {
+      pClass = 'Greenschist Actinolite-Epidote Transition';
+    } else if (alphaPump >= 0.20) {
+      pClass = 'Zeolite-Pumpellyite Facies Boundary';
+    }
+
+    return {
+      pumpellyiteConversionFraction: parseFloat(alphaPump.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      pumpellyiteFaciesClass: pClass,
+      crystallineMetabasaltThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      subGreenschistContext: `Pumpellyite Facies at ${TC.toFixed(0)} C, Mg/Fe=${rMgFe.toFixed(1)} (${(alphaPump * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${pClass})`
+    };
+  }
 }
 
 

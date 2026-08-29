@@ -9941,6 +9941,78 @@ export class TrajectoryEngine {
       orcusContext: `Mars-to-Orcus (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, OOI=${dvOoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to Mercury-crossing Apollo asteroid (3200) Phaethon (Geminids parent body) and rendezvous/capture.
+   * a = ( r_mars + r_phaethon ) / 2
+   * e = ( r_mars - r_phaethon ) / ( r_mars + r_phaethon )
+   * Reference: Arai et al. (2018), MacLennan et al. (2021), Curtis (2013) for Near-Earth Asteroid / Geminid Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [phaethonPerihelionAU=0.140] - Phaethon perihelion distance in AU (0.10 to 0.50 AU)
+   * @param {number} [phaethonPeriapsisAltitudeKm=5.0] - Phaethon orbit insertion periapsis altitude in km (1 to 100 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, phaethonOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, phaethonContext: string}}
+   */
+  static computeMarsToPhaethonTransfer(marsParkingAltitudeKm = 300.0, phaethonPerihelionAU = 0.140, phaethonPeriapsisAltitudeKm = 5.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rPAU = Math.max(0.05, Math.min(0.80, phaethonPerihelionAU));
+    const hpPKm = Math.max(1.0, phaethonPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muPhae = 9.30e-6; // km^3/s^2
+    const rPhaeKm = 3.1; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rPDistKm = rPAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rPDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rMarsDistKm - rPDistKm) / (rMarsDistKm + rPDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTpiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Phaethon capture / rendezvous
+    const vPCircKmS = Math.sqrt(muSun / rPDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rPDistKm) - (1.0 / aKm)));
+    const vInfPKmS = Math.abs(vPCircKmS - vArrKmS);
+
+    const rpPKm = rPhaeKm + hpPKm;
+    const eCap = 0.85;
+    const aCapKm = rpPKm / (1.0 - eCap);
+
+    const vHypPKmS = Math.sqrt(Math.pow(vInfPKmS, 2.0) + ((2.0 * muPhae) / rpPKm));
+    const vCapPKmS = Math.sqrt(muPhae * ((2.0 / rpPKm) - (1.0 / aCapKm)));
+    const dvPoiKmS = vHypPKmS - vCapPKmS;
+
+    const dvTotKmS = dvTpiKmS + dvPoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTpiKmS.toFixed(3)),
+      phaethonOrbitInsertionDeltaVKmS: parseFloat(dvPoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      phaethonContext: `Mars-to-Phaethon (${tofDays.toFixed(0)} days TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, POI=${dvPoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

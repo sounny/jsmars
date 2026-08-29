@@ -9047,6 +9047,60 @@ export class BandMathEngine {
       hydrothermalVaporRegime: regime
     };
   }
+
+  /**
+   * Discriminate Sub-Greenschist Metamorphic Minerals (Al-Pumpellyite vs Fe3+-Pumpellyite vs Epidote vs Clinochlore) from CRISM 1.450 um, 1.920 um, 2.260 um, and 2.330 um absorption bands.
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Sub-Greenschist Metabasalt.
+   * @param {number} [band1450OHDepth=0.030] - BD1450 pumpellyite OH vibration depth (0.0 to 0.40)
+   * @param {number} [band1920H2ODepth=0.045] - BD1900/BD1920 structural H2O hydration depth (0.0 to 0.50)
+   * @param {number} [band2260AlOHDepth=0.055] - BD2260 Al-pumpellyite diagnostic Al-OH depth (0.0 to 0.50)
+   * @param {number} [band2330FeOHDepth=0.015] - BD2330 epidote/Fe-OH vibration depth (0.0 to 0.50)
+   * @returns {{isSubGreenschistDetected: boolean, subGreenschistMineralClass: string, mineralSpecies: string, chemicalFormula: string, metamorphicFaciesRegime: string}}
+   */
+  static computeCRISMPumpellyiteEpidoteSpeciationIndices(band1450OHDepth = 0.030, band1920H2ODepth = 0.045, band2260AlOHDepth = 0.055, band2330FeOHDepth = 0.015) {
+    const d1450 = Math.max(0.0, band1450OHDepth);
+    const d1920 = Math.max(0.0, band1920H2ODepth);
+    const d2260 = Math.max(0.0, band2260AlOHDepth);
+    const d2330 = Math.max(0.0, band2330FeOHDepth);
+
+    const isAlPumpellyite = d1450 >= 0.020 && d1920 >= 0.030 && d2260 >= 0.035;
+    const isEpidote = d2330 >= 0.030 && d1920 < 0.020;
+    const isFePumpellyite = d1920 >= 0.025 && d2330 >= 0.025 && d2260 < 0.030;
+
+    const isSubGreen = isAlPumpellyite || isEpidote || isFePumpellyite;
+
+    let pClass = 'Sub-Greenschist-Free Mafic Regolith';
+    let species = 'Basaltic Plagioclase-Pyroxene Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Basalt Flow';
+
+    if (isSubGreen) {
+      if (isAlPumpellyite) {
+        pClass = 'Hydrated Al-Rich Pumpellyite Metamorphic Facies';
+        species = 'Al-Pumpellyite (Julgoldite Precursor)';
+        formula = 'Ca4MgAl5O(Si2O7)2(SiO4)2(OH)3·2H2O';
+        regime = 'Low-Grade Burial/Hydrothermal Metamorphism of Amygdaloidal Basalt (Mawrth Vallis / Nili Deep Strata)';
+      } else if (isEpidote) {
+        pClass = 'Anhydrous Fe-Epidote Facies';
+        species = 'Epidote (Pistacite)';
+        formula = 'Ca2(Al,Fe)3(SiO4)3(OH)';
+        regime = 'Greenschist-Facies High-Temperature Metasomatism';
+      } else {
+        pClass = 'Fe3+-Pumpellyite (Julgoldite) Alteration';
+        species = 'Fe3+-Pumpellyite';
+        formula = 'Ca4Fe2+Fe3+5O(Si2O7)2(SiO4)2(OH)3·2H2O';
+        regime = 'Iron-Rich Sub-Greenschist Hydrothermal Veining';
+      }
+    }
+
+    return {
+      isSubGreenschistDetected: isSubGreen,
+      subGreenschistMineralClass: pClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metamorphicFaciesRegime: regime
+    };
+  }
 }
 
 

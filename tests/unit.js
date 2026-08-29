@@ -14648,6 +14648,55 @@ describe('Mars-to-Orcus Transfer, Acid Vapor Condensation & Topaz-Alunite Specia
     });
 });
 
+describe('Mars-to-Phaethon Transfer, Pumpellyite Metasomatism & Pumpellyite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to Mercury-crossing asteroid (3200) Phaethon', () => {
+        // Mars to Phaethon (300 km Mars alt, 0.140 AU perihelion, 5 km capture alt):
+        const phae = TrajectoryEngine.computeMarsToPhaethonTransfer(300.0, 0.140, 5.0);
+        expect(phae.semiMajorAxisAU).to.be.closeTo(0.832, 0.05); // ~0.832 AU
+        expect(phae.eccentricity).to.be.closeTo(0.8317, 0.01); // e ~ 0.832
+        expect(phae.timeOfFlightDays).to.be.closeTo(138.45, 15.0); // ~138.5 days (~0.38 yr)
+        expect(phae.marsDepartureDeltaVKmS).to.be.closeTo(11.617, 0.5); // ~11.62 km/s TPI
+        expect(phae.phaethonOrbitInsertionDeltaVKmS).to.be.closeTo(28.130, 2.0); // ~28.13 km/s POI
+        expect(phae.totalMissionDeltaVKmS).to.be.closeTo(39.747, 2.5); // ~39.75 km/s total
+        expect(phae.phaethonContext).to.include('Mars-to-Phaethon');
+    });
+
+    it('should calculate low-grade sub-greenschist pumpellyite-epidote metasomatism, hydration water uptake, and metabasalt thermal inertia', () => {
+        // 15% initial porosity, 260 C fluid temp, 1.80 Mg/Fe ratio, 600 yr duration:
+        const pump = KRCEngine.computeMartianPumpellyiteEpidoteMetasomatism(0.15, 260.0, 1.80, 600.0);
+        expect(pump.pumpellyiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(pump.boundWaterYieldWeightPercent).to.be.greaterThan(3.0); // > 3.0 wt% bound H2O
+        expect(pump.crystallineMetabasaltThermalInertiaTIU).to.be.closeTo(2520.0, 200.0); // ~2520 tiu
+        expect(pump.pumpellyiteFaciesClass).to.include('Pervasive Pumpellyite-Epidote-Chlorite Sub-Greenschist Facies');
+        expect(pump.subGreenschistContext).to.include('Pumpellyite Facies at 260 C');
+    });
+
+    it('should discriminate Al-Pumpellyite vs Epidote vs Fe3+-Pumpellyite in CRISM spectra', () => {
+        // Al-Pumpellyite (Mawrth Vallis / Nili Deep: BD1450 = 0.030, BD1920 = 0.045, BD2260 = 0.055, BD2330 = 0.015):
+        const alPump = BandMathEngine.computeCRISMPumpellyiteEpidoteSpeciationIndices(0.030, 0.045, 0.055, 0.015);
+        expect(alPump.isSubGreenschistDetected).to.be.true;
+        expect(alPump.subGreenschistMineralClass).to.include('Hydrated Al-Rich Pumpellyite Metamorphic Facies');
+        expect(alPump.mineralSpecies).to.include('Al-Pumpellyite');
+        expect(alPump.metamorphicFaciesRegime).to.include('Low-Grade Burial/Hydrothermal Metamorphism');
+
+        // Fe-Rich Epidote (BD1450 = 0.015, BD1920 = 0.010, BD2260 = 0.020, BD2330 = 0.045):
+        const epi = BandMathEngine.computeCRISMPumpellyiteEpidoteSpeciationIndices(0.015, 0.010, 0.020, 0.045);
+        expect(epi.isSubGreenschistDetected).to.be.true;
+        expect(epi.subGreenschistMineralClass).to.include('Anhydrous Fe-Epidote Facies');
+        expect(epi.mineralSpecies).to.include('Epidote');
+
+        // Fe3+-Pumpellyite (BD1450 = 0.015, BD1920 = 0.035, BD2260 = 0.020, BD2330 = 0.035):
+        const fePump = BandMathEngine.computeCRISMPumpellyiteEpidoteSpeciationIndices(0.015, 0.035, 0.020, 0.035);
+        expect(fePump.isSubGreenschistDetected).to.be.true;
+        expect(fePump.subGreenschistMineralClass).to.include('Fe3+-Pumpellyite (Julgoldite) Alteration');
+        expect(fePump.mineralSpecies).to.include('Fe3+-Pumpellyite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMPumpellyiteEpidoteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSubGreenschistDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

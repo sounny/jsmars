@@ -801,3 +801,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate hydrothermal smectite-to-illite conversion kinetics, interlayer water expulsion, and shale thermal inertia
 ?: AssertionError: expected +0 to be above 0.2
     at n.<anonymous> (unit.js:14083:49)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 08:31:07 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to Mercury-crossing asteroid (3200) Phaethon
+?: AssertionError: expected 11.617 to be close to 4.025 +/- 0.5
+    at n.<anonymous> (unit.js:14658:51)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 08:31:30 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to Mercury-crossing asteroid (3200) Phaethon
+?: AssertionError: expected 28.13 to be close to 31.84 +/- 3
+    at n.<anonymous> (unit.js:14659:60)
