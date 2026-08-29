@@ -10075,6 +10075,60 @@ export class BandMathEngine {
       alterationRegime: regime
     };
   }
+
+  /**
+   * Discriminate Deep Crustal Metamorphic Minerals (Prehnite vs Pumpellyite vs Epidote vs Chlorite) from CRISM 1.475 um, 2.280 um, 2.330 um, and 2.350 um absorption bands.
+   * Reference: Ehlmann et al. (2011), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Hydrothermal Metamorphic Minerals.
+   * @param {number} [band1475OHDepth=0.040] - BD1475 prehnite sharp OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band2280FeOHDepth=0.015] - BD2280 pumpellyite/chlorite Fe3+-OH absorption depth (0.0 to 0.50)
+   * @param {number} [band2330MgOHDepth=0.015] - BD2330 epidote/chlorite (Mg,Fe)-OH combination depth (0.0 to 0.50)
+   * @param {number} [band2350AlOHDepth=0.055] - BD2350 prehnite diagnostic sharp Al-OH combination depth (0.0 to 0.50)
+   * @returns {{isMetamorphicDetected: boolean, metamorphicMineralClass: string, mineralSpecies: string, chemicalFormula: string, metamorphicGrade: string}}
+   */
+  static computeCRISMPrehniteMetamorphicSpeciationIndices(band1475OHDepth = 0.040, band2280FeOHDepth = 0.015, band2330MgOHDepth = 0.015, band2350AlOHDepth = 0.055) {
+    const d1475 = Math.max(0.0, band1475OHDepth);
+    const d2280 = Math.max(0.0, band2280FeOHDepth);
+    const d2330 = Math.max(0.0, band2330MgOHDepth);
+    const d2350 = Math.max(0.0, band2350AlOHDepth);
+
+    const isPrehnite = d1475 >= 0.025 && d2350 >= 0.035 && d2280 < 0.025 && d2330 < 0.030;
+    const isPumpellyite = d2280 >= 0.030 && d2330 >= 0.025 && d1475 < 0.025;
+    const isEpidote = d2330 >= 0.035 && d1475 < 0.020 && d2350 < 0.025;
+
+    const isMeta = isPrehnite || isPumpellyite || isEpidote;
+
+    let mClass = 'Metamorphic-Free Primary Crust';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let grade = 'Unaltered Crustal Sequence';
+
+    if (isMeta) {
+      if (isPrehnite) {
+        mClass = 'Sub-Greenschist Prehnite Facies';
+        species = 'Prehnite';
+        formula = 'Ca2Al(AlSi3O10)(OH)2';
+        grade = 'Moderate-to-High Temperature Deep Hydrothermal Metamorphism (180-320 C, Nili Fossae / Toro / Argyre / Hellas)';
+      } else if (isPumpellyite) {
+        mClass = 'Pumpellyite Metamorphic Facies';
+        species = 'Pumpellyite';
+        formula = 'Ca2MgAl2(SiO4)(Si2O7)(OH)2·H2O';
+        grade = 'Burial Metamorphic Infilling (150-250 C)';
+      } else {
+        mClass = 'Greenschist Epidote Facies';
+        species = 'Epidote';
+        formula = 'Ca2(Al,Fe3+)3(SiO4)3(OH)';
+        grade = 'High-Temperature Hydrothermal Metasomatism (> 300 C)';
+      }
+    }
+
+    return {
+      isMetamorphicDetected: isMeta,
+      metamorphicMineralClass: mClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metamorphicGrade: grade
+    };
+  }
 }
 
 

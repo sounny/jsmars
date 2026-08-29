@@ -11342,6 +11342,81 @@ export class TrajectoryEngine {
       thetisContext: `Mars-to-Thetis (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, TOI=${dvToiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to large stony S-type asteroid (18) Melpomene and orbit capture.
+   * a = ( r_mars + r_melpomene ) / 2
+   * e = ( r_melpomene - r_mars ) / ( r_melpomene + r_mars )
+   * Reference: Carry et al. (2012), Vernazza et al. (2021), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [melpomeneDistanceAU=2.296] - Melpomene heliocentric distance in AU (1.7 to 2.8 AU)
+   * @param {number} [melpomenePeriapsisAltitudeKm=20.0] - Melpomene orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=10.13] - Orbital plane change angle in degrees (0 to 30 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, melpomeneOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, melpomeneContext: string}}
+   */
+  static computeMarsToMelpomeneTransfer(marsParkingAltitudeKm = 300.0, melpomeneDistanceAU = 2.296, melpomenePeriapsisAltitudeKm = 20.0, inclinationPlaneChangeDeg = 10.13) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rMeAU = Math.max(1.6, Math.min(3.0, melpomeneDistanceAU));
+    const hpMeKm = Math.max(5.0, melpomenePeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muMelpomene = 2.00; // km^3/s^2
+    const rMelpomeneKm = 70.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rMeDistKm = rMeAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rMeDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rMeDistKm - rMarsDistKm) / (rMeDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTmeiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Melpomene capture
+    const vMeCircKmS = Math.sqrt(muSun / rMeDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rMeDistKm) - (1.0 / aKm)));
+    const vInfMeKmS = Math.abs(vMeCircKmS - vArrKmS);
+
+    const rpMeKm = rMelpomeneKm + hpMeKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpMeKm / (1.0 - eCap);
+
+    const vHypMeKmS = Math.sqrt(Math.pow(vInfMeKmS, 2.0) + ((2.0 * muMelpomene) / rpMeKm));
+    const vCapMeKmS = Math.sqrt(muMelpomene * ((2.0 / rpMeKm) - (1.0 / aCapKm)));
+    const dvMeoiKmS = vHypMeKmS - vCapMeKmS;
+
+    const dvTotKmS = dvTmeiMarsKmS + dvMeoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTmeiMarsKmS.toFixed(3)),
+      melpomeneOrbitInsertionDeltaVKmS: parseFloat(dvMeoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      melpomeneContext: `Mars-to-Melpomene (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, MeOI=${dvMeoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

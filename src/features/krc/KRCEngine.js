@@ -10968,6 +10968,67 @@ export class KRCEngine {
       celadoniteContext: `Celadonite at ${TC.toFixed(0)} C, a(KFe)=${aKFe.toFixed(2)} (${(alphaCel * 100).toFixed(1)}% converted, ${wOHPct.toFixed(2)}% OH, TIU=${TIU.toFixed(0)}, ${mClass})`
     };
   }
+
+  /**
+   * Calculate moderate-to-high temperature sub-greenschist hydrothermal metamorphism of impact breccia into prehnite, crystalline welding, and thermal inertia.
+   * Impact Breccia + 2 Ca2+ + 2 Al3+ + 3 SiO2(aq) + 4 H2O (180-320 C) -> Prehnite (Ca2Al(AlSi3O10)(OH)2)
+   * Reference: Ehlmann et al. (2011), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Deep Crustal Metamorphic Terranes.
+   * @param {number} [initialImpactBrecciaPorosity=0.22] - Initial impact breccia/crust porosity (0.02 to 0.45)
+   * @param {number} [hydrothermalTempC=230.0] - Hydrothermal metamorphic fluid temperature in C (140 to 380 C)
+   * @param {number} [calciumAluminumActivityProduct=0.38] - Dissolved Ca-Al fluid activity product (0.01 to 0.90)
+   * @param {number} [durationYears=400.0] - Metamorphic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{prehniteConversionFraction: number, boundHydroxylYieldWeightPercent: number, dominantMetamorphicSpecies: string, induratedBrecciaThermalInertiaTIU: number, metamorphicFaciesClass: string, prehniteContext: string}}
+   */
+  static computeMartianPrehniteMetasomatism(initialImpactBrecciaPorosity = 0.22, hydrothermalTempC = 230.0, calciumAluminumActivityProduct = 0.38, durationYears = 400.0) {
+    const phi0 = Math.max(0.01, Math.min(0.50, initialImpactBrecciaPorosity));
+    const TC = Math.max(100.0, Math.min(420.0, hydrothermalTempC));
+    const aCaAl = Math.max(0.005, Math.min(1.0, calciumAluminumActivityProduct));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.40e4; // 54 kJ/mol for prehnite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.6e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aCaAl, 0.35);
+    const alphaPrh = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound hydroxyl yield (wt%)
+    const wOHPct = alphaPrh * 4.37;
+
+    // Recrystallization and crystalline matrix welding
+    const phiResidual = phi0 * (1.0 - (0.80 * alphaPrh));
+    const rhoGrain = 2900.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.75; // W/(m K)
+    const Cspec = 890.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Prehnite (Ca2Al(AlSi3O10)(OH)2)';
+    let pClass = 'Prehnite-Pumpellyite Metamorphic Facies';
+
+    if (alphaPrh >= 0.50 && TC >= 180.0 && TC <= 320.0 && aCaAl >= 0.15) {
+      species = 'Prehnite (Ca2Al(AlSi3O10)(OH)2)';
+      pClass = 'Sub-Greenschist Prehnite Facies (Nili Fossae / Toro / Argyre / Hellas)';
+    } else if (TC > 320.0) {
+      species = 'Epidote-Actinolite Greenschist Assemblage';
+      pClass = 'Greenschist Metamorphic Facies';
+    } else {
+      species = 'Zeolite-Smectite Low-Grade Precursor';
+      pClass = 'Low-Grade Zeolite Alteration Crust';
+    }
+
+    return {
+      prehniteConversionFraction: parseFloat(alphaPrh.toFixed(3)),
+      boundHydroxylYieldWeightPercent: parseFloat(wOHPct.toFixed(2)),
+      dominantMetamorphicSpecies: species,
+      induratedBrecciaThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      metamorphicFaciesClass: pClass,
+      prehniteContext: `Prehnite at ${TC.toFixed(0)} C, a(CaAl)=${aCaAl.toFixed(2)} (${(alphaPrh * 100).toFixed(1)}% converted, ${wOHPct.toFixed(2)}% OH, TIU=${TIU.toFixed(0)}, ${pClass})`
+    };
+  }
 }
 
 

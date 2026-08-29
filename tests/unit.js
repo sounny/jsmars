@@ -15584,6 +15584,56 @@ describe('Mars-to-Thetis Transfer, Celadonite Metasomatism & Green Mica Speciati
     });
 });
 
+describe('Mars-to-Melpomene Transfer, Prehnite Metasomatism & Metamorphic Mineral Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to large stony main-belt asteroid (18) Melpomene and orbit capture', () => {
+        // Mars to Melpomene (300 km Mars alt, 2.296 AU distance, 20 km capture alt, 10.13 deg plane change):
+        const mel = TrajectoryEngine.computeMarsToMelpomeneTransfer(300.0, 2.296, 20.0, 10.13);
+        expect(mel.semiMajorAxisAU).to.be.closeTo(1.910, 0.1); // ~1.91 AU
+        expect(mel.eccentricity).to.be.closeTo(0.2022, 0.01); // e ~ 0.202
+        expect(mel.timeOfFlightDays).to.be.closeTo(480.90, 30.0); // ~481 days (~1.32 yr)
+        expect(mel.timeOfFlightYears).to.be.closeTo(1.32, 0.1); // ~1.32 yr
+        expect(mel.marsDepartureDeltaVKmS).to.be.closeTo(3.448, 0.5); // ~3.45 km/s TMeI
+        expect(mel.melpomeneOrbitInsertionDeltaVKmS).to.be.closeTo(1.930, 0.5); // ~1.93 km/s MeOI
+        expect(mel.totalMissionDeltaVKmS).to.be.closeTo(5.378, 1.0); // ~5.38 km/s total
+        expect(mel.melpomeneContext).to.include('Mars-to-Melpomene');
+    });
+
+    it('should calculate moderate-to-high temperature hydrothermal metamorphism of impact breccia into prehnite and thermal inertia', () => {
+        // 22% initial porosity, 230 C hydrothermal temp, 0.38 a(CaAl), 400 yr duration:
+        const prh = KRCEngine.computeMartianPrehniteMetasomatism(0.22, 230.0, 0.38, 400.0);
+        expect(prh.prehniteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(prh.boundHydroxylYieldWeightPercent).to.be.greaterThan(2.0); // > 2 wt% OH
+        expect(prh.induratedBrecciaThermalInertiaTIU).to.be.closeTo(2618.0, 200.0); // ~2618 tiu
+        expect(prh.metamorphicFaciesClass).to.include('Sub-Greenschist Prehnite Facies');
+        expect(prh.prehniteContext).to.include('Prehnite at 230 C');
+    });
+
+    it('should discriminate Prehnite vs Pumpellyite vs Epidote in CRISM spectra', () => {
+        // Prehnite (Nili Fossae / Toro / Argyre / Hellas: BD1475 = 0.040, BD2280 = 0.015, BD2330 = 0.015, BD2350 = 0.055):
+        const prh = BandMathEngine.computeCRISMPrehniteMetamorphicSpeciationIndices(0.040, 0.015, 0.015, 0.055);
+        expect(prh.isMetamorphicDetected).to.be.true;
+        expect(prh.metamorphicMineralClass).to.include('Sub-Greenschist Prehnite Facies');
+        expect(prh.mineralSpecies).to.include('Prehnite');
+        expect(prh.metamorphicGrade).to.include('Moderate-to-High Temperature Deep Hydrothermal');
+
+        // Pumpellyite (BD1475 = 0.015, BD2280 = 0.035, BD2330 = 0.035, BD2350 = 0.020):
+        const pum = BandMathEngine.computeCRISMPrehniteMetamorphicSpeciationIndices(0.015, 0.035, 0.035, 0.020);
+        expect(pum.isMetamorphicDetected).to.be.true;
+        expect(pum.metamorphicMineralClass).to.include('Pumpellyite Metamorphic Facies');
+        expect(pum.mineralSpecies).to.include('Pumpellyite');
+
+        // Epidote (BD1475 = 0.010, BD2280 = 0.015, BD2330 = 0.045, BD2350 = 0.015):
+        const epi = BandMathEngine.computeCRISMPrehniteMetamorphicSpeciationIndices(0.010, 0.015, 0.045, 0.015);
+        expect(epi.isMetamorphicDetected).to.be.true;
+        expect(epi.metamorphicMineralClass).to.include('Greenschist Epidote Facies');
+        expect(epi.mineralSpecies).to.include('Epidote');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMPrehniteMetamorphicSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMetamorphicDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
