@@ -16041,6 +16041,56 @@ describe('Mars-to-Euterpe Transfer, Pickeringite Metasomatism & Superhydrated Al
     });
 });
 
+describe('Mars-to-Bellona Transfer, Tamarugite Metasomatism & Sodium-Alum Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to main-belt asteroid (28) Bellona and orbit capture', () => {
+        // Mars to Bellona (300 km Mars alt, 2.778 AU distance, 20 km capture alt, 9.40 deg plane change):
+        const bel = TrajectoryEngine.computeMarsToBellonaTransfer(300.0, 2.778, 20.0, 9.40);
+        expect(bel.semiMajorAxisAU).to.be.closeTo(2.151, 0.1); // ~2.15 AU
+        expect(bel.eccentricity).to.be.closeTo(0.2916, 0.01); // e ~ 0.292
+        expect(bel.timeOfFlightDays).to.be.closeTo(575.12, 30.0); // ~575 days (~1.58 yr)
+        expect(bel.timeOfFlightYears).to.be.closeTo(1.58, 0.1); // ~1.58 yr
+        expect(bel.marsDepartureDeltaVKmS).to.be.closeTo(3.798, 0.5); // ~3.80 km/s TBeI
+        expect(bel.bellonaOrbitInsertionDeltaVKmS).to.be.closeTo(2.611, 0.5); // ~2.61 km/s BeOI
+        expect(bel.totalMissionDeltaVKmS).to.be.closeTo(6.409, 1.0); // ~6.41 km/s total
+        expect(bel.bellonaContext).to.include('Mars-to-Bellona');
+    });
+
+    it('should calculate low-temperature acid alteration into tamarugite sodium-aluminum sulfate and thermal inertia', () => {
+        // 30% initial porosity, 5 C ambient temp, 0.42 sodium-alum activity product, 210 yr duration:
+        const tam = KRCEngine.computeMartianTamarugiteMetasomatism(0.30, 5.0, 0.42, 210.0);
+        expect(tam.tamarugiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(tam.boundWaterYieldWeightPercent).to.be.greaterThan(16.0); // > 16 wt% bound H2O
+        expect(tam.hexahydrateThermalInertiaTIU).to.be.closeTo(1219.6, 200.0); // ~1220 tiu
+        expect(tam.sodiumAlumFaciesClass).to.include('Acidic Evaporite Tamarugite Facies');
+        expect(tam.tamarugiteContext).to.include('Tamarugite at 5 C');
+    });
+
+    it('should discriminate Tamarugite vs Mendozite vs Pickeringite in CRISM spectra', () => {
+        // Tamarugite (Coprates / Ius / Ganges: BD1440 = 0.040, BD1780 = 0.035, BD1940 = 0.055, BD2190 = 0.035):
+        const tam = BandMathEngine.computeCRISMTamarugiteSodiumAlumSpeciationIndices(0.040, 0.035, 0.055, 0.035);
+        expect(tam.isSodiumAlumDetected).to.be.true;
+        expect(tam.sulfateMineralClass).to.include('Hexahydrated Tamarugite Sodium-Alum Facies');
+        expect(tam.mineralSpecies).to.include('Tamarugite');
+        expect(tam.alterationFacies).to.include('Acidic Plagioclase Alteration Evaporite');
+
+        // Mendozite (BD1440 = 0.040, BD1780 = 0.010, BD1940 = 0.065, BD2190 = 0.015):
+        const men = BandMathEngine.computeCRISMTamarugiteSodiumAlumSpeciationIndices(0.040, 0.010, 0.065, 0.015);
+        expect(men.isSodiumAlumDetected).to.be.true;
+        expect(men.sulfateMineralClass).to.include('Superhydrated Mendozite Sodium-Alum Facies');
+        expect(men.mineralSpecies).to.include('Mendozite');
+
+        // Pickeringite (BD1440 = 0.040, BD1780 = 0.010, BD1940 = 0.045, BD2190 = 0.035):
+        const pck = BandMathEngine.computeCRISMTamarugiteSodiumAlumSpeciationIndices(0.040, 0.010, 0.045, 0.035);
+        expect(pck.isSodiumAlumDetected).to.be.true;
+        expect(pck.sulfateMineralClass).to.include('Magnesium-Aluminum Pickeringite Alum Facies');
+        expect(pck.mineralSpecies).to.include('Pickeringite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMTamarugiteSodiumAlumSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSodiumAlumDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

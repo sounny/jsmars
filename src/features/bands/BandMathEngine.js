@@ -10561,6 +10561,60 @@ export class BandMathEngine {
       acidityEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Hexahydrated Sodium-Aluminum Sulfates (Tamarugite vs Pickeringite vs Mendozite vs Alunogen) from CRISM 1.440 um, 1.780 um, 1.940 um, and 2.190 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Sodium-Aluminum Sulfates.
+   * @param {number} [band1440H2ODepth=0.040] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1780SO4Depth=0.035] - BD1780 tamarugite diagnostic sharp sulfate combination depth (0.0 to 0.50)
+   * @param {number} [band1940H2ODepth=0.055] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2190AlOHDepth=0.035] - BD2190 aluminum-hydroxyl combination vibrational depth (0.0 to 0.50)
+   * @returns {{isSodiumAlumDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, alterationFacies: string}}
+   */
+  static computeCRISMTamarugiteSodiumAlumSpeciationIndices(band1440H2ODepth = 0.040, band1780SO4Depth = 0.035, band1940H2ODepth = 0.055, band2190AlOHDepth = 0.035) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1780 = Math.max(0.0, band1780SO4Depth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2190 = Math.max(0.0, band2190AlOHDepth);
+
+    const isTamarugite = d1440 >= 0.025 && d1780 >= 0.025 && d1940 >= 0.035 && d2190 >= 0.025;
+    const isMendozite = d1440 >= 0.025 && d1940 >= 0.045 && d1780 < 0.020 && d2190 < 0.025;
+    const isPickeringite = d1440 >= 0.025 && d1940 >= 0.035 && d1780 < 0.020 && d2190 >= 0.025;
+
+    const isNaAl = isTamarugite || isMendozite || isPickeringite;
+
+    let sClass = 'Sodium-Alum-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let facies = 'Unaltered Primary Crust';
+
+    if (isNaAl) {
+      if (isTamarugite) {
+        sClass = 'Hexahydrated Tamarugite Sodium-Alum Facies';
+        species = 'Tamarugite';
+        formula = 'NaAl(SO4)2·6H2O';
+        facies = 'Acidic Plagioclase Alteration Evaporite (Coprates / Ius / Ganges)';
+      } else if (isMendozite) {
+        sClass = 'Superhydrated Mendozite Sodium-Alum Facies';
+        species = 'Mendozite';
+        formula = 'NaAl(SO4)2·11H2O';
+        facies = 'Cryogenic High-Water-Activity Sulfate Sequence';
+      } else {
+        sClass = 'Magnesium-Aluminum Pickeringite Alum Facies';
+        species = 'Pickeringite';
+        formula = 'MgAl2(SO4)4·22H2O';
+        facies = 'Acid Hydrothermal Polyhydrated Alum Outcrop';
+      }
+    }
+
+    return {
+      isSodiumAlumDetected: isNaAl,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      alterationFacies: facies
+    };
+  }
 }
 
 

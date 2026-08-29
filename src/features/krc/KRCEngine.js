@@ -11517,6 +11517,67 @@ export class KRCEngine {
       pickeringiteContext: `Pickeringite at ${TC.toFixed(0)} C, a(Alum)=${aAlum.toFixed(2)} (${(alphaPck * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${aClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature acidic alteration of plagioclase-rich basalt into tamarugite sodium-aluminum sulfate, hexahydrate crystallization, and thermal inertia.
+   * Na-Plagioclase + Na+ + Al3+ + 2 SO4(2-) + 6 H2O (-15 to 25 C) -> Tamarugite (NaAl(SO4)2·6H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Sodium-Aluminum Sulfates.
+   * @param {number} [initialPlagioclaseHostPorosity=0.30] - Initial plagioclase-rich host rock porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=5.0] - Ambient alteration temperature in C (-25 to 45 C)
+   * @param {number} [sodiumAlumActivityProduct=0.42] - Dissolved sodium-aluminum sulfate fluid activity product (0.01 to 1.0)
+   * @param {number} [durationYears=210.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{tamarugiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantSodiumSulfateSpecies: string, hexahydrateThermalInertiaTIU: number, sodiumAlumFaciesClass: string, tamarugiteContext: string}}
+   */
+  static computeMartianTamarugiteMetasomatism(initialPlagioclaseHostPorosity = 0.30, ambientTempC = 5.0, sodiumAlumActivityProduct = 0.42, durationYears = 210.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialPlagioclaseHostPorosity));
+    const TC = Math.max(-30.0, Math.min(55.0, ambientTempC));
+    const aNaAl = Math.max(0.005, Math.min(1.0, sodiumAlumActivityProduct));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.75e4; // 37.5 kJ/mol for tamarugite crystallization
+
+    // Reaction rate constant
+    const kRate = 5.1e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aNaAl, 0.40);
+    const alphaTam = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound crystal water yield (wt%)
+    const wH2OPct = alphaTam * 32.14;
+
+    // Hexahydrate crystal volume evolution and evaporitic porosity retention
+    const phiResidual = (phi0 * (1.0 - (0.34 * alphaTam))) + (0.08 * alphaTam);
+    const rhoGrain = 2040.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.85; // W/(m K)
+    const Cspec = 1000.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Tamarugite (NaAl(SO4)2·6H2O)';
+    let tClass = 'Hexahydrated Sodium-Aluminum Sulfate Facies';
+
+    if (alphaTam >= 0.50 && TC >= -15.0 && TC <= 25.0 && aNaAl >= 0.15) {
+      species = 'Tamarugite (NaAl(SO4)2·6H2O)';
+      tClass = 'Acidic Evaporite Tamarugite Facies (Coprates / Ius / Ganges)';
+    } else if (TC < -15.0) {
+      species = 'Mendozite Undecahydrate (NaAl(SO4)2·11H2O)';
+      tClass = 'Cryogenic Superhydrated Sodium-Alum Facies';
+    } else {
+      species = 'Alunogen-Thenardite Alteration Mixture';
+      tClass = 'Mixed Sulfate Evaporite Residue';
+    }
+
+    return {
+      tamarugiteConversionFraction: parseFloat(alphaTam.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantSodiumSulfateSpecies: species,
+      hexahydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      sodiumAlumFaciesClass: tClass,
+      tamarugiteContext: `Tamarugite at ${TC.toFixed(0)} C, a(NaAl)=${aNaAl.toFixed(2)} (${(alphaTam * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${tClass})`
+    };
+  }
 }
 
 

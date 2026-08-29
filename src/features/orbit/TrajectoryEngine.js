@@ -12017,6 +12017,81 @@ export class TrajectoryEngine {
       euterpeContext: `Mars-to-Euterpe (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EuOI=${dvEuoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to main-belt stony S-type asteroid (28) Bellona and orbit capture.
+   * a = ( r_mars + r_bellona ) / 2
+   * e = ( r_bellona - r_mars ) / ( r_bellona + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [bellonaDistanceAU=2.778] - Bellona heliocentric distance in AU (1.9 to 3.5 AU)
+   * @param {number} [bellonaPeriapsisAltitudeKm=20.0] - Bellona orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=9.40] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, bellonaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, bellonaContext: string}}
+   */
+  static computeMarsToBellonaTransfer(marsParkingAltitudeKm = 300.0, bellonaDistanceAU = 2.778, bellonaPeriapsisAltitudeKm = 20.0, inclinationPlaneChangeDeg = 9.40) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rBeAU = Math.max(1.8, Math.min(3.6, bellonaDistanceAU));
+    const hpBeKm = Math.max(5.0, bellonaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muBellona = 2.45; // km^3/s^2
+    const rBellonaKm = 60.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rBeDistKm = rBeAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rBeDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rBeDistKm - rMarsDistKm) / (rBeDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTbeiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Bellona capture
+    const vBeCircKmS = Math.sqrt(muSun / rBeDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rBeDistKm) - (1.0 / aKm)));
+    const vInfBeKmS = Math.abs(vBeCircKmS - vArrKmS);
+
+    const rpBeKm = rBellonaKm + hpBeKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpBeKm / (1.0 - eCap);
+
+    const vHypBeKmS = Math.sqrt(Math.pow(vInfBeKmS, 2.0) + ((2.0 * muBellona) / rpBeKm));
+    const vCapBeKmS = Math.sqrt(muBellona * ((2.0 / rpBeKm) - (1.0 / aCapKm)));
+    const dvBeoiKmS = vHypBeKmS - vCapBeKmS;
+
+    const dvTotKmS = dvTbeiMarsKmS + dvBeoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTbeiMarsKmS.toFixed(3)),
+      bellonaOrbitInsertionDeltaVKmS: parseFloat(dvBeoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      bellonaContext: `Mars-to-Bellona (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, BeOI=${dvBeoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
