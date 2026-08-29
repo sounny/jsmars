@@ -9653,6 +9653,78 @@ export class TrajectoryEngine {
       typhonContext: `Mars-to-Typhon (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, TOI=${dvToiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to hierarchical trinary Plutino/KBO system (47171) Lempo-Paha-Hiisi and orbit capture.
+   * a = ( r_mars + r_lempo ) / 2
+   * e = ( r_lempo - r_mars ) / ( r_lempo + r_mars )
+   * Reference: Benecchi et al. (2010), Mommert et al. (2012), Curtis (2013) for Trinary KBO Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [lempoDistanceAU=39.30] - Lempo heliocentric distance in AU (30.0 to 55.0 AU)
+   * @param {number} [lempoPeriapsisAltitudeKm=70.0] - Lempo orbit insertion periapsis altitude in km (20 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, lempoOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, lempoContext: string}}
+   */
+  static computeMarsToLempoTransfer(marsParkingAltitudeKm = 300.0, lempoDistanceAU = 39.30, lempoPeriapsisAltitudeKm = 70.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rLAU = Math.max(20.0, Math.min(60.0, lempoDistanceAU));
+    const hpLKm = Math.max(20.0, lempoPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muLempo = 8.50; // km^3/s^2
+    const rLempoKm = 140.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rLDistKm = rLAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rLDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rLDistKm - rMarsDistKm) / (rLDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTliKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Lempo capture
+    const vLCircKmS = Math.sqrt(muSun / rLDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rLDistKm) - (1.0 / aKm)));
+    const vInfLKmS = Math.abs(vLCircKmS - vArrKmS);
+
+    const rpLKm = rLempoKm + hpLKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpLKm / (1.0 - eCap);
+
+    const vHypLKmS = Math.sqrt(Math.pow(vInfLKmS, 2.0) + ((2.0 * muLempo) / rpLKm));
+    const vCapLKmS = Math.sqrt(muLempo * ((2.0 / rpLKm) - (1.0 / aCapKm)));
+    const dvLoiKmS = vHypLKmS - vCapLKmS;
+
+    const dvTotKmS = dvTliKmS + dvLoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTliKmS.toFixed(3)),
+      lempoOrbitInsertionDeltaVKmS: parseFloat(dvLoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      lempoContext: `Mars-to-Lempo (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, LOI=${dvLoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

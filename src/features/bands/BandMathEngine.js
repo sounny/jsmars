@@ -8831,6 +8831,60 @@ export class BandMathEngine {
       metasomaticEnvironmentContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrothermal Borosilicate Minerals (Datolite vs Danburite vs Dumortierite vs Tourmaline) from CRISM 1.490 um, 2.190 um, 2.33 um, and 2.490 um absorption bands.
+   * Reference: Gasda et al. (2017), Frydenvang et al. (2017), Viviano-Beck et al. (2014) for Martian Boron-Bearing Minerals.
+   * @param {number} [band1490OHDepth=0.030] - BD1490 datolite OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2190BOHDepth=0.045] - BD2190 datolite diagnostic B-OH vibration depth (0.0 to 0.50)
+   * @param {number} [band2330MetalOHDepth=0.010] - BD2330 tourmaline/metal-OH combination depth (0.0 to 0.50)
+   * @param {number} [band2490BOSiDepth=0.040] - BD2490 borosilicate B-O-Si combination band depth (0.0 to 0.50)
+   * @returns {{isBorosilicateDetected: boolean, borosilicateMineralClass: string, mineralSpecies: string, chemicalFormula: string, boronHydrothermalRegime: string}}
+   */
+  static computeCRISMBorosilicateSpeciationIndices(band1490OHDepth = 0.030, band2190BOHDepth = 0.045, band2330MetalOHDepth = 0.010, band2490BOSiDepth = 0.040) {
+    const d1490 = Math.max(0.0, band1490OHDepth);
+    const d2190 = Math.max(0.0, band2190BOHDepth);
+    const d2330 = Math.max(0.0, band2330MetalOHDepth);
+    const d2490 = Math.max(0.0, band2490BOSiDepth);
+
+    const isDatolite = d1490 >= 0.020 && d2190 >= 0.030 && d2490 >= 0.025;
+    const isDanburite = d2490 >= 0.030 && d1490 < 0.015 && d2190 < 0.020;
+    const isTourmaline = d2330 >= 0.030 && (d2190 >= 0.020 || d2490 >= 0.020);
+
+    const isBoro = isDatolite || isDanburite || isTourmaline;
+
+    let bClass = 'Borosilicate-Free Silicate Regolith';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Standard Boron-Depleted Primordial Crust';
+
+    if (isBoro) {
+      if (isDatolite) {
+        bClass = 'Hydrothermal Datolite Borosilicate Vein';
+        species = 'Datolite';
+        formula = 'CaBSiO4(OH)';
+        regime = 'Neutral-to-Alkaline Boron-Rich Hydrothermal Fluid / Groundwater Veining (Gale Crater / Nili Fossae)';
+      } else if (isDanburite) {
+        bClass = 'High-Temperature Danburite Skarn';
+        species = 'Danburite';
+        formula = 'CaB2Si2O8';
+        regime = 'High-Temperature Anhydrous Pyrometasomatic Boron Skarn';
+      } else {
+        bClass = 'Pneumatolytic Tourmaline / Dumortierite Assemblage';
+        species = 'Tourmaline / Dumortierite';
+        formula = 'Al7BO3(SiO4)3O3';
+        regime = 'Late-Stage Magmatic Vapor Phase Boron Metasomatism';
+      }
+    }
+
+    return {
+      isBorosilicateDetected: isBoro,
+      borosilicateMineralClass: bClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      boronHydrothermalRegime: regime
+    };
+  }
 }
 
 

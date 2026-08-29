@@ -9588,6 +9588,64 @@ export class KRCEngine {
       scapolitizationContext: `Scapolitization at ${TC.toFixed(0)} C, ${sal.toFixed(1)}% NaCl (${(alphaScap * 100).toFixed(1)}% converted, ${wClSeq.toFixed(2)}% Cl sequestered, TIU=${TIU.toFixed(0)}, ${endmember})`
     };
   }
+
+  /**
+   * Calculate hydrothermal borosilicate metasomatism of calcic basaltic/skarn crust, datolite-danburite crystallization, boron sequestration, and vein thermal inertia.
+   * Calcite + Quartz + H3BO3 (250-450 C) -> Datolite (CaBSiO4(OH)) + CO2 + H2O
+   * Reference: Gasda et al. (2017), Frydenvang et al. (2017), Viviano-Beck et al. (2014) for Martian Groundwater/Hydrothermal Boron Fixation.
+   * @param {number} [calcicBasaltPorosity=0.12] - Initial calcic basalt protolith porosity (0.01 to 0.35)
+   * @param {number} [hydrothermalTempC=320.0] - Boron-rich fluid temperature in C (150 to 550 C)
+   * @param {number} [boronActivity=1.80] - Fluid boron/H3BO3 chemical activity (0.1 to 6.0)
+   * @param {number} [durationYears=300.0] - Hydrothermal circulation duration in years (0.1 to 5000 yr)
+   * @returns {{borosilicateConversionFraction: number, sequesteredBoronOxideWeightPercent: number, dominantBorosilicateSpecies: string, borosilicateThermalInertiaTIU: number, boronMineralizationClass: string, borosilicateContext: string}}
+   */
+  static computeMartianBorosilicateMetasomatism(calcicBasaltPorosity = 0.12, hydrothermalTempC = 320.0, boronActivity = 1.80, durationYears = 300.0) {
+    const phi0 = Math.max(0.005, Math.min(0.35, calcicBasaltPorosity));
+    const TC = Math.max(100.0, Math.min(600.0, hydrothermalTempC));
+    const aB = Math.max(0.05, Math.min(10.0, boronActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.40e4; // 64 kJ/mol for borosilicate crystallization
+
+    // Reaction rate constant
+    const kRate = 3.5e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(aB);
+    const alphaBoro = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Boron oxide sequestered in veins (wt% of mineralized rock)
+    const wB2O3Pct = alphaBoro * 5.80;
+
+    // Thermal inertia of dense crystalline borosilicate vein
+    const kTherm = 2.40; // W/(m K)
+    const rhoBulk = 2720.0; // kg/m^3
+    const Cspec = 870.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Datolite (CaBSiO4(OH))';
+    let bClass = 'Incipient Boron Metasomatism';
+
+    if (TC <= 350.0 && alphaBoro >= 0.40) {
+      species = 'Datolite (CaBSiO4(OH))';
+      bClass = 'Hydrothermal Datolite-Calcite Fracture Vein Mineralization (Gale Crater / Nili Fossae)';
+    } else if (TC > 350.0 && alphaBoro >= 0.40) {
+      species = 'Danburite (CaB2Si2O8)';
+      bClass = 'High-Temperature Pyrometasomatic Danburite-Feldspar Skarn';
+    } else {
+      species = 'Dumortierite / Tourmaline Precursor';
+      bClass = 'Pneumatolytic Boron-Silicate Metasomatism';
+    }
+
+    return {
+      borosilicateConversionFraction: parseFloat(alphaBoro.toFixed(3)),
+      sequesteredBoronOxideWeightPercent: parseFloat(wB2O3Pct.toFixed(2)),
+      dominantBorosilicateSpecies: species,
+      borosilicateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      boronMineralizationClass: bClass,
+      borosilicateContext: `Borosilicate Metasomatism at ${TC.toFixed(0)} C, a_B=${aB.toFixed(1)} (${(alphaBoro * 100).toFixed(1)}% converted, ${wB2O3Pct.toFixed(2)}% B2O3, TIU=${TIU.toFixed(0)}, ${species})`
+    };
+  }
 }
 
 

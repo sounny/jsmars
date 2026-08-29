@@ -14446,6 +14446,57 @@ describe('Mars-to-Typhon Transfer, Scapolite Halogen Metasomatism & Scapolite Sp
     });
 });
 
+describe('Mars-to-Lempo Transfer, Borosilicate Metasomatism & Datolite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to hierarchical trinary Plutino/KBO system (47171) Lempo-Paha-Hiisi', () => {
+        // Mars to Lempo (300 km Mars alt, 39.30 AU distance, 70 km capture alt):
+        const lem = TrajectoryEngine.computeMarsToLempoTransfer(300.0, 39.30, 70.0);
+        expect(lem.semiMajorAxisAU).to.be.closeTo(20.412, 0.5); // ~20.41 AU
+        expect(lem.eccentricity).to.be.closeTo(0.9254, 0.01); // e ~ 0.925
+        expect(lem.timeOfFlightDays).to.be.closeTo(18269.4, 2000.0); // ~18269 days (~50.0 yr)
+        expect(lem.timeOfFlightYears).to.be.closeTo(50.02, 5.0); // ~50.0 yr
+        expect(lem.marsDepartureDeltaVKmS).to.be.closeTo(7.182, 0.6); // ~7.18 km/s TLI
+        expect(lem.lempoOrbitInsertionDeltaVKmS).to.be.closeTo(1.852, 1.5); // ~1.85 km/s LOI
+        expect(lem.totalMissionDeltaVKmS).to.be.closeTo(9.034, 2.0); // ~9.03 km/s total
+        expect(lem.lempoContext).to.include('Mars-to-Lempo');
+    });
+
+    it('should calculate hydrothermal boron metasomatism of calcic crust, datolite-danburite crystallization, and vein thermal inertia', () => {
+        // 12% initial porosity, 320 C fluid temp, 1.80 boron activity, 300 yr duration:
+        const boro = KRCEngine.computeMartianBorosilicateMetasomatism(0.12, 320.0, 1.80, 300.0);
+        expect(boro.borosilicateConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(boro.sequesteredBoronOxideWeightPercent).to.be.greaterThan(2.0); // > 2.0 wt% B2O3
+        expect(boro.dominantBorosilicateSpecies).to.include('Datolite');
+        expect(boro.borosilicateThermalInertiaTIU).to.be.closeTo(2383.9, 200.0); // ~2384 tiu
+        expect(boro.boronMineralizationClass).to.include('Hydrothermal Datolite-Calcite Fracture Vein');
+        expect(boro.borosilicateContext).to.include('Borosilicate Metasomatism at 320 C');
+    });
+
+    it('should discriminate Datolite vs Danburite vs Tourmaline in CRISM spectra', () => {
+        // Datolite (Gale Crater / Nili Fossae: BD1490 = 0.030, BD2190 = 0.045, BD2330 = 0.010, BD2490 = 0.040):
+        const dat = BandMathEngine.computeCRISMBorosilicateSpeciationIndices(0.030, 0.045, 0.010, 0.040);
+        expect(dat.isBorosilicateDetected).to.be.true;
+        expect(dat.borosilicateMineralClass).to.include('Hydrothermal Datolite Borosilicate Vein');
+        expect(dat.mineralSpecies).to.include('Datolite');
+        expect(dat.boronHydrothermalRegime).to.include('Boron-Rich Hydrothermal Fluid');
+
+        // Danburite (BD1490 = 0.010, BD2190 = 0.010, BD2330 = 0.005, BD2490 = 0.045):
+        const dan = BandMathEngine.computeCRISMBorosilicateSpeciationIndices(0.010, 0.010, 0.005, 0.045);
+        expect(dan.isBorosilicateDetected).to.be.true;
+        expect(dan.borosilicateMineralClass).to.include('High-Temperature Danburite Skarn');
+        expect(dan.mineralSpecies).to.include('Danburite');
+
+        // Tourmaline (BD1490 = 0.005, BD2190 = 0.025, BD2330 = 0.040, BD2490 = 0.030):
+        const tour = BandMathEngine.computeCRISMBorosilicateSpeciationIndices(0.005, 0.025, 0.040, 0.030);
+        expect(tour.isBorosilicateDetected).to.be.true;
+        expect(tour.borosilicateMineralClass).to.include('Pneumatolytic Tourmaline / Dumortierite');
+        expect(tour.mineralSpecies).to.include('Tourmaline');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMBorosilicateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isBorosilicateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
