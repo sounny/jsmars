@@ -10669,6 +10669,60 @@ export class BandMathEngine {
       acidityEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Hydroxyl-Bearing Sodium-Ferric Sulfates (Sideronatrite vs Ferrinatrite vs Metasideronatrite) from CRISM 1.440 um, 1.940 um, 2.220 um, and 2.450 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Hydroxyl-Bearing Sulfates.
+   * @param {number} [band1440H2ODepth=0.040] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.045] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2220FeOHDepth=0.040] - BD2220 sideronatrite diagnostic ferric iron-hydroxyl combination depth (0.0 to 0.50)
+   * @param {number} [band2450SO4Depth=0.035] - BD2450 sulfate combination vibrational overtone depth (0.0 to 0.50)
+   * @returns {{isHydroxylSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, depositionalFacies: string}}
+   */
+  static computeCRISMSideronatriteSodiumFerricSpeciationIndices(band1440H2ODepth = 0.040, band1940H2ODepth = 0.045, band2220FeOHDepth = 0.040, band2450SO4Depth = 0.035) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2220 = Math.max(0.0, band2220FeOHDepth);
+    const d2450 = Math.max(0.0, band2450SO4Depth);
+
+    const isSideronatrite = d1440 >= 0.025 && d1940 >= 0.030 && d2220 >= 0.025 && d2450 >= 0.025;
+    const isMetasideronatrite = d2220 >= 0.025 && d2450 >= 0.025 && d1940 < 0.025;
+    const isFerrinatrite = d1440 >= 0.025 && d1940 >= 0.030 && d2220 < 0.020 && d2450 < 0.020;
+
+    const isHydSO4 = isSideronatrite || isMetasideronatrite || isFerrinatrite;
+
+    let sClass = 'Hydroxyl-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let facies = 'Unaltered Primary Crust';
+
+    if (isHydSO4) {
+      if (isSideronatrite) {
+        sClass = 'Fibrous Sideronatrite Hydroxyl-Sulfate Facies';
+        species = 'Sideronatrite';
+        formula = 'Na2Fe(SO4)2(OH)·3H2O';
+        facies = 'Alkaline-Neutral Sodium-Ferric Sulfate Evaporite (Candor / Ophir / Juventae)';
+      } else if (isMetasideronatrite) {
+        sClass = 'Dehydrated Metasideronatrite Monohydrate Facies';
+        species = 'Metasideronatrite';
+        formula = 'Na2Fe(SO4)2(OH)·H2O';
+        facies = 'Desiccated Secondary Hydroxyl-Sulfate Residue';
+      } else {
+        sClass = 'Trihydrated Ferrinatrite Neutral Sulfate Facies';
+        species = 'Ferrinatrite';
+        formula = 'Na3Fe(SO4)3·3H2O';
+        facies = 'Hyper-Saline Anhydrous-Associated Sulfate Matrix';
+      }
+    }
+
+    return {
+      isHydroxylSulfateDetected: isHydSO4,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      depositionalFacies: facies
+    };
+  }
 }
 
 

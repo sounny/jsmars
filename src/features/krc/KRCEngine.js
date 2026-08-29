@@ -11639,6 +11639,67 @@ export class KRCEngine {
       ferrinatriteContext: `Ferrinatrite at ${TC.toFixed(0)} C, a(NaFe)=${aNaFe.toFixed(2)} (${(alphaFrn * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${fClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature alkaline-to-neutral evaporitic alteration into sideronatrite hydroxyl-sulfate, fibrous crystallization, and thermal inertia.
+   * Host + 2 Na+ + Fe3+ + 2 SO4(2-) + OH- + 3 H2O (-10 to 30 C) -> Sideronatrite (Na2Fe(SO4)2(OH)·3H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Hydroxyl-Bearing Sulfates.
+   * @param {number} [initialHostRegolithPorosity=0.30] - Initial basaltic regolith porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=12.0] - Ambient alteration temperature in C (-20 to 50 C)
+   * @param {number} [sodiumFerricHydroxyFluidActivity=0.35] - Dissolved sodium-ferric hydroxy-sulfate activity product (0.01 to 1.0)
+   * @param {number} [durationYears=175.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{sideronatriteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantHydroxylSulfatePhase: string, fibrousHydrateThermalInertiaTIU: number, hydroxylSulfateFaciesClass: string, sideronatriteContext: string}}
+   */
+  static computeMartianSideronatriteMetasomatism(initialHostRegolithPorosity = 0.30, ambientTempC = 12.0, sodiumFerricHydroxyFluidActivity = 0.35, durationYears = 175.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialHostRegolithPorosity));
+    const TC = Math.max(-25.0, Math.min(60.0, ambientTempC));
+    const aNaFeOH = Math.max(0.005, Math.min(1.0, sodiumFerricHydroxyFluidActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.85e4; // 38.5 kJ/mol for sideronatrite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.9e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aNaFeOH, 0.40);
+    const alphaSid = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural water and hydroxyl yield (wt%)
+    const wH2OPct = alphaSid * 17.58;
+
+    // Fibrous crystal growth and matrix porosity evolution
+    const phiResidual = (phi0 * (1.0 - (0.33 * alphaSid))) + (0.07 * alphaSid);
+    const rhoGrain = 2360.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.05; // W/(m K)
+    const Cspec = 960.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Sideronatrite (Na2Fe(SO4)2(OH)·3H2O)';
+    let sClass = 'Hydroxyl-Bearing Sodium-Ferric Sulfate Facies';
+
+    if (alphaSid >= 0.50 && TC >= -10.0 && TC <= 30.0 && aNaFeOH >= 0.15) {
+      species = 'Sideronatrite (Na2Fe(SO4)2(OH)·3H2O)';
+      sClass = 'Fibrous Sideronatrite Facies (Candor / Ophir / Juventae)';
+    } else if (TC > 30.0) {
+      species = 'Metasideronatrite Dehydration Phase (Na2Fe(SO4)2(OH)·H2O)';
+      sClass = 'Partially Dehydrated Hydroxyl-Sulfate Facies';
+    } else {
+      species = 'Natrojarosite-Ferrinatrite Composite';
+      sClass = 'Mixed Alkaline-Acid Sulfate Transition';
+    }
+
+    return {
+      sideronatriteConversionFraction: parseFloat(alphaSid.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantHydroxylSulfatePhase: species,
+      fibrousHydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      hydroxylSulfateFaciesClass: sClass,
+      sideronatriteContext: `Sideronatrite at ${TC.toFixed(0)} C, a(NaFeOH)=${aNaFeOH.toFixed(2)} (${(alphaSid * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

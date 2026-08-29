@@ -16141,6 +16141,56 @@ describe('Mars-to-Amphitrite Transfer, Ferrinatrite Metasomatism & Sodium-Ferric
     });
 });
 
+describe('Mars-to-Urania Transfer, Sideronatrite Metasomatism & Hydroxyl-Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to main-belt asteroid (30) Urania and orbit capture', () => {
+        // Mars to Urania (300 km Mars alt, 2.366 AU distance, 15 km capture alt, 2.10 deg plane change):
+        const ur = TrajectoryEngine.computeMarsToUraniaTransfer(300.0, 2.366, 15.0, 2.10);
+        expect(ur.semiMajorAxisAU).to.be.closeTo(1.945, 0.1); // ~1.94 AU
+        expect(ur.eccentricity).to.be.closeTo(0.2166, 0.01); // e ~ 0.217
+        expect(ur.timeOfFlightDays).to.be.closeTo(494.52, 30.0); // ~495 days (~1.35 yr)
+        expect(ur.timeOfFlightYears).to.be.closeTo(1.35, 0.1); // ~1.35 yr
+        expect(ur.marsDepartureDeltaVKmS).to.be.closeTo(2.012, 0.5); // ~2.01 km/s TUrI
+        expect(ur.uraniaOrbitInsertionDeltaVKmS).to.be.closeTo(2.095, 0.5); // ~2.10 km/s UrOI
+        expect(ur.totalMissionDeltaVKmS).to.be.closeTo(4.107, 1.0); // ~4.11 km/s total
+        expect(ur.uraniaContext).to.include('Mars-to-Urania');
+    });
+
+    it('should calculate low-temperature alkaline-to-neutral alteration into sideronatrite hydroxyl-sulfate and thermal inertia', () => {
+        // 30% initial porosity, 12 C ambient temp, 0.35 sodium-ferric-hydroxy activity product, 175 yr duration:
+        const sid = KRCEngine.computeMartianSideronatriteMetasomatism(0.30, 12.0, 0.35, 175.0);
+        expect(sid.sideronatriteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(sid.boundWaterYieldWeightPercent).to.be.greaterThan(8.5); // > 8.5 wt% bound H2O+OH
+        expect(sid.fibrousHydrateThermalInertiaTIU).to.be.closeTo(1413.4, 200.0); // ~1413 tiu
+        expect(sid.hydroxylSulfateFaciesClass).to.include('Fibrous Sideronatrite Facies');
+        expect(sid.sideronatriteContext).to.include('Sideronatrite at 12 C');
+    });
+
+    it('should discriminate Sideronatrite vs Metasideronatrite vs Ferrinatrite in CRISM spectra', () => {
+        // Sideronatrite (Candor / Ophir / Juventae: BD1440 = 0.040, BD1940 = 0.045, BD2220 = 0.040, BD2450 = 0.035):
+        const sid = BandMathEngine.computeCRISMSideronatriteSodiumFerricSpeciationIndices(0.040, 0.045, 0.040, 0.035);
+        expect(sid.isHydroxylSulfateDetected).to.be.true;
+        expect(sid.sulfateMineralClass).to.include('Fibrous Sideronatrite Hydroxyl-Sulfate Facies');
+        expect(sid.mineralSpecies).to.include('Sideronatrite');
+        expect(sid.depositionalFacies).to.include('Alkaline-Neutral Sodium-Ferric Sulfate Evaporite');
+
+        // Metasideronatrite (BD1440 = 0.020, BD1940 = 0.015, BD2220 = 0.040, BD2450 = 0.035):
+        const meta = BandMathEngine.computeCRISMSideronatriteSodiumFerricSpeciationIndices(0.020, 0.015, 0.040, 0.035);
+        expect(meta.isHydroxylSulfateDetected).to.be.true;
+        expect(meta.sulfateMineralClass).to.include('Dehydrated Metasideronatrite Monohydrate Facies');
+        expect(meta.mineralSpecies).to.include('Metasideronatrite');
+
+        // Ferrinatrite (BD1440 = 0.040, BD1940 = 0.045, BD2220 = 0.010, BD2450 = 0.010):
+        const frn = BandMathEngine.computeCRISMSideronatriteSodiumFerricSpeciationIndices(0.040, 0.045, 0.010, 0.010);
+        expect(frn.isHydroxylSulfateDetected).to.be.true;
+        expect(frn.sulfateMineralClass).to.include('Trihydrated Ferrinatrite Neutral Sulfate Facies');
+        expect(frn.mineralSpecies).to.include('Ferrinatrite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMSideronatriteSodiumFerricSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isHydroxylSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {
