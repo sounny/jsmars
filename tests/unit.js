@@ -8112,6 +8112,13 @@ describe('PWA Manifest, PWAManager & MobileSheet Architecture', () => {
         expect(has192).to.be.true;
         expect(has512).to.be.true;
         expect(hasMaskable).to.be.true;
+
+        // Verify modern and legacy mobile web app capable meta tags in index.html
+        const indexHtmlRes = await fetch('../index.html');
+        expect(indexHtmlRes.status).to.equal(200);
+        const indexHtml = await indexHtmlRes.text();
+        expect(indexHtml).to.include('<meta name="mobile-web-app-capable" content="yes">');
+        expect(indexHtml).to.include('<meta name="apple-mobile-web-app-capable" content="yes">');
     });
 
     it('should test PWAManager lifecycle state and offline network indicators', () => {
