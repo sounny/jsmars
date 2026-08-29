@@ -13135,6 +13135,51 @@ describe('Mars-to-Pluto Kuiper Belt Transfer, Clay Illitization & Illite-Smectit
     });
 });
 
+describe('Mars-to-Arrokoth KBO Flyby, Acid-Sulfate Jarosite & Alunite Speciation', () => {
+    it('should calculate interplanetary Hohmann transfer from Mars to Kuiper Belt contact binary 486958 Arrokoth and flyby speed', () => {
+        // Mars to Arrokoth (1.52 to 44.58 AU, 300 km Mars alt):
+        const arrokoth = TrajectoryEngine.computeMarsToArrokothDirectTransfer(300.0);
+        expect(arrokoth.transferTimeDays).to.be.closeTo(20213.5, 100.0); // ~20214 days
+        expect(arrokoth.transferTimeYears).to.be.closeTo(55.341, 0.5); // ~55.3 yr
+        expect(arrokoth.marsDepartureDeltaVKmS).to.be.closeTo(7.987, 1.0); // ~7.99 km/s TKI
+        expect(arrokoth.arrokothFlybyVelocityKmS).to.be.closeTo(3.284, 0.5); // ~3.28 km/s flyby
+        expect(arrokoth.transferEccentricity).to.be.closeTo(0.9339, 0.02); // e ~ 0.934
+        expect(arrokoth.arrokothTransferContext).to.include('Mars-to-Arrokoth Flyby');
+    });
+
+    it('should calculate hyper-acidic groundwater jarosite precipitation kinetics and evaporite thermal inertia', () => {
+        // pH 2.0, 0.50 M SO4 2-, 0.10 M Fe3+, 15 C:
+        const jarosite = KRCEngine.computeMartianJarositePrecipitationKinetics(2.00, 0.50, 0.10, 15.0);
+        expect(jarosite.jarositeWeightPercent).to.be.closeTo(25.0, 3.0); // ~25 wt% jarosite
+        expect(jarosite.polyhydratedSulfateWeightPercent).to.be.closeTo(41.25, 4.0); // ~41 wt% polyhydrated sulfate
+        expect(jarosite.hematiteWeightPercent).to.be.closeTo(11.25, 3.0); // ~11 wt% hematite
+        expect(jarosite.evaporiteThermalInertiaTIU).to.be.closeTo(487.7, 50.0); // ~488 tiu porous sulfate sandstone
+        expect(jarosite.acidSulfateFaciesClass).to.include('Hyper-Acidic Jarosite-Rich Evaporite Sandstone');
+        expect(jarosite.jarositeParagenesisContext).to.include('Acid-Sulfate');
+    });
+
+    it('should discriminate Iron Jarosite vs Aluminium Alunite Hydroxysulfates in CRISM spectra', () => {
+        // Jarosite (Meridiani Planum Burns Formation: BD430 = 0.04, BD1475 = 0.05, BD1850 = 0.04, BD2165 = 0.01, BD2265 = 0.06):
+        const jarosite = BandMathEngine.computeCRISMJarositeAluniteSpeciationIndices(0.04, 0.05, 0.04, 0.01, 0.06);
+        expect(jarosite.isHydroxysulfateDetected).to.be.true;
+        expect(jarosite.hydroxysulfateClass).to.include('Iron Hydroxysulfate (Jarosite)');
+        expect(jarosite.mineralSpecies).to.include('Jarosite');
+        expect(jarosite.chemicalFormula).to.include('KFe3(SO4)2(OH)6');
+        expect(jarosite.acidHydrothermalContext).to.include('Hyper-Acidic (pH < 3.0)');
+
+        // Alunite (Columbia Hills / Terra Sirenum: BD430 = 0.01, BD1475 = 0.05, BD1850 = 0.02, BD2165 = 0.05, BD2265 = 0.01):
+        const alunite = BandMathEngine.computeCRISMJarositeAluniteSpeciationIndices(0.01, 0.05, 0.02, 0.05, 0.01);
+        expect(alunite.isHydroxysulfateDetected).to.be.true;
+        expect(alunite.hydroxysulfateClass).to.include('Aluminium Hydroxysulfate (Alunite)');
+        expect(alunite.mineralSpecies).to.include('Alunite');
+        expect(alunite.chemicalFormula).to.include('KAl3(SO4)2(OH)6');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMJarositeAluniteSpeciationIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isHydroxysulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

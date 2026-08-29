@@ -8056,6 +8056,72 @@ export class KRCEngine {
       diageneticGeothermometerContext: `Illite Diagenesis at ${zKm.toFixed(1)}km (${TburialC.toFixed(0)} C, ${illitePct.toFixed(0)}% Illite, ${orderClass})`
     };
   }
+
+  /**
+   * Calculate hyper-acidic groundwater jarosite (KFe3(SO4)2(OH)6) precipitation kinetics, evaporite mass fractions, and sulfate sandstone thermal inertia.
+   * IAP = [K+] * [Fe3+]^3 * [SO4 2-]^2 * [OH-]^6
+   * Omega = IAP / K_sp
+   * w_jarosite = 0.10 + 0.05 * ln( Omega / 100 )
+   * Reference: Klingelhofer et al. (2004), Squyres et al. (2004), Madden et al. (2004), Papike et al. (2006) for Meridiani Burns Formation.
+   * @param {number} [fluidPH=2.00] - Groundwater brine pH (0.5 to 5.0)
+   * @param {number} [sulfateConcentrationMol=0.50] - SO4 2- molar concentration in mol/L (0.01 to 2.0 mol/L)
+   * @param {number} [ferricIronConcentrationMol=0.10] - Fe3+ molar concentration in mol/L (0.001 to 1.0 mol/L)
+   * @param {number} [fluidTempC=15.0] - Groundwater emergence temperature in C (0 to 60 C)
+   * @returns {{jarositeSaturationState: number, jarositeWeightPercent: number, polyhydratedSulfateWeightPercent: number, hematiteWeightPercent: number, evaporiteThermalInertiaTIU: number, acidSulfateFaciesClass: string, jarositeParagenesisContext: string}}
+   */
+  static computeMartianJarositePrecipitationKinetics(fluidPH = 2.00, sulfateConcentrationMol = 0.50, ferricIronConcentrationMol = 0.10, fluidTempC = 15.0) {
+    const pH = Math.max(0.5, Math.min(6.0, fluidPH));
+    const SO4Mol = Math.max(0.005, sulfateConcentrationMol);
+    const Fe3Mol = Math.max(0.0005, ferricIronConcentrationMol);
+    const TC = Math.max(0.0, fluidTempC);
+
+    const KMol = 0.020; // 0.020 M K+
+    const OHMol = Math.pow(10.0, -(14.0 - pH));
+
+    // Ion activity product
+    const IAP = KMol * Math.pow(Fe3Mol, 3.0) * Math.pow(SO4Mol, 2.0) * Math.pow(OHMol, 6.0);
+    const Ksp = 1.0e-98; // Nominal solubility product
+    const Omega = Math.max(1.0, IAP / Ksp);
+
+    // Jarosite mass fraction in evaporite matrix
+    let wJarosite = 0.05;
+    if (pH <= 3.5) {
+      wJarosite = Math.max(0.10, Math.min(0.45, 0.25 - (0.04 * (pH - 2.0))));
+    } else {
+      wJarosite = 0.02; // Jarosite hydrolyzes to goethite/hematite at pH > 3.5
+    }
+    const wJarositePct = wJarosite * 100.0;
+
+    // Associated evaporite minerals (Burns Formation model)
+    const wPolySulfatePct = (1.0 - wJarosite) * 55.0;
+    const wHematitePct = (1.0 - wJarosite) * 15.0;
+    const wSilicatePct = 100.0 - wJarositePct - wPolySulfatePct - wHematitePct;
+
+    // Thermal inertia of porous sulfate sandstone
+    const rhoGrain = (wJarosite * 3150.0) + ((wPolySulfatePct / 100.0) * 2320.0) + ((wHematitePct / 100.0) * 5260.0) + ((wSilicatePct / 100.0) * 2650.0);
+    const phi = 0.30; // 30% porosity
+    const rhoBulk = rhoGrain * (1.0 - phi);
+    const kTherm = 0.15; // W/(m K)
+    const Cspec = 780.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let faciesClass = 'Neutral Hydrated Sulfate Playa';
+    if (pH <= 2.5 && wJarositePct >= 20.0) {
+      faciesClass = 'Hyper-Acidic Jarosite-Rich Evaporite Sandstone (Meridiani Planum Burns Formation / Noctis Labyrinthus)';
+    } else if (pH <= 3.5) {
+      faciesClass = 'Acid-Sulfate Groundwater Leached Bedrock';
+    }
+
+    return {
+      jarositeSaturationState: parseFloat(Omega.toExponential(2)),
+      jarositeWeightPercent: parseFloat(wJarositePct.toFixed(1)),
+      polyhydratedSulfateWeightPercent: parseFloat(wPolySulfatePct.toFixed(1)),
+      hematiteWeightPercent: parseFloat(wHematitePct.toFixed(1)),
+      evaporiteThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      acidSulfateFaciesClass: faciesClass,
+      jarositeParagenesisContext: `Acid-Sulfate pH ${pH.toFixed(1)} (${wJarositePct.toFixed(0)}% Jarosite, ${wPolySulfatePct.toFixed(0)}% Sulfate, TIU=${TIU.toFixed(0)}, ${faciesClass})`
+    };
+  }
 }
 
 

@@ -614,3 +614,10 @@ TEST FAILURE: Unit test suite failed (2 failures):
 - should calculate burial diagenetic smectite illitization kinetics and geothermometry
 ?: AssertionError: expected 'R3 Highly Ordered Illite / Sericite (?' to include 'Ordered Illite/Smectite'
     at n.<anonymous> (unit.js:13114:51)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 01:00:43 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary Hohmann transfer from Mars to Kuiper Belt contact binary 486958 Arrokoth and flyby speed
+?: AssertionError: expected 20213.5 to be close to 19992.5 +/- 200
+    at n.<anonymous> (unit.js:13142:49)

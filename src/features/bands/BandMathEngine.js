@@ -7475,6 +7475,52 @@ export class BandMathEngine {
       burialDiageneticContext: context
     };
   }
+
+  /**
+   * Discriminate Iron Hydroxysulfate (Jarosite) vs Aluminium Hydroxysulfate (Alunite) from CRISM 0.43 um, 1.48 um, 1.85 um, 2.165 um, and 2.265 um absorption bands.
+   * Reference: Cross et al. (2011), Swayze et al. (2014), Viviano-Beck et al. (2014) for Acid-Sulfate Minerals.
+   * @param {number} [band430Fe3PlusDepth=0.04] - BD430 Fe3+ charge transfer depth (0.0 to 0.40)
+   * @param {number} [band1475OHDepth=0.05] - BD1475 OH combination overtone depth (0.0 to 0.40)
+   * @param {number} [band1850OHDepth=0.04] - BD1850 molecular H2O/OH combination depth (0.0 to 0.40)
+   * @param {number} [band2165AlOHDepth=0.01] - BD2165 Alunite Al-OH fundamental vibration depth (0.0 to 0.40)
+   * @param {number} [band2265FeOHDepth=0.06] - BD2265 Jarosite Fe3+-OH fundamental vibration depth (0.0 to 0.40)
+   * @returns {{isHydroxysulfateDetected: boolean, hydroxysulfateClass: string, mineralSpecies: string, chemicalFormula: string, acidHydrothermalContext: string}}
+   */
+  static computeCRISMJarositeAluniteSpeciationIndices(band430Fe3PlusDepth = 0.04, band1475OHDepth = 0.05, band1850OHDepth = 0.04, band2165AlOHDepth = 0.01, band2265FeOHDepth = 0.06) {
+    const d430 = Math.max(0.0, band430Fe3PlusDepth);
+    const d1475 = Math.max(0.0, band1475OHDepth);
+    const d1850 = Math.max(0.0, band1850OHDepth);
+    const d2165 = Math.max(0.0, band2165AlOHDepth);
+    const d2265 = Math.max(0.0, band2265FeOHDepth);
+
+    const isJarosite = d2265 >= 0.035 && (d1475 >= 0.025 || d1850 >= 0.025);
+    const isAlunite = d2165 >= 0.035 && d1475 >= 0.025 && d2265 < 0.025;
+
+    let sulfateClass = 'Unaltered Basalt / Neutral Sulfate';
+    let species = 'Basaltic Plagioclase / Polyhydrated Sulfate';
+    let formula = 'Silicate / Mg-Sulfate';
+    let context = 'Standard Basaltic or Neutral Sulfate Crust';
+
+    if (isJarosite) {
+      sulfateClass = 'Iron Hydroxysulfate (Jarosite)';
+      species = 'Jarosite';
+      formula = 'KFe3(SO4)2(OH)6';
+      context = 'Hyper-Acidic (pH < 3.0) Oxidative Groundwater Evaporation / Epithermal Fumarolic Alteration (Meridiani Burns Formation / Noctis Labyrinthus)';
+    } else if (isAlunite) {
+      sulfateClass = 'Aluminium Hydroxysulfate (Alunite)';
+      species = 'Alunite';
+      formula = 'KAl3(SO4)2(OH)6';
+      context = 'High-Temperature Acid-Sulfate Hydrothermal Fumarole / Advanced Argillic Volcanic Epithermal System (Columbia Hills / Terra Sirenum)';
+    }
+
+    return {
+      isHydroxysulfateDetected: isJarosite || isAlunite,
+      hydroxysulfateClass: sulfateClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      acidHydrothermalContext: context
+    };
+  }
 }
 
 
