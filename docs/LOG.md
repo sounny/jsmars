@@ -557,3 +557,23 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary Hohmann transfer from Mars to ringed planet Saturn and orbit insertion
 ?: AssertionError: expected 5.564 to be close to 6.141 +/- 0.2
     at n.<anonymous> (unit.js:12954:53)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 00:15:55 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate interplanetary Hohmann transfer from Mars to ice giant planet Uranus and orbit insertion
+?: AssertionError: expected 6087.7 to be close to 5928.7 +/- 50
+    at n.<anonymous> (unit.js:13002:47)
+- should calculate subsurface Methane Clathrate Hydrate Stability Zone (MHSZ) depth extent and gas storage capacity
+?: AssertionError: expected 4363 to be close to 3500 +/- 200
+    at n.<anonymous> (unit.js:13016:48)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 00:16:06 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate interplanetary Hohmann transfer from Mars to ice giant planet Uranus and orbit insertion
+?: AssertionError: expected 6.552 to be close to 6.99 +/- 0.2
+    at n.<anonymous> (unit.js:13004:53)
+- should calculate subsurface Methane Clathrate Hydrate Stability Zone (MHSZ) depth extent and gas storage capacity
+?: AssertionError: expected 302.3 to be close to 285 +/- 5
+    at n.<anonymous> (unit.js:13018:64)

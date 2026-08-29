@@ -7880,6 +7880,69 @@ export class KRCEngine {
       clayCarbonateContext: `Alkaline Spring pH ${pH.toFixed(1)} (${wCarbPct.toFixed(0)}% Carbonate, ${wClayPct.toFixed(0)}% Saponite, TIU=${TIU.toFixed(0)}, ${springClass})`
     };
   }
+
+  /**
+   * Calculate subsurface Methane Clathrate Hydrate (CH4 * 5.75 H2O) Stability Zone (MHSZ) depth extent, dissociation boundary, and storage capacity in Martian cryosphere.
+   * T(z) = T_surf + Gamma_geo * z
+   * T_diss(P) = T_0 + A * ln( P / P_ref ) - Delta_T_salinity
+   * Reference: Max & Clifford (2000), Chastain & Chevrier (2007), Gainey & Elwood Madden (2012) for Martian Clathrate Stability.
+   * @param {number} [surfaceTemperatureK=215.0] - Mean surface temperature in K (150 to 240 K)
+   * @param {number} [geothermalGradientKPerKm=20.0] - Geothermal gradient in K/km (10 to 50 K/km)
+   * @param {number} [poreWaterSalinityGPerKg=0.0] - Pore water salinity in g/kg (0 to 100 g/kg)
+   * @param {number} [regolithPorosity=0.25] - Cryosphere regolith porosity (0.05 to 0.50)
+   * @returns {{mhszTopDepthM: number, mhszBaseDepthM: number, mhszThicknessM: number, dissociationTemperatureAtBaseK: number, volumetricGasStorageM3STPPerM2: number, clathrateStabilityClass: string, clathrateContext: string}}
+   */
+  static computeMartianMethaneClathrateHydrateStabilityZone(surfaceTemperatureK = 215.0, geothermalGradientKPerKm = 20.0, poreWaterSalinityGPerKg = 0.0, regolithPorosity = 0.25) {
+    const TsurfK = Math.max(130.0, Math.min(250.0, surfaceTemperatureK));
+    const gammaGeo = Math.max(5.0, geothermalGradientKPerKm);
+    const Sppt = Math.max(0.0, Math.min(200.0, poreWaterSalinityGPerKg));
+    const phi = Math.max(0.02, Math.min(0.60, regolithPorosity));
+
+    const gammaGeoKm = gammaGeo / 1000.0; // K/m
+
+    // Salinity depression of dissociation temperature
+    const deltaTsal = 0.58 * (Sppt / 10.0);
+
+    // Top depth where cryosphere ice/gas sealing allows clathrate stability
+    const zTopM = 15.0;
+
+    // Numerical / Analytical solve for base depth where T(z) = T_diss(P(z))
+    // P(z) = 0.006 + 0.0558 * z (bar)
+    // T_diss(P) = 271.85 + 13.5 * ln( P / 25.6 ) - deltaTsal
+    let zBaseM = 3000.0;
+    for (let iter = 0; iter < 10; iter++) {
+      const Pbar = Math.max(1.0, 0.006 + (0.0558 * zBaseM));
+      const TdissK = 271.85 + (13.5 * Math.log(Pbar / 25.6)) - deltaTsal;
+      zBaseM = (TdissK - TsurfK) / gammaGeoKm;
+    }
+    zBaseM = Math.max(zTopM + 100.0, zBaseM);
+
+    const thicknessM = zBaseM - zTopM;
+    const PbaseBar = 0.006 + (0.0558 * zBaseM);
+    const TdissBaseK = 271.85 + (13.5 * Math.log(PbaseBar / 25.6)) - deltaTsal;
+
+    // Volumetric STP methane storage per m^2 column
+    const hydrateSaturation = 0.40; // 40% pore volume filled with hydrate
+    const stpYieldM3PerM3 = 164.0;
+    const stpM3M2 = stpYieldM3PerM3 * phi * hydrateSaturation * thicknessM;
+
+    let stabilityClass = 'Deep Stable Cryospheric Methane Clathrate Reservoir';
+    if (thicknessM >= 3000.0) {
+      stabilityClass = 'Vast Subsurface Polar/Equatorial Cryosphere Clathrate Hydrate Shield';
+    } else if (thicknessM < 1000.0) {
+      stabilityClass = 'Thin Marginal Clathrate Stability Horizon (Vulnerable to Thermal Plumes)';
+    }
+
+    return {
+      mhszTopDepthM: parseFloat(zTopM.toFixed(1)),
+      mhszBaseDepthM: parseFloat(zBaseM.toFixed(0)),
+      mhszThicknessM: parseFloat(thicknessM.toFixed(0)),
+      dissociationTemperatureAtBaseK: parseFloat(TdissBaseK.toFixed(1)),
+      volumetricGasStorageM3STPPerM2: parseFloat(stpM3M2.toFixed(0)),
+      clathrateStabilityClass: stabilityClass,
+      clathrateContext: `MHSZ (${zTopM.toFixed(0)}m to ${zBaseM.toFixed(0)}m Depth, ${thicknessM.toFixed(0)}m Thick, ${stpM3M2.toExponential(2)} m3 STP/m2 CH4)`
+    };
+  }
 }
 
 

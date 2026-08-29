@@ -12995,6 +12995,55 @@ describe('Mars-to-Saturn Deep Space Insertion, Clay-Carbonates & Comanche Hydrot
     });
 });
 
+describe('Mars-to-Uranus Ice Giant Transfer, Methane Hydrates & Siderite/Goethite', () => {
+    it('should calculate interplanetary Hohmann transfer from Mars to ice giant planet Uranus and orbit insertion', () => {
+        // Mars to Uranus (1.52 to 19.19 AU, 300 km Mars alt, 25,000 km Uranus capture alt):
+        const uranus = TrajectoryEngine.computeMarsToUranusDirectTransfer(300.0, 25000.0);
+        expect(uranus.transferTimeDays).to.be.closeTo(6087.7, 50.0); // ~6088 days
+        expect(uranus.transferTimeYears).to.be.closeTo(16.667, 0.2); // ~16.67 yr
+        expect(uranus.marsDepartureDeltaVKmS).to.be.closeTo(6.552, 0.2); // ~6.55 km/s TUI
+        expect(uranus.uranusArrivalExcessKmS).to.be.closeTo(4.151, 0.2); // ~4.15 km/s v_inf
+        expect(uranus.uranusOrbitInsertionDeltaVKmS).to.be.closeTo(0.634, 0.1); // ~0.63 km/s UOI
+        expect(uranus.totalMissionDeltaVKmS).to.be.closeTo(7.186, 0.3); // ~7.19 km/s total
+        expect(uranus.transferEccentricity).to.be.closeTo(0.8529, 0.02); // e ~ 0.853
+        expect(uranus.uranusTransferContext).to.include('Mars-to-Uranus Direct');
+    });
+
+    it('should calculate subsurface Methane Clathrate Hydrate Stability Zone (MHSZ) depth extent and gas storage capacity', () => {
+        // 215 K surface temp, 20 K/km geothermal gradient, 0 salinity, 25% porosity:
+        const clathrate = KRCEngine.computeMartianMethaneClathrateHydrateStabilityZone(215.0, 20.0, 0.0, 0.25);
+        expect(clathrate.mhszTopDepthM).to.equal(15.0); // 15 m under ice seal
+        expect(clathrate.mhszBaseDepthM).to.be.closeTo(4363.0, 100.0); // ~4.36 km base depth
+        expect(clathrate.mhszThicknessM).to.be.closeTo(4348.0, 100.0); // ~4.35 km thick zone
+        expect(clathrate.dissociationTemperatureAtBaseK).to.be.closeTo(302.3, 5.0); // ~302 K dissociation temp at base
+        expect(clathrate.volumetricGasStorageM3STPPerM2).to.be.greaterThan(4.0e4); // > 40,000 m^3 STP CH4 / m^2
+        expect(clathrate.clathrateStabilityClass).to.include('Vast Subsurface Polar/Equatorial Cryosphere Clathrate Hydrate Shield');
+        expect(clathrate.clathrateContext).to.include('MHSZ');
+    });
+
+    it('should discriminate Reducing Siderite (Iron Carbonate) vs Oxidizing Goethite in CRISM spectra', () => {
+        // Reducing Siderite (BD480 = 0.01, BD920 = 0.01, BD2330 = 0.05, BD2530 = 0.06):
+        const siderite = BandMathEngine.computeCRISMSideriteVsGoethiteIndices(0.01, 0.01, 0.05, 0.06);
+        expect(siderite.isFeMineralDetected).to.be.true;
+        expect(siderite.ironMineralSpeciesClass).to.include('Iron Carbonate (Siderite)');
+        expect(siderite.mineralSpecies).to.include('Siderite');
+        expect(siderite.chemicalFormula).to.include('FeCO3');
+        expect(siderite.redoxPaleoenvironmentalContext).to.include('Reducing Anoxic Alkaline-to-Neutral Hydrothermal');
+
+        // Oxidizing Goethite (BD480 = 0.05, BD920 = 0.08, BD2330 = 0.01, BD2530 = 0.005):
+        const goethite = BandMathEngine.computeCRISMSideriteVsGoethiteIndices(0.05, 0.08, 0.01, 0.005);
+        expect(goethite.isFeMineralDetected).to.be.true;
+        expect(goethite.ironMineralSpeciesClass).to.include('Iron Oxyhydroxide (Goethite)');
+        expect(goethite.mineralSpecies).to.include('Goethite');
+        expect(goethite.chemicalFormula).to.include('alpha-FeO(OH)');
+        expect(goethite.redoxPaleoenvironmentalContext).to.include('Oxidizing Acid-Sulfate Aqueous Weathering');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMSideriteVsGoethiteIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isFeMineralDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

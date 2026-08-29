@@ -7331,6 +7331,50 @@ export class BandMathEngine {
       astrobiologicalHabitabilityContext: context
     };
   }
+
+  /**
+   * Discriminate Iron Carbonate (Siderite) in reducing anoxic hydrothermal facies vs Iron Oxyhydroxide (Goethite) in oxidizing weathered crust from CRISM VNIR/SWIR spectra.
+   * Reference: Morris et al. (2010), Ehlmann et al. (2008), Viviano-Beck et al. (2014), Horgan et al. (2020) for Martian Iron Minerals.
+   * @param {number} [band480Fe3PlusDepth=0.01] - BD480 Fe3+ charge transfer absorption depth (0.0 to 0.40)
+   * @param {number} [band920Fe3PlusDepth=0.01] - BD920 Fe3+ 4T1g crystal field band depth (0.0 to 0.50)
+   * @param {number} [band2330FeCO3Depth=0.05] - BD2330 diagnostic Siderite Fe-CO3 combination band depth (0.0 to 0.40)
+   * @param {number} [band2530FeCO3Depth=0.06] - BD2530 diagnostic Siderite fundamental overtone depth (0.0 to 0.40)
+   * @returns {{isFeMineralDetected: boolean, ironMineralSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, redoxPaleoenvironmentalContext: string}}
+   */
+  static computeCRISMSideriteVsGoethiteIndices(band480Fe3PlusDepth = 0.01, band920Fe3PlusDepth = 0.01, band2330FeCO3Depth = 0.05, band2530FeCO3Depth = 0.06) {
+    const d480 = Math.max(0.0, band480Fe3PlusDepth);
+    const d920 = Math.max(0.0, band920Fe3PlusDepth);
+    const d2330 = Math.max(0.0, band2330FeCO3Depth);
+    const d2530 = Math.max(0.0, band2530FeCO3Depth);
+
+    const isSiderite = d2530 >= 0.035 && d2330 >= 0.030;
+    const isGoethite = d920 >= 0.045 && (d480 >= 0.030 || d2530 < 0.020);
+
+    let feClass = 'Unaltered Primary Basalt';
+    let species = 'Basaltic Augite / Olivine';
+    let formula = '(Mg,Fe)2SiO4 / (Ca,Mg,Fe)2Si2O6';
+    let context = 'Standard Unaltered Igneous Basalt';
+
+    if (isSiderite) {
+      feClass = 'Iron Carbonate (Siderite)';
+      species = 'Siderite';
+      formula = 'FeCO3';
+      context = 'Reducing Anoxic Alkaline-to-Neutral Hydrothermal / Sublacustrine Setting (Early Noachian Greenhouse Atmosphere Sink)';
+    } else if (isGoethite) {
+      feClass = 'Iron Oxyhydroxide (Goethite)';
+      species = 'Goethite';
+      formula = 'alpha-FeO(OH)';
+      context = 'Oxidizing Acid-Sulfate Aqueous Weathering / Gossan Supergene Oxidation (Late Noachian / Hesperian)';
+    }
+
+    return {
+      isFeMineralDetected: isSiderite || isGoethite,
+      ironMineralSpeciesClass: feClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      redoxPaleoenvironmentalContext: context
+    };
+  }
 }
 
 
