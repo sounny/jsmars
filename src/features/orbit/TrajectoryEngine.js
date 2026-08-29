@@ -12767,6 +12767,81 @@ export class TrajectoryEngine {
       fidesContext: `Mars-to-Fides (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, FiOI=${dvFioiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to main-belt dark carbonaceous C-type asteroid (38) Leda and orbit capture.
+   * a = ( r_mars + r_leda ) / 2
+   * e = ( r_leda - r_mars ) / ( r_leda + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [ledaDistanceAU=2.741] - Leda heliocentric distance in AU (1.8 to 3.6 AU)
+   * @param {number} [ledaPeriapsisAltitudeKm=15.0] - Leda orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=6.95] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, ledaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, ledaContext: string}}
+   */
+  static computeMarsToLedaTransfer(marsParkingAltitudeKm = 300.0, ledaDistanceAU = 2.741, ledaPeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 6.95) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rLeAU = Math.max(1.7, Math.min(3.7, ledaDistanceAU));
+    const hpLeKm = Math.max(5.0, ledaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muLeda = 3.80; // km^3/s^2 (dark C-type asteroid, D~116 km)
+    const rLedaKm = 58.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rLeDistKm = rLeAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rLeDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rLeDistKm - rMarsDistKm) / (rLeDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTleiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Leda capture
+    const vLeCircKmS = Math.sqrt(muSun / rLeDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rLeDistKm) - (1.0 / aKm)));
+    const vInfLeKmS = Math.abs(vLeCircKmS - vArrKmS);
+
+    const rpLeKm = rLedaKm + hpLeKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpLeKm / (1.0 - eCap);
+
+    const vHypLeKmS = Math.sqrt(Math.pow(vInfLeKmS, 2.0) + ((2.0 * muLeda) / rpLeKm));
+    const vCapLeKmS = Math.sqrt(muLeda * ((2.0 / rpLeKm) - (1.0 / aCapKm)));
+    const dvLeoiKmS = vHypLeKmS - vCapLeKmS;
+
+    const dvTotKmS = dvTleiMarsKmS + dvLeoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTleiMarsKmS.toFixed(3)),
+      ledaOrbitInsertionDeltaVKmS: parseFloat(dvLeoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      ledaContext: `Mars-to-Leda (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, LeOI=${dvLeoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

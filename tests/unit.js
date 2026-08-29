@@ -16541,6 +16541,56 @@ describe('Mars-to-Fides Transfer, Amarantite Dehydration & Oxysulfate Speciation
     });
 });
 
+describe('Mars-to-Leda Transfer, Hohmannite Dehydration & Hydrothermal Oxysulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to carbonaceous asteroid (38) Leda and orbit capture', () => {
+        // Mars to Leda (300 km Mars alt, 2.741 AU distance, 15 km capture alt, 6.95 deg plane change):
+        const le = TrajectoryEngine.computeMarsToLedaTransfer(300.0, 2.741, 15.0, 6.95);
+        expect(le.semiMajorAxisAU).to.be.closeTo(2.132, 0.1); // ~2.13 AU
+        expect(le.eccentricity).to.be.closeTo(0.2856, 0.01); // e ~ 0.286
+        expect(le.timeOfFlightDays).to.be.closeTo(567.76, 30.0); // ~568 days (~1.55 yr)
+        expect(le.timeOfFlightYears).to.be.closeTo(1.55, 0.1); // ~1.55 yr
+        expect(le.marsDepartureDeltaVKmS).to.be.closeTo(3.086, 0.5); // ~3.09 km/s TLeI
+        expect(le.ledaOrbitInsertionDeltaVKmS).to.be.closeTo(2.444, 0.5); // ~2.44 km/s LeOI
+        expect(le.totalMissionDeltaVKmS).to.be.closeTo(5.530, 1.0); // ~5.53 km/s total
+        expect(le.ledaContext).to.include('Mars-to-Leda');
+    });
+
+    it('should calculate hydrothermal dehydration of amarantite into hohmannite and thermal inertia', () => {
+        // 28% initial porosity, 44 C surface temp, 0.10 RH, 240 yr duration:
+        const hoh = KRCEngine.computeMartianHohmanniteDehydration(0.28, 44.0, 0.10, 240.0);
+        expect(hoh.hohmanniteConversionFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(hoh.boundWaterYieldWeightPercent).to.be.lessThan(25.0); // < 25 wt% bound H2O
+        expect(hoh.induratedTetrahydrateThermalInertiaTIU).to.be.closeTo(1629.5, 200.0); // ~1629 tiu
+        expect(hoh.tetrahydrateFaciesClass).to.include('Indurated Hohmannite Facies');
+        expect(hoh.hohmanniteContext).to.include('Hohmannite at 44 C');
+    });
+
+    it('should discriminate Hohmannite vs Metahohmannite vs Amarantite in CRISM spectra', () => {
+        // Hohmannite (Coprates / Ganges / Juventae: BD1440 = 0.025, BD1940 = 0.030, BD2160 = 0.040, BD2400 = 0.045):
+        const hoh = BandMathEngine.computeCRISMHohmanniteFerricOxysulfateSpeciationIndices(0.025, 0.030, 0.040, 0.045);
+        expect(hoh.isDesiccatedOxysulfateDetected).to.be.true;
+        expect(hoh.sulfateMineralClass).to.include('Tetrahydrated Hohmannite Ferric Oxysulfate Facies');
+        expect(hoh.mineralSpecies).to.include('Hohmannite');
+        expect(hoh.desiccationEnvironment).to.include('Hydrothermal Acid-Desiccation Outcrop');
+
+        // Metahohmannite (BD1440 = 0.025, BD1940 = 0.015, BD2160 = 0.040, BD2400 = 0.045):
+        const meta = BandMathEngine.computeCRISMHohmanniteFerricOxysulfateSpeciationIndices(0.025, 0.015, 0.040, 0.045);
+        expect(meta.isDesiccatedOxysulfateDetected).to.be.true;
+        expect(meta.sulfateMineralClass).to.include('Sesquihydrated Metahohmannite Oxysulfate Facies');
+        expect(meta.mineralSpecies).to.include('Metahohmannite');
+
+        // Amarantite (BD1440 = 0.025, BD1940 = 0.045, BD2160 = 0.040, BD2400 = 0.035):
+        const ama = BandMathEngine.computeCRISMHohmanniteFerricOxysulfateSpeciationIndices(0.025, 0.045, 0.040, 0.035);
+        expect(ama.isDesiccatedOxysulfateDetected).to.be.true;
+        expect(ama.sulfateMineralClass).to.include('Heptahydrated Amarantite Precursor Facies');
+        expect(ama.mineralSpecies).to.include('Amarantite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMHohmanniteFerricOxysulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isDesiccatedOxysulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

@@ -11101,6 +11101,60 @@ export class BandMathEngine {
       hydrationRegime: regime
     };
   }
+
+  /**
+   * Discriminate Hydrothermally Desiccated Tetrahydrated Ferric Oxysulfates (Hohmannite vs Metahohmannite vs Amarantite) from CRISM 1.440 um, 1.940 um, 2.160 um, and 2.400 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Iron-Oxysulfates.
+   * @param {number} [band1440H2ODepth=0.025] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.030] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2160FeOHDepth=0.040] - BD2160 hohmannite diagnostic ferric oxysulfate vibrational combination depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.045] - BD2400 sulfate vibrational combination overtone depth (0.0 to 0.50)
+   * @returns {{isDesiccatedOxysulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, desiccationEnvironment: string}}
+   */
+  static computeCRISMHohmanniteFerricOxysulfateSpeciationIndices(band1440H2ODepth = 0.025, band1940H2ODepth = 0.030, band2160FeOHDepth = 0.040, band2400SO4Depth = 0.045) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2160 = Math.max(0.0, band2160FeOHDepth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isHohmannite = d2160 >= 0.025 && d1940 >= 0.020 && d1940 < 0.040 && d2400 >= 0.030;
+    const isMetahohmannite = d2160 >= 0.025 && d1940 < 0.020 && d2400 >= 0.030;
+    const isAmarantite = d2160 >= 0.025 && d1940 >= 0.040 && d2400 >= 0.025;
+
+    const isDesiccated = isHohmannite || isMetahohmannite || isAmarantite;
+
+    let sClass = 'Desiccated-Oxysulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isDesiccated) {
+      if (isHohmannite) {
+        sClass = 'Tetrahydrated Hohmannite Ferric Oxysulfate Facies';
+        species = 'Hohmannite';
+        formula = 'Fe2(SO4)2O·4H2O';
+        env = 'Hydrothermal Acid-Desiccation Outcrop (Coprates / Ganges / Juventae)';
+      } else if (isMetahohmannite) {
+        sClass = 'Sesquihydrated Metahohmannite Oxysulfate Facies';
+        species = 'Metahohmannite';
+        formula = 'Fe2(SO4)2O·1.5H2O';
+        env = 'Extreme Thermal Desiccation Sublimation Crust';
+      } else {
+        sClass = 'Heptahydrated Amarantite Precursor Facies';
+        species = 'Amarantite';
+        formula = 'Fe2(SO4)2O·7H2O';
+        env = 'Partially Desiccated Oxysulfate Sequence';
+      }
+    }
+
+    return {
+      isDesiccatedOxysulfateDetected: isDesiccated,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      desiccationEnvironment: env
+    };
+  }
 }
 
 

@@ -12127,6 +12127,67 @@ export class KRCEngine {
       amarantiteContext: `Amarantite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaAma * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${aClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal desiccation and high-temperature dehydration of heptahydrated amarantite into tetrahydrated hohmannite, crystal contraction, and thermal inertia.
+   * Fe2(SO4)2O·7H2O -> Fe2(SO4)2O·4H2O + 3 H2O (30 to 100 C, low RH)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Iron-Oxysulfates.
+   * @param {number} [initialAmarantitePorosity=0.28] - Initial amarantite evaporite porosity (0.05 to 0.60)
+   * @param {number} [surfaceTempC=44.0] - Surface/diurnal desiccation temperature in C (10 to 110 C)
+   * @param {number} [atmosphericRelativeHumidity=0.10] - Atmospheric / pore relative humidity (0.001 to 0.80)
+   * @param {number} [durationYears=240.0] - Desiccation exposure duration in years (0.1 to 5000 yr)
+   * @returns {{hohmanniteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantFerricOxysulfatePhase: string, induratedTetrahydrateThermalInertiaTIU: number, tetrahydrateFaciesClass: string, hohmanniteContext: string}}
+   */
+  static computeMartianHohmanniteDehydration(initialAmarantitePorosity = 0.28, surfaceTempC = 44.0, atmosphericRelativeHumidity = 0.10, durationYears = 240.0) {
+    const phi0 = Math.max(0.01, Math.min(0.65, initialAmarantitePorosity));
+    const TC = Math.max(-5.0, Math.min(125.0, surfaceTempC));
+    const rh = Math.max(0.001, Math.min(0.85, atmosphericRelativeHumidity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.20e4; // 42.0 kJ/mol for hohmannite dehydration crystallization
+
+    // Reaction rate constant
+    const kRate = 4.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(1.0 - rh, 0.55);
+    const alphaHoh = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound water yield (wt%)
+    const wH2OPct = 19.37 + ((1.0 - alphaHoh) * 10.64);
+
+    // Crystal volume contraction and indurated tetrahydrate compaction
+    const phiResidual = phi0 * (1.0 - (0.42 * alphaHoh));
+    const rhoGrain = 2550.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.35; // W/(m K)
+    const Cspec = 890.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Hohmannite (Fe2(SO4)2O·4H2O)';
+    let hClass = 'Tetrahydrated Ferric Oxysulfate Facies';
+
+    if (alphaHoh >= 0.50 && TC >= 30.0 && rh <= 0.25) {
+      species = 'Hohmannite (Fe2(SO4)2O·4H2O)';
+      hClass = 'Indurated Hohmannite Facies (Coprates / Ganges / Juventae)';
+    } else if (rh > 0.25) {
+      species = 'Metastable Amarantite-Hohmannite Mixture';
+      hClass = 'Partially Dehydrated Transition Phase';
+    } else {
+      species = 'Metahohmannite Anhydrous Precursor Residue';
+      hClass = 'Hyper-Thermal Desiccation Residue';
+    }
+
+    return {
+      hohmanniteConversionFraction: parseFloat(alphaHoh.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantFerricOxysulfatePhase: species,
+      induratedTetrahydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      tetrahydrateFaciesClass: hClass,
+      hohmanniteContext: `Hohmannite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaHoh * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${hClass})`
+    };
+  }
 }
 
 
