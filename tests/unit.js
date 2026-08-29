@@ -15385,6 +15385,56 @@ describe('Mars-to-Victoria Transfer, Halloysite Kinetics & Kaolin Nanomineral Sp
     });
 });
 
+describe('Mars-to-Egeria Transfer, Dickite Metasomatism & High-T Kaolin Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to large volatile-rich G-type asteroid (13) Egeria and orbit capture', () => {
+        // Mars to Egeria (300 km Mars alt, 2.578 AU distance, 30 km capture alt, 16.54 deg plane change):
+        const ege = TrajectoryEngine.computeMarsToEgeriaTransfer(300.0, 2.578, 30.0, 16.54);
+        expect(ege.semiMajorAxisAU).to.be.closeTo(2.051, 0.1); // ~2.05 AU
+        expect(ege.eccentricity).to.be.closeTo(0.2570, 0.01); // e ~ 0.257
+        expect(ege.timeOfFlightDays).to.be.closeTo(535.40, 30.0); // ~535 days (~1.47 yr)
+        expect(ege.timeOfFlightYears).to.be.closeTo(1.47, 0.1); // ~1.47 yr
+        expect(ege.marsDepartureDeltaVKmS).to.be.closeTo(5.757, 0.5); // ~5.76 km/s TEI
+        expect(ege.egeriaOrbitInsertionDeltaVKmS).to.be.closeTo(2.367, 0.5); // ~2.37 km/s EOI
+        expect(ege.totalMissionDeltaVKmS).to.be.closeTo(8.124, 1.0); // ~8.12 km/s total
+        expect(ege.egeriaContext).to.include('Mars-to-Egeria');
+    });
+
+    it('should calculate high-temperature hydrothermal metasomatism and polytype ordering of felsic crust into well-crystallized dickite and thermal inertia', () => {
+        // 22% initial porosity, 210 C hydrothermal temp, 0.45 a(SiO2), 400 yr duration:
+        const dck = KRCEngine.computeMartianDickiteMetasomatism(0.22, 210.0, 0.45, 400.0);
+        expect(dck.dickiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(dck.boundHydroxylYieldWeightPercent).to.be.greaterThan(7.0); // > 7 wt% bound OH
+        expect(dck.induratedDickiteThermalInertiaTIU).to.be.closeTo(2183.4, 200.0); // ~2183 tiu
+        expect(dck.polytypeFaciesClass).to.include('High-Temperature Hydrothermal Dickite Facies');
+        expect(dck.dickiteContext).to.include('Dickite at 210 C');
+    });
+
+    it('should discriminate Dickite vs Kaolinite vs Pyrophyllite in CRISM spectra', () => {
+        // Dickite (Nili Fossae / Toro / McLaughlin: BD1412 = 0.040, BD2180 = 0.045, BD2208 = 0.065, BD2315 = 0.015):
+        const dck = BandMathEngine.computeCRISMDickiteKaolinSpeciationIndices(0.040, 0.045, 0.065, 0.015);
+        expect(dck.isPolytypeDetected).to.be.true;
+        expect(dck.polytypeMineralClass).to.include('High-Temperature Dickite Polytype Facies');
+        expect(dck.mineralSpecies).to.include('Dickite');
+        expect(dck.metasomaticGrade).to.include('Moderate-to-High Temperature Hydrothermal Alteration');
+
+        // Pyrophyllite (BD1412 = 0.015, BD2180 = 0.015, BD2208 = 0.035, BD2315 = 0.055):
+        const pyro = BandMathEngine.computeCRISMDickiteKaolinSpeciationIndices(0.015, 0.015, 0.035, 0.055);
+        expect(pyro.isPolytypeDetected).to.be.true;
+        expect(pyro.polytypeMineralClass).to.include('Advanced Argillic Pyrophyllite Facies');
+        expect(pyro.mineralSpecies).to.include('Pyrophyllite');
+
+        // Kaolinite (BD1412 = 0.040, BD2180 = 0.015, BD2208 = 0.060, BD2315 = 0.010):
+        const kaol = BandMathEngine.computeCRISMDickiteKaolinSpeciationIndices(0.040, 0.015, 0.060, 0.010);
+        expect(kaol.isPolytypeDetected).to.be.true;
+        expect(kaol.polytypeMineralClass).to.include('Low-Temperature Standard Kaolinite Facies');
+        expect(kaol.mineralSpecies).to.include('Kaolinite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMDickiteKaolinSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isPolytypeDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -10724,6 +10724,67 @@ export class KRCEngine {
       halloysiteContext: `Halloysite at ${TC.toFixed(0)} C, a(H2O)=${aH2O.toFixed(2)} (${(alphaHal * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${kClass})`
     };
   }
+
+  /**
+   * Calculate high-temperature hydrothermal metasomatism and polytype ordering of felsic crust into well-crystallized dickite, microcrystalline densification, and thermal inertia.
+   * Felsic Crust + Al3+ + SiO2(aq) + H2O (140-270 C) -> Dickite (Al2Si2O5(OH)4) (High-T Polytype)
+   * Reference: Ehlmann et al. (2011), Michalski et al. (2013), Viviano-Beck et al. (2014) for Martian High-T Kaolin Deposits.
+   * @param {number} [initialDacitePorosity=0.22] - Initial fractured dacite/felsite porosity (0.02 to 0.45)
+   * @param {number} [hydrothermalTempC=210.0] - Hydrothermal alteration temperature in C (100 to 340 C)
+   * @param {number} [aqueousSilicaActivity=0.45] - Dissolved silica activity (0.01 to 1.0)
+   * @param {number} [durationYears=400.0] - Hydrothermal alteration duration in years (0.1 to 5000 yr)
+   * @returns {{dickiteConversionFraction: number, boundHydroxylYieldWeightPercent: number, dominantPolytypeSpecies: string, induratedDickiteThermalInertiaTIU: number, polytypeFaciesClass: string, dickiteContext: string}}
+   */
+  static computeMartianDickiteMetasomatism(initialDacitePorosity = 0.22, hydrothermalTempC = 210.0, aqueousSilicaActivity = 0.45, durationYears = 400.0) {
+    const phi0 = Math.max(0.01, Math.min(0.50, initialDacitePorosity));
+    const TC = Math.max(80.0, Math.min(380.0, hydrothermalTempC));
+    const aSiO2 = Math.max(0.01, Math.min(1.0, aqueousSilicaActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.20e4; // 52 kJ/mol for dickite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.9e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aSiO2, 0.35);
+    const alphaDck = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound hydroxyl yield (wt%)
+    const wH2OPct = alphaDck * 13.96;
+
+    // Recrystallization and microcrystalline porosity reduction
+    const phiResidual = phi0 * (1.0 - (0.70 * alphaDck));
+    const rhoGrain = 2600.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.15; // W/(m K)
+    const Cspec = 880.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Well-Crystallized Dickite Polytype';
+    let dClass = 'High-Temperature Kaolin Polytype Facies';
+
+    if (alphaDck >= 0.50 && TC >= 140.0 && TC <= 270.0 && aSiO2 >= 0.20) {
+      species = 'Dickite Polytype (Al2Si2O5(OH)4)';
+      dClass = 'High-Temperature Hydrothermal Dickite Facies (Nili Fossae / Toro / McLaughlin)';
+    } else if (TC > 270.0) {
+      species = 'Pyrophyllite-Quartz Metasomatic Assemblage';
+      dClass = 'Advanced Argillic Metasomatic Facies';
+    } else {
+      species = 'Disordered Kaolinite / Halloysite Polytype';
+      dClass = 'Low-Temperature Kaolin Alteration Crust';
+    }
+
+    return {
+      dickiteConversionFraction: parseFloat(alphaDck.toFixed(3)),
+      boundHydroxylYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantPolytypeSpecies: species,
+      induratedDickiteThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      polytypeFaciesClass: dClass,
+      dickiteContext: `Dickite at ${TC.toFixed(0)} C, a(SiO2)=${aSiO2.toFixed(2)} (${(alphaDck * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% OH, TIU=${TIU.toFixed(0)}, ${dClass})`
+    };
+  }
 }
 
 

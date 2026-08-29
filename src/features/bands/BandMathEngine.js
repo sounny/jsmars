@@ -9859,6 +9859,60 @@ export class BandMathEngine {
       alterationRegime: regime
     };
   }
+
+  /**
+   * Discriminate High-Temperature Kaolin Polytypes (Dickite vs Kaolinite vs Pyrophyllite vs Nacrite) from CRISM 1.412 um, 2.180 um, 2.208 um, and 2.315 um absorption bands.
+   * Reference: Ehlmann et al. (2011), Michalski et al. (2013), Viviano-Beck et al. (2014) for Martian High-Temperature Kaolin Polytypes.
+   * @param {number} [band1412OHDepth=0.040] - BD1412 dickite sharp Al-OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2180AlOHDepth=0.045] - BD2180 dickite diagnostic shifted doublet component depth (0.0 to 0.50)
+   * @param {number} [band2208AlOHDepth=0.065] - BD2208 primary Al-OH fundamental combination depth (0.0 to 0.50)
+   * @param {number} [band2315AlOHDepth=0.015] - BD2315 pyrophyllite secondary Al-OH combination depth (0.0 to 0.50)
+   * @returns {{isPolytypeDetected: boolean, polytypeMineralClass: string, mineralSpecies: string, chemicalFormula: string, metasomaticGrade: string}}
+   */
+  static computeCRISMDickiteKaolinSpeciationIndices(band1412OHDepth = 0.040, band2180AlOHDepth = 0.045, band2208AlOHDepth = 0.065, band2315AlOHDepth = 0.015) {
+    const d1412 = Math.max(0.0, band1412OHDepth);
+    const d2180 = Math.max(0.0, band2180AlOHDepth);
+    const d2208 = Math.max(0.0, band2208AlOHDepth);
+    const d2315 = Math.max(0.0, band2315AlOHDepth);
+
+    const isDickite = d1412 >= 0.025 && d2180 >= 0.030 && d2208 >= 0.040 && d2315 <= 0.025;
+    const isPyrophyllite = d2315 >= 0.030 && d2180 < 0.025;
+    const isKaolinite = d2208 >= 0.035 && d2180 < 0.020 && d2315 < 0.020;
+
+    const isPoly = isDickite || isPyrophyllite || isKaolinite;
+
+    let pClass = 'Kaolin-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let grade = 'Unaltered Crustal Sequence';
+
+    if (isPoly) {
+      if (isDickite) {
+        pClass = 'High-Temperature Dickite Polytype Facies';
+        species = 'Dickite';
+        formula = 'Al2Si2O5(OH)4';
+        grade = 'Moderate-to-High Temperature Hydrothermal Alteration (140-270 C, Nili Fossae / Toro / McLaughlin)';
+      } else if (isPyrophyllite) {
+        pClass = 'Advanced Argillic Pyrophyllite Facies';
+        species = 'Pyrophyllite';
+        formula = 'Al2Si4O10(OH)2';
+        grade = 'High-Temperature Acid-Sulfate Metasomatism (> 280 C)';
+      } else {
+        pClass = 'Low-Temperature Standard Kaolinite Facies';
+        species = 'Kaolinite';
+        formula = 'Al2Si2O5(OH)4';
+        grade = 'Low-Temperature Weathering / Ambient Diagenesis';
+      }
+    }
+
+    return {
+      isPolytypeDetected: isPoly,
+      polytypeMineralClass: pClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metasomaticGrade: grade
+    };
+  }
 }
 
 

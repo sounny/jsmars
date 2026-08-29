@@ -11042,6 +11042,81 @@ export class TrajectoryEngine {
       victoriaContext: `Mars-to-Victoria (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, VOI=${dvVoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to large volatile-rich G-type asteroid (13) Egeria and orbit capture.
+   * a = ( r_mars + r_egeria ) / 2
+   * e = ( r_egeria - r_mars ) / ( r_egeria + r_mars )
+   * Reference: Carry et al. (2012), Rivkin et al. (2002), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [egeriaDistanceAU=2.578] - Egeria heliocentric distance in AU (1.9 to 3.2 AU)
+   * @param {number} [egeriaPeriapsisAltitudeKm=30.0] - Egeria orbit insertion periapsis altitude in km (5 to 400 km)
+   * @param {number} [inclinationPlaneChangeDeg=16.54] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, egeriaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, egeriaContext: string}}
+   */
+  static computeMarsToEgeriaTransfer(marsParkingAltitudeKm = 300.0, egeriaDistanceAU = 2.578, egeriaPeriapsisAltitudeKm = 30.0, inclinationPlaneChangeDeg = 16.54) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rEAU = Math.max(1.8, Math.min(3.4, egeriaDistanceAU));
+    const hpEKm = Math.max(5.0, egeriaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muEgeria = 6.55; // km^3/s^2
+    const rEgeriaKm = 104.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rEDistKm = rEAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rEDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rEDistKm - rMarsDistKm) / (rEDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTeiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Egeria capture
+    const vECircKmS = Math.sqrt(muSun / rEDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rEDistKm) - (1.0 / aKm)));
+    const vInfEKmS = Math.abs(vECircKmS - vArrKmS);
+
+    const rpEKm = rEgeriaKm + hpEKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpEKm / (1.0 - eCap);
+
+    const vHypEKmS = Math.sqrt(Math.pow(vInfEKmS, 2.0) + ((2.0 * muEgeria) / rpEKm));
+    const vCapEKmS = Math.sqrt(muEgeria * ((2.0 / rpEKm) - (1.0 / aCapKm)));
+    const dvEoiKmS = vHypEKmS - vCapEKmS;
+
+    const dvTotKmS = dvTeiMarsKmS + dvEoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTeiMarsKmS.toFixed(3)),
+      egeriaOrbitInsertionDeltaVKmS: parseFloat(dvEoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      egeriaContext: `Mars-to-Egeria (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EOI=${dvEoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
