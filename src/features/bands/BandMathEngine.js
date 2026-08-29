@@ -8055,6 +8055,60 @@ export class BandMathEngine {
       sinterHydrothermalContext: context
     };
   }
+
+  /**
+   * Discriminate Featureless Anhydrous Chloride Salts (Halite) vs Hydrated Sulfates vs Anhydrite from CRISM NIR continuum curvature and 1.90 um / 2.40 um absorption depths.
+   * Reference: Osterloo et al. (2008, 2010), Glotch et al. (2010, 2016), Viviano-Beck et al. (2014) for Martian Chlorides.
+   * @param {number} [r1000=0.22] - Reflectance at 1.00 um (0.0 to 1.0)
+   * @param {number} [r1500=0.26] - Reflectance at 1.50 um (0.0 to 1.0)
+   * @param {number} [r2500=0.34] - Reflectance at 2.50 um (0.0 to 1.0)
+   * @param {number} [band1900WaterDepth=0.01] - BD1900 molecular H2O depth (0.0 to 0.50)
+   * @param {number} [band2400SulfateDepth=0.005] - BD2400 sulfate vibrational combination depth (0.0 to 0.40)
+   * @returns {{isEvaporiteSaltDetected: boolean, saltSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, nirSlopeIndex: number, playaPaleolakeContext: string}}
+   */
+  static computeCRISMChlorideHaliteAnhydriteDiscriminationIndices(r1000 = 0.22, r1500 = 0.26, r2500 = 0.34, band1900WaterDepth = 0.01, band2400SulfateDepth = 0.005) {
+    const ref1000 = Math.max(0.01, r1000);
+    const ref1500 = Math.max(0.01, r1500);
+    const ref2500 = Math.max(0.01, r2500);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2400 = Math.max(0.0, band2400SulfateDepth);
+
+    const nirSlope = (ref2500 - ref1000) / 1.50; // Reflectance per um slope
+    const isChloride = nirSlope >= 0.040 && ref2500 > ref1500 && d1900 < 0.025 && d2400 < 0.020;
+    const isHydratedSulfate = d1900 >= 0.035 && d2400 >= 0.025;
+    const isAnhydrite = d1900 < 0.020 && d2400 >= 0.025;
+
+    let sClass = 'Evaporite-Free Silicate Regolith';
+    let species = 'Basaltic Regolith';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Detectable Halide or Sulfate Evaporite Deposit';
+
+    if (isChloride) {
+      sClass = 'Anhydrous Chloride Salt (Halite / Sylvite)';
+      species = 'Halite / Sylvite';
+      formula = 'NaCl (+/- KCl, CaCl2)';
+      context = 'Late Noachian / Early Hesperian Terminal Paleolake Playa Evaporite Salt Flat (Terra Sirenum / Sinus Meridiani)';
+    } else if (isHydratedSulfate) {
+      sClass = 'Polyhydrated Magnesium/Iron Sulfate';
+      species = 'Polyhydrated Sulfate';
+      formula = 'MgSO4 * nH2O';
+      context = 'Acid-Saline Evaporite Lake or Groundwater Upwelling Playa Basin';
+    } else if (isAnhydrite) {
+      sClass = 'Anhydrous Calcium Sulfate (Anhydrite)';
+      species = 'Anhydrite';
+      formula = 'CaSO4';
+      context = 'High-Temperature Desiccation / Dehydrated Gypsum Evaporite Deposit';
+    }
+
+    return {
+      isEvaporiteSaltDetected: isChloride || isHydratedSulfate || isAnhydrite,
+      saltSpeciesClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      nirSlopeIndex: parseFloat(nirSlope.toFixed(3)),
+      playaPaleolakeContext: context
+    };
+  }
 }
 
 

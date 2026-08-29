@@ -8645,6 +8645,78 @@ export class TrajectoryEngine {
       haumeaContext: `Mars-to-Haumea (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, HOI=${dvHoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to detached extreme trans-Neptunian object (ETNO) / inner Oort cloud dwarf planet 90377 Sedna and orbit capture.
+   * a = ( r_mars + r_sedna ) / 2
+   * e = ( r_sedna - r_mars ) / ( r_sedna + r_mars )
+   * Reference: Brown, Trujillo & Rabinowitz (2004), Schwamb et al. (2010), Curtis (2013) for Inner Oort Cloud Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [sednaDistanceAU=84.0] - Sedna heliocentric distance in AU (76.0 to 120.0 AU)
+   * @param {number} [sednaPeriapsisAltitudeKm=300.0] - Sedna orbit insertion periapsis altitude in km (100 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, sednaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, sednaContext: string}}
+   */
+  static computeMarsToSednaETNOTransfer(marsParkingAltitudeKm = 300.0, sednaDistanceAU = 84.0, sednaPeriapsisAltitudeKm = 300.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rSAU = Math.max(60.0, Math.min(150.0, sednaDistanceAU));
+    const hpSKm = Math.max(50.0, sednaPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muSedna = 120.0; // km^3/s^2
+    const rSednaKm = 500.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rSDistKm = rSAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rSDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rSDistKm - rMarsDistKm) / (rSDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTsiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Sedna capture
+    const vSCircKmS = Math.sqrt(muSun / rSDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rSDistKm) - (1.0 / aKm)));
+    const vInfSKmS = Math.abs(vSCircKmS - vArrKmS);
+
+    const rpSKm = rSednaKm + hpSKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpSKm / (1.0 - eCap);
+
+    const vHypSKmS = Math.sqrt(Math.pow(vInfSKmS, 2.0) + ((2.0 * muSedna) / rpSKm));
+    const vCapSKmS = Math.sqrt(muSedna * ((2.0 / rpSKm) - (1.0 / aCapKm)));
+    const dvSoiKmS = vHypSKmS - vCapSKmS;
+
+    const dvTotKmS = dvTsiKmS + dvSoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTsiKmS.toFixed(3)),
+      sednaOrbitInsertionDeltaVKmS: parseFloat(dvSoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      sednaContext: `Mars-to-Sedna (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, SOI=${dvSoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

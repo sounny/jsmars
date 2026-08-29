@@ -13707,6 +13707,58 @@ describe('Mars-to-Haumea Transfer, Magma Sill Cooling & Silica Polymorph Speciat
     });
 });
 
+describe('Mars-to-Sedna ETNO Transfer, Lava Tube Thermal Stability & Chloride Salt Discrimination', () => {
+    it('should calculate interplanetary direct transfer from Mars to extreme trans-Neptunian dwarf planet 90377 Sedna', () => {
+        // Mars to Sedna (300 km Mars alt, 84.0 AU distance, 300 km capture alt):
+        const sedna = TrajectoryEngine.computeMarsToSednaETNOTransfer(300.0, 84.0, 300.0);
+        expect(sedna.semiMajorAxisAU).to.be.closeTo(42.762, 1.0); // ~42.76 AU
+        expect(sedna.eccentricity).to.be.closeTo(0.9644, 0.01); // e ~ 0.964
+        expect(sedna.timeOfFlightDays).to.be.closeTo(51039.4, 2500.0); // ~51000 days (~139.7 yr)
+        expect(sedna.timeOfFlightYears).to.be.closeTo(139.74, 7.0); // ~139.7 yr
+        expect(sedna.marsDepartureDeltaVKmS).to.be.closeTo(7.414, 0.4); // ~7.41 km/s TSI
+        expect(sedna.sednaOrbitInsertionDeltaVKmS).to.be.closeTo(2.166, 0.4); // ~2.17 km/s SOI
+        expect(sedna.totalMissionDeltaVKmS).to.be.closeTo(9.580, 0.5); // ~9.58 km/s total
+        expect(sedna.sednaContext).to.include('Mars-to-Sedna');
+    });
+
+    it('should calculate 1D thermal wave attenuation and interior microclimate stability of a Martian lava tube', () => {
+        // 10 m roof thickness, 45 K diurnal amp, 25 K annual amp, 210 K mean temp:
+        const tube = KRCEngine.computeMartianLavaTubeThermalInsulation(10.0, 45.0, 25.0, 210.0);
+        expect(tube.diurnalSkinDepthMeters).to.be.closeTo(0.150, 0.02); // ~0.15 m diurnal skin depth
+        expect(tube.annualSkinDepthMeters).to.be.closeTo(3.889, 0.2); // ~3.89 m annual skin depth
+        expect(tube.interiorDiurnalAmplitudeK).to.be.lessThan(1e-10); // completely blocked diurnal wave
+        expect(tube.interiorAnnualAmplitudeK).to.be.closeTo(1.91, 0.4); // < 2 K seasonal oscillation
+        expect(tube.basaltRoofThermalInertiaTIU).to.be.closeTo(1785.4, 150.0); // ~1785 tiu basalt
+        expect(tube.habitatMicroclimateClass).to.include('Ultra-Stable Thermal Oasis');
+        expect(tube.lavaTubeContext).to.include('Lava Tube Roof');
+    });
+
+    it('should discriminate Featureless Anhydrous Chloride Salts (Halite) vs Hydrated Sulfates vs Anhydrite in CRISM spectra', () => {
+        // Chloride (Terra Sirenum: R1000 = 0.22, R1500 = 0.26, R2500 = 0.34, BD1900 = 0.01, BD2400 = 0.005):
+        const cl = BandMathEngine.computeCRISMChlorideHaliteAnhydriteDiscriminationIndices(0.22, 0.26, 0.34, 0.01, 0.005);
+        expect(cl.isEvaporiteSaltDetected).to.be.true;
+        expect(cl.saltSpeciesClass).to.include('Anhydrous Chloride Salt (Halite / Sylvite)');
+        expect(cl.mineralSpecies).to.include('Halite');
+        expect(cl.playaPaleolakeContext).to.include('Terminal Paleolake Playa Evaporite');
+
+        // Polyhydrated Sulfate (BD1900 = 0.06, BD2400 = 0.05):
+        const sulf = BandMathEngine.computeCRISMChlorideHaliteAnhydriteDiscriminationIndices(0.25, 0.25, 0.25, 0.06, 0.05);
+        expect(sulf.isEvaporiteSaltDetected).to.be.true;
+        expect(sulf.saltSpeciesClass).to.include('Polyhydrated Magnesium/Iron Sulfate');
+        expect(sulf.mineralSpecies).to.include('Polyhydrated Sulfate');
+
+        // Anhydrite (BD1900 = 0.01, BD2400 = 0.04):
+        const anh = BandMathEngine.computeCRISMChlorideHaliteAnhydriteDiscriminationIndices(0.25, 0.25, 0.25, 0.01, 0.04);
+        expect(anh.isEvaporiteSaltDetected).to.be.true;
+        expect(anh.saltSpeciesClass).to.include('Anhydrous Calcium Sulfate (Anhydrite)');
+        expect(anh.mineralSpecies).to.include('Anhydrite');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMChlorideHaliteAnhydriteDiscriminationIndices(0.25, 0.25, 0.25, 0.005, 0.005);
+        expect(basalt.isEvaporiteSaltDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

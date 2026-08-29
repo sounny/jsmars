@@ -8764,6 +8764,64 @@ export class KRCEngine {
       sillCoolingContext: `Basaltic Sill D=${D.toFixed(0)}m (${tSolidYrs.toFixed(1)} yr solidification, ${wHaloM.toFixed(0)}m halo, TIU=${TIU.toFixed(0)}, ${regimeClass})`
     };
   }
+
+  /**
+   * Calculate 1D thermal wave attenuation, diurnal/seasonal temperature damping, and microclimate stability inside a Martian volcanic lava tube cave.
+   * delta_skin = sqrt( kappa * tau / pi )
+   * Delta_T(z) = Delta_T_0 * exp( -z / delta_skin )
+   * Reference: Williams et al. (2010), Cushing et al. (2007), Titus et al. (2021) for Martian Lava Tubes and Caves.
+   * @param {number} [roofThicknessM=10.0] - Lava tube basalt roof thickness in meters (1.0 to 100.0 m)
+   * @param {number} [surfaceDiurnalTempAmpK=45.0] - Surface diurnal temperature oscillation amplitude in K (10 to 80 K)
+   * @param {number} [surfaceAnnualTempAmpK=25.0] - Surface seasonal temperature oscillation amplitude in K (5 to 50 K)
+   * @param {number} [meanSurfaceTempK=210.0] - Mean surface temperature in K (150 to 260 K)
+   * @returns {{diurnalSkinDepthMeters: number, annualSkinDepthMeters: number, interiorDiurnalAmplitudeK: number, interiorAnnualAmplitudeK: number, caveMinTempK: number, caveMaxTempK: number, basaltRoofThermalInertiaTIU: number, habitatMicroclimateClass: string, lavaTubeContext: string}}
+   */
+  static computeMartianLavaTubeThermalInsulation(roofThicknessM = 10.0, surfaceDiurnalTempAmpK = 45.0, surfaceAnnualTempAmpK = 25.0, meanSurfaceTempK = 210.0) {
+    const zRoof = Math.max(0.5, roofThicknessM);
+    const ampDiurnal = Math.max(0.0, surfaceDiurnalTempAmpK);
+    const ampAnnual = Math.max(0.0, surfaceAnnualTempAmpK);
+    const Tmean = Math.max(120.0, Math.min(280.0, meanSurfaceTempK));
+
+    const kappa = 8.0e-7; // m^2/s thermal diffusivity of dense vesicular basalt
+    const tauSolSec = 88775.0; // 1 Martian Sol in seconds
+    const tauYrSec = 668.6 * tauSolSec; // 1 Martian Year in seconds
+
+    // Skin depths (m)
+    const deltaDiurnal = Math.sqrt((kappa * tauSolSec) / Math.PI);
+    const deltaAnnual = Math.sqrt((kappa * tauYrSec) / Math.PI);
+
+    // Damped amplitudes at cave roof ceiling depth (K)
+    const caveAmpDiurnal = ampDiurnal * Math.exp(-zRoof / deltaDiurnal);
+    const caveAmpAnnual = ampAnnual * Math.exp(-zRoof / deltaAnnual);
+
+    const minTemp = Tmean - caveAmpAnnual - caveAmpDiurnal;
+    const maxTemp = Tmean + caveAmpAnnual + caveAmpDiurnal;
+
+    // Thermal inertia of basalt roof bedrock
+    const kTherm = 1.50; // W/(m K)
+    const rhoBulk = 2500.0; // kg/m^3
+    const Cspec = 850.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let habitClass = 'Thin Roof with Substantial Seasonal Temperature Fluctuation';
+    if (zRoof >= 8.0) {
+      habitClass = 'Ultra-Stable Thermal Oasis (Near-Zero Diurnal & < 2K Annual Fluctuation, Radiation Shielded Human Base Candidate)';
+    } else if (zRoof >= 3.0) {
+      habitClass = 'Thermally Damped Cave Environment (Zero Diurnal Fluctuation)';
+    }
+
+    return {
+      diurnalSkinDepthMeters: parseFloat(deltaDiurnal.toFixed(3)),
+      annualSkinDepthMeters: parseFloat(deltaAnnual.toFixed(3)),
+      interiorDiurnalAmplitudeK: parseFloat(caveAmpDiurnal.toFixed(4)),
+      interiorAnnualAmplitudeK: parseFloat(caveAmpAnnual.toFixed(2)),
+      caveMinTempK: parseFloat(minTemp.toFixed(1)),
+      caveMaxTempK: parseFloat(maxTemp.toFixed(1)),
+      basaltRoofThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      habitatMicroclimateClass: habitClass,
+      lavaTubeContext: `Lava Tube Roof ${zRoof.toFixed(0)}m (T_cave=${Tmean.toFixed(0)}+/-${caveAmpAnnual.toFixed(1)}K, TIU=${TIU.toFixed(0)}, ${habitClass})`
+    };
+  }
 }
 
 

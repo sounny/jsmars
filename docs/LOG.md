@@ -731,3 +731,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary direct transfer from Mars to Kuiper Belt dwarf planet 136108 Haumea and orbit capture
 ?: AssertionError: expected 2.731 to be close to 1.467 +/- 0.4
     at n.<anonymous> (unit.js:13668:57)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 04:00:58 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to extreme trans-Neptunian dwarf planet 90377 Sedna
+?: AssertionError: expected 7.414 to be close to 8.087 +/- 0.6
+    at n.<anonymous> (unit.js:13718:52)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 04:01:13 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to extreme trans-Neptunian dwarf planet 90377 Sedna
+?: AssertionError: expected 2.166 to be close to 1.04 +/- 0.4
+    at n.<anonymous> (unit.js:13719:58)
