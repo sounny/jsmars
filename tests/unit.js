@@ -14395,6 +14395,57 @@ describe('Mars-to-Ceto Transfer, Fluorine Greisen Metamorphism & Topaz Speciatio
     });
 });
 
+describe('Mars-to-Typhon Transfer, Scapolite Halogen Metasomatism & Scapolite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to binary Centaur (42355) Typhon-Echidna', () => {
+        // Mars to Typhon (300 km Mars alt, 37.80 AU distance, 40 km capture alt):
+        const typh = TrajectoryEngine.computeMarsToTyphonTransfer(300.0, 37.80, 40.0);
+        expect(typh.semiMajorAxisAU).to.be.closeTo(19.662, 0.5); // ~19.66 AU
+        expect(typh.eccentricity).to.be.closeTo(0.9225, 0.01); // e ~ 0.923
+        expect(typh.timeOfFlightDays).to.be.closeTo(17271.3, 2000.0); // ~17271 days (~47.3 yr)
+        expect(typh.timeOfFlightYears).to.be.closeTo(47.29, 5.0); // ~47.3 yr
+        expect(typh.marsDepartureDeltaVKmS).to.be.closeTo(7.113, 0.6); // ~7.11 km/s TTI
+        expect(typh.typhonOrbitInsertionDeltaVKmS).to.be.closeTo(1.857, 1.5); // ~1.86 km/s TOI
+        expect(typh.totalMissionDeltaVKmS).to.be.closeTo(8.970, 2.0); // ~8.97 km/s total
+        expect(typh.typhonContext).to.include('Mars-to-Typhon');
+    });
+
+    it('should calculate high-temperature hypersaline halogen scapolitization of plagioclase, chlorine sequestration, and skarn thermal inertia', () => {
+        // 50% initial plagioclase, 420 C metasomatic temp, 15 wt% NaCl brine, 300 yr duration:
+        const scap = KRCEngine.computeMartianScapoliteHalogenMetasomatism(0.50, 420.0, 15.0, 300.0);
+        expect(scap.scapolitizationConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(scap.sequesteredChlorineWeightPercent).to.be.greaterThan(1.0); // > 1.0 wt% Cl sequestered
+        expect(scap.scapoliteEndmemberClass).to.include('Marialite');
+        expect(scap.calcSilicateThermalInertiaTIU).to.be.closeTo(2439.8, 200.0); // ~2440 tiu
+        expect(scap.metasomaticFaciesClass).to.include('High-Temperature Hypersaline Marialite Metasomatism');
+        expect(scap.scapolitizationContext).to.include('Scapolitization at 420 C');
+    });
+
+    it('should discriminate Marialite vs Meionite vs Sodalite in CRISM spectra', () => {
+        // Marialite (Tyrrhena Patera / Nili Fossae: BD1420 = 0.030, BD2360 = 0.055, BD2480 = 0.015, BD2530 = 0.010):
+        const mar = BandMathEngine.computeCRISMScapoliteHalogenSpeciationIndices(0.030, 0.055, 0.015, 0.010);
+        expect(mar.isScapoliteDetected).to.be.true;
+        expect(mar.scapoliteSpeciesClass).to.include('Chloride-Rich Marialite Scapolite');
+        expect(mar.mineralSpecies).to.include('Marialite');
+        expect(mar.metasomaticEnvironmentContext).to.include('High-Temperature Hypersaline Halogen Metasomatism');
+
+        // Meionite (BD1420 = 0.020, BD2360 = 0.030, BD2480 = 0.045, BD2530 = 0.035):
+        const mei = BandMathEngine.computeCRISMScapoliteHalogenSpeciationIndices(0.020, 0.030, 0.045, 0.035);
+        expect(mei.isScapoliteDetected).to.be.true;
+        expect(mei.scapoliteSpeciesClass).to.include('Carbonate/Sulfate-Rich Meionite Scapolite');
+        expect(mei.mineralSpecies).to.include('Meionite');
+
+        // Sodalite (BD1420 = 0.005, BD2360 = 0.035, BD2480 = 0.005, BD2530 = 0.005):
+        const sod = BandMathEngine.computeCRISMScapoliteHalogenSpeciationIndices(0.005, 0.035, 0.005, 0.005);
+        expect(sod.isScapoliteDetected).to.be.true;
+        expect(sod.scapoliteSpeciesClass).to.include('Sodalite / Feldspathoid Alteration');
+        expect(sod.mineralSpecies).to.include('Sodalite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMScapoliteHalogenSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isScapoliteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

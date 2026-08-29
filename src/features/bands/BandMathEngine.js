@@ -8777,6 +8777,60 @@ export class BandMathEngine {
       pneumatolyticContext: context
     };
   }
+
+  /**
+   * Discriminate Metasomatic Halogen-Carbonate Scapolites (Marialite vs Meionite vs Sodalite) from CRISM 1.420 um, 2.36 um, 2.48 um, and 2.53 um absorption bands.
+   * Reference: Clark et al. (1990), Swayze et al. (2008), Filiberto et al. (2014), Viviano-Beck et al. (2014) for Martian Halogen Silicate Systems.
+   * @param {number} [band1420OHDepth=0.030] - BD1420 scapolite OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2360ClCO3Depth=0.055] - BD2360 marialite diagnostic Cl-OH/CO3 band depth (0.0 to 0.50)
+   * @param {number} [band2480CO3Depth=0.040] - BD2480 meionite carbonate combination band depth (0.0 to 0.50)
+   * @param {number} [band2530SO4Depth=0.010] - BD2530 sulfate/meionite combination band depth (0.0 to 0.40)
+   * @returns {{isScapoliteDetected: boolean, scapoliteSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, metasomaticEnvironmentContext: string}}
+   */
+  static computeCRISMScapoliteHalogenSpeciationIndices(band1420OHDepth = 0.030, band2360ClCO3Depth = 0.055, band2480CO3Depth = 0.040, band2530SO4Depth = 0.010) {
+    const d1420 = Math.max(0.0, band1420OHDepth);
+    const d2360 = Math.max(0.0, band2360ClCO3Depth);
+    const d2480 = Math.max(0.0, band2480CO3Depth);
+    const d2530 = Math.max(0.0, band2530SO4Depth);
+
+    const isMarialite = d2360 >= 0.035 && d1420 >= 0.020 && d2480 < 0.030;
+    const isMeionite = d2480 >= 0.030 && (d2360 >= 0.025 || d2530 >= 0.020);
+    const isSodalite = d2360 >= 0.025 && d1420 < 0.015 && d2480 < 0.020;
+
+    const isScap = isMarialite || isMeionite || isSodalite;
+
+    let sClass = 'Scapolite-Free Silicate Regolith';
+    let species = 'Basaltic Feldspar Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Crust without Diagnostic Halogen/Carbonate Scapolite Bands';
+
+    if (isScap) {
+      if (isMarialite) {
+        sClass = 'Chloride-Rich Marialite Scapolite';
+        species = 'Marialite';
+        formula = 'Na4Al3Si9O24Cl';
+        context = 'High-Temperature Hypersaline Halogen Metasomatism / Volcanic Caldera Skarn (Tyrrhena Patera / Nili Fossae)';
+      } else if (isMeionite) {
+        sClass = 'Carbonate/Sulfate-Rich Meionite Scapolite';
+        species = 'Meionite';
+        formula = 'Ca4Al6Si6O24(CO3,SO4)';
+        context = 'High-Temperature Carbonate-Sulfate Metamorphic Granulite Skarn Aureole';
+      } else {
+        sClass = 'Sodalite / Feldspathoid Alteration';
+        species = 'Sodalite';
+        formula = 'Na8Al6Si6O24Cl2';
+        context = 'Alkaline Silica-Undersaturated Pneumatolytic Halogen Alteration';
+      }
+    }
+
+    return {
+      isScapoliteDetected: isScap,
+      scapoliteSpeciesClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metasomaticEnvironmentContext: context
+    };
+  }
 }
 
 

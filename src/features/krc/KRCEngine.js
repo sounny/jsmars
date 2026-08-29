@@ -9530,6 +9530,64 @@ export class KRCEngine {
       greisenContext: `Fluorine Greisen at ${TC.toFixed(0)} C, a_F=${aF.toFixed(1)} (${(alphaGreisen * 100).toFixed(1)}% greisenized, ${wTopazPct.toFixed(1)}% Topaz, TIU=${TIU.toFixed(0)}, ${gClass})`
     };
   }
+
+  /**
+   * Calculate high-temperature halogen-carbonate scapolitization kinetics of plagioclase in basaltic/felsic crust, chlorine sequestration, and skarn thermal inertia.
+   * 3 Albite + NaCl -> Na4Al3Si9O24Cl (Marialite); 3 Anorthite + CaCO3 -> Ca4Al6Si6O24CO3 (Meionite)
+   * Reference: Clark et al. (1990), Swayze et al. (2008), Filiberto et al. (2014), Viviano-Beck et al. (2014) for Martian Scapolite Aureoles.
+   * @param {number} [plagioclaseMassFraction=0.50] - Initial plagioclase feldspar fraction in protolith (0.05 to 0.95)
+   * @param {number} [metasomaticTempC=420.0] - Contact metamorphic fluid temperature in C (200 to 650 C)
+   * @param {number} [naclBrineSalinityWtPct=15.0] - Hydrothermal brine salinity in wt% NaCl (0.5 to 35.0 wt%)
+   * @param {number} [durationYears=300.0] - Metasomatic circulation duration in years (0.1 to 5000 yr)
+   * @returns {{scapolitizationConversionFraction: number, sequesteredChlorineWeightPercent: number, scapoliteEndmemberClass: string, calcSilicateThermalInertiaTIU: number, metasomaticFaciesClass: string, scapolitizationContext: string}}
+   */
+  static computeMartianScapoliteHalogenMetasomatism(plagioclaseMassFraction = 0.50, metasomaticTempC = 420.0, naclBrineSalinityWtPct = 15.0, durationYears = 300.0) {
+    const wPlag = Math.max(0.01, Math.min(0.95, plagioclaseMassFraction));
+    const TC = Math.max(150.0, Math.min(700.0, metasomaticTempC));
+    const sal = Math.max(0.1, Math.min(40.0, naclBrineSalinityWtPct));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.80e4; // 68 kJ/mol for scapolitization
+
+    // Reaction rate constant
+    const kRate = 4.5e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(sal / 10.0);
+    const alphaScap = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Chlorine sequestered in scapolite crystal lattice (wt% of host rock)
+    const wClSeq = alphaScap * wPlag * 4.10;
+
+    // Thermal inertia of crystalline calc-silicate scapolite skarn
+    const kTherm = 2.55; // W/(m K)
+    const rhoBulk = 2680.0; // kg/m^3
+    const Cspec = 870.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let endmember = 'Sodic-Chloride Marialite (Na4Al3Si9O24Cl)';
+    let facies = 'Incipient Halogen Metasomatism';
+
+    if (sal >= 10.0 && TC <= 480.0) {
+      endmember = 'Sodic-Chloride Marialite Scapolite (Na4Al3Si9O24Cl)';
+      facies = 'High-Temperature Hypersaline Marialite Metasomatism (Tyrrhena Patera / Nili Fossae Aureoles)';
+    } else if (TC > 480.0) {
+      endmember = 'Calcic-Carbonate/Sulfate Meionite Scapolite (Ca4Al6Si6O24CO3/SO4)';
+      facies = 'Deep Pyrometamorphic Granulite / Meionite Skarn Facies';
+    } else {
+      endmember = 'Intermediate Dipyre / Mizzonite Solid Solution';
+      facies = 'Moderate Contact Metasomatic Aureole';
+    }
+
+    return {
+      scapolitizationConversionFraction: parseFloat(alphaScap.toFixed(3)),
+      sequesteredChlorineWeightPercent: parseFloat(wClSeq.toFixed(2)),
+      scapoliteEndmemberClass: endmember,
+      calcSilicateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      metasomaticFaciesClass: facies,
+      scapolitizationContext: `Scapolitization at ${TC.toFixed(0)} C, ${sal.toFixed(1)}% NaCl (${(alphaScap * 100).toFixed(1)}% converted, ${wClSeq.toFixed(2)}% Cl sequestered, TIU=${TIU.toFixed(0)}, ${endmember})`
+    };
+  }
 }
 
 
