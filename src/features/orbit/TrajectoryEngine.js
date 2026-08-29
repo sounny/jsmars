@@ -9077,6 +9077,78 @@ export class TrajectoryEngine {
       varunaContext: `Mars-to-Varuna (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, VOI=${dvVoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to 2:3 resonant Plutino dwarf planet candidate 28978 Ixion and orbit capture.
+   * a = ( r_mars + r_ixion ) / 2
+   * e = ( r_ixion - r_mars ) / ( r_ixion + r_mars )
+   * Reference: Marchi et al. (2003), Lellouch et al. (2013), Curtis (2013) for Plutino Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [ixionDistanceAU=39.68] - Ixion heliocentric distance in AU (30.0 to 50.0 AU)
+   * @param {number} [ixionPeriapsisAltitudeKm=200.0] - Ixion orbit insertion periapsis altitude in km (50 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, ixionOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, ixionContext: string}}
+   */
+  static computeMarsToIxionTransfer(marsParkingAltitudeKm = 300.0, ixionDistanceAU = 39.68, ixionPeriapsisAltitudeKm = 200.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rIAU = Math.max(25.0, Math.min(55.0, ixionDistanceAU));
+    const hpIKm = Math.max(30.0, ixionPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muIxi = 20.0; // km^3/s^2
+    const rIxiKm = 350.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rIDistKm = rIAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rIDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rIDistKm - rMarsDistKm) / (rIDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTiiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Ixion capture
+    const vICircKmS = Math.sqrt(muSun / rIDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rIDistKm) - (1.0 / aKm)));
+    const vInfIKmS = Math.abs(vICircKmS - vArrKmS);
+
+    const rpIKm = rIxiKm + hpIKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpIKm / (1.0 - eCap);
+
+    const vHypIKmS = Math.sqrt(Math.pow(vInfIKmS, 2.0) + ((2.0 * muIxi) / rpIKm));
+    const vCapIKmS = Math.sqrt(muIxi * ((2.0 / rpIKm) - (1.0 / aCapKm)));
+    const dvIoiKmS = vHypIKmS - vCapIKmS;
+
+    const dvTotKmS = dvTiiKmS + dvIoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTiiKmS.toFixed(3)),
+      ixionOrbitInsertionDeltaVKmS: parseFloat(dvIoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      ixionContext: `Mars-to-Ixion (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, IOI=${dvIoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

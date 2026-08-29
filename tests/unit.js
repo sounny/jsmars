@@ -14013,6 +14013,56 @@ describe('Mars-to-Varuna Transfer, Silica Sinter Precipitation & Carbonate Catio
     });
 });
 
+describe('Mars-to-Ixion Transfer, Zeolite Alteration Dehydration & Zeolite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to 2:3 resonant Plutino dwarf planet candidate 28978 Ixion', () => {
+        // Mars to Ixion (300 km Mars alt, 39.68 AU distance, 200 km capture alt):
+        const ixion = TrajectoryEngine.computeMarsToIxionTransfer(300.0, 39.68, 200.0);
+        expect(ixion.semiMajorAxisAU).to.be.closeTo(20.602, 0.5); // ~20.60 AU
+        expect(ixion.eccentricity).to.be.closeTo(0.9260, 0.01); // e ~ 0.926
+        expect(ixion.timeOfFlightDays).to.be.closeTo(18520.1, 2000.0); // ~18520 days (~50.7 yr)
+        expect(ixion.timeOfFlightYears).to.be.closeTo(50.70, 5.0); // ~50.7 yr
+        expect(ixion.marsDepartureDeltaVKmS).to.be.closeTo(7.218, 0.6); // ~7.22 km/s TII
+        expect(ixion.ixionOrbitInsertionDeltaVKmS).to.be.closeTo(1.859, 1.5); // ~1.86 km/s IOI
+        expect(ixion.totalMissionDeltaVKmS).to.be.closeTo(9.077, 2.0); // ~9.08 km/s total
+        expect(ixion.ixionContext).to.include('Mars-to-Ixion');
+    });
+
+    it('should calculate alkaline hydrothermal zeolitization of volcanic glass, bound water, and thermal dehydration', () => {
+        // 50 wt% volcanic glass, 140 C fluid temp, pH 9.5, 200 yr duration:
+        const zeo = KRCEngine.computeMartianZeoliteHydrothermalAlterationDehydration(0.50, 140.0, 9.5, 200.0);
+        expect(zeo.zeolitizationFraction).to.be.greaterThan(0.50); // > 50% zeolitized
+        expect(zeo.boundWaterWeightPercent).to.be.greaterThan(3.0); // > 3.0 wt% bound H2O
+        expect(zeo.isDehydrating).to.be.false; // Stable below 180 C
+        expect(zeo.zeolitizedTuffThermalInertiaTIU).to.be.closeTo(1316.2, 150.0); // ~1316 tiu
+        expect(zeo.zeoliteAlterationClass).to.include('Pervasive Alkaline Hydrothermal Zeolitization');
+        expect(zeo.zeoliteContext).to.include('Zeolite at 140 C');
+
+        // High-temperature dehydration (200 C):
+        const dehyd = KRCEngine.computeMartianZeoliteHydrothermalAlterationDehydration(0.50, 200.0, 9.5, 200.0);
+        expect(dehyd.isDehydrating).to.be.true;
+        expect(dehyd.zeoliteAlterationClass).to.include('High-Temperature Metamorphic Dehydration');
+    });
+
+    it('should discriminate Analcime vs Clinoptilolite vs Chabazite in CRISM spectra', () => {
+        // Analcime (Mawrth Vallis: BD1400 = 0.02, BD1900 = 0.08, BD2490 = 0.04, BD2530 = 0.01):
+        const anal = BandMathEngine.computeCRISMZeolitePolymorphSpeciationIndices(0.02, 0.08, 0.04, 0.01);
+        expect(anal.isZeoliteDetected).to.be.true;
+        expect(anal.zeolitePolymorphClass).to.include('Sodium Zeolite (Analcime)');
+        expect(anal.mineralSpecies).to.include('Analcime');
+        expect(anal.alkalineLacustrineContext).to.include('Alkaline-Saline Closed Paleolake');
+
+        // Clinoptilolite (BD1400 = 0.04, BD1900 = 0.07, BD2490 = 0.01, BD2530 = 0.04):
+        const clino = BandMathEngine.computeCRISMZeolitePolymorphSpeciationIndices(0.04, 0.07, 0.01, 0.04);
+        expect(clino.isZeoliteDetected).to.be.true;
+        expect(clino.zeolitePolymorphClass).to.include('Potassium-Calcium Zeolite (Clinoptilolite / Heulandite)');
+        expect(clino.mineralSpecies).to.include('Clinoptilolite');
+
+        // Non-zeolitic basalt:
+        const basalt = BandMathEngine.computeCRISMZeolitePolymorphSpeciationIndices(0.01, 0.01, 0.005, 0.005);
+        expect(basalt.isZeoliteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

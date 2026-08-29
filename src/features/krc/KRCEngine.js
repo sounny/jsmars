@@ -9129,6 +9129,64 @@ export class KRCEngine {
       sinterContext: `Silica Sinter (${sRatio.toFixed(1)}x supersat, ${mSinterTonnesYr.toFixed(1)} t/yr SiO2, ${dzDtMmYr.toFixed(1)} mm/yr accretion, TIU=${TIU.toFixed(0)}, ${hydClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal zeolitization kinetics of volcanic glass, bound crystal water sequestration, thermal dehydration, and rock thermal inertia.
+   * Volcanic Glass + Alkaline Hydrothermal Fluid (pH 8.5-10.5) -> Analcime / Clinoptilolite + Smectite
+   * Reference: Ehlmann et al. (2009, 2011), Wray et al. (2016), Viviano-Beck et al. (2014) for Martian Zeolites.
+   * @param {number} [volcanicGlassFraction=0.50] - Protolith volcanic glass fraction (0.05 to 0.95)
+   * @param {number} [hydrothermalFluidTempC=140.0] - Fluid alteration temperature in C (40 to 300 C)
+   * @param {number} [fluidPh=9.5] - Fluid pH (7.0 to 12.0)
+   * @param {number} [durationYears=200.0] - Reaction duration in years (0.1 to 10000 yr)
+   * @returns {{zeolitizationFraction: number, boundWaterWeightPercent: number, isDehydrating: boolean, zeolitizedTuffThermalInertiaTIU: number, zeoliteAlterationClass: string, zeoliteContext: string}}
+   */
+  static computeMartianZeoliteHydrothermalAlterationDehydration(volcanicGlassFraction = 0.50, hydrothermalFluidTempC = 140.0, fluidPh = 9.5, durationYears = 200.0) {
+    const wGlass = Math.max(0.01, Math.min(0.95, volcanicGlassFraction));
+    const TC = Math.max(20.0, Math.min(350.0, hydrothermalFluidTempC));
+    const pH = Math.max(6.0, Math.min(13.0, fluidPh));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.50e4; // 55 kJ/mol
+
+    // Kinetic dissolution-precipitation rate of zeolite formation
+    const pHFactor = Math.pow(10.0, (pH - 7.0) * 0.30);
+    const kRate = 2.0e-3 * Math.exp(-Ea / (Rgas * TK)) * pHFactor;
+
+    const alphaZeo = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural H2O in zeolite channels (wt%)
+    const wBoundH2O = alphaZeo * wGlass * 12.5;
+
+    // Thermal dehydration threshold (T >= 180 C causes lattice collapse & water vaporization)
+    const isDehyd = TC >= 180.0;
+
+    // Thermal inertia of zeolitized volcanic tuff
+    const kTherm = 1.10; // W/(m K)
+    const rhoBulk = 1750.0; // kg/m^3
+    const Cspec = 900.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let altClass = 'Incipient Glass Hydration / Slow Zeolitization';
+    if (isDehyd) {
+      altClass = 'High-Temperature Metamorphic Dehydration (Wairakite / Feldspar Metasomatism)';
+    } else if (alphaZeo >= 0.60 && pH >= 8.5) {
+      altClass = 'Pervasive Alkaline Hydrothermal Zeolitization (Analcime / Clinoptilolite in Mawrth / Terby Crater)';
+    } else if (alphaZeo >= 0.20) {
+      altClass = 'Moderate Zeolitic Alteration of Volcanic Ash';
+    }
+
+    return {
+      zeolitizationFraction: parseFloat(alphaZeo.toFixed(3)),
+      boundWaterWeightPercent: parseFloat(wBoundH2O.toFixed(2)),
+      isDehydrating: isDehyd,
+      zeolitizedTuffThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      zeoliteAlterationClass: altClass,
+      zeoliteContext: `Zeolite at ${TC.toFixed(0)} C, pH ${pH.toFixed(1)} (${(alphaZeo * 100).toFixed(1)}% altered, ${wBoundH2O.toFixed(1)}% H2O, TIU=${TIU.toFixed(0)}, ${altClass})`
+    };
+  }
 }
 
 

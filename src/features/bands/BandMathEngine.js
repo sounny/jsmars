@@ -8367,6 +8367,56 @@ export class BandMathEngine {
       co2AtmosphericSequesterContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrated Zeolite Polymorphs (Analcime vs Clinoptilolite vs Chabazite) from CRISM 1.40 um, 1.90 um, 2.49 um, and 2.53 um absorption bands.
+   * Reference: Ehlmann et al. (2009), Wray et al. (2016), Viviano-Beck et al. (2014) for Martian Zeolites.
+   * @param {number} [band1400WaterDepth=0.02] - BD1400 H2O/OH overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.08] - BD1900 molecular H2O depth (0.0 to 0.60)
+   * @param {number} [band2490ZeoDepth=0.04] - BD2490 analcime diagnostic shoulder depth (0.0 to 0.30)
+   * @param {number} [band2530ZeoDepth=0.01] - BD2530 clinoptilolite diagnostic shoulder depth (0.0 to 0.30)
+   * @returns {{isZeoliteDetected: boolean, zeolitePolymorphClass: string, mineralSpecies: string, chemicalFormula: string, alkalineLacustrineContext: string}}
+   */
+  static computeCRISMZeolitePolymorphSpeciationIndices(band1400WaterDepth = 0.02, band1900WaterDepth = 0.08, band2490ZeoDepth = 0.04, band2530ZeoDepth = 0.01) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2490 = Math.max(0.0, band2490ZeoDepth);
+    const d2530 = Math.max(0.0, band2530ZeoDepth);
+
+    const isZeo = d1900 >= 0.040 && (d2490 >= 0.020 || d2530 >= 0.020);
+
+    let zClass = 'Zeolite-Free Silicate Regolith';
+    let species = 'Basaltic Regolith';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Bedrock without Detectable Zeolite Hydration Features';
+
+    if (isZeo) {
+      if (d2490 >= 0.025 && d1400 < 0.035) {
+        zClass = 'Sodium Zeolite (Analcime)';
+        species = 'Analcime';
+        formula = 'NaAlSi2O6 * H2O';
+        context = 'Alkaline-Saline Closed Paleolake / Hydrothermally Altered Volcanic Ash (Mawrth Vallis / Columbus Crater)';
+      } else if (d2530 >= 0.025 && d1400 >= 0.030) {
+        zClass = 'Potassium-Calcium Zeolite (Clinoptilolite / Heulandite)';
+        species = 'Clinoptilolite / Heulandite';
+        formula = '(K,Na,Ca)2-3Al3(Al,Si)2Si13O36 * 12H2O';
+        context = 'Diagenetic Alteration of Felsic Volcanic Tuff / Low-Grade Burial Metamorphism';
+      } else {
+        zClass = 'Calcium Zeolite (Chabazite / Natrolite)';
+        species = 'Chabazite / Natrolite';
+        formula = '(Ca,Na2)Al2Si4O12 * 6H2O';
+        context = 'Low-Temperature Hydrothermal Cavity / Basalt Amygdule Mineralization';
+      }
+    }
+
+    return {
+      isZeoliteDetected: isZeo,
+      zeolitePolymorphClass: zClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      alkalineLacustrineContext: context
+    };
+  }
 }
 
 
