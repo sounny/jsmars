@@ -8601,6 +8601,66 @@ export class BandMathEngine {
       acidHydrothermalContext: context
     };
   }
+
+  /**
+   * Discriminate Sub-Greenschist Metamorphic Phyllosilicates & Inosilicates (Prehnite vs Pumpellyite vs Chlorite vs Epidote) from CRISM 1.475 um, 2.25 um, and 2.35 um absorption bands.
+   * Reference: Ehlmann et al. (2009, 2011), Marzo et al. (2010), Viviano-Beck et al. (2014), Sun & Milliken (2015) for Martian Metamorphic Megabreccia.
+   * @param {number} [band1475OHDepth=0.045] - BD1475 prehnite diagnostic OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2350MetalOHDepth=0.065] - BD2350 primary metal-OH vibration depth (0.0 to 0.50)
+   * @param {number} [band2250AlOHDepth=0.01] - BD2250 chlorite/pumpellyite doublet shoulder depth (0.0 to 0.50)
+   * @param {number} [band1550Fe3Depth=0.005] - BD1550 epidote diagnostic Fe3+ vibration depth (0.0 to 0.30)
+   * @returns {{isMetamorphicMineralDetected: boolean, metamorphicMineralClass: string, mineralSpecies: string, chemicalFormula: string, metamorphicFaciesContext: string}}
+   */
+  static computeCRISMPrehnitePumpellyiteMetamorphicSpeciationIndices(band1475OHDepth = 0.045, band2350MetalOHDepth = 0.065, band2250AlOHDepth = 0.01, band1550Fe3Depth = 0.005) {
+    const d1475 = Math.max(0.0, band1475OHDepth);
+    const d2350 = Math.max(0.0, band2350MetalOHDepth);
+    const d2250 = Math.max(0.0, band2250AlOHDepth);
+    const d1550 = Math.max(0.0, band1550Fe3Depth);
+
+    const isPrehnite = d1475 >= 0.025 && d2350 >= 0.035 && d2250 < 0.025;
+    const isPumpellyite = d2250 >= 0.025 && d2350 >= 0.030 && d1475 >= 0.015;
+    const isEpidote = d1550 >= 0.025 && d2350 >= 0.030;
+    const isChlorite = d2250 >= 0.025 && d2350 >= 0.035 && d1475 < 0.015;
+
+    const isMeta = isPrehnite || isPumpellyite || isEpidote || isChlorite;
+
+    let mClass = 'Metamorphic-Free Silicate Regolith';
+    let species = 'Basalt Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Bedrock without Detectable Prehnite-Pumpellyite Metamorphic Absorption Doublet';
+
+    if (isMeta) {
+      if (isPrehnite) {
+        mClass = 'Sub-Greenschist Prehnite Hydrothermal Assemblage';
+        species = 'Prehnite';
+        formula = 'Ca2Al2Si3O10(OH)2';
+        context = 'Sub-Greenschist Facies Hydrothermal Metamorphism (200-300 C, 50-150 MPa) in Deep Crustal Megabreccia (Nili Fossae / Toro Crater)';
+      } else if (isPumpellyite) {
+        mClass = 'Sub-Greenschist Pumpellyite Assemblage';
+        species = 'Pumpellyite';
+        formula = 'Ca2MgAl2(SiO4)(Si2O7)(OH)2 * H2O';
+        context = 'Hydrated Sub-Greenschist Metamorphism of Calc-Alkaline Basaltic Crust';
+      } else if (isEpidote) {
+        mClass = 'Greenschist Facies Epidote Assemblage';
+        species = 'Epidote';
+        formula = 'Ca2Al2Fe3+(SiO4)(Si2O7)O(OH)';
+        context = 'Moderate-Temperature Greenschist Hydrothermal Alteration / Skarn Veining';
+      } else {
+        mClass = 'Greenschist Facies Chlorite Assemblage';
+        species = 'Chlorite (Clinochlore / Chamosite)';
+        formula = '(Mg,Fe)5Al(AlSi3O10)(OH)8';
+        context = 'Low-to-Medium Grade Hydrothermal Metamorphic Alteration of Mafic Minerals';
+      }
+    }
+
+    return {
+      isMetamorphicMineralDetected: isMeta,
+      metamorphicMineralClass: mClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metamorphicFaciesContext: context
+    };
+  }
 }
 
 

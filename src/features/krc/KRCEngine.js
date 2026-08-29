@@ -9361,6 +9361,64 @@ export class KRCEngine {
       acidSulfateContext: `Acid Sulfate at ${TC.toFixed(0)} C, pH ${pH.toFixed(1)} (${(alphaSulf * 100).toFixed(1)}% altered, ${species}, TIU=${TIU.toFixed(0)}, ${altClass})`
     };
   }
+
+  /**
+   * Calculate sub-greenschist facies hydrothermal metamorphism of basaltic crust to prehnite-pumpellyite-chlorite assemblage, porosity reduction, and crystalline metabasalt thermal inertia.
+   * Basalt + H2O (200-320 C, 50-200 MPa) -> Prehnite + Pumpellyite + Chlorite + Quartz
+   * Reference: Ehlmann et al. (2009, 2011), Marzo et al. (2010), Viviano-Beck et al. (2014) for Martian Low-Grade Metamorphic Megabreccia.
+   * @param {number} [basalticCrustPorosity=0.15] - Initial basaltic crust porosity (0.02 to 0.35)
+   * @param {number} [metamorphicTempC=250.0] - Deep crustal metamorphic temperature in C (150 to 400 C)
+   * @param {number} [lithostaticPressureMPa=120.0] - Overburden lithostatic pressure in MPa (20 to 400 MPa)
+   * @param {number} [durationYears=1000.0] - Metamorphic heating duration in years (0.1 to 50000 yr)
+   * @returns {{metamorphicConversionFraction: number, compactedResidualPorosity: number, metabasaltBulkDensityKgM3: number, crystallineMetabasaltThermalInertiaTIU: number, metamorphicFaciesClass: string, metamorphismContext: string}}
+   */
+  static computeMartianPrehnitePumpellyiteMetamorphism(basalticCrustPorosity = 0.15, metamorphicTempC = 250.0, lithostaticPressureMPa = 120.0, durationYears = 1000.0) {
+    const phi0 = Math.max(0.01, Math.min(0.40, basalticCrustPorosity));
+    const TC = Math.max(100.0, Math.min(450.0, metamorphicTempC));
+    const PMPa = Math.max(10.0, Math.min(600.0, lithostaticPressureMPa));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.50e4; // 65 kJ/mol
+
+    // Metamorphic conversion rate
+    const pFactor = Math.pow(PMPa / 100.0, 0.30);
+    const kRate = 4.0e-3 * Math.exp(-Ea / (Rgas * TK)) * pFactor;
+
+    const alphaMeta = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Porosity compaction and pore occlusion
+    const phiResidual = phi0 * (1.0 - (0.75 * alphaMeta));
+
+    // Metabasalt bulk density (kg/m^3)
+    const rhoGrain = 2950.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    // Thermal inertia of crystalline metabasalt
+    const kTherm = 2.75; // W/(m K)
+    const Cspec = 870.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let faciesClass = 'Zeolite / Incipient Low-Grade Metamorphism';
+    if (alphaMeta >= 0.50 && TC >= 220.0 && TC <= 320.0) {
+      faciesClass = 'Prehnite-Pumpellyite Sub-Greenschist Facies (Nili Fossae / Toro Crater Deep Megabreccia)';
+    } else if (TC > 320.0) {
+      faciesClass = 'Greenschist Facies (Chlorite-Epidote-Actinolite Assemblage)';
+    } else if (alphaMeta >= 0.20) {
+      faciesClass = 'Moderate Sub-Greenschist Metamorphism';
+    }
+
+    return {
+      metamorphicConversionFraction: parseFloat(alphaMeta.toFixed(3)),
+      compactedResidualPorosity: parseFloat(phiResidual.toFixed(4)),
+      metabasaltBulkDensityKgM3: parseFloat(rhoBulk.toFixed(1)),
+      crystallineMetabasaltThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      metamorphicFaciesClass: faciesClass,
+      metamorphismContext: `Prehnite-Pumpellyite Metamorphism at ${TC.toFixed(0)} C, ${PMPa.toFixed(0)} MPa (${(alphaMeta * 100).toFixed(1)}% altered, phi=${(phiResidual * 100).toFixed(1)}%, TIU=${TIU.toFixed(0)}, ${faciesClass})`
+    };
+  }
 }
 
 

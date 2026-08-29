@@ -14215,6 +14215,57 @@ describe('Mars-to-G!kún||ʼhòmdìmà Transfer, Acid Sulfate Weathering & Aluni
     });
 });
 
+describe('Mars-to-Chaos Transfer, Prehnite-Pumpellyite Metamorphism & Metamorphic Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to classical KBO 19521 Chaos', () => {
+        // Mars to Chaos (300 km Mars alt, 40.90 AU distance, 150 km capture alt):
+        const ch = TrajectoryEngine.computeMarsToChaosTransfer(300.0, 40.90, 150.0);
+        expect(ch.semiMajorAxisAU).to.be.closeTo(21.212, 0.5); // ~21.21 AU
+        expect(ch.eccentricity).to.be.closeTo(0.9282, 0.01); // e ~ 0.928
+        expect(ch.timeOfFlightDays).to.be.closeTo(19350.5, 2000.0); // ~19351 days (~53.0 yr)
+        expect(ch.timeOfFlightYears).to.be.closeTo(52.98, 5.0); // ~53.0 yr
+        expect(ch.marsDepartureDeltaVKmS).to.be.closeTo(7.249, 0.6); // ~7.25 km/s TCI
+        expect(ch.chaosOrbitInsertionDeltaVKmS).to.be.closeTo(1.846, 1.5); // ~1.85 km/s COI
+        expect(ch.totalMissionDeltaVKmS).to.be.closeTo(9.095, 2.0); // ~9.10 km/s total
+        expect(ch.chaosContext).to.include('Mars-to-Chaos');
+    });
+
+    it('should calculate sub-greenschist facies hydrothermal metamorphism, porosity reduction, and crystalline metabasalt thermal inertia', () => {
+        // 15% initial porosity, 250 C crustal temp, 120 MPa lithostatic pressure, 1000 yr duration:
+        const meta = KRCEngine.computeMartianPrehnitePumpellyiteMetamorphism(0.15, 250.0, 120.0, 1000.0);
+        expect(meta.metamorphicConversionFraction).to.be.greaterThan(0.50); // > 50% altered
+        expect(meta.compactedResidualPorosity).to.be.lessThan(0.10); // < 10% residual porosity
+        expect(meta.metabasaltBulkDensityKgM3).to.be.closeTo(2850.0, 150.0); // ~2850 kg/m^3
+        expect(meta.crystallineMetabasaltThermalInertiaTIU).to.be.closeTo(2611.0, 200.0); // ~2611 tiu
+        expect(meta.metamorphicFaciesClass).to.include('Prehnite-Pumpellyite Sub-Greenschist Facies');
+        expect(meta.metamorphismContext).to.include('Prehnite-Pumpellyite Metamorphism at 250 C');
+    });
+
+    it('should discriminate Prehnite vs Pumpellyite vs Chlorite vs Epidote in CRISM spectra', () => {
+        // Prehnite (Nili Fossae / Toro Crater: BD1475 = 0.045, BD2350 = 0.065, BD2250 = 0.01, BD1550 = 0.005):
+        const preh = BandMathEngine.computeCRISMPrehnitePumpellyiteMetamorphicSpeciationIndices(0.045, 0.065, 0.01, 0.005);
+        expect(preh.isMetamorphicMineralDetected).to.be.true;
+        expect(preh.metamorphicMineralClass).to.include('Sub-Greenschist Prehnite Hydrothermal Assemblage');
+        expect(preh.mineralSpecies).to.include('Prehnite');
+        expect(preh.metamorphicFaciesContext).to.include('Sub-Greenschist Facies');
+
+        // Pumpellyite (BD1475 = 0.02, BD2350 = 0.05, BD2250 = 0.04, BD1550 = 0.005):
+        const pump = BandMathEngine.computeCRISMPrehnitePumpellyiteMetamorphicSpeciationIndices(0.02, 0.05, 0.04, 0.005);
+        expect(pump.isMetamorphicMineralDetected).to.be.true;
+        expect(pump.metamorphicMineralClass).to.include('Sub-Greenschist Pumpellyite Assemblage');
+        expect(pump.mineralSpecies).to.include('Pumpellyite');
+
+        // Chlorite (BD1475 = 0.005, BD2350 = 0.06, BD2250 = 0.05, BD1550 = 0.005):
+        const chl = BandMathEngine.computeCRISMPrehnitePumpellyiteMetamorphicSpeciationIndices(0.005, 0.06, 0.05, 0.005);
+        expect(chl.isMetamorphicMineralDetected).to.be.true;
+        expect(chl.metamorphicMineralClass).to.include('Greenschist Facies Chlorite Assemblage');
+        expect(chl.mineralSpecies).to.include('Chlorite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMPrehnitePumpellyiteMetamorphicSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMetamorphicMineralDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
