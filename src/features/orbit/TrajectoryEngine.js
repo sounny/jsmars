@@ -8933,6 +8933,78 @@ export class TrajectoryEngine {
       orcusContext: `Mars-to-Orcus (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, OOI=${dvOoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to classical Kuiper Belt Cubewano dwarf planet 50000 Quaoar and orbit capture.
+   * a = ( r_mars + r_quaoar ) / 2
+   * e = ( r_quaoar - r_mars ) / ( r_quaoar + r_mars )
+   * Reference: Brown & Trujillo (2004), Braga-Ribas et al. (2013), Morgado et al. (2023), Curtis (2013) for Cubewano Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [quaoarDistanceAU=43.40] - Quaoar heliocentric distance in AU (35.0 to 55.0 AU)
+   * @param {number} [quaoarPeriapsisAltitudeKm=300.0] - Quaoar orbit insertion periapsis altitude in km (50 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, quaoarOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, quaoarContext: string}}
+   */
+  static computeMarsToQuaoarTransfer(marsParkingAltitudeKm = 300.0, quaoarDistanceAU = 43.40, quaoarPeriapsisAltitudeKm = 300.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rQAU = Math.max(30.0, Math.min(60.0, quaoarDistanceAU));
+    const hpQKm = Math.max(30.0, quaoarPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muQua = 80.0; // km^3/s^2
+    const rQuaKm = 545.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rQDistKm = rQAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rQDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rQDistKm - rMarsDistKm) / (rQDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTqiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Quaoar capture
+    const vQCircKmS = Math.sqrt(muSun / rQDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rQDistKm) - (1.0 / aKm)));
+    const vInfQKmS = Math.abs(vQCircKmS - vArrKmS);
+
+    const rpQKm = rQuaKm + hpQKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpQKm / (1.0 - eCap);
+
+    const vHypQKmS = Math.sqrt(Math.pow(vInfQKmS, 2.0) + ((2.0 * muQua) / rpQKm));
+    const vCapQKmS = Math.sqrt(muQua * ((2.0 / rpQKm) - (1.0 / aCapKm)));
+    const dvQoiKmS = vHypQKmS - vCapQKmS;
+
+    const dvTotKmS = dvTqiKmS + dvQoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTqiKmS.toFixed(3)),
+      quaoarOrbitInsertionDeltaVKmS: parseFloat(dvQoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      quaoarContext: `Mars-to-Quaoar (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, QOI=${dvQoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

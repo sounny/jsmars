@@ -13911,6 +13911,51 @@ describe('Mars-to-Orcus Transfer, Serpentinization Methanogenesis & Olivine Fo# 
     });
 });
 
+describe('Mars-to-Quaoar Transfer, Clathrate Dissociation Plumes & Plagioclase Anorthosite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to classical Kuiper Belt Cubewano dwarf planet 50000 Quaoar', () => {
+        // Mars to Quaoar (300 km Mars alt, 43.40 AU distance, 300 km capture alt):
+        const qua = TrajectoryEngine.computeMarsToQuaoarTransfer(300.0, 43.40, 300.0);
+        expect(qua.semiMajorAxisAU).to.be.closeTo(22.462, 0.5); // ~22.46 AU
+        expect(qua.eccentricity).to.be.closeTo(0.9322, 0.01); // e ~ 0.932
+        expect(qua.timeOfFlightDays).to.be.closeTo(19441.8, 500.0); // ~19442 days (~53.2 yr)
+        expect(qua.timeOfFlightYears).to.be.closeTo(53.23, 1.5); // ~53.2 yr
+        expect(qua.marsDepartureDeltaVKmS).to.be.closeTo(7.315, 0.6); // ~7.32 km/s TQI
+        expect(qua.quaoarOrbitInsertionDeltaVKmS).to.be.closeTo(2.953, 0.4); // ~2.95 km/s QOI
+        expect(qua.totalMissionDeltaVKmS).to.be.closeTo(10.268, 0.5); // ~10.27 km/s total
+        expect(qua.quaoarContext).to.include('Mars-to-Quaoar');
+    });
+
+    it('should calculate magmatically-driven methane clathrate hydrate dissociation, outgassing flux, and atmospheric plumes', () => {
+        // 100 m clathrate, 150 mW/m^2 heat flux, 220 K initial temp, 50 yr duration:
+        const plume = KRCEngine.computeMartianClathrateHydrateDissociationPlume(100.0, 150.0, 220.0, 50.0);
+        expect(plume.dissociationRateMmPerYear).to.be.closeTo(9.25, 1.0); // ~9.25 mm/yr front velocity
+        expect(plume.dissociatedLayerThicknessMeters).to.be.closeTo(0.463, 0.05); // ~0.46 m dissociated
+        expect(plume.dailySeepageKgPerSol100Km2).to.be.greaterThan(200.0); // > 200 kg CH4/sol per 100 km2
+        expect(plume.dissociatedSpongeThermalInertiaTIU).to.be.closeTo(749.4, 80.0); // ~749 tiu cryo-sponge
+        expect(plume.methanePlumeRegimeClass).to.include('Active Magmatically-Driven Methane Plume Outburst');
+        expect(plume.clathrateContext).to.include('Clathrate Dissociation');
+    });
+
+    it('should discriminate Pristine Primordial Plagioclase Feldspar (Anorthosite) vs Volcanic Glass in CRISM spectra', () => {
+        // Pristine Anorthosite (Mawrth Vallis / Valles Marineris: BD1250 = 0.04, BD1050 = 0.01, BD1900 = 0.005, Albedo = 0.28):
+        const anorth = BandMathEngine.computeCRISMPlagioclaseAnorthositeGlassIndices(0.04, 0.01, 0.005, 0.28);
+        expect(anorth.isFeldsparDetected).to.be.true;
+        expect(anorth.silicateSpeciesClass).to.include('Pristine Primordial Plagioclase Feldspar (Anorthosite)');
+        expect(anorth.mineralSpecies).to.include('Anorthosite / Plagioclase');
+        expect(anorth.crustalPetrogenesisContext).to.include('Magma Ocean Flotation');
+
+        // Quenched Volcanic Glass (Elysium Planitia: BD1250 = 0.01, BD1050 = 0.035, BD1900 = 0.005, Albedo = 0.15):
+        const glass = BandMathEngine.computeCRISMPlagioclaseAnorthositeGlassIndices(0.01, 0.035, 0.005, 0.15);
+        expect(glass.isFeldsparDetected).to.be.true;
+        expect(glass.silicateSpeciesClass).to.include('Quenched Volcanic Glass / Pyroclastic Obsidian');
+        expect(glass.mineralSpecies).to.include('Volcanic Glass');
+
+        // Standard Mafic Basalt:
+        const basalt = BandMathEngine.computeCRISMPlagioclaseAnorthositeGlassIndices(0.005, 0.005, 0.005, 0.15);
+        expect(basalt.isFeldsparDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

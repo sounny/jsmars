@@ -9005,6 +9005,70 @@ export class KRCEngine {
       serpentinizationContext: `Serpentinization at ${TC.toFixed(0)} C (${(alphaSerp * 100).toFixed(1)}% reacted, ${nmolCH4PerKg.toFixed(0)} nmol CH4/kg, TIU=${TIU.toFixed(0)}, ${regClass})`
     };
   }
+
+  /**
+   * Calculate thermal dissociation of subsurface methane clathrate hydrate driven by magmatic heating, outgassing flux, and atmospheric plume release.
+   * v_diss = ( q_magma - q_bg ) / ( rho_clath * Delta_H_diss )
+   * F_CH4 = v_diss * rho_CH4_cage
+   * Reference: Chassefiere et al. (2013), Webster et al. (2015, 2021), Mousis et al. (2015) for Martian Methane Plumes.
+   * @param {number} [clathrateThicknessM=100.0] - Clathrate hydrate layer thickness in meters (10 to 1000 m)
+   * @param {number} [geothermalHeatFluxMwM2=150.0] - Magmatic / geothermal basal heat flux in mW/m^2 (40 to 500 mW/m^2)
+   * @param {number} [initialClathrateTempK=220.0] - Pre-heating clathrate stability zone temperature in K (180 to 260 K)
+   * @param {number} [durationYears=50.0] - Heating duration in years (0.1 to 1000 yr)
+   * @returns {{dissociationRateMmPerYear: number, dissociatedLayerThicknessMeters: number, methaneFluxKgPerM2S: number, dailySeepageKgPerSol100Km2: number, dissociatedSpongeThermalInertiaTIU: number, methanePlumeRegimeClass: string, clathrateContext: string}}
+   */
+  static computeMartianClathrateHydrateDissociationPlume(clathrateThicknessM = 100.0, geothermalHeatFluxMwM2 = 150.0, initialClathrateTempK = 220.0, durationYears = 50.0) {
+    const Hclath = Math.max(5.0, clathrateThicknessM);
+    const qMw = Math.max(35.0, geothermalHeatFluxMwM2);
+    const TK = Math.max(160.0, Math.min(270.0, initialClathrateTempK));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const qBgW = 0.030; // 30 mW/m^2 background crustal heat flux
+    const qMagmaW = qMw / 1000.0;
+    const deltaQ = Math.max(0.005, qMagmaW - qBgW); // W/m^2
+
+    const rhoClath = 910.0; // kg/m^3
+    const deltaHDiss = 4.5e5; // J/kg clathrate
+
+    // Dissociation front velocity (m/s -> mm/yr)
+    const vDissMS = deltaQ / (rhoClath * deltaHDiss);
+    const vDissMmYr = vDissMS * (365.25 * 86400.0 * 1000.0);
+
+    // Total dissociated thickness in duration (m)
+    const zDissM = Math.min(Hclath, (vDissMmYr / 1000.0) * tYrs);
+
+    // Methane release flux (kg/(m^2 s))
+    const rhoCH4Cage = 117.0; // kg CH4 / m^3 clathrate
+    const JCH4 = vDissMS * rhoCH4Cage;
+
+    // Daily seepage over 100 km^2 area (kg CH4 / sol)
+    const solSec = 88775.0;
+    const areaM2 = 1.0e8; // 100 km^2
+    const QSolKg = JCH4 * areaM2 * solSec;
+
+    // Thermal inertia of dissociated porous cryo-sponge
+    const kTherm = 0.45; // W/(m K)
+    const rhoBulk = 1600.0; // kg/m^3
+    const Cspec = 780.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let regClass = 'Minor Subsurface Clathrate Outgassing';
+    if (QSolKg >= 200.0) {
+      regClass = 'Active Magmatically-Driven Methane Plume Outburst (TLS Curiosity / PFS Atmospheric Spikes in Gale / Nili Fossae)';
+    } else if (QSolKg >= 50.0) {
+      regClass = 'Moderate Chronic Fault Seepage & Micro-Seepage Regime';
+    }
+
+    return {
+      dissociationRateMmPerYear: parseFloat(vDissMmYr.toFixed(3)),
+      dissociatedLayerThicknessMeters: parseFloat(zDissM.toFixed(3)),
+      methaneFluxKgPerM2S: parseFloat(JCH4.toExponential(3)),
+      dailySeepageKgPerSol100Km2: parseFloat(QSolKg.toFixed(1)),
+      dissociatedSpongeThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      methanePlumeRegimeClass: regClass,
+      clathrateContext: `Clathrate Dissociation at ${qMw.toFixed(0)} mW/m^2 (${vDissMmYr.toFixed(2)} mm/yr, ${QSolKg.toFixed(0)} kg CH4/sol per 100km2, TIU=${TIU.toFixed(0)}, ${regClass})`
+    };
+  }
 }
 
 

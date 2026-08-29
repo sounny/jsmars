@@ -780,3 +780,17 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate interplanetary direct transfer from Mars to 2:3 resonant Plutino dwarf planet 90482 Orcus
 ?: AssertionError: expected 2.92 to be close to 1.63 +/- 0.4
     at n.<anonymous> (unit.js:13870:58)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 05:01:02 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to classical Kuiper Belt Cubewano dwarf planet 50000 Quaoar
+?: AssertionError: expected 19441.8 to be close to 21083.5 +/- 800
+    at n.<anonymous> (unit.js:13920:44)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 05:01:17 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to classical Kuiper Belt Cubewano dwarf planet 50000 Quaoar
+?: AssertionError: expected 2.953 to be close to 1.664 +/- 0.4
+    at n.<anonymous> (unit.js:13923:57)

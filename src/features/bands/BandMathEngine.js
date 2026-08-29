@@ -8268,6 +8268,50 @@ export class BandMathEngine {
       mantlePetrogenesisContext: context
     };
   }
+
+  /**
+   * Discriminate Pristine Primordial Crustal Plagioclase Feldspar (Anorthosite) vs Volcanic Glass from CRISM 1.25 um Fe2+ tetrahedral absorption and 1.05 um continuum curvature.
+   * Reference: Carter et al. (2013), Wray et al. (2013), Horgan et al. (2014), Viviano-Beck et al. (2014) for Martian Anorthosites.
+   * @param {number} [band1250PlagDepth=0.04] - BD1250 plagioclase Fe2+ crystal field absorption depth (0.0 to 0.40)
+   * @param {number} [band1050GlassDepth=0.01] - BD1050 volcanic glass curvature depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.005] - BD1900 molecular H2O alteration depth (0.0 to 0.40)
+   * @param {number} [continuumAlbedo=0.28] - CRISM VNIR continuum reflectance (0.05 to 0.60)
+   * @returns {{isFeldsparDetected: boolean, silicateSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, crustalPetrogenesisContext: string}}
+   */
+  static computeCRISMPlagioclaseAnorthositeGlassIndices(band1250PlagDepth = 0.04, band1050GlassDepth = 0.01, band1900WaterDepth = 0.005, continuumAlbedo = 0.28) {
+    const d1250 = Math.max(0.0, band1250PlagDepth);
+    const d1050 = Math.max(0.0, band1050GlassDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const alb = Math.max(0.01, continuumAlbedo);
+
+    const isPlag = d1250 >= 0.025 && d1900 < 0.025 && alb >= 0.20;
+    const isGlass = d1050 >= 0.025 && d1250 < 0.018 && d1900 < 0.020;
+
+    let sClass = 'Mafic Basaltic Regolith';
+    let species = 'Pyroxene-Basalt Matrix';
+    let formula = '(Mg,Fe,Ca)SiO3';
+    let context = 'Standard Pyroxene/Olivine-Rich Basaltic Silicate Regolith';
+
+    if (isPlag) {
+      sClass = 'Pristine Primordial Plagioclase Feldspar (Anorthosite)';
+      species = 'Anorthosite / Plagioclase';
+      formula = 'CaAl2Si2O8 - NaAlSi3O8 (An80-95)';
+      context = 'Ancient Primordial Noachian Magma Ocean Flotation / Felsic Crust (Mawrth Vallis / Valles Marineris Central Peaks)';
+    } else if (isGlass) {
+      sClass = 'Quenched Volcanic Glass / Pyroclastic Obsidian';
+      species = 'Volcanic Glass';
+      formula = 'Amorphous Silicate Glass';
+      context = 'Rapidly Quenched Explosive Hydrovolcanic / Pyroclastic Fall Deposit (Elysium Planitia / Northern Plains)';
+    }
+
+    return {
+      isFeldsparDetected: isPlag || isGlass,
+      silicateSpeciesClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      crustalPetrogenesisContext: context
+    };
+  }
 }
 
 
