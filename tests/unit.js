@@ -14165,6 +14165,56 @@ describe('Mars-to-Varda Transfer, Kaolinite-to-Pyrophyllite Metamorphism & Kaoli
     });
 });
 
+describe('Mars-to-G!kún||ʼhòmdìmà Transfer, Acid Sulfate Weathering & Alunite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to resonant scattered disc dwarf planet candidate G!kún||ʼhòmdìmà', () => {
+        // Mars to G!kún||ʼhòmdìmà (300 km Mars alt, 54.20 AU distance, 150 km capture alt):
+        const gkun = TrajectoryEngine.computeMarsToGkunhomdimaTransfer(300.0, 54.20, 150.0);
+        expect(gkun.semiMajorAxisAU).to.be.closeTo(27.862, 0.5); // ~27.86 AU
+        expect(gkun.eccentricity).to.be.closeTo(0.9453, 0.01); // e ~ 0.945
+        expect(gkun.timeOfFlightDays).to.be.closeTo(29081.2, 3000.0); // ~29081 days (~79.6 yr)
+        expect(gkun.timeOfFlightYears).to.be.closeTo(79.62, 8.0); // ~79.6 yr
+        expect(gkun.marsDepartureDeltaVKmS).to.be.closeTo(7.490, 0.6); // ~7.49 km/s TGI
+        expect(gkun.gkunOrbitInsertionDeltaVKmS).to.be.closeTo(1.641, 1.5); // ~1.64 km/s GOI
+        expect(gkun.totalMissionDeltaVKmS).to.be.closeTo(9.131, 2.0); // ~9.13 km/s total
+        expect(gkun.gkunContext).to.include('Mars-to-G!kún||ʼhòmdìmà');
+    });
+
+    it('should calculate hyperacidic sulfide oxidation, alunite vs jarosite hydrothermal leaching, and bleached rock thermal inertia', () => {
+        // 15 wt% sulfide, 180 C fluid temp, pH 2.0, 100 yr duration:
+        const acid = KRCEngine.computeMartianAcidSulfateAluniteJarositeWeathering(0.15, 180.0, 2.0, 100.0);
+        expect(acid.alterationFraction).to.be.greaterThan(0.50); // > 50% altered
+        expect(acid.sulfatePrecipitatedWeightPercent).to.be.greaterThan(10.0); // > 10 wt% sulfate
+        expect(acid.dominantSulfateSpecies).to.include('Alunite');
+        expect(acid.acidSulfateThermalInertiaTIU).to.be.closeTo(1496.2, 150.0); // ~1496 tiu
+        expect(acid.acidHydrothermalClass).to.include('High-Temperature Hydrothermal Alunite');
+        expect(acid.acidSulfateContext).to.include('Acid Sulfate at 180 C');
+
+        // Low temperature jarosite regime (80 C, pH 2.0):
+        const jaro = KRCEngine.computeMartianAcidSulfateAluniteJarositeWeathering(0.15, 80.0, 2.0, 100.0);
+        expect(jaro.dominantSulfateSpecies).to.include('Jarosite');
+        expect(jaro.acidHydrothermalClass).to.include('Low-Temperature Evaporitic / Groundwater Acid Jarosite');
+    });
+
+    it('should discriminate Alunite vs Jarosite vs Al-Hydroxysulfate in CRISM spectra', () => {
+        // Alunite (Noctis Labyrinthus / Cross Crater: BD1480 = 0.04, BD1760 = 0.03, BD2165 = 0.06, BD2265 = 0.005):
+        const alu = BandMathEngine.computeCRISMAluniteJarositeAcidSulfateSpeciationIndices(0.04, 0.03, 0.06, 0.005);
+        expect(alu.isAcidSulfateDetected).to.be.true;
+        expect(alu.acidSulfateMineralClass).to.include('High-Temperature Hydrothermal Potassium Alunite');
+        expect(alu.mineralSpecies).to.include('Alunite');
+        expect(alu.acidHydrothermalContext).to.include('Acid-Sulfate Fumarolic');
+
+        // Jarosite (Meridiani Planum: BD1480 = 0.01, BD1760 = 0.01, BD2165 = 0.01, BD2265 = 0.05):
+        const jar = BandMathEngine.computeCRISMAluniteJarositeAcidSulfateSpeciationIndices(0.01, 0.01, 0.01, 0.05);
+        expect(jar.isAcidSulfateDetected).to.be.true;
+        expect(jar.acidSulfateMineralClass).to.include('Low-Temperature Evaporitic Potassium Jarosite');
+        expect(jar.mineralSpecies).to.include('Jarosite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMAluniteJarositeAcidSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAcidSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -8544,6 +8544,63 @@ export class BandMathEngine {
       paleoclimateContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrothermal Acid-Sulfate Minerals (Alunite vs Jarosite vs Al-Hydroxysulfate) from CRISM 1.48 um, 1.76 um, 2.165 um, and 2.265 um absorption bands.
+   * Reference: Swayze et al. (2008), Ehlmann et al. (2011), Sowe et al. (2012), Viviano-Beck et al. (2014) for Martian Acid Sulfate Speciation.
+   * @param {number} [band1480OHDepth=0.04] - BD1480 alunite OH vibration depth (0.0 to 0.40)
+   * @param {number} [band1760OHDepth=0.03] - BD1760 alunite diagnostic sulfate combination depth (0.0 to 0.40)
+   * @param {number} [band2165AlOHDepth=0.06] - BD2165 Al-OH primary vibration depth (0.0 to 0.50)
+   * @param {number} [band2265FeOHDepth=0.005] - BD2265 jarosite Fe-OH primary vibration depth (0.0 to 0.50)
+   * @returns {{isAcidSulfateDetected: boolean, acidSulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, pHTemperatureRegime: string, acidHydrothermalContext: string}}
+   */
+  static computeCRISMAluniteJarositeAcidSulfateSpeciationIndices(band1480OHDepth = 0.04, band1760OHDepth = 0.03, band2165AlOHDepth = 0.06, band2265FeOHDepth = 0.005) {
+    const d1480 = Math.max(0.0, band1480OHDepth);
+    const d1760 = Math.max(0.0, band1760OHDepth);
+    const d2165 = Math.max(0.0, band2165AlOHDepth);
+    const d2265 = Math.max(0.0, band2265FeOHDepth);
+
+    const isAlunite = d1480 >= 0.025 && d1760 >= 0.020 && d2165 >= 0.030;
+    const isJarosite = d2265 >= 0.030;
+    const isSulfate = isAlunite || isJarosite || (d1760 >= 0.025 && d2165 >= 0.025);
+
+    let sClass = 'Acid-Sulfate-Free Silicate Regolith';
+    let species = 'Basalt Matrix';
+    let formula = 'Silicate Matrix';
+    let pHTemp = 'Neutral pH / Ambient Temperature';
+    let context = 'Standard Silicate Bedrock without Diagnostic Alunite/Jarosite Sulfate Absorption Bands';
+
+    if (isSulfate) {
+      if (isAlunite) {
+        sClass = 'High-Temperature Hydrothermal Potassium Alunite';
+        species = 'Alunite';
+        formula = 'KAl3(SO4)2(OH)6';
+        pHTemp = 'Hyperacidic (pH 1.5-3.0), High Temperature (150-280 C)';
+        context = 'Acid-Sulfate Fumarolic Steam Condensation / Epithermal Hydrothermal Leaching (Noctis Labyrinthus / Cross Crater)';
+      } else if (isJarosite) {
+        sClass = 'Low-Temperature Evaporitic Potassium Jarosite';
+        species = 'Jarosite';
+        formula = 'KFe3(SO4)2(OH)6';
+        pHTemp = 'Hyperacidic (pH 1.0-3.0), Low Temperature (< 120 C)';
+        context = 'Acid Groundwater Evaporitic Playas / Basalt Alteration (Meridiani Planum / Mawrth Vallis)';
+      } else {
+        sClass = 'Al-Hydroxysulfate (Basaluminite / Alunogen)';
+        species = 'Al-Hydroxysulfate';
+        formula = 'Al4(SO4)(OH)10 * 5H2O';
+        pHTemp = 'Moderately Acidic (pH 3.5-4.5), Epithermal';
+        context = 'Neutralizing Acid Sulfate Fluid Discharge / Spring Precipitates';
+      }
+    }
+
+    return {
+      isAcidSulfateDetected: isSulfate,
+      acidSulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      pHTemperatureRegime: pHTemp,
+      acidHydrothermalContext: context
+    };
+  }
 }
 
 

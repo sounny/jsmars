@@ -9301,6 +9301,66 @@ export class KRCEngine {
       metamorphismContext: `Kaolin Metamorphism at ${TC.toFixed(0)} C (${(alphaPyro * 100).toFixed(1)}% Pyrophyllite, ${(alphaDickite * 100).toFixed(1)}% Dickite, TIU=${TIU.toFixed(0)}, ${metaClass})`
     };
   }
+
+  /**
+   * Calculate acid sulfate hydrothermal weathering kinetics, alunite vs jarosite speciation, and bleached basalt thermal inertia.
+   * FeS2 + O2 + H2O -> H2SO4; Basalt + H2SO4 -> Alunite (T > 140 C) / Jarosite (T < 120 C)
+   * Reference: Swayze et al. (2008), Ehlmann et al. (2011), Sowe et al. (2012), Thollot et al. (2012) for Martian Acid-Sulfate Alteration.
+   * @param {number} [sulfideMassFraction=0.15] - Sulfide/pyrite mass fraction in protolith (0.01 to 0.50)
+   * @param {number} [hydrothermalTempC=180.0] - Fluid alteration temperature in C (20 to 350 C)
+   * @param {number} [phLevel=2.0] - Hyperacidic pore fluid pH (0.5 to 5.0)
+   * @param {number} [durationYears=100.0] - Hydrothermal alteration duration in years (0.1 to 5000 yr)
+   * @returns {{alterationFraction: number, sulfatePrecipitatedWeightPercent: number, dominantSulfateSpecies: string, acidSulfateThermalInertiaTIU: number, acidHydrothermalClass: string, acidSulfateContext: string}}
+   */
+  static computeMartianAcidSulfateAluniteJarositeWeathering(sulfideMassFraction = 0.15, hydrothermalTempC = 180.0, phLevel = 2.0, durationYears = 100.0) {
+    const wSulf = Math.max(0.005, Math.min(0.80, sulfideMassFraction));
+    const TC = Math.max(10.0, Math.min(400.0, hydrothermalTempC));
+    const pH = Math.max(0.2, Math.min(6.0, phLevel));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.80e4; // 58 kJ/mol
+
+    // Kinetic leaching rate
+    const acidFactor = Math.pow(10.0, (4.0 - pH) * 0.40);
+    const kRate = 3.5e-3 * Math.exp(-Ea / (Rgas * TK)) * acidFactor;
+
+    const alphaSulf = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Sulfate precipitate mass fraction (wt% of altered rock)
+    const wSulfatePct = alphaSulf * wSulf * 2.80 * 100.0;
+
+    // Thermal inertia of bleached porous sulfate rock
+    const kTherm = 1.35; // W/(m K)
+    const rhoBulk = 1950.0; // kg/m^3
+    const Cspec = 850.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Basaltic Matrix';
+    let altClass = 'Incipient Acid Leaching';
+
+    if (TC >= 140.0 && pH <= 3.5) {
+      species = 'Alunite (KAl3(SO4)2(OH)6)';
+      altClass = 'High-Temperature Hydrothermal Alunite Fumarolic Leaching (Noctis Labyrinthus / Cross Crater)';
+    } else if (TC < 130.0 && pH <= 3.0) {
+      species = 'Jarosite (KFe3(SO4)2(OH)6)';
+      altClass = 'Low-Temperature Evaporitic / Groundwater Acid Jarosite Precipitation (Meridiani Planum / Mawrth Vallis)';
+    } else {
+      species = 'Al-Hydroxysulfate (Basaluminite)';
+      altClass = 'Neutralizing Acid Sulfate Spring Precipitation';
+    }
+
+    return {
+      alterationFraction: parseFloat(alphaSulf.toFixed(3)),
+      sulfatePrecipitatedWeightPercent: parseFloat(wSulfatePct.toFixed(1)),
+      dominantSulfateSpecies: species,
+      acidSulfateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      acidHydrothermalClass: altClass,
+      acidSulfateContext: `Acid Sulfate at ${TC.toFixed(0)} C, pH ${pH.toFixed(1)} (${(alphaSulf * 100).toFixed(1)}% altered, ${species}, TIU=${TIU.toFixed(0)}, ${altClass})`
+    };
+  }
 }
 
 
