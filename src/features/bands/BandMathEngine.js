@@ -9155,6 +9155,60 @@ export class BandMathEngine {
       metamorphicPressureRegime: regime
     };
   }
+
+  /**
+   * Discriminate High-Temperature Hydrothermal Dickite vs Sedimentary Kaolinite vs Nacrite vs Halloysite from CRISM 1.415 um, 2.160 um, 2.205 um, and 2.720 um absorption bands.
+   * Reference: Wray et al. (2009), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Kaolin-Group Mineralogy.
+   * @param {number} [band1415OHDepth=0.035] - BD1415 dickite/kaolinite OH doublet depth (0.0 to 0.40)
+   * @param {number} [band2160AlOHDepth=0.045] - BD2160 dickite diagnostic crystal-stacking Al-OH depth (0.0 to 0.50)
+   * @param {number} [band2205AlOHDepth=0.065] - BD2205 kaolin primary Al-OH stretching depth (0.0 to 0.50)
+   * @param {number} [band2720OHDepth=0.020] - BD2720 structural fundamental OH stretching depth (0.0 to 0.50)
+   * @returns {{isKaolinGroupDetected: boolean, kaolinSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, hydrothermalTemperatureRegime: string}}
+   */
+  static computeCRISMDickiteKaoliniteSpeciationIndices(band1415OHDepth = 0.035, band2160AlOHDepth = 0.045, band2205AlOHDepth = 0.065, band2720OHDepth = 0.020) {
+    const d1415 = Math.max(0.0, band1415OHDepth);
+    const d2160 = Math.max(0.0, band2160AlOHDepth);
+    const d2205 = Math.max(0.0, band2205AlOHDepth);
+    const d2720 = Math.max(0.0, band2720OHDepth);
+
+    const isDickite = d2160 >= 0.030 && d2205 >= 0.040 && d1415 >= 0.025;
+    const isKaolinite = d2205 >= 0.035 && d1415 >= 0.020 && d2160 < 0.020;
+    const isNacrite = d2160 >= 0.025 && d2720 >= 0.030 && d2205 < 0.035;
+
+    const isKaolin = isDickite || isKaolinite || isNacrite;
+
+    let kClass = 'Kaolin-Free Silicate Regolith';
+    let species = 'Basaltic Regolith';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Crustal Terrain';
+
+    if (isKaolin) {
+      if (isDickite) {
+        kClass = 'High-Temperature Hydrothermal Dickite Facies';
+        species = 'Dickite';
+        formula = 'Al2Si2O5(OH)4';
+        regime = 'High-Temperature Acid Hydrothermal Circulation (140-280 C, Toro Crater / Nili Fossae)';
+      } else if (isKaolinite) {
+        kClass = 'Pedogenic / Weathering Kaolinite Facies';
+        species = 'Kaolinite';
+        formula = 'Al2Si2O5(OH)4';
+        regime = 'Low-Temperature Atmospheric Weathering / Pedogenesis';
+      } else {
+        kClass = 'Deep Pneumatolytic Nacrite Veining';
+        species = 'Nacrite';
+        formula = 'Al2Si2O5(OH)4';
+        regime = 'High-Pressure Pneumatolytic Vein Filling';
+      }
+    }
+
+    return {
+      isKaolinGroupDetected: isKaolin,
+      kaolinSpeciesClass: kClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrothermalTemperatureRegime: regime
+    };
+  }
 }
 
 

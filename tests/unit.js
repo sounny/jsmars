@@ -14746,6 +14746,56 @@ describe('Mars-to-Hygiea Transfer, Lawsonite Blueschist Metamorphism & Blueschis
     });
 });
 
+describe('Mars-to-Europa Transfer, Dickite Argillic Maturation & Dickite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to Jupiter/Europa and orbit capture', () => {
+        // Mars to Europa (300 km Mars alt, 5.2044 AU distance, 100 km capture alt):
+        const eur = TrajectoryEngine.computeMarsToEuropaTransfer(300.0, 5.2044, 100.0);
+        expect(eur.semiMajorAxisAU).to.be.closeTo(3.364, 0.1); // ~3.36 AU
+        expect(eur.eccentricity).to.be.closeTo(0.5471, 0.01); // e ~ 0.547
+        expect(eur.timeOfFlightDays).to.be.closeTo(1126.80, 50.0); // ~1127 days (~3.09 yr)
+        expect(eur.timeOfFlightYears).to.be.closeTo(3.08, 0.2); // ~3.08 yr
+        expect(eur.marsDepartureDeltaVKmS).to.be.closeTo(3.894, 0.5); // ~3.89 km/s TJI
+        expect(eur.europaOrbitInsertionDeltaVKmS).to.be.closeTo(0.997, 0.5); // ~1.00 km/s EOI
+        expect(eur.totalMissionDeltaVKmS).to.be.closeTo(4.891, 1.0); // ~4.89 km/s total
+        expect(eur.europaContext).to.include('Mars-to-Europa');
+    });
+
+    it('should calculate high-temperature hydrothermal dickite-kaolinite argillic maturation, crystal stacking ordering, and clay sinter thermal inertia', () => {
+        // 30% initial porosity, 210 C hydrothermal temp, 3.2 pH, 300 yr duration:
+        const dick = KRCEngine.computeMartianDickiteKaoliniteArgillicMaturation(0.30, 210.0, 3.2, 300.0);
+        expect(dick.dickiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(dick.orderedDickiteYieldWeightPercent).to.be.greaterThan(35.0); // > 35 wt% ordered dickite
+        expect(dick.induratedClayThermalInertiaTIU).to.be.closeTo(2380.0, 200.0); // ~2380 tiu
+        expect(dick.argillicMaturationClass).to.include('High-Temperature Ordered Dickite Hydrothermal Facies');
+        expect(dick.dickiteContext).to.include('Dickite Facies at 210 C');
+    });
+
+    it('should discriminate High-Temperature Hydrothermal Dickite vs Sedimentary Kaolinite vs Nacrite in CRISM spectra', () => {
+        // Hydrothermal Dickite (Toro Crater / Nili: BD1415 = 0.035, BD2160 = 0.045, BD2205 = 0.065, BD2720 = 0.020):
+        const dick = BandMathEngine.computeCRISMDickiteKaoliniteSpeciationIndices(0.035, 0.045, 0.065, 0.020);
+        expect(dick.isKaolinGroupDetected).to.be.true;
+        expect(dick.kaolinSpeciesClass).to.include('High-Temperature Hydrothermal Dickite Facies');
+        expect(dick.mineralSpecies).to.include('Dickite');
+        expect(dick.hydrothermalTemperatureRegime).to.include('High-Temperature Acid Hydrothermal Circulation');
+
+        // Sedimentary Kaolinite (BD1415 = 0.025, BD2160 = 0.010, BD2205 = 0.055, BD2720 = 0.015):
+        const kaol = BandMathEngine.computeCRISMDickiteKaoliniteSpeciationIndices(0.025, 0.010, 0.055, 0.015);
+        expect(kaol.isKaolinGroupDetected).to.be.true;
+        expect(kaol.kaolinSpeciesClass).to.include('Pedogenic / Weathering Kaolinite Facies');
+        expect(kaol.mineralSpecies).to.include('Kaolinite');
+
+        // Nacrite (BD1415 = 0.020, BD2160 = 0.030, BD2205 = 0.025, BD2720 = 0.035):
+        const nac = BandMathEngine.computeCRISMDickiteKaoliniteSpeciationIndices(0.020, 0.030, 0.025, 0.035);
+        expect(nac.isKaolinGroupDetected).to.be.true;
+        expect(nac.kaolinSpeciesClass).to.include('Deep Pneumatolytic Nacrite Veining');
+        expect(nac.mineralSpecies).to.include('Nacrite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMDickiteKaoliniteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isKaolinGroupDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

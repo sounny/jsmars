@@ -9935,6 +9935,62 @@ export class KRCEngine {
       blueschistContext: `Blueschist Facies at ${TC.toFixed(0)} C, P=${PGPa.toFixed(2)} GPa (${(alphaBlue * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${bClass})`
     };
   }
+
+  /**
+   * Calculate high-temperature hydrothermal kaolinite-to-dickite polymorphic maturation, crystal stacking ordering, and clay sinter thermal inertia.
+   * Disordered Kaolinite + H+ (140-280 C, pH 2.5-4.5) -> Ordered Dickite (Al2Si2O5(OH)4) + Quartz Sinter
+   * Reference: Wray et al. (2009), Ehlmann et al. (2009), Viviano-Beck et al. (2014) for Martian Hydrothermal Argillic Clay Deposits.
+   * @param {number} [aluminousAshPorosity=0.30] - Initial aluminous ash/clay protolith porosity (0.05 to 0.50)
+   * @param {number} [hydrothermalTempC=210.0] - Hydrothermal fluid temperature in C (100 to 350 C)
+   * @param {number} [fluidAcidityPH=3.2] - Fluid acidity pH (1.5 to 7.0)
+   * @param {number} [durationYears=300.0] - Hydrothermal alteration duration in years (0.1 to 5000 yr)
+   * @returns {{dickiteConversionFraction: number, orderedDickiteYieldWeightPercent: number, induratedClayThermalInertiaTIU: number, argillicMaturationClass: string, dickiteContext: string}}
+   */
+  static computeMartianDickiteKaoliniteArgillicMaturation(aluminousAshPorosity = 0.30, hydrothermalTempC = 210.0, fluidAcidityPH = 3.2, durationYears = 300.0) {
+    const phi0 = Math.max(0.02, Math.min(0.60, aluminousAshPorosity));
+    const TC = Math.max(80.0, Math.min(450.0, hydrothermalTempC));
+    const pH = Math.max(1.0, Math.min(8.0, fluidAcidityPH));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.80e4; // 58 kJ/mol for kaolin-to-dickite ordering
+
+    const aHPlus = Math.pow(10.0, -pH);
+    // Reaction rate constant
+    const kRate = 4.5e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aHPlus * 1000.0, 0.40);
+    const alphaDick = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Ordered Dickite yield (wt%)
+    const wDickitePct = alphaDick * 78.0;
+
+    // Pore cementation and compaction
+    const phiResidual = phi0 * (1.0 - (0.65 * alphaDick));
+    const rhoGrain = 2650.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.30; // W/(m K)
+    const Cspec = 940.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let aClass = 'Incipient Kaolinitic Weathering';
+    if (alphaDick >= 0.50 && TC >= 140.0 && TC <= 280.0) {
+      aClass = 'High-Temperature Ordered Dickite Hydrothermal Facies (Mawrth / Nili / Toro Crater)';
+    } else if (TC > 280.0) {
+      aClass = 'Pyrophyllite-Quartz Advanced Argillic Transition';
+    } else if (alphaDick >= 0.20) {
+      aClass = 'Disordered Kaolinite-Halloysite Weathering Crust';
+    }
+
+    return {
+      dickiteConversionFraction: parseFloat(alphaDick.toFixed(3)),
+      orderedDickiteYieldWeightPercent: parseFloat(wDickitePct.toFixed(1)),
+      induratedClayThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      argillicMaturationClass: aClass,
+      dickiteContext: `Dickite Facies at ${TC.toFixed(0)} C, pH=${pH.toFixed(1)} (${(alphaDick * 100).toFixed(1)}% converted, ${wDickitePct.toFixed(1)}% Dickite, TIU=${TIU.toFixed(0)}, ${aClass})`
+    };
+  }
 }
 
 
