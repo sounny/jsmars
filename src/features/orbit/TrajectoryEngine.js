@@ -7488,6 +7488,79 @@ export class TrajectoryEngine {
       apsidalSteeringContext: `Max Apsidal Precession Steering (${dotOmegaDegYr.toFixed(0)} deg/yr at nu=${nuDeg.toFixed(0)} deg, theta=${thetaOptDeg.toFixed(1)} deg, ${propKg.toFixed(1)} kg Xe)`
     };
   }
+
+  /**
+   * Calculate interplanetary Hohmann transfer from Mars to ringed giant planet Saturn and Saturnian elliptical orbit insertion.
+   * a_trans = ( r_mars + r_saturn ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Delta_V_tot = Delta_V_TSI + Delta_V_SOI
+   * Reference: Bate, Mueller & White (1971), Curtis (2013) for Saturnian Interplanetary Transfers.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [saturnPeriapsisAltitudeKm=60000.0] - Saturn capture periapsis altitude in km (20000 to 1000000 km)
+   * @returns {{transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, saturnArrivalExcessKmS: number, saturnOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, saturnTransferContext: string}}
+   */
+  static computeMarsToSaturnDirectTransfer(marsParkingAltitudeKm = 300.0, saturnPeriapsisAltitudeKm = 60000.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpSKm = Math.max(20000.0, saturnPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muSat = 3.7931187e7;
+    const rSatKm = 60268.0;
+
+    const rMarsAU = 1.52368;
+    const rSatAU = 9.5826;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rSatDistKm = rSatAU * AU_KM;
+
+    // Hohmann geometry
+    const aTransKm = (rMarsDistKm + rSatDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rSatDistKm - rMarsDistKm) / (rSatDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTsiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Saturn arrival
+    const vSatCircKmS = Math.sqrt(muSun / rSatDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rSatDistKm) - (1.0 / aTransKm)));
+    const vInfSatKmS = Math.abs(vSatCircKmS - vArrKmS);
+
+    const rpSKm = rSatKm + hpSKm;
+    const eCap = 0.98; // Highly elliptical capture orbit
+    const aCapKm = rpSKm / (1.0 - eCap);
+
+    const vHypSKmS = Math.sqrt(Math.pow(vInfSatKmS, 2.0) + ((2.0 * muSat) / rpSKm));
+    const vCapSKmS = Math.sqrt(muSat * ((2.0 / rpSKm) - (1.0 / aCapKm)));
+    const dvSoiKmS = vHypSKmS - vCapSKmS;
+
+    const dvTotKmS = dvTsiKmS + dvSoiKmS;
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTsiKmS.toFixed(3)),
+      saturnArrivalExcessKmS: parseFloat(vInfSatKmS.toFixed(3)),
+      saturnOrbitInsertionDeltaVKmS: parseFloat(dvSoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      saturnTransferContext: `Mars-to-Saturn Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfSatKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

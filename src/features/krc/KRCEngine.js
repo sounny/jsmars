@@ -7812,6 +7812,74 @@ export class KRCEngine {
       thermalBakingContext: `Contact Baking at ${TcontactC.toFixed(0)} C (${dehydroxPct.toFixed(0)}% Dehydroxylated, ${expelledSteamKgM3.toFixed(0)} kg/m3 Steam, TIU=${TIU.toFixed(0)})`
     };
   }
+
+  /**
+   * Calculate alkaline hydrothermal spring clay-carbonate co-precipitation kinetics, saturation state, mineral mass fractions, and thermal inertia.
+   * IAP = [Mg2+] * [CO3^2-]
+   * Omega = IAP / K_sp
+   * w_carb = 0.15 + 0.05 * ln( Omega / 100 )
+   * Reference: Morris et al. (2010), Ruff et al. (2014), Ehlmann et al. (2008), Horgan et al. (2020) for Martian Comanche & Jezero Carbonates.
+   * @param {number} [fluidPH=9.50] - Hydrothermal spring fluid pH (7.0 to 12.0)
+   * @param {number} [dissolvedCO2ActivityMol=0.050] - Dissolved inorganic carbon activity in mol/L (0.001 to 0.50 mol/L)
+   * @param {number} [hydrothermalTempC=60.0] - Spring emergence temperature in C (10 to 120 C)
+   * @param {number} [calciumMagnesiumRatio=0.20] - Fluid Ca2+/Mg2+ molar ratio (0.01 to 2.0)
+   * @returns {{carbonateSaturationState: number, carbonateWeightPercent: number, saponiteClayWeightPercent: number, magnesiteMolarPercent: number, compositeThermalInertiaTIU: number, alkalineSpringRegimeClass: string, clayCarbonateContext: string}}
+   */
+  static computeMartianClayCarbonateCoPrecipitationKinetics(fluidPH = 9.50, dissolvedCO2ActivityMol = 0.050, hydrothermalTempC = 60.0, calciumMagnesiumRatio = 0.20) {
+    const pH = Math.max(6.5, Math.min(13.0, fluidPH));
+    const DIC = Math.max(0.0001, dissolvedCO2ActivityMol);
+    const TspringC = Math.max(5.0, hydrothermalTempC);
+    const CaMg = Math.max(0.01, calciumMagnesiumRatio);
+
+    // Carbonate ion fraction at alkaline pH
+    let carbFrac = 0.01;
+    if (pH >= 10.0) {
+      carbFrac = 0.50;
+    } else if (pH >= 9.0) {
+      carbFrac = 0.22;
+    } else if (pH >= 8.0) {
+      carbFrac = 0.05;
+    }
+    const CO3Mol = DIC * carbFrac;
+    const MgMol = 0.020; // 0.02 M Mg2+
+
+    const IAP = MgMol * CO3Mol;
+    const Ksp = 3.5e-8;
+    const Omega = Math.max(1.0, IAP / Ksp);
+
+    // Carbonate vs Saponite mass fraction
+    const wCarb = Math.max(0.05, Math.min(0.60, 0.15 + (0.05 * Math.log(Omega / 100.0))));
+    const wCarbPct = wCarb * 100.0;
+    const wClayPct = (1.0 - wCarb) * 100.0;
+
+    // Magnesite molar fraction vs calcite
+    const magnesitePct = (1.0 / (1.0 + CaMg)) * 100.0;
+
+    // Physical properties & thermal inertia
+    const rhoGrain = (wCarb * 3000.0) + ((1.0 - wCarb) * 2400.0);
+    const phi = 0.18;
+    const rhoBulk = rhoGrain * (1.0 - phi);
+    const kTherm = (0.45 * (1.0 - phi)) + (1.20 * wCarb);
+    const Cspec = 800.0;
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let springClass = 'Low-Yield Neutral Hot Spring';
+    if (wCarbPct >= 30.0 && pH >= 9.0) {
+      springClass = 'Alkaline Magnesite-Saponite Hydrothermal Travertine (Comanche Outcrop / Jezero Margin Carbonate)';
+    } else if (wCarbPct >= 15.0) {
+      springClass = 'Sublacustrine Carbonate-Bearing Smectite Clay Mudstone';
+    }
+
+    return {
+      carbonateSaturationState: parseFloat(Omega.toFixed(1)),
+      carbonateWeightPercent: parseFloat(wCarbPct.toFixed(1)),
+      saponiteClayWeightPercent: parseFloat(wClayPct.toFixed(1)),
+      magnesiteMolarPercent: parseFloat(magnesitePct.toFixed(1)),
+      compositeThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      alkalineSpringRegimeClass: springClass,
+      clayCarbonateContext: `Alkaline Spring pH ${pH.toFixed(1)} (${wCarbPct.toFixed(0)}% Carbonate, ${wClayPct.toFixed(0)}% Saponite, TIU=${TIU.toFixed(0)}, ${springClass})`
+    };
+  }
 }
 
 

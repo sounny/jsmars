@@ -12945,6 +12945,56 @@ describe('Maximum Apsidal Precession Steering, Clay Dehydroxylation & Contact Me
     });
 });
 
+describe('Mars-to-Saturn Deep Space Insertion, Clay-Carbonates & Comanche Hydrothermal Springs', () => {
+    it('should calculate interplanetary Hohmann transfer from Mars to ringed planet Saturn and orbit insertion', () => {
+        // Mars to Saturn (1.52 to 9.58 AU, 300 km Mars alt, 60,000 km Saturn capture alt):
+        const saturn = TrajectoryEngine.computeMarsToSaturnDirectTransfer(300.0, 60000.0);
+        expect(saturn.transferTimeDays).to.be.closeTo(2390.6, 30.0); // ~2391 days
+        expect(saturn.transferTimeYears).to.be.closeTo(6.545, 0.1); // ~6.55 yr
+        expect(saturn.marsDepartureDeltaVKmS).to.be.closeTo(5.564, 0.2); // ~5.56 km/s TSI
+        expect(saturn.saturnArrivalExcessKmS).to.be.closeTo(4.471, 0.2); // ~4.47 km/s v_inf
+        expect(saturn.saturnOrbitInsertionDeltaVKmS).to.be.closeTo(0.521, 0.1); // ~0.52 km/s SOI
+        expect(saturn.totalMissionDeltaVKmS).to.be.closeTo(6.085, 0.3); // ~6.09 km/s total
+        expect(saturn.transferEccentricity).to.be.closeTo(0.7256, 0.02); // e ~ 0.726
+        expect(saturn.saturnTransferContext).to.include('Mars-to-Saturn Direct');
+    });
+
+    it('should calculate alkaline hydrothermal spring clay-carbonate co-precipitation kinetics', () => {
+        // pH 9.5, 0.05 M DIC, 60 C, Ca/Mg = 0.20:
+        const spring = KRCEngine.computeMartianClayCarbonateCoPrecipitationKinetics(9.50, 0.050, 60.0, 0.20);
+        expect(spring.carbonateSaturationState).to.be.greaterThan(5000.0); // High magnesite saturation
+        expect(spring.carbonateWeightPercent).to.be.closeTo(35.7, 3.0); // ~36 wt% carbonate
+        expect(spring.saponiteClayWeightPercent).to.be.closeTo(64.3, 3.0); // ~64 wt% saponite clay
+        expect(spring.magnesiteMolarPercent).to.be.closeTo(83.3, 2.0); // ~83 mol% magnesite vs calcite
+        expect(spring.compositeThermalInertiaTIU).to.be.closeTo(1169.1, 50.0); // dense indurated spring deposit
+        expect(spring.alkalineSpringRegimeClass).to.include('Alkaline Magnesite-Saponite Hydrothermal Travertine');
+        expect(spring.clayCarbonateContext).to.include('Alkaline Spring');
+    });
+
+    it('should discriminate Clay-Carbonate Composite Outcrops (Saponite + Magnesite) in CRISM spectra', () => {
+        // Comanche Outcrop (Jezero Margin: BD1900 = 0.04, BD2310 = 0.05, BD2510 = 0.04, TIR = 0.06):
+        const comanche = BandMathEngine.computeCRISMClayCarbonateCompositeIndices(0.04, 0.05, 0.04, 0.06);
+        expect(comanche.isClayCarbonateDetected).to.be.true;
+        expect(comanche.outcropAssemblageClass).to.include('Alkaline Clay-Carbonate Composite');
+        expect(comanche.dominantMinerals).to.include('Trioctahedral Saponite + Magnesite');
+        expect(comanche.astrobiologicalHabitabilityContext).to.include('Prime Biosignature Preservation Potential');
+
+        // Pure Carbonate:
+        const pureCarb = BandMathEngine.computeCRISMClayCarbonateCompositeIndices(0.005, 0.01, 0.05, 0.06);
+        expect(pureCarb.isClayCarbonateDetected).to.be.true;
+        expect(pureCarb.outcropAssemblageClass).to.include('Pure Crystalline Magnesium-Iron Carbonate');
+
+        // Pure Saponite Clay:
+        const pureClay = BandMathEngine.computeCRISMClayCarbonateCompositeIndices(0.05, 0.05, 0.005, 0.01);
+        expect(pureClay.isClayCarbonateDetected).to.be.true;
+        expect(pureClay.outcropAssemblageClass).to.include('Pure Trioctahedral Smectite Clay');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMClayCarbonateCompositeIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isClayCarbonateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

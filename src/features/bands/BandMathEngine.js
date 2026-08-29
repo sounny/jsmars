@@ -7287,6 +7287,50 @@ export class BandMathEngine {
       contactMetamorphicContext: context
     };
   }
+
+  /**
+   * Discriminate Clay-Carbonate Composite Outcrop Assemblages (Saponite + Magnesite) vs Pure Smectite vs Pure Carbonate from CRISM/THEMIS absorption bands.
+   * Reference: Morris et al. (2010), Ehlmann et al. (2008), Viviano-Beck et al. (2014), Horgan et al. (2020) for Comanche & Jezero Margin Carbonates.
+   * @param {number} [band1900WaterDepth=0.04] - BD1900 molecular H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2310FeMgOHDepth=0.05] - BD2310 Fe/Mg-OH octahedral vibration depth (0.0 to 0.40)
+   * @param {number} [band2510CarbonateDepth=0.04] - BD2510 CO3 2- fundamental combination overtone depth (0.0 to 0.40)
+   * @param {number} [tir12500CarbonateReststrahlenDepth=0.06] - THEMIS 12.5 um (800 cm-1) carbonate bending depth (0.0 to 0.40)
+   * @returns {{isClayCarbonateDetected: boolean, outcropAssemblageClass: string, dominantMinerals: string, astrobiologicalHabitabilityContext: string}}
+   */
+  static computeCRISMClayCarbonateCompositeIndices(band1900WaterDepth = 0.04, band2310FeMgOHDepth = 0.05, band2510CarbonateDepth = 0.04, tir12500CarbonateReststrahlenDepth = 0.06) {
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2310 = Math.max(0.0, band2310FeMgOHDepth);
+    const d2510 = Math.max(0.0, band2510CarbonateDepth);
+    const dTIR = Math.max(0.0, tir12500CarbonateReststrahlenDepth);
+
+    const hasClay = d2310 >= 0.025 && d1900 >= 0.020;
+    const hasCarb = d2510 >= 0.025 || dTIR >= 0.040;
+
+    let outcropClass = 'Unaltered Basaltic Bedrock';
+    let minerals = 'Basaltic Plagioclase + Pyroxene';
+    let context = 'Standard Silicate Bedrock without Diagnostic Carbonate or Clay Absorption';
+
+    if (hasClay && hasCarb) {
+      outcropClass = 'Alkaline Clay-Carbonate Composite (Saponite + Magnesite Hydrothermal Spring / Lacustrine Margins)';
+      minerals = 'Trioctahedral Saponite + Magnesite (MgCO3) + Siderite (FeCO3)';
+      context = 'Neutral-to-Alkaline Hydrothermal Spring Carbonate Travertine / Paleolake Shoreline with Prime Biosignature Preservation Potential (Comanche Outcrop / Jezero Crater Margin)';
+    } else if (hasCarb) {
+      outcropClass = 'Pure Crystalline Magnesium-Iron Carbonate';
+      minerals = 'Magnesite / Siderite Carbonate Outcrop';
+      context = 'Carbonate-Rich Hydrothermal Vein or Evaporite Crust';
+    } else if (hasClay) {
+      outcropClass = 'Pure Trioctahedral Smectite Clay';
+      minerals = 'Saponite (Fe/Mg Smectite)';
+      context = 'Alkaline Weathering / Low-Temperature Basalt Alteration';
+    }
+
+    return {
+      isClayCarbonateDetected: hasClay || hasCarb,
+      outcropAssemblageClass: outcropClass,
+      dominantMinerals: minerals,
+      astrobiologicalHabitabilityContext: context
+    };
+  }
 }
 
 
