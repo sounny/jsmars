@@ -7909,6 +7909,62 @@ export class TrajectoryEngine {
       erisTransferContext: `Mars-to-Eris Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfErisKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
     };
   }
+
+  /**
+   * Calculate interplanetary Hohmann transfer from Mars to detached extreme inner Oort Cloud dwarf planet (90377 Sedna) and flyby encounter velocity.
+   * a_trans = ( r_mars + r_sedna ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Reference: Brown et al. (2004), Schwamb et al. (2010), Curtis (2013) for Extreme Trans-Neptunian Object Trajectories.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @returns {{transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, sednaFlybyVelocityKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, sednaTransferContext: string}}
+   */
+  static computeMarsToSednaDirectTransfer(marsParkingAltitudeKm = 300.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+
+    const rMarsAU = 1.52368;
+    const rSednaAU = 76.19; // Perihelion distance of 90377 Sedna
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rSednaDistKm = rSednaAU * AU_KM;
+
+    // Hohmann geometry
+    const aTransKm = (rMarsDistKm + rSednaDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rSednaDistKm - rMarsDistKm) / (rSednaDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTsiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Sedna arrival
+    const vArrCircKmS = Math.sqrt(muSun / rSednaDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rSednaDistKm) - (1.0 / aTransKm)));
+    const vInfSednaKmS = Math.abs(vArrCircKmS - vArrKmS);
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTsiKmS.toFixed(3)),
+      sednaFlybyVelocityKmS: parseFloat(vInfSednaKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      sednaTransferContext: `Mars-to-Sedna Flyby (${tofsYrs.toFixed(1)} yr TOF, ${dvTsiKmS.toFixed(2)} km/s TSI, ${vInfSednaKmS.toFixed(2)} km/s Flyby)`
+    };
+  }
 }
 
 

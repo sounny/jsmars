@@ -8189,6 +8189,73 @@ export class KRCEngine {
       diapirismContext: `Salt Diapirism at ${zKm.toFixed(1)}km (${TburialC.toFixed(0)} C, Viscosity=${etaEff.toExponential(1)} Pa*s, TIU=${TIU.toFixed(0)}, ${structClass})`
     };
   }
+
+  /**
+   * Calculate subsurface magnesium perchlorate (Mg(ClO4)2) eutectic brine rheology, low-temperature viscosity divergence, Darcy seepage flow, and RSL creep velocity.
+   * eta(T) = eta_0 * exp( B / ( T - T_0 ) )
+   * K = ( k_perm * rho_brine * g_mars ) / eta
+   * v_pore = ( K * i_gradient ) / phi
+   * Reference: Hecht et al. (2009), Chevrier et al. (2009), Toner & Catling (2016) for Martian Perchlorate Brines.
+   * @param {number} [magnesiumPerchlorateWeightPercent=44.0] - Mg(ClO4)2 salt concentration in wt% (5.0 to 55.0 wt%)
+   * @param {number} [soilPorosity=0.30] - Regolith porosity (0.10 to 0.50)
+   * @param {number} [soilTempK=230.0] - Subsurface soil temperature in K (190 to 280 K)
+   * @param {number} [hydraulicGradient=0.35] - Downslope hydraulic gradient / slope tangent (0.01 to 0.80)
+   * @returns {{liquidBrineState: boolean, brineViscosityCP: number, brineDensityKgM3: number, darcyHydraulicConductivityMS: number, poreSeepageVelocityCmPerDay: number, brineSaturatedThermalInertiaTIU: number, perchloratePhaseClass: string, perchlorateFlowContext: string}}
+   */
+  static computeMartianPerchlorateEutecticBrineDynamics(magnesiumPerchlorateWeightPercent = 44.0, soilPorosity = 0.30, soilTempK = 230.0, hydraulicGradient = 0.35) {
+    const wPct = Math.max(5.0, Math.min(60.0, magnesiumPerchlorateWeightPercent));
+    const phi = Math.max(0.05, Math.min(0.60, soilPorosity));
+    const TK = Math.max(180.0, Math.min(300.0, soilTempK));
+    const iGrad = Math.max(0.01, Math.min(1.0, hydraulicGradient));
+
+    const TeutcK = 206.0; // Mg(ClO4)2 eutectic freezing point (206 K = -67.15 C)
+    const isLiquid = TK >= TeutcK;
+
+    // VTF viscosity model (Pa*s)
+    const eta0 = 1.0e-4;
+    const Bvtf = 650.0;
+    const T0vtf = 145.0;
+    const etaPaS = eta0 * Math.exp(Bvtf / Math.max(10.0, TK - T0vtf));
+    const etaCP = etaPaS * 1000.0;
+
+    // Brine density (kg/m^3)
+    const rhoBrine = 1000.0 + (10.5 * wPct);
+    const gMars = 3.72; // m/s^2
+
+    // Darcy hydraulic conductivity (m/s)
+    const kPermM2 = 1.0e-11; // Medium basaltic sand permeability
+    const KConductivityMS = (kPermM2 * rhoBrine * gMars) / etaPaS;
+
+    // Pore seepage velocity (cm/day)
+    const vPoreMS = (KConductivityMS * iGrad) / phi;
+    const vPoreCmDay = vPoreMS * 86400.0 * 100.0;
+
+    // Brine-saturated thermal inertia
+    const kTherm = (0.05 * (1.0 - phi)) + (0.55 * phi);
+    const rhoBulk = (2900.0 * (1.0 - phi)) + (rhoBrine * phi);
+    const Cspec = 1050.0;
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let phaseClass = 'Sub-Eutectic Frozen Ice-Perchlorate Aggregate';
+    if (isLiquid) {
+      if (vPoreCmDay >= 1.0) {
+        phaseClass = 'Active Mobile Liquid Perchlorate Brine (Recurring Slope Lineae Flow / Palikir Crater)';
+      } else {
+        phaseClass = 'Viscous Cryogenic Subsurface Brine Seep (Phoenix Lander Soil Liquefaction)';
+      }
+    }
+
+    return {
+      liquidBrineState: isLiquid,
+      brineViscosityCP: parseFloat(etaCP.toFixed(1)),
+      brineDensityKgM3: parseFloat(rhoBrine.toFixed(1)),
+      darcyHydraulicConductivityMS: parseFloat(KConductivityMS.toExponential(2)),
+      poreSeepageVelocityCmPerDay: parseFloat(vPoreCmDay.toFixed(2)),
+      brineSaturatedThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      perchloratePhaseClass: phaseClass,
+      perchlorateFlowContext: `Mg(ClO4)2 Brine at ${TK.toFixed(0)}K (${vPoreCmDay.toFixed(1)} cm/day, ${etaCP.toFixed(0)} cP, TIU=${TIU.toFixed(0)}, ${phaseClass})`
+    };
+  }
 }
 
 

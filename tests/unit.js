@@ -13225,6 +13225,51 @@ describe('Mars-to-Eris Scattered Disc Transfer, Salt Diapirism & Halite Speciati
     });
 });
 
+describe('Mars-to-Sedna Inner Oort Cloud Flyby, Perchlorate Brines & Oxychlorines', () => {
+    it('should calculate interplanetary Hohmann transfer from Mars to detached inner Oort Cloud dwarf planet 90377 Sedna and flyby speed', () => {
+        // Mars to Sedna (1.52 to 76.19 AU, 300 km Mars alt):
+        const sedna = TrajectoryEngine.computeMarsToSednaDirectTransfer(300.0);
+        expect(sedna.transferTimeDays).to.be.closeTo(44257.5, 400.0); // ~44258 days
+        expect(sedna.transferTimeYears).to.be.closeTo(121.170, 1.5); // ~121.2 yr
+        expect(sedna.marsDepartureDeltaVKmS).to.be.closeTo(8.325, 1.5); // ~8.33 km/s TSI
+        expect(sedna.sednaFlybyVelocityKmS).to.be.closeTo(2.718, 0.5); // ~2.72 km/s flyby
+        expect(sedna.transferEccentricity).to.be.closeTo(0.9608, 0.02); // e ~ 0.961
+        expect(sedna.sednaTransferContext).to.include('Mars-to-Sedna Flyby');
+    });
+
+    it('should calculate low-temperature perchlorate eutectic brine viscosity, Darcy seepage, and RSL creep flow', () => {
+        // 44 wt% Mg(ClO4)2, 30% soil porosity, 230 K soil temp, 0.35 hydraulic gradient:
+        const brine = KRCEngine.computeMartianPerchlorateEutecticBrineDynamics(44.0, 0.30, 230.0, 0.35);
+        expect(brine.liquidBrineState).to.be.true;
+        expect(brine.brineViscosityCP).to.be.closeTo(209.5, 30.0); // ~209.5 cP
+        expect(brine.brineDensityKgM3).to.be.closeTo(1462.0, 50.0); // ~1462 kg/m^3 dense brine
+        expect(brine.poreSeepageVelocityCmPerDay).to.be.closeTo(2.62, 1.0); // ~2.6 cm/day RSL seep
+        expect(brine.brineSaturatedThermalInertiaTIU).to.be.closeTo(700.0, 100.0); // saturated soil TIU
+        expect(brine.perchloratePhaseClass).to.include('Active Mobile Liquid Perchlorate Brine');
+        expect(brine.perchlorateFlowContext).to.include('Mg(ClO4)2 Brine');
+    });
+
+    it('should discriminate Hydrated Magnesium Perchlorate vs Chlorate in CRISM spectra', () => {
+        // Hydrated Magnesium Perchlorate (RSL / Palikir Crater: BD1430 = 0.04, BD1930 = 0.06, BD2130 = 0.04, BD2400 = 0.04):
+        const perchlor = BandMathEngine.computeCRISMPerchlorateChlorateSpeciationIndices(0.04, 0.06, 0.04, 0.04);
+        expect(perchlor.isOxychlorineDetected).to.be.true;
+        expect(perchlor.oxychlorineSpeciesClass).to.include('Hydrated Magnesium Perchlorate');
+        expect(perchlor.mineralSpecies).to.include('Magnesium Perchlorate Hexahydrate');
+        expect(perchlor.chemicalFormula).to.include('Mg(ClO4)2 * 6H2O');
+        expect(perchlor.rslAstrobiologicalContext).to.include('Recurring Slope Lineae (RSL)');
+
+        // Chlorate Salt (BD1430 = 0.01, BD1930 = 0.05, BD2130 = 0.04, BD2400 = 0.005):
+        const chlor = BandMathEngine.computeCRISMPerchlorateChlorateSpeciationIndices(0.01, 0.05, 0.04, 0.005);
+        expect(chlor.isOxychlorineDetected).to.be.true;
+        expect(chlor.oxychlorineSpeciesClass).to.include('Hydrated Chlorate Salt');
+        expect(chlor.chemicalFormula).to.include('Mg(ClO3)2 * 6H2O');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMPerchlorateChlorateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isOxychlorineDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

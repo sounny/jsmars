@@ -7567,6 +7567,50 @@ export class BandMathEngine {
       playaPaleolakeContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrated Magnesium Perchlorate (Mg(ClO4)2 * 6H2O) in Recurring Slope Lineae vs Chlorate Salt from CRISM 1.43 um, 1.93 um, 2.13 um, and 2.40 um absorption bands.
+   * Reference: Ojha et al. (2015), Hanley et al. (2012), Viviano-Beck et al. (2014) for Martian Oxychlorine Salts.
+   * @param {number} [band1430WaterDepth=0.04] - BD1430 shifted molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1930WaterDepth=0.06] - BD1930 shifted molecular H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2130PerchlorateDepth=0.04] - BD2130 Perchlorate ClO4- fundamental combination depth (0.0 to 0.40)
+   * @param {number} [band2400PerchlorateDepth=0.04] - BD2400 Perchlorate diagnostic combination depth (0.0 to 0.40)
+   * @returns {{isOxychlorineDetected: boolean, oxychlorineSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, rslAstrobiologicalContext: string}}
+   */
+  static computeCRISMPerchlorateChlorateSpeciationIndices(band1430WaterDepth = 0.04, band1930WaterDepth = 0.06, band2130PerchlorateDepth = 0.04, band2400PerchlorateDepth = 0.04) {
+    const d1430 = Math.max(0.0, band1430WaterDepth);
+    const d1930 = Math.max(0.0, band1930WaterDepth);
+    const d2130 = Math.max(0.0, band2130PerchlorateDepth);
+    const d2400 = Math.max(0.0, band2400PerchlorateDepth);
+
+    const isPerchlorate = d1930 >= 0.035 && d2130 >= 0.025 && d2400 >= 0.025;
+    const isChlorate = d1930 >= 0.035 && d2130 >= 0.025 && d2400 < 0.020;
+
+    let oxyClass = 'Unchlorinated Basalt / Regolith';
+    let species = 'Basaltic Regolith';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Regolith without Diagnostic Oxychlorine Absorption Features';
+
+    if (isPerchlorate) {
+      oxyClass = 'Hydrated Magnesium Perchlorate (Mg(ClO4)2 * 6H2O)';
+      species = 'Magnesium Perchlorate Hexahydrate';
+      formula = 'Mg(ClO4)2 * 6H2O';
+      context = 'Active Recurring Slope Lineae (RSL) / Seasonal Deliquescing Transient Liquid Brine Flows (Palikir Crater / Phoenix Landing Site)';
+    } else if (isChlorate) {
+      oxyClass = 'Hydrated Chlorate Salt (NaClO3 / Mg(ClO3)2)';
+      species = 'Chlorate Complex';
+      formula = 'Mg(ClO3)2 * 6H2O';
+      context = 'Atmospheric-Photochemical Oxidation Intermediate / Partial Oxychlorine Reduction Horizon';
+    }
+
+    return {
+      isOxychlorineDetected: isPerchlorate || isChlorate,
+      oxychlorineSpeciesClass: oxyClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      rslAstrobiologicalContext: context
+    };
+  }
 }
 
 
