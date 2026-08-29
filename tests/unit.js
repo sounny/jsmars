@@ -16491,6 +16491,56 @@ describe('Mars-to-Atalante Transfer, Castanite Metasomatism & Ferric Oxysulfate 
     });
 });
 
+describe('Mars-to-Fides Transfer, Amarantite Dehydration & Oxysulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony asteroid (37) Fides and orbit capture', () => {
+        // Mars to Fides (300 km Mars alt, 2.642 AU distance, 15 km capture alt, 3.07 deg plane change):
+        const fi = TrajectoryEngine.computeMarsToFidesTransfer(300.0, 2.642, 15.0, 3.07);
+        expect(fi.semiMajorAxisAU).to.be.closeTo(2.083, 0.1); // ~2.08 AU
+        expect(fi.eccentricity).to.be.closeTo(0.2686, 0.01); // e ~ 0.269
+        expect(fi.timeOfFlightDays).to.be.closeTo(548.05, 30.0); // ~548 days (~1.50 yr)
+        expect(fi.timeOfFlightYears).to.be.closeTo(1.50, 0.1); // ~1.50 yr
+        expect(fi.marsDepartureDeltaVKmS).to.be.closeTo(2.368, 0.5); // ~2.37 km/s TFiI
+        expect(fi.fidesOrbitInsertionDeltaVKmS).to.be.closeTo(2.399, 0.5); // ~2.40 km/s FiOI
+        expect(fi.totalMissionDeltaVKmS).to.be.closeTo(4.767, 1.0); // ~4.77 km/s total
+        expect(fi.fidesContext).to.include('Mars-to-Fides');
+    });
+
+    it('should calculate diurnal and hydrothermal dehydration of castanite into amarantite and thermal inertia', () => {
+        // 30% initial porosity, 36 C surface temp, 0.15 RH, 210 yr duration:
+        const ama = KRCEngine.computeMartianAmarantiteDehydration(0.30, 36.0, 0.15, 210.0);
+        expect(ama.amarantiteConversionFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(ama.boundWaterYieldWeightPercent).to.be.lessThan(34.0); // < 34 wt% bound H2O
+        expect(ama.induratedHeptahydrateThermalInertiaTIU).to.be.closeTo(1316.3, 200.0); // ~1316 tiu
+        expect(ama.heptahydrateFaciesClass).to.include('Indurated Amarantite Facies');
+        expect(ama.amarantiteContext).to.include('Amarantite at 36 C');
+    });
+
+    it('should discriminate Amarantite vs Castanite vs Paracoquimbite in CRISM spectra', () => {
+        // Amarantite (Juventae / Melas / Ganges: BD1440 = 0.035, BD1940 = 0.040, BD2160 = 0.045, BD2240 = 0.015):
+        const ama = BandMathEngine.computeCRISMAmarantiteFerricOxysulfateSpeciationIndices(0.035, 0.040, 0.045, 0.015);
+        expect(ama.isDehydratedOxysulfateDetected).to.be.true;
+        expect(ama.sulfateMineralClass).to.include('Heptahydrated Amarantite Ferric Oxysulfate Facies');
+        expect(ama.mineralSpecies).to.include('Amarantite');
+        expect(ama.hydrationRegime).to.include('Desiccated Secondary Ferric Oxysulfate Layer');
+
+        // Castanite (BD1440 = 0.035, BD1940 = 0.060, BD2160 = 0.045, BD2240 = 0.015):
+        const cas = BandMathEngine.computeCRISMAmarantiteFerricOxysulfateSpeciationIndices(0.035, 0.060, 0.045, 0.015);
+        expect(cas.isDehydratedOxysulfateDetected).to.be.true;
+        expect(cas.sulfateMineralClass).to.include('Octahydrated Castanite Oxysulfate Facies');
+        expect(cas.mineralSpecies).to.include('Castanite');
+
+        // Paracoquimbite (BD1440 = 0.035, BD1940 = 0.045, BD2160 = 0.010, BD2240 = 0.035):
+        const para = BandMathEngine.computeCRISMAmarantiteFerricOxysulfateSpeciationIndices(0.035, 0.045, 0.010, 0.035);
+        expect(para.isDehydratedOxysulfateDetected).to.be.true;
+        expect(para.sulfateMineralClass).to.include('Nonahydrated Paracoquimbite Neutral Sulfate Facies');
+        expect(para.mineralSpecies).to.include('Paracoquimbite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMAmarantiteFerricOxysulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isDehydratedOxysulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

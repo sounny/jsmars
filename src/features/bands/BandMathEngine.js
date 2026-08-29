@@ -11047,6 +11047,60 @@ export class BandMathEngine {
       parageneticAssociation: assoc
     };
   }
+
+  /**
+   * Discriminate Partially Dehydrated Heptahydrated Ferric Oxysulfates (Amarantite vs Castanite vs Paracoquimbite) from CRISM 1.440 um, 1.940 um, 2.160 um, and 2.240 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Iron-Oxysulfates.
+   * @param {number} [band1440H2ODepth=0.035] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.040] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2160FeOHDepth=0.045] - BD2160 amarantite diagnostic ferric oxysulfate vibrational combination depth (0.0 to 0.50)
+   * @param {number} [band2240FeOHDepth=0.015] - BD2240 neutral ferric sulfate combination depth (0.0 to 0.50)
+   * @returns {{isDehydratedOxysulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrationRegime: string}}
+   */
+  static computeCRISMAmarantiteFerricOxysulfateSpeciationIndices(band1440H2ODepth = 0.035, band1940H2ODepth = 0.040, band2160FeOHDepth = 0.045, band2240FeOHDepth = 0.015) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2160 = Math.max(0.0, band2160FeOHDepth);
+    const d2240 = Math.max(0.0, band2240FeOHDepth);
+
+    const isAmarantite = d2160 >= 0.030 && d1440 >= 0.020 && d1940 >= 0.025 && d1940 < 0.050 && d2240 < 0.025;
+    const isCastanite = d2160 >= 0.030 && d1940 >= 0.050 && d2240 < 0.025;
+    const isParacoquimbite = d2240 >= 0.025 && d1940 >= 0.035 && d2160 < 0.020;
+
+    const isOxySO4 = isAmarantite || isCastanite || isParacoquimbite;
+
+    let sClass = 'Oxysulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Primary Crust';
+
+    if (isOxySO4) {
+      if (isAmarantite) {
+        sClass = 'Heptahydrated Amarantite Ferric Oxysulfate Facies';
+        species = 'Amarantite';
+        formula = 'Fe2(SO4)2O·7H2O';
+        regime = 'Desiccated Secondary Ferric Oxysulfate Layer (Juventae / Melas / Ganges)';
+      } else if (isCastanite) {
+        sClass = 'Octahydrated Castanite Oxysulfate Facies';
+        species = 'Castanite';
+        formula = 'Fe2(SO4)2O·8H2O';
+        regime = 'Hydrated Primary Ferric Oxysulfate Outcrop';
+      } else {
+        sClass = 'Nonahydrated Paracoquimbite Neutral Sulfate Facies';
+        species = 'Paracoquimbite';
+        formula = 'Fe2(SO4)3·9H2O';
+        regime = 'Neutral Hydrated Poly-Sulfate Aqueous Efflorescence';
+      }
+    }
+
+    return {
+      isDehydratedOxysulfateDetected: isOxySO4,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrationRegime: regime
+    };
+  }
 }
 
 

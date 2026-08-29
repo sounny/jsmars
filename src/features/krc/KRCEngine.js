@@ -12066,6 +12066,67 @@ export class KRCEngine {
       castaniteContext: `Castanite at ${TC.toFixed(0)} C, a(FeSO4)=${aFeSO4.toFixed(2)} (${(alphaCas * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${cClass})`
     };
   }
+
+  /**
+   * Calculate diurnal and desiccation dehydration of octahydrated castanite into heptahydrated amarantite, crystal contraction, and thermal inertia.
+   * Fe2(SO4)2O·8H2O -> Fe2(SO4)2O·7H2O + H2O (20 to 80 C, low RH)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Iron-Oxysulfates.
+   * @param {number} [initialCastanitePorosity=0.30] - Initial castanite evaporite porosity (0.05 to 0.60)
+   * @param {number} [surfaceTempC=36.0] - Surface/diurnal desiccation temperature in C (0 to 90 C)
+   * @param {number} [atmosphericRelativeHumidity=0.15] - Atmospheric / pore relative humidity (0.001 to 0.80)
+   * @param {number} [durationYears=210.0] - Desiccation exposure duration in years (0.1 to 5000 yr)
+   * @returns {{amarantiteConversionFraction: number, boundWaterYieldWeightPercent: number, dominantFerricOxysulfatePhase: string, induratedHeptahydrateThermalInertiaTIU: number, heptahydrateFaciesClass: string, amarantiteContext: string}}
+   */
+  static computeMartianAmarantiteDehydration(initialCastanitePorosity = 0.30, surfaceTempC = 36.0, atmosphericRelativeHumidity = 0.15, durationYears = 210.0) {
+    const phi0 = Math.max(0.01, Math.min(0.65, initialCastanitePorosity));
+    const TC = Math.max(-10.0, Math.min(105.0, surfaceTempC));
+    const rh = Math.max(0.001, Math.min(0.85, atmosphericRelativeHumidity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.05e4; // 40.5 kJ/mol for amarantite dehydration crystallization
+
+    // Reaction rate constant
+    const kRate = 4.6e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(1.0 - rh, 0.50);
+    const alphaAma = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound water yield (wt%)
+    const wH2OPct = 30.01 + ((1.0 - alphaAma) * 4.29);
+
+    // Crystal volume contraction and indurated heptahydrate compaction
+    const phiResidual = phi0 * (1.0 - (0.35 * alphaAma));
+    const rhoGrain = 2290.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.95; // W/(m K)
+    const Cspec = 940.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Amarantite (Fe2(SO4)2O·7H2O)';
+    let aClass = 'Heptahydrated Ferric Oxysulfate Facies';
+
+    if (alphaAma >= 0.50 && TC >= 20.0 && rh <= 0.30) {
+      species = 'Amarantite (Fe2(SO4)2O·7H2O)';
+      aClass = 'Indurated Amarantite Facies (Juventae / Melas / Ganges)';
+    } else if (rh > 0.30) {
+      species = 'Metastable Castanite-Amarantite Mixture';
+      aClass = 'Partially Dehydrated Polyhydrate Transition';
+    } else {
+      species = 'Hohmannite-Metahohmannite Dehydration Residue';
+      aClass = 'Hyper-Thermal Oxysulfate Residue';
+    }
+
+    return {
+      amarantiteConversionFraction: parseFloat(alphaAma.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantFerricOxysulfatePhase: species,
+      induratedHeptahydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      heptahydrateFaciesClass: aClass,
+      amarantiteContext: `Amarantite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaAma * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O, TIU=${TIU.toFixed(0)}, ${aClass})`
+    };
+  }
 }
 
 
