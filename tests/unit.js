@@ -15187,6 +15187,55 @@ describe('Mars-to-Flora Transfer, Margarite Metasomatism & Margarite Speciation'
     });
 });
 
+describe('Mars-to-Metis Transfer, Stilbite Zeolite Metasomatism & Zeolite Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to large stony main-belt asteroid (9) Metis and orbit capture', () => {
+        // Mars to Metis (300 km Mars alt, 2.387 AU distance, 25 km capture alt, 5.58 deg plane change):
+        const met = TrajectoryEngine.computeMarsToMetisTransfer(300.0, 2.387, 25.0, 5.58);
+        expect(met.semiMajorAxisAU).to.be.closeTo(1.955, 0.1); // ~1.96 AU
+        expect(met.eccentricity).to.be.closeTo(0.2208, 0.01); // e ~ 0.221
+        expect(met.timeOfFlightDays).to.be.closeTo(498.50, 30.0); // ~499 days (~1.37 yr)
+        expect(met.timeOfFlightYears).to.be.closeTo(1.37, 0.1); // ~1.37 yr
+        expect(met.marsDepartureDeltaVKmS).to.be.closeTo(2.491, 0.5); // ~2.49 km/s TMI
+        expect(met.metisOrbitInsertionDeltaVKmS).to.be.closeTo(2.048, 0.5); // ~2.05 km/s MOI
+        expect(met.totalMissionDeltaVKmS).to.be.closeTo(4.539, 1.0); // ~4.54 km/s total
+        expect(met.metisContext).to.include('Mars-to-Metis');
+    });
+
+    it('should calculate low-temperature alkaline/neutral zeolitization of basaltic glass into high-silica stilbite zeolite and thermal inertia', () => {
+        // 28% initial porosity, 95 C zeolitic temp, 0.16 a(SiO2), 300 yr duration:
+        const stil = KRCEngine.computeMartianStilbiteZeoliteMetasomatism(0.28, 95.0, 0.16, 300.0);
+        expect(stil.zeoliteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(stil.channelWaterYieldWeightPercent).to.be.greaterThan(8.0); // > 8 wt% channel H2O
+        expect(stil.zeoliticTuffThermalInertiaTIU).to.be.closeTo(1990.8, 200.0); // ~1991 tiu
+        expect(stil.zeoliteFaciesClass).to.include('High-Silica Zeolite Facies');
+        expect(stil.stilbiteContext).to.include('Stilbite Zeolite at 95 C');
+    });
+
+    it('should discriminate Stilbite vs Heulandite vs Analcime in CRISM spectra', () => {
+        // Stilbite (Claritas / Terra Sirenum: BD1415 = 0.035, BD1780 = 0.040, BD1940 = 0.075, BD2310 = 0.025):
+        const stil = BandMathEngine.computeCRISMStilbiteHeulanditeSpeciationIndices(0.035, 0.040, 0.075, 0.025);
+        expect(stil.isZeoliteDetected).to.be.true;
+        expect(stil.zeoliteMineralClass).to.include('Hydrated High-Silica Stilbite Zeolite Facies');
+        expect(stil.mineralSpecies).to.include('Stilbite');
+        expect(stil.zeolitizationRegime).to.include('Low-Temperature Alkaline Diagenesis');
+
+        // Heulandite (BD1415 = 0.025, BD1780 = 0.015, BD1940 = 0.055, BD2310 = 0.025):
+        const heu = BandMathEngine.computeCRISMStilbiteHeulanditeSpeciationIndices(0.025, 0.015, 0.055, 0.025);
+        expect(heu.isZeoliteDetected).to.be.true;
+        expect(heu.zeoliteMineralClass).to.include('Heulandite-Clinoptilolite Zeolite Strata');
+        expect(heu.mineralSpecies).to.include('Heulandite');
+
+        // Analcime (BD1415 = 0.010, BD1780 = 0.010, BD1940 = 0.050, BD2310 = 0.010):
+        const anal = BandMathEngine.computeCRISMStilbiteHeulanditeSpeciationIndices(0.010, 0.010, 0.050, 0.010);
+        expect(anal.isZeoliteDetected).to.be.true;
+        expect(anal.zeoliteMineralClass).to.include('Analcime Sodic Zeolite Metasomatism');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMStilbiteHeulanditeSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isZeoliteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

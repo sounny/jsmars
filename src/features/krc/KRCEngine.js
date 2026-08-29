@@ -10480,6 +10480,67 @@ export class KRCEngine {
       margariteContext: `Margarite Facies at ${TC.toFixed(0)} C, a(Ca)=${aCa.toFixed(2)} (${(alphaMarg * 100).toFixed(1)}% converted, ${wMargPct.toFixed(1)}% Margarite, TIU=${TIU.toFixed(0)}, ${mClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature alkaline/neutral zeolitization of basaltic glass into high-silica stilbite-heulandite zeolite, channel hydration, and zeolitic tuff thermal inertia.
+   * Basaltic Glass + Ca2+ + Na+ + SiO2(aq) + H2O (60-150 C) -> Stilbite (NaCa4(Si27Al9)O72·28H2O) + Heulandite
+   * Reference: Viviano-Beck et al. (2014), Ehlmann et al. (2011), Carter et al. (2013) for Martian Zeolitic Hydrothermal Terranes.
+   * @param {number} [basalticTuffPorosity=0.28] - Initial volcanic ash/tuff porosity (0.05 to 0.50)
+   * @param {number} [zeoliticTempC=95.0] - Low-temperature hydrothermal fluid temperature in C (40 to 220 C)
+   * @param {number} [silicaActivityRatio=0.16] - Dissolved silica activity / aqueous SiO2 ratio (0.01 to 0.80)
+   * @param {number} [durationYears=300.0] - Zeolitic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{zeoliteConversionFraction: number, channelWaterYieldWeightPercent: number, dominantZeoliteSpecies: string, zeoliticTuffThermalInertiaTIU: number, zeoliteFaciesClass: string, stilbiteContext: string}}
+   */
+  static computeMartianStilbiteZeoliteMetasomatism(basalticTuffPorosity = 0.28, zeoliticTempC = 95.0, silicaActivityRatio = 0.16, durationYears = 300.0) {
+    const phi0 = Math.max(0.01, Math.min(0.55, basalticTuffPorosity));
+    const TC = Math.max(30.0, Math.min(260.0, zeoliticTempC));
+    const aSiO2 = Math.max(0.005, Math.min(1.0, silicaActivityRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.80e4; // 48 kJ/mol for stilbite zeolite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aSiO2, 0.35);
+    const alphaZ = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Channel water yield (wt%)
+    const wH2OPct = alphaZ * 16.50;
+
+    // Zeolitic pore infilling and hydrous matrix consolidation
+    const phiResidual = phi0 * (1.0 - (0.65 * alphaZ));
+    const rhoGrain = 2280.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.85; // W/(m K)
+    const Cspec = 940.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Stilbite + Heulandite Zeolite Assemblage';
+    let zClass = 'High-Silica Zeolite Facies';
+
+    if (alphaZ >= 0.50 && TC >= 60.0 && TC <= 150.0 && aSiO2 >= 0.10) {
+      species = 'Stilbite (NaCa4(Si27Al9)O72·28H2O)';
+      zClass = 'Low-Temperature High-Silica Zeolite Facies (Claritas Fossae / Terra Sirenum)';
+    } else if (TC > 150.0) {
+      species = 'Analcime-Wairakite High-T Zeolite Facies';
+      zClass = 'Moderate-Temperature Zeolite Transition';
+    } else {
+      species = 'Chabazite-Clinoptilolite Incipient Zeolite';
+      zClass = 'Low-Temperature Diagenetic Zeolitic Boundary';
+    }
+
+    return {
+      zeoliteConversionFraction: parseFloat(alphaZ.toFixed(3)),
+      channelWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantZeoliteSpecies: species,
+      zeoliticTuffThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      zeoliteFaciesClass: zClass,
+      stilbiteContext: `Stilbite Zeolite at ${TC.toFixed(0)} C, a(SiO2)=${aSiO2.toFixed(2)} (${(alphaZ * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% channel H2O, TIU=${TIU.toFixed(0)}, ${zClass})`
+    };
+  }
 }
 
 

@@ -9643,6 +9643,60 @@ export class BandMathEngine {
       metasomaticEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Low-Temperature Hydrous Zeolites (Stilbite vs Heulandite vs Analcime vs Hydrated Glass) from CRISM 1.415 um, 1.780 um, 1.940 um, and 2.310 um absorption bands.
+   * Reference: Viviano-Beck et al. (2014), Ehlmann et al. (2011), Carter et al. (2013) for Martian Zeolite Mineralogy.
+   * @param {number} [band1415OHDepth=0.035] - BD1415 stilbite diagnostic sharp OH/H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1780H2ODepth=0.040] - BD1780 zeolite channel H2O combination depth (0.0 to 0.50)
+   * @param {number} [band1940H2ODepth=0.075] - BD1940 fundamental molecular H2O absorption depth (0.0 to 0.60)
+   * @param {number} [band2310SiOHDepth=0.025] - BD2310 silica-rich zeolite Si-OH vibration depth (0.0 to 0.50)
+   * @returns {{isZeoliteDetected: boolean, zeoliteMineralClass: string, mineralSpecies: string, chemicalFormula: string, zeolitizationRegime: string}}
+   */
+  static computeCRISMStilbiteHeulanditeSpeciationIndices(band1415OHDepth = 0.035, band1780H2ODepth = 0.040, band1940H2ODepth = 0.075, band2310SiOHDepth = 0.025) {
+    const d1415 = Math.max(0.0, band1415OHDepth);
+    const d1780 = Math.max(0.0, band1780H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2310 = Math.max(0.0, band2310SiOHDepth);
+
+    const isStilbite = d1415 >= 0.025 && d1780 >= 0.030 && d1940 >= 0.050 && d2310 >= 0.015;
+    const isHeulandite = d1415 >= 0.020 && d1940 >= 0.045 && d1780 < 0.020 && d2310 >= 0.020;
+    const isAnalcime = d1940 >= 0.040 && d1415 < 0.015 && d1780 < 0.015;
+
+    const isZeo = isStilbite || isHeulandite || isAnalcime;
+
+    let zClass = 'Zeolite-Free Volcanic Matrix';
+    let species = 'Basaltic Glass Matrix';
+    let formula = 'Amorphous Silicate';
+    let regime = 'Unaltered Primary Volcanic Glass';
+
+    if (isZeo) {
+      if (isStilbite) {
+        zClass = 'Hydrated High-Silica Stilbite Zeolite Facies';
+        species = 'Stilbite';
+        formula = 'NaCa4(Si27Al9)O72·28H2O';
+        regime = 'Low-Temperature Alkaline Diagenesis / Hydrothermal Circulation (60-150 C, Claritas / Terra Sirenum)';
+      } else if (isHeulandite) {
+        zClass = 'Heulandite-Clinoptilolite Zeolite Strata';
+        species = 'Heulandite';
+        formula = '(Na,Ca)2-3Al3(Al,Si)2Si13O36·12H2O';
+        regime = 'Porous Ash Diagenetic Hydration Sequence';
+      } else {
+        zClass = 'Analcime Sodic Zeolite Metasomatism';
+        species = 'Analcime';
+        formula = 'NaAlSi2O6·H2O';
+        regime = 'Moderate-Temperature Alkaline Hydrothermal Alteration';
+      }
+    }
+
+    return {
+      isZeoliteDetected: isZeo,
+      zeoliteMineralClass: zClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      zeolitizationRegime: regime
+    };
+  }
 }
 
 

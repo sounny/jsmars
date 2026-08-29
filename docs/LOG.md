@@ -822,3 +822,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate sub-greenschist facies hydrothermal metamorphism, porosity reduction, and crystalline metabasalt thermal inertia
 ?: AssertionError: expected undefined to be a number or a date
     at n.<anonymous> (unit.js:14235:58)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 11:16:01 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should discriminate Al-Pumpellyite vs Epidote vs Fe3+-Pumpellyite in CRISM spectra
+?: AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+    at n.<anonymous> (unit.js:14678:54)
