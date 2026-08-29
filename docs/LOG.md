@@ -717,3 +717,17 @@ TEST FAILURE: Unit test suite failed (2 failures):
 - should calculate acid sulfate weathering kinetics of sulfides into jarosite and alunite duricrust
 ?: AssertionError: expected 0.004 to be above 0.8
     at n.<anonymous> (unit.js:13629:52)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 03:46:02 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to Kuiper Belt dwarf planet 136108 Haumea and orbit capture
+?: AssertionError: expected 19266.8 to be close to 20893.9 +/- 800
+    at n.<anonymous> (unit.js:13665:44)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 03:46:15 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to Kuiper Belt dwarf planet 136108 Haumea and orbit capture
+?: AssertionError: expected 2.731 to be close to 1.467 +/- 0.4
+    at n.<anonymous> (unit.js:13668:57)

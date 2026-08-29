@@ -13656,6 +13656,57 @@ describe('Mars-to-Makemake Transfer, Acid Sulfate Weathering & Alunite-Jarosite 
     });
 });
 
+describe('Mars-to-Haumea Transfer, Magma Sill Cooling & Silica Polymorph Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to Kuiper Belt dwarf planet 136108 Haumea and orbit capture', () => {
+        // Mars to Haumea (300 km Mars alt, 43.13 AU distance, 400 km capture alt):
+        const hau = TrajectoryEngine.computeMarsToHaumeaTransfer(300.0, 43.13, 400.0);
+        expect(hau.semiMajorAxisAU).to.be.closeTo(22.327, 0.5); // ~22.33 AU
+        expect(hau.eccentricity).to.be.closeTo(0.9318, 0.01); // e ~ 0.932
+        expect(hau.timeOfFlightDays).to.be.closeTo(19266.8, 500.0); // ~19267 days (~52.7 yr)
+        expect(hau.timeOfFlightYears).to.be.closeTo(52.75, 1.5); // ~52.8 yr
+        expect(hau.marsDepartureDeltaVKmS).to.be.closeTo(7.299, 0.6); // ~7.30 km/s THI
+        expect(hau.haumeaOrbitInsertionDeltaVKmS).to.be.closeTo(2.731, 0.4); // ~2.73 km/s HOI
+        expect(hau.totalMissionDeltaVKmS).to.be.closeTo(10.030, 0.8); // ~10.03 km/s total
+        expect(hau.haumeaContext).to.include('Mars-to-Haumea');
+    });
+
+    it('should calculate 1D conductive cooling, Stefan solidification, and contact metamorphic halo of a basaltic magma sill', () => {
+        // 100 m thick sill, 1200 C intrusion temp, 100 C host rock temp, 400 kJ/kg latent heat:
+        const sill = KRCEngine.computeMartianBasalticSillCoolingSolidification(100.0, 1200.0, 100.0, 400.0);
+        expect(sill.solidificationTimeYears).to.be.closeTo(49.5, 5.0); // ~49.5 yr solidification
+        expect(sill.metamorphicAureoleWidthMeters).to.be.closeTo(85.0, 10.0); // ~85 m halo
+        expect(sill.totalCoolingToHostTempYears).to.be.closeTo(222.9, 25.0); // ~223 yr cooling
+        expect(sill.crystallizedSillThermalInertiaTIU).to.be.closeTo(2620.0, 150.0); // ~2620 tiu microgabbro
+        expect(sill.intrusionRegimeClass).to.include('Substantial Basaltic Sill / Sheet Complex');
+        expect(sill.sillCoolingContext).to.include('Basaltic Sill');
+    });
+
+    it('should discriminate Amorphous Opal-A vs Opal-CT vs Quartz / Chalcedony in CRISM spectra', () => {
+        // Opal-A (Gusev Crater Home Plate / Mawrth: BD1400 = 0.04, BD1900 = 0.06, BD2210 = 0.07, BD2260 = 0.04, FWHM = 55 nm):
+        const opalA = BandMathEngine.computeCRISMOpalAChertQuartzPolymorphIndices(0.04, 0.06, 0.07, 0.04, 55.0);
+        expect(opalA.isSilicaDetected).to.be.true;
+        expect(opalA.silicaPolymorphClass).to.include('Amorphous Opaline Silica (Opal-A)');
+        expect(opalA.mineralSpecies).to.include('Opal-A');
+        expect(opalA.sinterHydrothermalContext).to.include('Hydrothermal Hot Spring Sinter');
+
+        // Opal-CT (BD1400 = 0.03, BD1900 = 0.04, BD2210 = 0.06, BD2260 = 0.03, FWHM = 35 nm):
+        const opalCT = BandMathEngine.computeCRISMOpalAChertQuartzPolymorphIndices(0.03, 0.04, 0.06, 0.03, 35.0);
+        expect(opalCT.isSilicaDetected).to.be.true;
+        expect(opalCT.silicaPolymorphClass).to.include('Diagenetic Opal-CT');
+        expect(opalCT.mineralSpecies).to.include('Opal-CT');
+
+        // Quartz / Chalcedony (BD1400 = 0.03, BD1900 = 0.015, BD2210 = 0.06, BD2260 = 0.01, FWHM = 20 nm):
+        const qtz = BandMathEngine.computeCRISMOpalAChertQuartzPolymorphIndices(0.03, 0.015, 0.06, 0.01, 20.0);
+        expect(qtz.isSilicaDetected).to.be.true;
+        expect(qtz.silicaPolymorphClass).to.include('Microcrystalline Chalcedony / Cryptocrystalline Quartz');
+        expect(qtz.mineralSpecies).to.include('Chalcedony / Quartz');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMOpalAChertQuartzPolymorphIndices(0.005, 0.005, 0.005, 0.005, 10.0);
+        expect(basalt.isSilicaDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

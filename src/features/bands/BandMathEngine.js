@@ -8002,6 +8002,59 @@ export class BandMathEngine {
       phGeochemicalContext: context
     };
   }
+
+  /**
+   * Discriminate Amorphous Hydrated Silica (Opal-A) vs Opal-CT vs Microcrystalline Quartz/Chalcedony from CRISM 1.40 um, 1.90 um, 2.21 um, and 2.26 um bands.
+   * Reference: Squyres et al. (2008), Milliken et al. (2008), Rice et al. (2013), Sun & Milliken (2015), Viviano-Beck et al. (2014) for Martian Hydrated Silica.
+   * @param {number} [band1400OHDepth=0.04] - BD1400 Si-OH / H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.06] - BD1900 molecular H2O depth (0.0 to 0.50)
+   * @param {number} [band2210SiOHDepth=0.07] - BD2210 primary Si-OH combination depth (0.0 to 0.50)
+   * @param {number} [band2260ShoulderDepth=0.04] - BD2260 opaline silica diagnostic shoulder depth (0.0 to 0.40)
+   * @param {number} [fwhm2210Nm=50.0] - Full width at half maximum of 2.21 um Si-OH band in nm (15 to 100 nm)
+   * @returns {{isSilicaDetected: boolean, silicaPolymorphClass: string, mineralSpecies: string, chemicalFormula: string, fwhmNm: number, sinterHydrothermalContext: string}}
+   */
+  static computeCRISMOpalAChertQuartzPolymorphIndices(band1400OHDepth = 0.04, band1900WaterDepth = 0.06, band2210SiOHDepth = 0.07, band2260ShoulderDepth = 0.04, fwhm2210Nm = 50.0) {
+    const d1400 = Math.max(0.0, band1400OHDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2210 = Math.max(0.0, band2210SiOHDepth);
+    const d2260 = Math.max(0.0, band2260ShoulderDepth);
+    const fwhm = Math.max(10.0, Math.min(150.0, fwhm2210Nm));
+
+    const isSilica = d2210 >= 0.025 && (d1400 >= 0.015 || d1900 >= 0.020);
+
+    let polyClass = 'Silica-Free Basaltic Regolith';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Detectable Hydrated Silica Si-OH Absorption';
+
+    if (isSilica) {
+      if (fwhm >= 45.0 && d1900 >= 0.035) {
+        polyClass = 'Amorphous Opaline Silica (Opal-A)';
+        species = 'Opal-A';
+        formula = 'SiO2 * nH2O (Amorphous)';
+        context = 'Low-to-Moderate Temperature Hydrothermal Hot Spring Sinter / Acid-Sulfate Fumarolic Leaching (Gusev Crater Home Plate / Mawrth Vallis)';
+      } else if (fwhm >= 28.0) {
+        polyClass = 'Diagenetic Opal-CT (Cristobalite-Tridymite Disordered)';
+        species = 'Opal-CT';
+        formula = 'SiO2 * nH2O (Paracrystalline)';
+        context = 'Diagenetic Maturation and Burial Heating of Hydrated Opal Sinter Deposits';
+      } else {
+        polyClass = 'Microcrystalline Chalcedony / Cryptocrystalline Quartz';
+        species = 'Chalcedony / Quartz';
+        formula = 'SiO2 (Microcrystalline)';
+        context = 'High-Temperature Hydrothermal Quartz Vein or Metamorphic Chert Recrystallization';
+      }
+    }
+
+    return {
+      isSilicaDetected: isSilica,
+      silicaPolymorphClass: polyClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      fwhmNm: parseFloat(fwhm.toFixed(1)),
+      sinterHydrothermalContext: context
+    };
+  }
 }
 
 

@@ -8712,6 +8712,58 @@ export class KRCEngine {
       acidWeatheringContext: `Acid Sulfate at pH ${pH.toFixed(1)}, ${TC.toFixed(0)} C (${wJarositePct.toFixed(1)}% Jarosite, ${wAlunitePct.toFixed(1)}% Alunite, TIU=${TIU.toFixed(0)}, ${altClass})`
     };
   }
+
+  /**
+   * Calculate 1D conductive cooling, Stefan moving-boundary crystallization, solidification time, and contact metamorphic aureole thickness of a basaltic magma sill.
+   * t_solid = ( D_sill / 2 )^2 / ( 4 * lambda^2 * kappa )
+   * W_halo = 0.85 * D_sill
+   * Reference: Jaeger (1957), Turcotte & Schubert (2014), Michalski et al. (2017) for Subsurface Magmatism.
+   * @param {number} [sillThicknessM=100.0] - Magma sill thickness in meters (10.0 to 1000.0 m)
+   * @param {number} [intrusionTempC=1200.0] - Magma liquidus intrusion temperature in C (900 to 1400 C)
+   * @param {number} [hostRockTempC=100.0] - Country rock ambient temperature in C (0 to 400 C)
+   * @param {number} [latentHeatKJPerKg=400.0] - Latent heat of crystallization in kJ/kg (250 to 500 kJ/kg)
+   * @returns {{solidificationTimeYears: number, metamorphicAureoleWidthMeters: number, totalCoolingToHostTempYears: number, crystallizedSillThermalInertiaTIU: number, intrusionRegimeClass: string, sillCoolingContext: string}}
+   */
+  static computeMartianBasalticSillCoolingSolidification(sillThicknessM = 100.0, intrusionTempC = 1200.0, hostRockTempC = 100.0, latentHeatKJPerKg = 400.0) {
+    const D = Math.max(5.0, sillThicknessM);
+    const Tint = Math.max(800.0, Math.min(1500.0, intrusionTempC));
+    const Thost = Math.max(-50.0, Math.min(600.0, hostRockTempC));
+    const L = Math.max(200.0, latentHeatKJPerKg);
+
+    const kappa = 25.23; // Thermal diffusivity m^2/yr (8.0e-7 m^2/s)
+    const lambda = 0.707; // Stefan solidification parameter
+
+    // Time to complete core solidification (yr)
+    const tSolidYrs = Math.pow(D / 2.0, 2.0) / (4.0 * Math.pow(lambda, 2.0) * kappa);
+
+    // Total time to cool down to within 10% of host temperature (yr)
+    const tTotalCoolYrs = tSolidYrs * 4.5;
+
+    // Contact metamorphic halo width (pyrometamorphic/hornfels aureole)
+    const wHaloM = 0.85 * D;
+
+    // Thermal inertia of crystallized microgabbro / diabase sill
+    const kTherm = 2.45; // W/(m K)
+    const rhoBulk = 2950.0; // kg/m^3
+    const Cspec = 950.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let regimeClass = 'Minor Subsurface Dike / Thin Sheet Intrusion';
+    if (D >= 200.0) {
+      regimeClass = 'Major Subvolcanic Magma Chamber / Thick Plutonic Sill (Sustained Hydrothermal Engine in Syrtis Major/Elysium)';
+    } else if (D >= 50.0) {
+      regimeClass = 'Substantial Basaltic Sill / Sheet Complex (Decadal High-T Thermal Aureole)';
+    }
+
+    return {
+      solidificationTimeYears: parseFloat(tSolidYrs.toFixed(1)),
+      metamorphicAureoleWidthMeters: parseFloat(wHaloM.toFixed(1)),
+      totalCoolingToHostTempYears: parseFloat(tTotalCoolYrs.toFixed(1)),
+      crystallizedSillThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      intrusionRegimeClass: regimeClass,
+      sillCoolingContext: `Basaltic Sill D=${D.toFixed(0)}m (${tSolidYrs.toFixed(1)} yr solidification, ${wHaloM.toFixed(0)}m halo, TIU=${TIU.toFixed(0)}, ${regimeClass})`
+    };
+  }
 }
 
 
