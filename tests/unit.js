@@ -16741,6 +16741,57 @@ describe('Mars-to-Daphne Transfer, Guildite Dehydration & Oxysulfate Speciation'
     });
 });
 
+describe('Mars-to-Isis Transfer, Slavkite Dehydration & Multi-Cation Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony asteroid (42) Isis and orbit capture', () => {
+        // Mars to Isis (300 km Mars alt, 2.442 AU distance, 15 km capture alt, 8.53 deg plane change):
+        const is = TrajectoryEngine.computeMarsToIsisTransfer(300.0, 2.442, 15.0, 8.53);
+        expect(is.semiMajorAxisAU).to.be.closeTo(1.983, 0.1); // ~1.98 AU
+        expect(is.eccentricity).to.be.closeTo(0.2316, 0.01); // e ~ 0.232
+        expect(is.timeOfFlightDays).to.be.closeTo(509.28, 30.0); // ~509 days (~1.39 yr)
+        expect(is.timeOfFlightYears).to.be.closeTo(1.39, 0.1); // ~1.39 yr
+        expect(is.marsDepartureDeltaVKmS).to.be.closeTo(3.205, 0.5); // ~3.21 km/s TIsI
+        expect(is.isisOrbitInsertionDeltaVKmS).to.be.closeTo(2.187, 0.5); // ~2.19 km/s IsOI
+        expect(is.totalMissionDeltaVKmS).to.be.closeTo(5.392, 1.0); // ~5.39 km/s total
+        expect(is.isisContext).to.include('Mars-to-Isis');
+    });
+
+    it('should calculate hydrothermal dehydration of nonahydrated slavkite into anhydrous multi-cation sulfate and thermal inertia', () => {
+        // 28% initial porosity, 42 C surface temp, 0.10 RH, 220 yr duration:
+        const sdh = KRCEngine.computeMartianSlavkiteDehydration(0.28, 42.0, 0.10, 220.0);
+        expect(sdh.slavkiteDehydrationFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(sdh.boundWaterYieldWeightPercent).to.be.lessThan(16.0); // < 16 wt% bound H2O+OH
+        expect(sdh.induratedAnhydrousThermalInertiaTIU).to.be.closeTo(1780.2, 200.0); // ~1780 tiu
+        expect(sdh.multiCationDehydrationFaciesClass).to.include('Indurated Anhydrous Slavkite Facies');
+        expect(sdh.slavkiteDehydrationContext).to.include('Anhydrous Slavkite at 42 C');
+    });
+
+    it('should discriminate Anhydrous Slavkite vs Slavkite Nonahydrate vs Bloedite in CRISM spectra', () => {
+        // Anhydrous Slavkite (Aram / Shalbatana / Hebes: BD1440 = 0.010, BD1940 = 0.015, BD2175 = 0.040, BD2400 = 0.045):
+        const anhSlv = BandMathEngine.computeCRISMAnhydrousSlavkiteSpeciationIndices(0.010, 0.015, 0.040, 0.045);
+        expect(anhSlv.isAnhydrousMultiCationSulfateDetected).to.be.true;
+        expect(anhSlv.sulfateMineralClass).to.include('Anhydrous Multi-Cation Sulfate Facies');
+        expect(anhSlv.mineralSpecies).to.include('Anhydrous Slavkite');
+        expect(anhSlv.evaporiteEnvironment).to.include('Desiccated High-Temperature Multi-Cation Evaporite Crust');
+
+        // Slavkite Nonahydrate (BD1440 = 0.035, BD1940 = 0.045, BD2175 = 0.040, BD2400 = 0.035):
+        const slv = BandMathEngine.computeCRISMAnhydrousSlavkiteSpeciationIndices(0.035, 0.045, 0.040, 0.035);
+        expect(slv.isAnhydrousMultiCationSulfateDetected).to.be.true;
+        expect(slv.sulfateMineralClass).to.include('Nonahydrated Slavkite Multi-Cation Sulfate Facies');
+        expect(slv.mineralSpecies).to.include('Slavkite');
+
+        // Bloedite (BD1440 = 0.035, BD1940 = 0.045, BD2175 = 0.010, BD2400 = 0.035):
+        const blo = BandMathEngine.computeCRISMAnhydrousSlavkiteSpeciationIndices(0.035, 0.045, 0.010, 0.035);
+        expect(blo.isAnhydrousMultiCationSulfateDetected).to.be.true;
+        expect(blo.sulfateMineralClass).to.include('Tetrahydrated Bloedite Sodium-Magnesium Sulfate Facies');
+        expect(blo.mineralSpecies).to.include('Bloedite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMAnhydrousSlavkiteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(blo.isAnhydrousMultiCationSulfateDetected).to.be.true;
+        expect(basalt.isAnhydrousMultiCationSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

@@ -13067,6 +13067,81 @@ export class TrajectoryEngine {
       daphneContext: `Mars-to-Daphne (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, DaOI=${dvDaoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to main-belt stony S-type asteroid (42) Isis and orbit capture.
+   * a = ( r_mars + r_isis ) / 2
+   * e = ( r_isis - r_mars ) / ( r_isis + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [isisDistanceAU=2.442] - Isis heliocentric distance in AU (1.7 to 3.4 AU)
+   * @param {number} [isisPeriapsisAltitudeKm=15.0] - Isis orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=8.53] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, isisOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, isisContext: string}}
+   */
+  static computeMarsToIsisTransfer(marsParkingAltitudeKm = 300.0, isisDistanceAU = 2.442, isisPeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 8.53) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rIsAU = Math.max(1.6, Math.min(3.5, isisDistanceAU));
+    const hpIsKm = Math.max(5.0, isisPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muIsis = 2.80; // km^3/s^2 (stony asteroid, D~100.2 km)
+    const rIsisKm = 50.1; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rIsDistKm = rIsAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rIsDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rIsDistKm - rMarsDistKm) / (rIsDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTsiiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Isis capture
+    const vIsCircKmS = Math.sqrt(muSun / rIsDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rIsDistKm) - (1.0 / aKm)));
+    const vInfIsKmS = Math.abs(vIsCircKmS - vArrKmS);
+
+    const rpIsKm = rIsisKm + hpIsKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpIsKm / (1.0 - eCap);
+
+    const vHypIsKmS = Math.sqrt(Math.pow(vInfIsKmS, 2.0) + ((2.0 * muIsis) / rpIsKm));
+    const vCapIsKmS = Math.sqrt(muIsis * ((2.0 / rpIsKm) - (1.0 / aCapKm)));
+    const dvIsoiKmS = vHypIsKmS - vCapIsKmS;
+
+    const dvTotKmS = dvTsiiMarsKmS + dvIsoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTsiiMarsKmS.toFixed(3)),
+      isisOrbitInsertionDeltaVKmS: parseFloat(dvIsoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      isisContext: `Mars-to-Isis (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, IsOI=${dvIsoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
