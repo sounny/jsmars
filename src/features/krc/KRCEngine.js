@@ -11761,6 +11761,67 @@ export class KRCEngine {
       metasideronatriteContext: `Metasideronatrite at ${TC.toFixed(0)} C, RH=${(rh * 100).toFixed(0)}% (${(alphaMsid * 100).toFixed(1)}% dehydrated, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${mClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature acidic alteration of magnesium-ferric basalt into botryogen, heptahydrate crystallization, and thermal inertia.
+   * Mg-Fe Basalt + Mg2+ + Fe3+ + 2 SO4(2-) + OH- + 7 H2O (-15 to 25 C) -> Botryogen (MgFe(SO4)2(OH)·7H2O)
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Hydroxyl-Bearing Sulfates.
+   * @param {number} [initialHostPorosity=0.32] - Initial magnesium-rich basalt porosity (0.05 to 0.55)
+   * @param {number} [ambientTempC=4.0] - Ambient alteration temperature in C (-25 to 45 C)
+   * @param {number} [magnesiumFerricFluidActivity=0.38] - Dissolved magnesium-ferric hydroxy-sulfate activity product (0.01 to 1.0)
+   * @param {number} [durationYears=190.0] - Metasomatic hydration duration in years (0.1 to 5000 yr)
+   * @returns {{botryogenConversionFraction: number, boundWaterYieldWeightPercent: number, dominantMagnesiumFerricPhase: string, heptahydrateThermalInertiaTIU: number, hydroxylSulfateFaciesClass: string, botryogenContext: string}}
+   */
+  static computeMartianBotryogenMetasomatism(initialHostPorosity = 0.32, ambientTempC = 4.0, magnesiumFerricFluidActivity = 0.38, durationYears = 190.0) {
+    const phi0 = Math.max(0.01, Math.min(0.60, initialHostPorosity));
+    const TC = Math.max(-30.0, Math.min(55.0, ambientTempC));
+    const aMgFe = Math.max(0.005, Math.min(1.0, magnesiumFerricFluidActivity));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 3.80e4; // 38.0 kJ/mol for botryogen crystallization
+
+    // Reaction rate constant
+    const kRate = 5.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aMgFe, 0.45);
+    const alphaBot = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound structural water and hydroxyl yield (wt%)
+    const wH2OPct = alphaBot * 32.55;
+
+    // Heptahydrate crystal volume growth and porous evaporite retention
+    const phiResidual = (phi0 * (1.0 - (0.34 * alphaBot))) + (0.09 * alphaBot);
+    const rhoGrain = 2140.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 0.78; // W/(m K)
+    const Cspec = 1020.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Botryogen (MgFe(SO4)2(OH)·7H2O)';
+    let bClass = 'Heptahydrated Magnesium-Ferric Hydroxyl-Sulfate Facies';
+
+    if (alphaBot >= 0.50 && TC >= -15.0 && TC <= 25.0 && aMgFe >= 0.15) {
+      species = 'Botryogen (MgFe(SO4)2(OH)·7H2O)';
+      bClass = 'Acidic Evaporite Botryogen Facies (Melas / Capri / Juventae)';
+    } else if (TC > 25.0) {
+      species = 'Copiapite-Epsomite Mixed Sulfate Association';
+      bClass = 'High-Temperature Acid Evaporite Sulfate Sequence';
+    } else {
+      species = 'Natrojarosite-Kieserite Composite';
+      bClass = 'Mixed Sulfate Hydrothermal Alteration Residue';
+    }
+
+    return {
+      botryogenConversionFraction: parseFloat(alphaBot.toFixed(3)),
+      boundWaterYieldWeightPercent: parseFloat(wH2OPct.toFixed(2)),
+      dominantMagnesiumFerricPhase: species,
+      heptahydrateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      hydroxylSulfateFaciesClass: bClass,
+      botryogenContext: `Botryogen at ${TC.toFixed(0)} C, a(MgFeOH)=${aMgFe.toFixed(2)} (${(alphaBot * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% bound H2O+OH, TIU=${TIU.toFixed(0)}, ${bClass})`
+    };
+  }
 }
 
 

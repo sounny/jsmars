@@ -12317,6 +12317,81 @@ export class TrajectoryEngine {
       euphrosyneContext: `Mars-to-Euphrosyne (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, EuOI=${dvEuoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct 3D transfer trajectory from Mars to main-belt stony S-type asteroid (32) Pomona and orbit capture.
+   * a = ( r_mars + r_pomona ) / 2
+   * e = ( r_pomona - r_mars ) / ( r_pomona + r_mars )
+   * Reference: Carry et al. (2012), Curtis (2013) for Main-Belt Asteroid Missions.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [pomonaDistanceAU=2.587] - Pomona heliocentric distance in AU (1.8 to 3.4 AU)
+   * @param {number} [pomonaPeriapsisAltitudeKm=15.0] - Pomona orbit insertion periapsis altitude in km (5 to 350 km)
+   * @param {number} [inclinationPlaneChangeDeg=5.53] - Orbital plane change angle in degrees (0 to 35 deg)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, pomonaOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, pomonaContext: string}}
+   */
+  static computeMarsToPomonaTransfer(marsParkingAltitudeKm = 300.0, pomonaDistanceAU = 2.587, pomonaPeriapsisAltitudeKm = 15.0, inclinationPlaneChangeDeg = 5.53) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rPoAU = Math.max(1.7, Math.min(3.5, pomonaDistanceAU));
+    const hpPoKm = Math.max(5.0, pomonaPeriapsisAltitudeKm);
+    const diDeg = Math.max(0.0, Math.min(45.0, inclinationPlaneChangeDeg));
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muPomona = 1.85; // km^3/s^2 (stony asteroid, D~81 km)
+    const rPomonaKm = 40.5; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rPoDistKm = rPoAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rPoDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rPoDistKm - rMarsDistKm) / (rPoDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure with 3D inclination vector subtraction
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const diRad = (diDeg * Math.PI) / 180.0;
+    const vInfMarsKmS = Math.sqrt(Math.pow(vMarsCircKmS, 2.0) + Math.pow(vDepKmS, 2.0) - (2.0 * vMarsCircKmS * vDepKmS * Math.cos(diRad)));
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTpoiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Pomona capture
+    const vPoCircKmS = Math.sqrt(muSun / rPoDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rPoDistKm) - (1.0 / aKm)));
+    const vInfPoKmS = Math.abs(vPoCircKmS - vArrKmS);
+
+    const rpPoKm = rPomonaKm + hpPoKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpPoKm / (1.0 - eCap);
+
+    const vHypPoKmS = Math.sqrt(Math.pow(vInfPoKmS, 2.0) + ((2.0 * muPomona) / rpPoKm));
+    const vCapPoKmS = Math.sqrt(muPomona * ((2.0 / rpPoKm) - (1.0 / aCapKm)));
+    const dvPoiKmS = vHypPoKmS - vCapPoKmS;
+
+    const dvTotKmS = dvTpoiMarsKmS + dvPoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTpoiMarsKmS.toFixed(3)),
+      pomonaOrbitInsertionDeltaVKmS: parseFloat(dvPoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      pomonaContext: `Mars-to-Pomona (${tofYrs.toFixed(2)} yr TOF, inc=${diDeg.toFixed(1)} deg, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, PoOI=${dvPoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

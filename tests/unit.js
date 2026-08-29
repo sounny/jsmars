@@ -16241,6 +16241,56 @@ describe('Mars-to-Euphrosyne Transfer, Metasideronatrite Dehydration & Dehydrate
     });
 });
 
+describe('Mars-to-Pomona Transfer, Botryogen Metasomatism & Magnesium-Ferric Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to main-belt asteroid (32) Pomona and orbit capture', () => {
+        // Mars to Pomona (300 km Mars alt, 2.587 AU distance, 15 km capture alt, 5.53 deg plane change):
+        const po = TrajectoryEngine.computeMarsToPomonaTransfer(300.0, 2.587, 15.0, 5.53);
+        expect(po.semiMajorAxisAU).to.be.closeTo(2.055, 0.1); // ~2.06 AU
+        expect(po.eccentricity).to.be.closeTo(0.2587, 0.01); // e ~ 0.259
+        expect(po.timeOfFlightDays).to.be.closeTo(537.28, 30.0); // ~537 days (~1.47 yr)
+        expect(po.timeOfFlightYears).to.be.closeTo(1.47, 0.1); // ~1.47 yr
+        expect(po.marsDepartureDeltaVKmS).to.be.closeTo(2.652, 0.5); // ~2.65 km/s TPoI
+        expect(po.pomonaOrbitInsertionDeltaVKmS).to.be.closeTo(2.395, 0.5); // ~2.40 km/s PoOI
+        expect(po.totalMissionDeltaVKmS).to.be.closeTo(5.047, 1.0); // ~5.05 km/s total
+        expect(po.pomonaContext).to.include('Mars-to-Pomona');
+    });
+
+    it('should calculate low-temperature acid alteration into botryogen magnesium-ferric hydroxyl-sulfate and thermal inertia', () => {
+        // 32% initial porosity, 4 C ambient temp, 0.38 magnesium-ferric-hydroxy activity product, 190 yr duration:
+        const bot = KRCEngine.computeMartianBotryogenMetasomatism(0.32, 4.0, 0.38, 190.0);
+        expect(bot.botryogenConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(bot.boundWaterYieldWeightPercent).to.be.greaterThan(16.0); // > 16 wt% bound H2O+OH
+        expect(bot.heptahydrateThermalInertiaTIU).to.be.closeTo(1203.4, 200.0); // ~1203 tiu
+        expect(bot.hydroxylSulfateFaciesClass).to.include('Acidic Evaporite Botryogen Facies');
+        expect(bot.botryogenContext).to.include('Botryogen at 4 C');
+    });
+
+    it('should discriminate Botryogen vs Copiapite vs Polyhydrate in CRISM spectra', () => {
+        // Botryogen (Melas / Capri / Juventae: BD1440 = 0.040, BD1940 = 0.060, BD2190 = 0.040, BD2400 = 0.035):
+        const bot = BandMathEngine.computeCRISMBotryogenMagnesiumFerricSpeciationIndices(0.040, 0.060, 0.040, 0.035);
+        expect(bot.isMagnesiumFerricHydroxylSulfateDetected).to.be.true;
+        expect(bot.sulfateMineralClass).to.include('Heptahydrated Botryogen Magnesium-Ferric Hydroxyl-Sulfate Facies');
+        expect(bot.mineralSpecies).to.include('Botryogen');
+        expect(bot.parageneticAssociation).to.include('Acidic Evaporite Hydrothermal Botryogen Outcrop');
+
+        // Copiapite (BD1440 = 0.040, BD1940 = 0.065, BD2190 = 0.015, BD2400 = 0.040):
+        const cop = BandMathEngine.computeCRISMBotryogenMagnesiumFerricSpeciationIndices(0.040, 0.065, 0.015, 0.040);
+        expect(cop.isMagnesiumFerricHydroxylSulfateDetected).to.be.true;
+        expect(cop.sulfateMineralClass).to.include('Polyhydrated Copiapite Group Facies');
+        expect(cop.mineralSpecies).to.include('Copiapite');
+
+        // Polyhydrate (BD1440 = 0.040, BD1940 = 0.045, BD2190 = 0.010, BD2400 = 0.010):
+        const poly = BandMathEngine.computeCRISMBotryogenMagnesiumFerricSpeciationIndices(0.040, 0.045, 0.010, 0.010);
+        expect(poly.isMagnesiumFerricHydroxylSulfateDetected).to.be.true;
+        expect(poly.sulfateMineralClass).to.include('Epsomite-Hexahydrite Magnesium Sulfate Facies');
+        expect(poly.mineralSpecies).to.include('Hydrated Magnesium Sulfate');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMBotryogenMagnesiumFerricSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMagnesiumFerricHydroxylSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

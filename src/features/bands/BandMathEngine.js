@@ -10777,6 +10777,60 @@ export class BandMathEngine {
       hydrationState: state
     };
   }
+
+  /**
+   * Discriminate Heptahydrated Magnesium-Ferric Hydroxyl-Sulfates (Botryogen vs Copiapite vs Sideronatrite) from CRISM 1.440 um, 1.940 um, 2.190 um, and 2.400 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Hydroxyl-Bearing Sulfates.
+   * @param {number} [band1440H2ODepth=0.040] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.060] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2190MgFeOHDepth=0.040] - BD2190 botryogen diagnostic magnesium-ferric hydroxyl combination depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.035] - BD2400 sulfate vibrational combination overtone depth (0.0 to 0.50)
+   * @returns {{isMagnesiumFerricHydroxylSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, parageneticAssociation: string}}
+   */
+  static computeCRISMBotryogenMagnesiumFerricSpeciationIndices(band1440H2ODepth = 0.040, band1940H2ODepth = 0.060, band2190MgFeOHDepth = 0.040, band2400SO4Depth = 0.035) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2190 = Math.max(0.0, band2190MgFeOHDepth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isBotryogen = d1940 >= 0.040 && d1440 >= 0.025 && d2190 >= 0.025 && d2400 >= 0.025;
+    const isCopiapite = d1940 >= 0.055 && d2400 >= 0.030 && d2190 < 0.025;
+    const isPolyhydrate = d1940 >= 0.035 && d1440 >= 0.025 && d2190 < 0.020 && d2400 < 0.020;
+
+    const isMgFeOH = isBotryogen || isCopiapite || isPolyhydrate;
+
+    let sClass = 'Hydroxyl-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let assoc = 'Unaltered Primary Crust';
+
+    if (isMgFeOH) {
+      if (isBotryogen) {
+        sClass = 'Heptahydrated Botryogen Magnesium-Ferric Hydroxyl-Sulfate Facies';
+        species = 'Botryogen';
+        formula = 'MgFe(SO4)2(OH)·7H2O';
+        assoc = 'Acidic Evaporite Hydrothermal Botryogen Outcrop (Melas / Capri / Juventae)';
+      } else if (isCopiapite) {
+        sClass = 'Polyhydrated Copiapite Group Facies';
+        species = 'Copiapite';
+        formula = 'Fe2+Fe3+4(SO4)6(OH)2·20H2O';
+        assoc = 'Low-pH Hydrothermal Iron-Sulfate Efflorescence';
+      } else {
+        sClass = 'Epsomite-Hexahydrite Magnesium Sulfate Facies';
+        species = 'Hydrated Magnesium Sulfate';
+        formula = 'MgSO4·nH2O';
+        assoc = 'Neutral-to-Alkaline Saline Playa Sequence';
+      }
+    }
+
+    return {
+      isMagnesiumFerricHydroxylSulfateDetected: isMgFeOH,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      parageneticAssociation: assoc
+    };
+  }
 }
 
 
