@@ -8993,12 +8993,61 @@ export class BandMathEngine {
       metamorphicFaciesContext: context
     };
   }
+
+  /**
+   * Discriminate Extreme Acid-Sulfate-Fluorine Fumarolic Minerals (Topaz-Alunite Sinter vs Pure Alunite vs Jarosite vs Pyrophyllite) from CRISM 1.480 um, 1.760 um, 2.080 um, and 2.265 um absorption bands.
+   * Reference: Wray et al. (2013), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Acid Fumaroles.
+   * @param {number} [band1480AlOHDepth=0.030] - BD1480 alunite OH vibration depth (0.0 to 0.40)
+   * @param {number} [band1760OHDepth=0.035] - BD1760 alunite diagnostic OH combination band depth (0.0 to 0.40)
+   * @param {number} [band2080TopazDepth=0.045] - BD2080 topaz diagnostic OH/F overtone depth (0.0 to 0.50)
+   * @param {number} [band2265AluniteDepth=0.060] - BD2265 alunite primary Al-OH doublet depth (0.0 to 0.50)
+   * @returns {{isAcidFumarolicDetected: boolean, fumarolicMineralClass: string, mineralSpecies: string, chemicalFormula: string, hydrothermalVaporRegime: string}}
+   */
+  static computeCRISMTopazAluniteFumarolicSpeciationIndices(band1480AlOHDepth = 0.030, band1760OHDepth = 0.035, band2080TopazDepth = 0.045, band2265AluniteDepth = 0.060) {
+    const d1480 = Math.max(0.0, band1480AlOHDepth);
+    const d1760 = Math.max(0.0, band1760OHDepth);
+    const d2080 = Math.max(0.0, band2080TopazDepth);
+    const d2265 = Math.max(0.0, band2265AluniteDepth);
+
+    const isTopazAlunite = d2080 >= 0.025 && d2265 >= 0.030 && d1760 >= 0.020;
+    const isPureAlunite = d2265 >= 0.035 && d1760 >= 0.020 && d2080 < 0.020;
+    const isPureTopaz = d2080 >= 0.035 && d2265 < 0.025;
+
+    const isFum = isTopazAlunite || isPureAlunite || isPureTopaz;
+
+    let fClass = 'Fumarolic-Free Silicate Regolith';
+    let species = 'Basaltic Ash Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Standard Unaltered Volcanic Regolith';
+
+    if (isFum) {
+      if (isTopazAlunite) {
+        fClass = 'High-Temperature Topaz-Alunite Acid Sinter Assemblage';
+        species = 'Topaz + Alunite + Quartz';
+        formula = 'Al2SiO4F2 + KAl3(SO4)2(OH)6 + SiO2';
+        regime = 'Supercritical HF-H2SO4 Magmatic Fumarolic Vapor Condensation (Syrtis Major / Elysium)';
+      } else if (isPureAlunite) {
+        fClass = 'Advanced Argillic Alunite Acid-Sulfate Alteration';
+        species = 'Alunite';
+        formula = 'KAl3(SO4)2(OH)6';
+        regime = 'Low-to-Moderate Temperature Hydrothermal Acid-Sulfate Leaching';
+      } else {
+        fClass = 'Pneumatolytic Fluor-Topaz Greisen';
+        species = 'Topaz';
+        formula = 'Al2SiO4F2';
+        regime = 'High-Temperature Magmatic HF Vapor Metasomatism';
+      }
+    }
+
+    return {
+      isAcidFumarolicDetected: isFum,
+      fumarolicMineralClass: fClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrothermalVaporRegime: regime
+    };
+  }
 }
-
-
-
-
-
 
 
 

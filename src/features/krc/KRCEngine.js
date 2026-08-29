@@ -9764,6 +9764,61 @@ export class KRCEngine {
       zoisiteContext: `Epidote-Group at ${TC.toFixed(0)} C, Fe/Al=${rFeAl.toFixed(2)} (${(alphaZoisite * 100).toFixed(1)}% converted, ${wZoisitePct.toFixed(1)}% ${species.split(' ')[0]}, TIU=${TIU.toFixed(0)}, ${fClass})`
     };
   }
+
+  /**
+   * Calculate extreme acid-sulfate-fluorine fumarolic condensation on volcanic pyroclastics, topaz-alunite sinter crystallization, and indurated thermal inertia.
+   * Al-Silicate Ash + HF + H2SO4 (200-450 C) -> Topaz (Al2SiO4F2) + Alunite (KAl3(SO4)2(OH)6) + Quartz
+   * Reference: Wray et al. (2013), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Acid-Sulfate Fumarolic Fields.
+   * @param {number} [pyroclasticAshPorosity=0.25] - Initial volcanic ash/tuff porosity (0.05 to 0.50)
+   * @param {number} [fumarolicTempC=340.0] - Fumarolic vapor condensation temperature in C (150 to 550 C)
+   * @param {number} [hfH2So4Ratio=0.80] - Fluid HF/H2SO4 acid vapor activity ratio (0.1 to 5.0)
+   * @param {number} [durationYears=250.0] - Fumarolic condensation duration in years (0.1 to 5000 yr)
+   * @returns {{fumarolicConversionFraction: number, topazAluniteYieldWeightPercent: number, induratedSinterThermalInertiaTIU: number, fumarolicAlterationClass: string, acidVaporContext: string}}
+   */
+  static computeMartianAcidVaporTopazAluniteCondensation(pyroclasticAshPorosity = 0.25, fumarolicTempC = 340.0, hfH2So4Ratio = 0.80, durationYears = 250.0) {
+    const phi0 = Math.max(0.02, Math.min(0.60, pyroclasticAshPorosity));
+    const TC = Math.max(120.0, Math.min(600.0, fumarolicTempC));
+    const rAcid = Math.max(0.05, Math.min(10.0, hfH2So4Ratio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.50e4; // 65 kJ/mol for acid-vapor condensation
+
+    // Reaction rate constant
+    const kRate = 4.8e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(1.0 + rAcid);
+    const alphaFum = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Yield of co-crystallized Topaz + Alunite (wt%)
+    const wTopazAlunitePct = alphaFum * 52.0;
+
+    // Sinter induration and pore compaction
+    const phiResidual = phi0 * (1.0 - (0.70 * alphaFum));
+    const rhoGrain = 2850.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.80; // W/(m K)
+    const Cspec = 890.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let fClass = 'Incipient Acid Fumarolic Leaching';
+    if (alphaFum >= 0.50 && TC >= 250.0 && TC <= 450.0) {
+      fClass = 'High-Temperature Topaz-Alunite Acid Sinter (Syrtis Major / Elysium Fumarolic Fields)';
+    } else if (TC > 450.0) {
+      fClass = 'Magmatic Vapor-Plume Greisen Transition';
+    } else if (alphaFum >= 0.20) {
+      fClass = 'Moderate Jarosite-Kaolinite Solfatara Condensation';
+    }
+
+    return {
+      fumarolicConversionFraction: parseFloat(alphaFum.toFixed(3)),
+      topazAluniteYieldWeightPercent: parseFloat(wTopazAlunitePct.toFixed(1)),
+      induratedSinterThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      fumarolicAlterationClass: fClass,
+      acidVaporContext: `Acid Vapor at ${TC.toFixed(0)} C, HF/H2SO4=${rAcid.toFixed(1)} (${(alphaFum * 100).toFixed(1)}% converted, ${wTopazAlunitePct.toFixed(1)}% Topaz+Alunite, TIU=${TIU.toFixed(0)}, ${fClass})`
+    };
+  }
 }
 
 

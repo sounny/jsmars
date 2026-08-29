@@ -14598,6 +14598,56 @@ describe('Mars-to-Borasisi Transfer, Clinozoisite-Zoisite Metamorphism & Epidote
     });
 });
 
+describe('Mars-to-Orcus Transfer, Acid Vapor Condensation & Topaz-Alunite Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to binary Plutino (90482) Orcus-Vanth', () => {
+        // Mars to Orcus (300 km Mars alt, 39.40 AU distance, 200 km capture alt):
+        const orc = TrajectoryEngine.computeMarsToOrcusTransfer(300.0, 39.40, 200.0);
+        expect(orc.semiMajorAxisAU).to.be.closeTo(20.462, 0.5); // ~20.46 AU
+        expect(orc.eccentricity).to.be.closeTo(0.9255, 0.01); // e ~ 0.926
+        expect(orc.timeOfFlightDays).to.be.closeTo(18336.5, 2000.0); // ~18336 days (~50.2 yr)
+        expect(orc.timeOfFlightYears).to.be.closeTo(50.20, 5.0); // ~50.2 yr
+        expect(orc.marsDepartureDeltaVKmS).to.be.closeTo(7.186, 0.6); // ~7.19 km/s TOI_M
+        expect(orc.orcusOrbitInsertionDeltaVKmS).to.be.closeTo(1.789, 1.5); // ~1.79 km/s OOI
+        expect(orc.totalMissionDeltaVKmS).to.be.closeTo(8.975, 2.0); // ~8.98 km/s total
+        expect(orc.orcusContext).to.include('Mars-to-Orcus');
+    });
+
+    it('should calculate extreme acid-sulfate-fluorine fumarolic vapor condensation, topaz-alunite sinter yield, and indurated thermal inertia', () => {
+        // 25% initial ash porosity, 340 C fumarolic temp, 0.80 HF/H2SO4 ratio, 250 yr duration:
+        const fum = KRCEngine.computeMartianAcidVaporTopazAluniteCondensation(0.25, 340.0, 0.80, 250.0);
+        expect(fum.fumarolicConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(fum.topazAluniteYieldWeightPercent).to.be.greaterThan(25.0); // > 25 wt% Topaz+Alunite
+        expect(fum.induratedSinterThermalInertiaTIU).to.be.closeTo(2617.8, 200.0); // ~2618 tiu
+        expect(fum.fumarolicAlterationClass).to.include('High-Temperature Topaz-Alunite Acid Sinter');
+        expect(fum.acidVaporContext).to.include('Acid Vapor at 340 C');
+    });
+
+    it('should discriminate Topaz-Alunite Sinter vs Pure Alunite vs Topaz in CRISM spectra', () => {
+        // Topaz-Alunite (Syrtis Major / Elysium: BD1480 = 0.030, BD1760 = 0.035, BD2080 = 0.045, BD2265 = 0.060):
+        const topAl = BandMathEngine.computeCRISMTopazAluniteFumarolicSpeciationIndices(0.030, 0.035, 0.045, 0.060);
+        expect(topAl.isAcidFumarolicDetected).to.be.true;
+        expect(topAl.fumarolicMineralClass).to.include('High-Temperature Topaz-Alunite Acid Sinter Assemblage');
+        expect(topAl.mineralSpecies).to.include('Topaz + Alunite + Quartz');
+        expect(topAl.hydrothermalVaporRegime).to.include('Supercritical HF-H2SO4 Magmatic Fumarolic Vapor');
+
+        // Pure Alunite (BD1480 = 0.035, BD1760 = 0.030, BD2080 = 0.010, BD2265 = 0.055):
+        const alun = BandMathEngine.computeCRISMTopazAluniteFumarolicSpeciationIndices(0.035, 0.030, 0.010, 0.055);
+        expect(alun.isAcidFumarolicDetected).to.be.true;
+        expect(alun.fumarolicMineralClass).to.include('Advanced Argillic Alunite Acid-Sulfate Alteration');
+        expect(alun.mineralSpecies).to.include('Alunite');
+
+        // Pure Topaz (BD1480 = 0.010, BD1760 = 0.010, BD2080 = 0.045, BD2265 = 0.015):
+        const topz = BandMathEngine.computeCRISMTopazAluniteFumarolicSpeciationIndices(0.010, 0.010, 0.045, 0.015);
+        expect(topz.isAcidFumarolicDetected).to.be.true;
+        expect(topz.fumarolicMineralClass).to.include('Pneumatolytic Fluor-Topaz Greisen');
+        expect(topz.mineralSpecies).to.include('Topaz');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMTopazAluniteFumarolicSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAcidFumarolicDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
