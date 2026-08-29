@@ -686,3 +686,10 @@ TEST FAILURE: Unit test suite failed (3 failures):
 - should calculate subsurface methane clathrate hydrate stability, dissociation kinetics, and outgassing volume
 ?: AssertionError: expected 942.1 to be close to 1160 +/- 100
     at n.<anonymous> (unit.js:13481:66)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 03:00:54 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should discriminate Low-Silica Analcime vs High-Silica Clinoptilolite Zeolites in CRISM spectra
+?: AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+    at n.<anonymous> (unit.js:13077:42)

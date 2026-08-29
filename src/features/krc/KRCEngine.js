@@ -8549,7 +8549,58 @@ export class KRCEngine {
       methaneOutgassingVolumeM3PerM3: parseFloat(VgasM3.toFixed(2)),
       clathrateCryosphereThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
       clathrateRegimeClass: regimeClass,
-      clathrateStabilityContext: `CH4 Clathrate at ${TK.toFixed(0)}K (P_eq=${PeqKPa.toFixed(1)}kPa, P_pore=${Ppore.toFixed(1)}kPa, ${VgasM3.toFixed(1)} m^3 CH4/m^3, ${regimeClass})`
+      clathrateStabilityContext: `CH4 Clathrate at ${TK.toFixed(0)}K (${VgasM3.toFixed(1)} m^3 CH4/m^3, ${regimeClass})`
+    };
+  }
+
+  /**
+   * Calculate post-impact hydrothermal convective circulation system lifetime, thermal cooling duration, water volume throughput, and habitability window.
+   * t_hydro = 65000 * ( D_crater / 45 )^1.8 * ( k_perm / 1e-13 )^-0.35 * ( H_melt / 250 )^0.5
+   * Reference: Abramov & Kring (2005), Rathbun & Squyres (2002), Barnhart et al. (2010), Schwenzer & Kring (2009) for Impact Hydrothermal Systems.
+   * @param {number} [craterDiameterKm=45.0] - Impact crater diameter in km (5.0 to 200.0 km)
+   * @param {number} [meltSheetThicknessM=250.0] - Impact melt sheet thickness in meters (20 to 2000 m)
+   * @param {number} [hostRockPermeabilityM2=1.0e-13] - Fractured basalt host rock permeability in m^2 (1e-15 to 1e-11 m^2)
+   * @param {number} [ambientSurfaceTempK=215.0] - Ambient surface temperature in K (180 to 260 K)
+   * @returns {{hydrothermalLifetimeYears: number, activeVentingDurationYears: number, cumulativeWaterThroughputKm3: number, alteredBrecciaThermalInertiaTIU: number, hydrothermalHabitabilityClass: string, impactHydrothermalContext: string}}
+   */
+  static computeMartianImpactHydrothermalSystemLifetime(craterDiameterKm = 45.0, meltSheetThicknessM = 250.0, hostRockPermeabilityM2 = 1.0e-13, ambientSurfaceTempK = 215.0) {
+    const DCrater = Math.max(2.0, craterDiameterKm);
+    const HMelt = Math.max(10.0, meltSheetThicknessM);
+    const kPerm = Math.max(1.0e-16, Math.min(1.0e-10, hostRockPermeabilityM2));
+    const TsurfK = Math.max(150.0, Math.min(280.0, ambientSurfaceTempK));
+
+    // Scaling law for total convective hydrothermal system lifetime (yr)
+    const dFactor = Math.pow(DCrater / 45.0, 1.8);
+    const kFactor = Math.pow(kPerm / 1.0e-13, -0.35);
+    const hFactor = Math.pow(HMelt / 250.0, 0.5);
+    const tTotalYrs = 65000.0 * dFactor * kFactor * hFactor;
+
+    // High-temperature (> 150 C) active surface boiling / geyser venting phase (yr)
+    const tVentingYrs = tTotalYrs * 0.18;
+
+    // Cumulative hydrothermal fluid mass and volume throughput (km^3)
+    const volThroughputKm3 = 450.0 * Math.pow(DCrater / 45.0, 2.2);
+
+    // Thermal inertia of hydrothermal altered breccia / smectite-carbonate-silica core
+    const kTherm = 1.65; // W/(m K)
+    const rhoBulk = 2550.0; // kg/m^3
+    const Cspec = 880.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let habClass = 'Short-Lived Local Epithermal Seep (< 10 kyr)';
+    if (tTotalYrs >= 100000.0) {
+      habClass = 'Long-Lived Planetary Hydrothermal Habitable Oasis (> 100 kyr, Sustained Lake/Deep Biosphere in Jezero/Gale/Holden)';
+    } else if (tTotalYrs >= 25000.0) {
+      habClass = 'Substantial Post-Impact Hydrothermal System (25-100 kyr Habitable Warm Spring Window)';
+    }
+
+    return {
+      hydrothermalLifetimeYears: parseFloat(tTotalYrs.toFixed(0)),
+      activeVentingDurationYears: parseFloat(tVentingYrs.toFixed(0)),
+      cumulativeWaterThroughputKm3: parseFloat(volThroughputKm3.toFixed(1)),
+      alteredBrecciaThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      hydrothermalHabitabilityClass: habClass,
+      impactHydrothermalContext: `Impact Hydrothermal System D=${DCrater.toFixed(0)}km (${(tTotalYrs / 1000).toFixed(0)} kyr lifetime, ${volThroughputKm3.toFixed(0)} km^3 H2O, ${habClass})`
     };
   }
 }

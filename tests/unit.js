@@ -13511,6 +13511,52 @@ describe('Mars-to-Uranus Jupiter Gravity Assist, Methane Clathrates & Carbonate 
     });
 });
 
+describe('Mars-to-Neptune Jupiter Gravity Assist, Impact Hydrothermal & Zeolite Speciation', () => {
+    it('should calculate Mars-to-Neptune trajectory via Jupiter Gravity Assist (JNGA) and orbit insertion', () => {
+        // Mars to Neptune via Jupiter GA (300 km Mars alt, 350000 km Jupiter flyby alt, 20000 km Neptune capture alt):
+        const jnga = TrajectoryEngine.computeMarsToNeptuneViaJupiterGravityAssist(300.0, 350000.0, 20000.0);
+        expect(jnga.totalTimeDays).to.be.closeTo(14522.6, 500.0); // ~14523 days (~39.8 yr)
+        expect(jnga.totalTimeYears).to.be.closeTo(39.76, 1.5); // ~39.8 yr
+        expect(jnga.marsDepartureDeltaVKmS).to.be.closeTo(4.197, 0.4); // ~4.20 km/s TJI
+        expect(jnga.jupiterFlybyExcessKmS).to.be.closeTo(4.269, 0.4); // ~4.27 km/s v_inf Jupiter
+        expect(jnga.jupiterBendingAngleDeg).to.be.closeTo(141.1, 15.0); // ~141 deg bending
+        expect(jnga.neptuneOrbitInsertionDeltaVKmS).to.be.closeTo(0.359, 0.2); // ~0.36 km/s NOI
+        expect(jnga.totalMissionDeltaVKmS).to.be.closeTo(4.556, 0.5); // ~4.56 km/s total
+        expect(jnga.neptuneGAContext).to.include('Mars-Jupiter-Neptune');
+    });
+
+    it('should calculate post-impact hydrothermal convective system lifetime, water throughput, and habitability window', () => {
+        // 45 km crater diameter, 250 m melt sheet, 1e-13 m^2 permeability, 215 K ambient temp:
+        const hydro = KRCEngine.computeMartianImpactHydrothermalSystemLifetime(45.0, 250.0, 1.0e-13, 215.0);
+        expect(hydro.hydrothermalLifetimeYears).to.be.closeTo(65000, 5000); // ~65,000 yr lifetime
+        expect(hydro.activeVentingDurationYears).to.be.closeTo(11700, 1500); // ~11,700 yr boiling phase
+        expect(hydro.cumulativeWaterThroughputKm3).to.be.closeTo(450.0, 50.0); // ~450 km^3 H2O
+        expect(hydro.alteredBrecciaThermalInertiaTIU).to.be.closeTo(1923.6, 150.0); // ~1924 tiu breccia
+        expect(hydro.hydrothermalHabitabilityClass).to.include('Substantial Post-Impact Hydrothermal System');
+        expect(hydro.impactHydrothermalContext).to.include('Impact Hydrothermal System');
+    });
+
+    it('should discriminate Hydrothermal Zeolite Analcime vs Clinoptilolite in CRISM spectra', () => {
+        // Analcime (Crater Central Uplift: BD1400 = 0.04, BD1900 = 0.06, BD2490 = 0.04, BD2540 = 0.01):
+        const anal = BandMathEngine.computeCRISMAnalcimeChabaziteHydrothermalIndices(0.04, 0.06, 0.04, 0.01);
+        expect(anal.isZeoliteDetected).to.be.true;
+        expect(anal.zeoliteSpeciesClass).to.include('Hydrothermal Zeolite (Analcime)');
+        expect(anal.mineralSpecies).to.include('Analcime');
+        expect(anal.chemicalFormula).to.include('NaAlSi2O6 * H2O');
+        expect(anal.hydrothermalDiageneticContext).to.include('Moderate-Temperature Hydrothermal Alteration');
+
+        // Clinoptilolite (BD1400 = 0.04, BD1900 = 0.06, BD2490 = 0.01, BD2540 = 0.04):
+        const clino = BandMathEngine.computeCRISMAnalcimeChabaziteHydrothermalIndices(0.04, 0.06, 0.01, 0.04);
+        expect(clino.isZeoliteDetected).to.be.true;
+        expect(clino.zeoliteSpeciesClass).to.include('Low-Temperature Zeolite (Clinoptilolite / Chabazite / Phillipsite)');
+        expect(clino.mineralSpecies).to.include('Clinoptilolite');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMAnalcimeChabaziteHydrothermalIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isZeoliteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

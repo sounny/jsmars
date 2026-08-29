@@ -7856,6 +7856,50 @@ export class BandMathEngine {
       paleoclimateBiosignatureContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrothermal Zeolite Analcime vs Clinoptilolite/Chabazite from CRISM 1.42 um, 1.92 um, 2.49 um, and 2.54 um absorption bands.
+   * Reference: Ehlmann et al. (2009, 2011), Carter et al. (2013), Viviano-Beck et al. (2014) for Martian Zeolites.
+   * @param {number} [band1400WaterDepth=0.04] - BD1400 sharp molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.06] - BD1900 sharp molecular H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2490ZeoliteDepth=0.04] - BD2490 analcime diagnostic framework combination depth (0.0 to 0.40)
+   * @param {number} [band2540ZeoliteDepth=0.01] - BD2540 clinoptilolite/chabazite combination depth (0.0 to 0.40)
+   * @returns {{isZeoliteDetected: boolean, zeoliteSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, hydrothermalDiageneticContext: string}}
+   */
+  static computeCRISMAnalcimeChabaziteHydrothermalIndices(band1400WaterDepth = 0.04, band1900WaterDepth = 0.06, band2490ZeoliteDepth = 0.04, band2540ZeoliteDepth = 0.01) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2490 = Math.max(0.0, band2490ZeoliteDepth);
+    const d2540 = Math.max(0.0, band2540ZeoliteDepth);
+
+    const isAnalcime = d1400 >= 0.025 && d1900 >= 0.035 && d2490 >= 0.025;
+    const isClinoptilolite = d1400 >= 0.025 && d1900 >= 0.035 && d2540 >= 0.025 && d2490 < 0.020;
+
+    let zClass = 'Zeolite-Free Silicate Regolith';
+    let species = 'Basaltic Plagioclase / Pyroxene';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Detectable Zeolite Framework Cavity Absorption';
+
+    if (isAnalcime) {
+      zClass = 'Hydrothermal Zeolite (Analcime)';
+      species = 'Analcime';
+      formula = 'NaAlSi2O6 * H2O';
+      context = 'Moderate-Temperature Hydrothermal Alteration of Basaltic Volcanic Glass / Crater Central Uplift Uplifted Hydrothermal Conduit';
+    } else if (isClinoptilolite) {
+      zClass = 'Low-Temperature Zeolite (Clinoptilolite / Chabazite / Phillipsite)';
+      species = 'Clinoptilolite';
+      formula = '(Na,K,Ca)4Al4Si20O48 * 12H2O';
+      context = 'Low-Temperature Diagenetic Alteration of Volcanic Ash in Alkaline Saline Paleolake Waters';
+    }
+
+    return {
+      isZeoliteDetected: isAnalcime || isClinoptilolite,
+      zeoliteSpeciesClass: zClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrothermalDiageneticContext: context
+    };
+  }
 }
 
 
