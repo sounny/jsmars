@@ -10615,6 +10615,60 @@ export class BandMathEngine {
       alterationFacies: facies
     };
   }
+
+  /**
+   * Discriminate Trihydrated Sodium-Ferric Sulfates (Ferrinatrite vs Coquimbite vs Rhomboclase vs Jarosite) from CRISM 1.440 um, 1.810 um, 1.940 um, and 2.240 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Sodium-Ferric Sulfates.
+   * @param {number} [band1440H2ODepth=0.040] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1810SO4Depth=0.035] - BD1810 ferrinatrite diagnostic sharp sulfate combination depth (0.0 to 0.50)
+   * @param {number} [band1940H2ODepth=0.045] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2240FeOHDepth=0.035] - BD2240 ferric iron-hydroxyl combination vibrational depth (0.0 to 0.50)
+   * @returns {{isSodiumFerricSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, acidityEnvironment: string}}
+   */
+  static computeCRISMFerrinatriteSodiumFerricSulfateSpeciationIndices(band1440H2ODepth = 0.040, band1810SO4Depth = 0.035, band1940H2ODepth = 0.045, band2240FeOHDepth = 0.035) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1810 = Math.max(0.0, band1810SO4Depth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2240 = Math.max(0.0, band2240FeOHDepth);
+
+    const isFerrinatrite = d1440 >= 0.025 && d1810 >= 0.025 && d1940 >= 0.025 && d2240 >= 0.025;
+    const isCoquimbite = d1440 >= 0.025 && d1940 >= 0.045 && d1810 < 0.020 && d2240 < 0.025;
+    const isRhomboclase = d1440 >= 0.025 && d2240 >= 0.025 && d1810 < 0.020;
+
+    const isNaFe = isFerrinatrite || isCoquimbite || isRhomboclase;
+
+    let sClass = 'Sodium-Ferric-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isNaFe) {
+      if (isFerrinatrite) {
+        sClass = 'Trihydrated Ferrinatrite Sodium-Ferric Sulfate Facies';
+        species = 'Ferrinatrite';
+        formula = 'Na3Fe(SO4)3·3H2O';
+        env = 'Hyper-Saline Acidic Sodium-Ferric Evaporite Playa (Columbus / Cross / Noctis)';
+      } else if (isCoquimbite) {
+        sClass = 'Nonahydrated Coquimbite Ferric Sulfate Facies';
+        species = 'Coquimbite';
+        formula = 'Fe2(SO4)3·9H2O';
+        env = 'Acid Hydrothermal Aqueous Efflorescence';
+      } else {
+        sClass = 'Rhomboclase Acid Ferric Sulfate Facies';
+        species = 'Rhomboclase';
+        formula = 'HFe(SO4)2·4H2O';
+        env = 'Extreme Acidic Super-Low-pH Solfataras';
+      }
+    }
+
+    return {
+      isSodiumFerricSulfateDetected: isNaFe,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      acidityEnvironment: env
+    };
+  }
 }
 
 

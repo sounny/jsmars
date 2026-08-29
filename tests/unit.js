@@ -16091,6 +16091,56 @@ describe('Mars-to-Bellona Transfer, Tamarugite Metasomatism & Sodium-Alum Specia
     });
 });
 
+describe('Mars-to-Amphitrite Transfer, Ferrinatrite Metasomatism & Sodium-Ferric Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to large asteroid (29) Amphitrite and orbit capture', () => {
+        // Mars to Amphitrite (300 km Mars alt, 2.554 AU distance, 25 km capture alt, 6.10 deg plane change):
+        const am = TrajectoryEngine.computeMarsToAmphitriteTransfer(300.0, 2.554, 25.0, 6.10);
+        expect(am.semiMajorAxisAU).to.be.closeTo(2.039, 0.1); // ~2.04 AU
+        expect(am.eccentricity).to.be.closeTo(0.2527, 0.01); // e ~ 0.253
+        expect(am.timeOfFlightDays).to.be.closeTo(530.82, 30.0); // ~531 days (~1.45 yr)
+        expect(am.timeOfFlightYears).to.be.closeTo(1.45, 0.1); // ~1.45 yr
+        expect(am.marsDepartureDeltaVKmS).to.be.closeTo(2.787, 0.5); // ~2.79 km/s TAmI
+        expect(am.amphitriteOrbitInsertionDeltaVKmS).to.be.closeTo(2.220, 0.5); // ~2.22 km/s AmOI
+        expect(am.totalMissionDeltaVKmS).to.be.closeTo(5.007, 1.0); // ~5.01 km/s total
+        expect(am.amphitriteContext).to.include('Mars-to-Amphitrite');
+    });
+
+    it('should calculate low-temperature acid alteration into ferrinatrite sodium-ferric sulfate and thermal inertia', () => {
+        // 28% initial porosity, -2 C ambient temp, 0.40 sodium-ferric activity product, 240 yr duration:
+        const frn = KRCEngine.computeMartianFerrinatriteMetasomatism(0.28, -2.0, 0.40, 240.0);
+        expect(frn.ferrinatriteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(frn.boundWaterYieldWeightPercent).to.be.greaterThan(5.5); // > 5.5 wt% bound H2O
+        expect(frn.induratedTrihydrateThermalInertiaTIU).to.be.closeTo(1615.1, 200.0); // ~1615 tiu
+        expect(frn.ferricSulfateFaciesClass).to.include('Indurated Ferrinatrite Facies');
+        expect(frn.ferrinatriteContext).to.include('Ferrinatrite at -2 C');
+    });
+
+    it('should discriminate Ferrinatrite vs Coquimbite vs Rhomboclase in CRISM spectra', () => {
+        // Ferrinatrite (Columbus / Cross / Noctis: BD1440 = 0.040, BD1810 = 0.035, BD1940 = 0.045, BD2240 = 0.035):
+        const frn = BandMathEngine.computeCRISMFerrinatriteSodiumFerricSulfateSpeciationIndices(0.040, 0.035, 0.045, 0.035);
+        expect(frn.isSodiumFerricSulfateDetected).to.be.true;
+        expect(frn.sulfateMineralClass).to.include('Trihydrated Ferrinatrite Sodium-Ferric Sulfate Facies');
+        expect(frn.mineralSpecies).to.include('Ferrinatrite');
+        expect(frn.acidityEnvironment).to.include('Hyper-Saline Acidic Sodium-Ferric Evaporite Playa');
+
+        // Coquimbite (BD1440 = 0.040, BD1810 = 0.010, BD1940 = 0.060, BD2240 = 0.015):
+        const coq = BandMathEngine.computeCRISMFerrinatriteSodiumFerricSulfateSpeciationIndices(0.040, 0.010, 0.060, 0.015);
+        expect(coq.isSodiumFerricSulfateDetected).to.be.true;
+        expect(coq.sulfateMineralClass).to.include('Nonahydrated Coquimbite Ferric Sulfate Facies');
+        expect(coq.mineralSpecies).to.include('Coquimbite');
+
+        // Rhomboclase (BD1440 = 0.040, BD1810 = 0.010, BD1940 = 0.030, BD2240 = 0.035):
+        const rho = BandMathEngine.computeCRISMFerrinatriteSodiumFerricSulfateSpeciationIndices(0.040, 0.010, 0.030, 0.035);
+        expect(rho.isSodiumFerricSulfateDetected).to.be.true;
+        expect(rho.sulfateMineralClass).to.include('Rhomboclase Acid Ferric Sulfate Facies');
+        expect(rho.mineralSpecies).to.include('Rhomboclase');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMFerrinatriteSodiumFerricSulfateSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isSodiumFerricSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {
