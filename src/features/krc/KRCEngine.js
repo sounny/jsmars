@@ -8372,6 +8372,69 @@ export class KRCEngine {
       thermalClayContext: `Thermal Baking at ${TC.toFixed(0)} C (${(alpha * 100).toFixed(0)}% Dehydrogenated, ${wNpHmPct.toFixed(1)}% np-Hm, TIU=${TIU.toFixed(0)}, ${faciesClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal acid leaching kinetics of Fe/Mg-smectites, residual amorphous silica (Opal-A) precipitation, and kaolinitization.
+   * r_leach = k_0 * 10^( -0.5 * pH ) * exp( -E_a / ( R * T ) )
+   * alpha = 1 - exp( -r_leach * t )
+   * w_silica = alpha * w_clay * 55.0
+   * Reference: Squyres et al. (2008), Ruff et al. (2011), Ehlmann et al. (2009), Altheide et al. (2010) for Martian Opaline Sinters.
+   * @param {number} [initialFeMgClayMassFraction=0.85] - Initial smectite clay fraction (0.10 to 1.0)
+   * @param {number} [fluidPH=2.00] - Hydrothermal acid fluid pH (0.5 to 5.0)
+   * @param {number} [fluidTempC=95.0] - Hydrothermal fluid temperature in C (20 to 250 C)
+   * @param {number} [leachingDurationYears=250.0] - Active leaching duration in years (1.0 to 100000 years)
+   * @returns {{leachingFraction: number, amorphousSilicaWeightPercent: number, kaoliniteWeightPercent: number, residualSmectiteWeightPercent: number, opalineSinterThermalInertiaTIU: number, hydrothermalSilicaFaciesClass: string, silicaParagenesisContext: string}}
+   */
+  static computeMartianAcidLeachingSilicaKaoliniteKinetics(initialFeMgClayMassFraction = 0.85, fluidPH = 2.00, fluidTempC = 95.0, leachingDurationYears = 250.0) {
+    const wClay = Math.max(0.05, Math.min(1.0, initialFeMgClayMassFraction));
+    const pH = Math.max(0.5, Math.min(6.0, fluidPH));
+    const TC = Math.max(10.0, Math.min(300.0, fluidTempC));
+    const tYr = Math.max(0.1, leachingDurationYears);
+
+    const TK = TC + 273.15;
+    const Rgas = 8.314;
+    const Ea = 6.50e4; // 65 kJ/mol
+    const k0 = 1.5e8; // 1/yr
+
+    // Leaching rate constant (1/yr)
+    const pHFactor = Math.pow(10.0, -0.5 * pH);
+    const rLeach = k0 * pHFactor * Math.exp(-Ea / (Rgas * TK));
+
+    // Leaching progress alpha (0 to 1)
+    const exponent = Math.min(25.0, rLeach * tYr);
+    const alpha = 1.0 - Math.exp(-exponent);
+
+    // Secondary mineral mass fractions
+    const wSilicaPct = alpha * wClay * 55.0; // wt% amorphous Opal-A silica
+    const wKaolPct = alpha * wClay * 35.0; // wt% kaolinite
+    const wResClayPct = (1.0 - alpha) * wClay * 100.0;
+    const wHostPct = (1.0 - wClay) * 100.0;
+
+    // Thermal inertia of porous opaline hydrothermal sinter
+    const rhoGrain = ((wSilicaPct / 100.0) * 2100.0) + ((wKaolPct / 100.0) * 2600.0) + ((wResClayPct / 100.0) * 2600.0) + ((wHostPct / 100.0) * 2900.0);
+    const phi = 0.38; // 38% opaline sinter porosity
+    const rhoBulk = rhoGrain * (1.0 - phi);
+    const kTherm = 0.12; // W/(m K) porous silica sinter
+    const Cspec = 850.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let faciesClass = 'Unaltered Smectite-Rich Bedrock';
+    if (alpha >= 0.75 && wSilicaPct >= 35.0) {
+      faciesClass = 'High-Purity Hydrated Opal-A Silica Sinter / Acid-Sulfate Leached Cap (Home Plate / Gusev Crater)';
+    } else if (alpha >= 0.30) {
+      faciesClass = 'Silicified Smectite-Kaolinite Hydrothermal Leached Residue';
+    }
+
+    return {
+      leachingFraction: parseFloat(alpha.toFixed(3)),
+      amorphousSilicaWeightPercent: parseFloat(wSilicaPct.toFixed(1)),
+      kaoliniteWeightPercent: parseFloat(wKaolPct.toFixed(1)),
+      residualSmectiteWeightPercent: parseFloat(wResClayPct.toFixed(1)),
+      opalineSinterThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      hydrothermalSilicaFaciesClass: faciesClass,
+      silicaParagenesisContext: `Acid Leaching pH ${pH.toFixed(1)} (${wSilicaPct.toFixed(0)}% Opal-A, ${wKaolPct.toFixed(0)}% Kaolinite, TIU=${TIU.toFixed(0)}, ${faciesClass})`
+    };
+  }
 }
 
 

@@ -8083,6 +8083,94 @@ export class TrajectoryEngine {
       borisovInterceptContext: `2I/Borisov Chase at ${rIntAU.toFixed(1)}AU (${tofsYrs.toFixed(1)} yr TOF, ${dvTiiKmS.toFixed(2)} km/s TII, ${vRelKmS.toFixed(1)} km/s Rel Flyby)`
     };
   }
+
+  /**
+   * Calculate interplanetary trajectory from Mars to Mercury via Venus Gravity Assist (VGA) and Mercury orbit capture.
+   * a_1 = ( r_mars + r_venus ) / 2, a_2 = ( r_venus + r_mercury ) / 2
+   * delta_V = 2 * arcsin( 1 / ( 1 + r_p * v_inf^2 / mu_venus ) )
+   * Reference: Bate, Mueller & White (1971), Curtis (2013) for Multi-Body Gravity Assist Transfers.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [venusFlybyAltitudeKm=300.0] - Venus flyby periapsis altitude in km (200 to 5000 km)
+   * @param {number} [mercuryPeriapsisAltitudeKm=200.0] - Mercury capture periapsis altitude in km (100 to 5000 km)
+   * @returns {{totalTimeDays: number, marsDepartureDeltaVKmS: number, venusFlybyExcessKmS: number, venusBendingAngleDeg: number, mercuryOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, trajectoryContext: string}}
+   */
+  static computeMarsToMercuryViaVenusGravityAssist(marsParkingAltitudeKm = 300.0, venusFlybyAltitudeKm = 300.0, mercuryPeriapsisAltitudeKm = 200.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpVKm = Math.max(200.0, venusFlybyAltitudeKm);
+    const hpMercKm = Math.max(100.0, mercuryPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muVenus = 324859.0;
+    const rVenusKm = 6051.8;
+    const muMerc = 22032.09;
+    const rMercKm = 2439.7;
+
+    const rMarsAU = 1.52368;
+    const rVenusAU = 0.72333;
+    const rMercAU = 0.38710;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rVenusDistKm = rVenusAU * AU_KM;
+    const rMercDistKm = rMercAU * AU_KM;
+
+    // Leg 1: Mars to Venus
+    const a1Km = (rMarsDistKm + rVenusDistKm) / 2.0;
+    const tof1Sec = Math.PI * Math.sqrt(Math.pow(a1Km, 3.0) / muSun);
+    const tof1Days = tof1Sec / 86400.0;
+
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / a1Km)));
+    const vInfMarsKmS = Math.abs(vMarsCircKmS - vDepKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTviKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Venus encounter
+    const vVenusCircKmS = Math.sqrt(muSun / rVenusDistKm);
+    const vArr1KmS = Math.sqrt(muSun * ((2.0 / rVenusDistKm) - (1.0 / a1Km)));
+    const vInfVKmS = Math.abs(vArr1KmS - vVenusCircKmS);
+
+    const rpVKm = rVenusKm + hpVKm;
+    const deltaVRad = 2.0 * Math.asin(1.0 / (1.0 + ((rpVKm * Math.pow(vInfVKmS, 2.0)) / muVenus)));
+    const deltaVDeg = (deltaVRad * 180.0) / Math.PI;
+
+    // Leg 2: Venus to Mercury
+    const a2Km = (rVenusDistKm + rMercDistKm) / 2.0;
+    const tof2Sec = Math.PI * Math.sqrt(Math.pow(a2Km, 3.0) / muSun);
+    const tof2Days = tof2Sec / 86400.0;
+
+    const totDays = tof1Days + tof2Days;
+
+    // Mercury arrival
+    const vMercCircKmS = Math.sqrt(muSun / rMercDistKm);
+    const vArr2KmS = Math.sqrt(muSun * ((2.0 / rMercDistKm) - (1.0 / a2Km)));
+    const vInfMercKmS = Math.abs(vArr2KmS - vMercCircKmS);
+
+    const rpMercKm = rMercKm + hpMercKm;
+    const eCap = 0.80; // Capture orbit
+    const aCapKm = rpMercKm / (1.0 - eCap);
+
+    const vHypMercKmS = Math.sqrt(Math.pow(vInfMercKmS, 2.0) + ((2.0 * muMerc) / rpMercKm));
+    const vCapMercKmS = Math.sqrt(muMerc * ((2.0 / rpMercKm) - (1.0 / aCapKm)));
+    const dvMoiKmS = vHypMercKmS - vCapMercKmS;
+
+    const dvTotKmS = dvTviKmS + dvMoiKmS;
+
+    return {
+      totalTimeDays: parseFloat(totDays.toFixed(1)),
+      marsDepartureDeltaVKmS: parseFloat(dvTviKmS.toFixed(3)),
+      venusFlybyExcessKmS: parseFloat(vInfVKmS.toFixed(3)),
+      venusBendingAngleDeg: parseFloat(deltaVDeg.toFixed(1)),
+      mercuryOrbitInsertionDeltaVKmS: parseFloat(dvMoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      trajectoryContext: `Mars-Venus-Mercury GA (${totDays.toFixed(0)} days TOF, ${deltaVDeg.toFixed(1)} deg Venus Turn, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

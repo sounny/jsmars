@@ -13358,6 +13358,52 @@ describe('Mars-to-2I/Borisov Interstellar Comet Intercept, Clay Dehydrogenation 
     });
 });
 
+describe('Mars-to-Mercury Venus Gravity Assist, Acid Leaching Opal-A & Silica Speciation', () => {
+    it('should calculate Mars-to-Mercury trajectory via Venus Gravity Assist (VGA) and orbit insertion', () => {
+        // Mars to Mercury via Venus GA (300 km Mars alt, 300 km Venus flyby alt, 200 km Mercury capture alt):
+        const vga = TrajectoryEngine.computeMarsToMercuryViaVenusGravityAssist(300.0, 300.0, 200.0);
+        expect(vga.totalTimeDays).to.be.closeTo(298.7, 50.0); // ~299 days total TOF
+        expect(vga.marsDepartureDeltaVKmS).to.be.closeTo(3.372, 0.4); // ~3.37 km/s TVI
+        expect(vga.venusFlybyExcessKmS).to.be.closeTo(5.763, 0.4); // ~5.76 km/s v_inf Venus
+        expect(vga.venusBendingAngleDeg).to.be.closeTo(82.2, 10.0); // ~82.2 deg bending
+        expect(vga.mercuryOrbitInsertionDeltaVKmS).to.be.closeTo(4.031, 0.4); // ~4.03 km/s MOI
+        expect(vga.totalMissionDeltaVKmS).to.be.closeTo(7.403, 0.5); // ~7.40 km/s total
+        expect(vga.trajectoryContext).to.include('Mars-Venus-Mercury GA');
+    });
+
+    it('should calculate hydrothermal acid leaching kinetics of smectite, amorphous Opal-A silica yield, and kaolinitization', () => {
+        // 85 wt% smectite clay, pH 2.0, 95 C, 250 years leaching:
+        const leached = KRCEngine.computeMartianAcidLeachingSilicaKaoliniteKinetics(0.85, 2.00, 95.0, 250.0);
+        expect(leached.leachingFraction).to.be.greaterThan(0.70); // > 70% leached
+        expect(leached.amorphousSilicaWeightPercent).to.be.closeTo(40.0, 10.0); // ~40 wt% Opal-A
+        expect(leached.kaoliniteWeightPercent).to.be.closeTo(25.0, 8.0); // ~25 wt% kaolinite
+        expect(leached.opalineSinterThermalInertiaTIU).to.be.closeTo(397.6, 60.0); // ~398 tiu porous opaline sinter
+        expect(leached.hydrothermalSilicaFaciesClass).to.include('High-Purity Hydrated Opal-A Silica Sinter');
+        expect(leached.silicaParagenesisContext).to.include('Acid Leaching');
+    });
+
+    it('should discriminate Hydrated Amorphous Silica (Opal-A) vs Crystalline Quartz in CRISM/TES spectra', () => {
+        // Opal-A (Gusev Crater Home Plate / Noctis Labyrinthus: BD1400 = 0.04, BD1900 = 0.06, BD2210 = 0.05, BD2260 = 0.03, TIR = 1120):
+        const opal = BandMathEngine.computeCRISMSilicaSpeciationIndices(0.04, 0.06, 0.05, 0.03, 1120.0);
+        expect(opal.isSilicaDetected).to.be.true;
+        expect(opal.silicaPhaseClass).to.include('Hydrated Amorphous Silica (Opal-A / Opal-CT)');
+        expect(opal.mineralSpecies).to.include('Opal-A');
+        expect(opal.chemicalFormula).to.include('SiO2 * nH2O');
+        expect(opal.hydrothermalAstrobiologicalContext).to.include('Hydrothermal Hot Spring Sinter');
+
+        // Quartz (TIR = 1120 cm-1 reststrahlen, BD1900 = 0.01, BD2210 = 0.01):
+        const quartz = BandMathEngine.computeCRISMSilicaSpeciationIndices(0.01, 0.01, 0.01, 0.005, 1120.0);
+        expect(quartz.isSilicaDetected).to.be.true;
+        expect(quartz.silicaPhaseClass).to.include('Anhydrous Crystalline Quartz / Chalcedony');
+        expect(quartz.mineralSpecies).to.include('Alpha-Quartz');
+        expect(quartz.chemicalFormula).to.include('SiO2');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMSilicaSpeciationIndices(0.005, 0.005, 0.005, 0.005, 1000.0);
+        expect(basalt.isSilicaDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

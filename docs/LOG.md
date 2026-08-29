@@ -628,3 +628,24 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate subsurface salt diapirism, dislocation creep rheology, and halite thermal inertia
 ?: AssertionError: expected 'Incipient Salt Pillow / Low-Relief Sw?' to include 'Mature Salt Dome / Bulging Sedimentar?'
     at n.<anonymous> (unit.js:13202:54)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 02:16:06 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Mercury trajectory via Venus Gravity Assist (VGA) and orbit insertion
+?: AssertionError: expected 3.372 to be close to 2.06 +/- 0.4
+    at n.<anonymous> (unit.js:13366:50)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 02:16:18 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Mercury trajectory via Venus Gravity Assist (VGA) and orbit insertion
+?: AssertionError: expected 5.763 to be close to 5.163 +/- 0.4
+    at n.<anonymous> (unit.js:13367:47)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 02:16:29 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate Mars-to-Mercury trajectory via Venus Gravity Assist (VGA) and orbit insertion
+?: AssertionError: expected 4.031 to be close to 6.572 +/- 0.8
+    at n.<anonymous> (unit.js:13369:58)

@@ -7706,6 +7706,52 @@ export class BandMathEngine {
       diageneticFaciesContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrated Amorphous Silica (Opal-A, Hydrothermal Sinter) vs Anhydrous Quartz/Chalcedony from CRISM 1.41 um, 1.91 um, 2.21 um, 2.26 um bands and THEMIS/TES TIR reststrahlen features.
+   * Reference: Squyres et al. (2008), Ruff et al. (2011), Rice et al. (2013), Viviano-Beck et al. (2014) for Martian Silica Deposits.
+   * @param {number} [band1400WaterDepth=0.04] - BD1400 broad molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.06] - BD1900 broad molecular H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2210SiOHDepth=0.05] - BD2210 Si-OH fundamental vibration depth (0.0 to 0.40)
+   * @param {number} [band2260SiOHShoulderDepth=0.03] - BD2260 Si-OH broad combination shoulder depth (0.0 to 0.40)
+   * @param {number} [tirSilicaEmissivityMinWavenumber=1120.0] - THEMIS/TES reststrahlen emissivity minimum in cm-1 (800 to 1300 cm-1)
+   * @returns {{isSilicaDetected: boolean, silicaPhaseClass: string, mineralSpecies: string, chemicalFormula: string, hydrothermalAstrobiologicalContext: string}}
+   */
+  static computeCRISMSilicaSpeciationIndices(band1400WaterDepth = 0.04, band1900WaterDepth = 0.06, band2210SiOHDepth = 0.05, band2260SiOHShoulderDepth = 0.03, tirSilicaEmissivityMinWavenumber = 1120.0) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2210 = Math.max(0.0, band2210SiOHDepth);
+    const d2260 = Math.max(0.0, band2260SiOHShoulderDepth);
+    const wnTIR = Math.max(800.0, Math.min(1300.0, tirSilicaEmissivityMinWavenumber));
+
+    const isOpalA = d2210 >= 0.035 && (d1900 >= 0.035 || d2260 >= 0.020);
+    const isQuartz = !isOpalA && (wnTIR >= 1090.0 && wnTIR <= 1145.0) && d1900 < 0.025;
+
+    let silClass = 'Standard Basaltic Silicate Matrix';
+    let species = 'Basaltic Feldspar / Pyroxene';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Basaltic Matrix without High-Purity Silica Enrichment';
+
+    if (isOpalA) {
+      silClass = 'Hydrated Amorphous Silica (Opal-A / Opal-CT)';
+      species = 'Opal-A (Hydrated Silica)';
+      formula = 'SiO2 * nH2O';
+      context = 'Hydrothermal Hot Spring Sinter / Acid-Fumarolic Leached Resorbed Cap with High Biosignature Preservation Potential (Gusev Crater Home Plate / Noctis Labyrinthus / Nili Fossae)';
+    } else if (isQuartz) {
+      silClass = 'Anhydrous Crystalline Quartz / Chalcedony';
+      species = 'Alpha-Quartz';
+      formula = 'SiO2';
+      context = 'High-Temperature Hydrothermal Quartz Veins / Evolved Silicic Plutonic/Volcanic Fractionation';
+    }
+
+    return {
+      isSilicaDetected: isOpalA || isQuartz,
+      silicaPhaseClass: silClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      hydrothermalAstrobiologicalContext: context
+    };
+  }
 }
 
 
