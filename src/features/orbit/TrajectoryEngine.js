@@ -8171,6 +8171,96 @@ export class TrajectoryEngine {
       trajectoryContext: `Mars-Venus-Mercury GA (${totDays.toFixed(0)} days TOF, ${deltaVDeg.toFixed(1)} deg Venus Turn, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
     };
   }
+
+  /**
+   * Calculate interplanetary Grand Tour trajectory from Mars to Saturn via Jupiter Gravity Assist (JGA) and Saturn orbit capture.
+   * a_1 = ( r_mars + r_jupiter ) / 2, a_2 = ( r_jupiter + r_saturn ) / 2
+   * delta_J = 2 * arcsin( 1 / ( 1 + r_p * v_inf^2 / mu_jupiter ) )
+   * Reference: Flandro (1966), Bate, Mueller & White (1971), Curtis (2013) for Outer Planet Gravity Assists.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [jupiterFlybyAltitudeKm=500000.0] - Jupiter flyby periapsis altitude in km (100000 to 5000000 km)
+   * @param {number} [saturnPeriapsisAltitudeKm=50000.0] - Saturn capture periapsis altitude in km (10000 to 500000 km)
+   * @returns {{totalTimeDays: number, totalTimeYears: number, marsDepartureDeltaVKmS: number, jupiterFlybyExcessKmS: number, jupiterBendingAngleDeg: number, saturnOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, grandTourContext: string}}
+   */
+  static computeMarsToSaturnViaJupiterGravityAssist(marsParkingAltitudeKm = 300.0, jupiterFlybyAltitudeKm = 500000.0, saturnPeriapsisAltitudeKm = 50000.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpJKm = Math.max(50000.0, jupiterFlybyAltitudeKm);
+    const hpSatKm = Math.max(10000.0, saturnPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muJupiter = 1.26686534e8;
+    const rJupiterKm = 71492.0;
+    const muSaturn = 37931187.0;
+    const rSaturnKm = 60268.0;
+
+    const rMarsAU = 1.52368;
+    const rJupiterAU = 5.2044;
+    const rSaturnAU = 9.5826;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rJupiterDistKm = rJupiterAU * AU_KM;
+    const rSaturnDistKm = rSaturnAU * AU_KM;
+
+    // Leg 1: Mars to Jupiter
+    const a1Km = (rMarsDistKm + rJupiterDistKm) / 2.0;
+    const tof1Sec = Math.PI * Math.sqrt(Math.pow(a1Km, 3.0) / muSun);
+    const tof1Days = tof1Sec / 86400.0;
+
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / a1Km)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTjiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Jupiter encounter
+    const vJupiterCircKmS = Math.sqrt(muSun / rJupiterDistKm);
+    const vArr1KmS = Math.sqrt(muSun * ((2.0 / rJupiterDistKm) - (1.0 / a1Km)));
+    const vInfJKmS = Math.abs(vJupiterCircKmS - vArr1KmS);
+
+    const rpJKm = rJupiterKm + hpJKm;
+    const deltaJRad = 2.0 * Math.asin(1.0 / (1.0 + ((rpJKm * Math.pow(vInfJKmS, 2.0)) / muJupiter)));
+    const deltaJDeg = (deltaJRad * 180.0) / Math.PI;
+
+    // Leg 2: Jupiter to Saturn
+    const a2Km = (rJupiterDistKm + rSaturnDistKm) / 2.0;
+    const tof2Sec = Math.PI * Math.sqrt(Math.pow(a2Km, 3.0) / muSun);
+    const tof2Days = tof2Sec / 86400.0;
+
+    const totDays = tof1Days + tof2Days;
+    const totYrs = totDays / 365.25;
+
+    // Saturn arrival
+    const vSaturnCircKmS = Math.sqrt(muSun / rSaturnDistKm);
+    const vArr2KmS = Math.sqrt(muSun * ((2.0 / rSaturnDistKm) - (1.0 / a2Km)));
+    const vInfSatKmS = Math.abs(vSaturnCircKmS - vArr2KmS);
+
+    const rpSatKm = rSaturnKm + hpSatKm;
+    const eCap = 0.90; // High-eccentricity capture
+    const aCapKm = rpSatKm / (1.0 - eCap);
+
+    const vHypSatKmS = Math.sqrt(Math.pow(vInfSatKmS, 2.0) + ((2.0 * muSaturn) / rpSatKm));
+    const vCapSatKmS = Math.sqrt(muSaturn * ((2.0 / rpSatKm) - (1.0 / aCapKm)));
+    const dvSoiKmS = vHypSatKmS - vCapSatKmS;
+
+    const dvTotKmS = dvTjiKmS + dvSoiKmS;
+
+    return {
+      totalTimeDays: parseFloat(totDays.toFixed(1)),
+      totalTimeYears: parseFloat(totYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTjiKmS.toFixed(3)),
+      jupiterFlybyExcessKmS: parseFloat(vInfJKmS.toFixed(3)),
+      jupiterBendingAngleDeg: parseFloat(deltaJDeg.toFixed(1)),
+      saturnOrbitInsertionDeltaVKmS: parseFloat(dvSoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      grandTourContext: `Mars-Jupiter-Saturn GT (${totYrs.toFixed(1)} yr TOF, ${deltaJDeg.toFixed(1)} deg Jupiter Turn, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

@@ -8435,6 +8435,68 @@ export class KRCEngine {
       silicaParagenesisContext: `Acid Leaching pH ${pH.toFixed(1)} (${wSilicaPct.toFixed(0)}% Opal-A, ${wKaolPct.toFixed(0)}% Kaolinite, TIU=${TIU.toFixed(0)}, ${faciesClass})`
     };
   }
+
+  /**
+   * Calculate high-temperature contact metamorphic dehydroxylation kinetics of serpentine into regenerated forsterite olivine, enstatite pyroxene, and water vapor.
+   * k = A * exp( -E_a / ( R * T ) )
+   * alpha = 1 - exp( -k * t )
+   * w_ol = alpha * w_serp * 51.0
+   * Reference: Ehlmann et al. (2009, 2010), Amador et al. (2018), Brown et al. (2010) for Metamorphic Serpentine on Mars.
+   * @param {number} [initialSerpentineMassFraction=0.80] - Initial serpentine mass fraction (0.10 to 1.0)
+   * @param {number} [contactMeltTempC=700.0] - Thermal contact metamorphism temperature in C (300 to 1000 C)
+   * @param {number} [durationHours=12.0] - Metamorphic heating duration in hours (0.1 to 1000 hours)
+   * @returns {{dehydroxylationFraction: number, regeneratedOlivineWeightPercent: number, enstatitePyroxeneWeightPercent: number, releasedWaterVaporWeightPercent: number, recrystallizedThermalInertiaTIU: number, metamorphicFaciesClass: string, serpentineMetamorphicContext: string}}
+   */
+  static computeMartianSerpentineThermalDehydroxylationKinetics(initialSerpentineMassFraction = 0.80, contactMeltTempC = 700.0, durationHours = 12.0) {
+    const wSerp = Math.max(0.05, Math.min(1.0, initialSerpentineMassFraction));
+    const TC = Math.max(200.0, Math.min(1200.0, contactMeltTempC));
+    const tHrs = Math.max(0.01, durationHours);
+
+    const TK = TC + 273.15;
+    const tSec = tHrs * 3600.0;
+    const Rgas = 8.314;
+    const Ea = 2.80e5; // 280 kJ/mol
+    const A = 1.0e15; // 1/s
+
+    // Kinetic rate constant (1/s)
+    const kRate = A * Math.exp(-Ea / (Rgas * TK));
+
+    // Reaction extent alpha (0 to 1)
+    const kt = kRate * tSec;
+    const alpha = 1.0 - Math.exp(-Math.min(25.0, kt));
+
+    // Product yields
+    const wOlPct = alpha * wSerp * 51.0; // wt% regenerated forsterite olivine
+    const wPxPct = alpha * wSerp * 36.0; // wt% enstatite
+    const wH2OPct = alpha * wSerp * 13.0; // wt% released H2O vapor
+    const wResSerpPct = (1.0 - alpha) * wSerp * 100.0;
+    const wHostPct = (1.0 - wSerp) * 100.0;
+
+    // Thermal inertia of dense recrystallized contact metamorphic hornfels
+    const rhoGrain = ((wOlPct / 100.0) * 3270.0) + ((wPxPct / 100.0) * 3200.0) + ((wResSerpPct / 100.0) * 2550.0) + ((wHostPct / 100.0) * 2900.0);
+    const phi = 0.05 * (1.0 - (0.6 * alpha)); // Recrystallization closes pores
+    const rhoBulk = rhoGrain * (1.0 - phi);
+    const kTherm = (2.20 * (1.0 - phi)) + (1.20 * (wOlPct / 100.0));
+    const Cspec = 850.0;
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let faciesClass = 'Unaltered Hydrothermal Serpentine';
+    if (alpha >= 0.85) {
+      faciesClass = 'High-Temperature Metamorphic Hornfels / Regenerated Forsterite Olivine (Impact Melt Sheet / Dike Contact)';
+    } else if (alpha >= 0.25) {
+      faciesClass = 'Partially Dehydroxylated Talc-Serpentine Contact Aureole';
+    }
+
+    return {
+      dehydroxylationFraction: parseFloat(alpha.toFixed(3)),
+      regeneratedOlivineWeightPercent: parseFloat(wOlPct.toFixed(1)),
+      enstatitePyroxeneWeightPercent: parseFloat(wPxPct.toFixed(1)),
+      releasedWaterVaporWeightPercent: parseFloat(wH2OPct.toFixed(1)),
+      recrystallizedThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      metamorphicFaciesClass: faciesClass,
+      serpentineMetamorphicContext: `Metamorphic Contact at ${TC.toFixed(0)} C (${(alpha * 100).toFixed(0)}% Dehydroxylated, ${wOlPct.toFixed(1)}% Recryst Olivine, TIU=${TIU.toFixed(0)}, ${faciesClass})`
+    };
+  }
 }
 
 

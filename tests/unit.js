@@ -13404,6 +13404,59 @@ describe('Mars-to-Mercury Venus Gravity Assist, Acid Leaching Opal-A & Silica Sp
     });
 });
 
+describe('Mars-to-Saturn Jupiter Gravity Assist, Serpentine Dehydroxylation & Speciation', () => {
+    it('should calculate Mars-to-Saturn Grand Tour trajectory via Jupiter Gravity Assist (JGA) and orbit insertion', () => {
+        // Mars to Saturn via Jupiter GA (300 km Mars alt, 500000 km Jupiter flyby alt, 50000 km Saturn capture alt):
+        const jga = TrajectoryEngine.computeMarsToSaturnViaJupiterGravityAssist(300.0, 500000.0, 50000.0);
+        expect(jga.totalTimeDays).to.be.closeTo(4798.3, 300.0); // ~4798 days (~13.1 yr)
+        expect(jga.totalTimeYears).to.be.closeTo(13.14, 1.0); // ~13.1 yr
+        expect(jga.marsDepartureDeltaVKmS).to.be.closeTo(4.197, 0.4); // ~4.20 km/s TJI
+        expect(jga.jupiterFlybyExcessKmS).to.be.closeTo(4.269, 0.4); // ~4.27 km/s v_inf Jupiter
+        expect(jga.jupiterBendingAngleDeg).to.be.closeTo(121.9, 15.0); // ~122 deg bending
+        expect(jga.saturnOrbitInsertionDeltaVKmS).to.be.closeTo(0.818, 0.3); // ~0.82 km/s SOI
+        expect(jga.totalMissionDeltaVKmS).to.be.closeTo(5.015, 0.5); // ~5.02 km/s total
+        expect(jga.grandTourContext).to.include('Mars-Jupiter-Saturn GT');
+    });
+
+    it('should calculate contact metamorphic dehydroxylation kinetics of serpentine and recrystallized olivine yield', () => {
+        // 80 wt% serpentine, 700 C contact baking, 12.0 hours duration:
+        const baked = KRCEngine.computeMartianSerpentineThermalDehydroxylationKinetics(0.80, 700.0, 12.0);
+        expect(baked.dehydroxylationFraction).to.be.greaterThan(0.95); // > 95% dehydroxylated
+        expect(baked.regeneratedOlivineWeightPercent).to.be.closeTo(40.8, 4.0); // ~40.8 wt% forsterite
+        expect(baked.enstatitePyroxeneWeightPercent).to.be.closeTo(28.8, 3.0); // ~28.8 wt% enstatite
+        expect(baked.recrystallizedThermalInertiaTIU).to.be.closeTo(2499.9, 150.0); // ~2500 tiu dense hornfels
+        expect(baked.metamorphicFaciesClass).to.include('High-Temperature Metamorphic Hornfels');
+        expect(baked.serpentineMetamorphicContext).to.include('Metamorphic Contact');
+    });
+
+    it('should discriminate Hydrothermal Serpentine vs Talc vs Recrystallized Forsteritic Olivine in CRISM spectra', () => {
+        // Serpentine (Nili Fossae / Claritas Rise: BD1390 = 0.04, BD2120 = 0.03, BD2320 = 0.05, BD2510 = 0.03, OL = 0.01):
+        const serp = BandMathEngine.computeCRISMSerpentineTalcSpeciationIndices(0.04, 0.03, 0.05, 0.03, 0.01);
+        expect(serp.isUltramaficAlterationDetected).to.be.true;
+        expect(serp.ultramaficSpeciesClass).to.include('Hydrothermal Serpentine (Lizardite / Antigorite)');
+        expect(serp.mineralSpecies).to.include('Serpentine');
+        expect(serp.chemicalFormula).to.include('Mg3Si2O5(OH)4');
+        expect(serp.serpentinizationContext).to.include('Deep Hydrothermal Serpentinization');
+
+        // Talc (BD1390 = 0.04, BD2120 = 0.005, BD2320 = 0.05, BD2510 = 0.03, OL = 0.01):
+        const talc = BandMathEngine.computeCRISMSerpentineTalcSpeciationIndices(0.04, 0.005, 0.05, 0.03, 0.01);
+        expect(talc.isUltramaficAlterationDetected).to.be.true;
+        expect(talc.ultramaficSpeciesClass).to.include('Hydrothermal Talc (Carbonated / Metamorphosed Serpentine)');
+        expect(talc.mineralSpecies).to.include('Talc');
+        expect(talc.chemicalFormula).to.include('Mg3Si4O10(OH)2');
+
+        // Recrystallized Olivine (OL = 0.08, BD2320 = 0.005):
+        const ol = BandMathEngine.computeCRISMSerpentineTalcSpeciationIndices(0.005, 0.005, 0.005, 0.005, 0.08);
+        expect(ol.isUltramaficAlterationDetected).to.be.true;
+        expect(ol.ultramaficSpeciesClass).to.include('Recrystallized Forsteritic Olivine');
+        expect(ol.chemicalFormula).to.include('Mg1.8Fe0.2SiO4');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMSerpentineTalcSpeciationIndices(0.005, 0.005, 0.005, 0.005, 0.01);
+        expect(basalt.isUltramaficAlterationDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

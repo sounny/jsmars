@@ -7752,6 +7752,58 @@ export class BandMathEngine {
       hydrothermalAstrobiologicalContext: context
     };
   }
+
+  /**
+   * Discriminate Hydrothermal Serpentine vs Talc vs Recrystallized Forsteritic Olivine from CRISM 1.39 um, 2.12 um, 2.32 um, 2.51 um, and 1.05 um bands.
+   * Reference: Ehlmann et al. (2009, 2010), Brown et al. (2010), Viviano-Beck et al. (2014) for Ultramafic Alteration Mineralogy.
+   * @param {number} [band1390MetalOHDepth=0.04] - BD1390 sharp Mg-OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2120SerpentineDepth=0.03] - BD2120 diagnostic serpentine combination depth (0.0 to 0.40)
+   * @param {number} [band2320MgOHDepth=0.05] - BD2320 Mg-OH fundamental combination depth (0.0 to 0.40)
+   * @param {number} [band2510MgOHDepth=0.03] - BD2510 Mg-OH combination depth (0.0 to 0.40)
+   * @param {number} [band1000OlivineBroadDepth=0.01] - OLINDEX broad 1.05 um Fe2+ olivine band depth (0.0 to 0.50)
+   * @returns {{isUltramaficAlterationDetected: boolean, ultramaficSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, serpentinizationContext: string}}
+   */
+  static computeCRISMSerpentineTalcSpeciationIndices(band1390MetalOHDepth = 0.04, band2120SerpentineDepth = 0.03, band2320MgOHDepth = 0.05, band2510MgOHDepth = 0.03, band1000OlivineBroadDepth = 0.01) {
+    const d1390 = Math.max(0.0, band1390MetalOHDepth);
+    const d2120 = Math.max(0.0, band2120SerpentineDepth);
+    const d2320 = Math.max(0.0, band2320MgOHDepth);
+    const d2510 = Math.max(0.0, band2510MgOHDepth);
+    const d1000 = Math.max(0.0, band1000OlivineBroadDepth);
+
+    const isSerpentine = d1390 >= 0.030 && d2120 >= 0.020 && d2320 >= 0.035;
+    const isTalc = d1390 >= 0.030 && d2320 >= 0.035 && d2120 < 0.015;
+    const isOlivine = d1000 >= 0.060 && d2320 < 0.020;
+
+    let spClass = 'Standard Basaltic Regolith';
+    let species = 'Basaltic Augite / Plagioclase';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Regolith without Characteristic Ultramafic Alteration Absorption';
+
+    if (isSerpentine) {
+      spClass = 'Hydrothermal Serpentine (Lizardite / Antigorite)';
+      species = 'Serpentine';
+      formula = 'Mg3Si2O5(OH)4';
+      context = 'Noachian Deep Hydrothermal Serpentinization / Hydrogen & Methane Generation with High Astrobiological Energy Potential (Nili Fossae / Claritas Rise)';
+    } else if (isTalc) {
+      spClass = 'Hydrothermal Talc (Carbonated / Metamorphosed Serpentine)';
+      species = 'Talc';
+      formula = 'Mg3Si4O10(OH)2';
+      context = 'Moderate-Temperature Carbonate-Silica Alteration or Progressive Hydrothermal Metamorphism of Serpentine';
+    } else if (isOlivine) {
+      spClass = 'Recrystallized Forsteritic Olivine / Ultramafic Cumulate';
+      species = 'Forsterite Olivine';
+      formula = 'Mg1.8Fe0.2SiO4 (Fo90)';
+      context = 'Contact Metamorphic Hornfels Recrystallization or Pristine Noachian Ultramafic Cumulate Bedrock';
+    }
+
+    return {
+      isUltramaficAlterationDetected: isSerpentine || isTalc || isOlivine,
+      ultramaficSpeciesClass: spClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      serpentinizationContext: context
+    };
+  }
 }
 
 
