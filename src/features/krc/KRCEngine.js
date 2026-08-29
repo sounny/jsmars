@@ -8945,6 +8945,66 @@ export class KRCEngine {
       cryochamberContext: `Cryomagma Chamber R=${Rch.toFixed(0)}m at z=${zCh.toFixed(0)}m (P_over=${deltaPMPa.toFixed(1)}MPa vs P_lith=${sigmaLithMPa.toFixed(1)}MPa, Erupting=${isErupting})`
     };
   }
+
+  /**
+   * Calculate hydrothermal serpentinization kinetics of ultramafic olivine, H2 generation, Fischer-Tropsch Type (FTT) methane yield, and rock thermal inertia.
+   * 6 (Mg,Fe)2SiO4 + 7 H2O -> 3 Mg3Si2O5(OH)4 (Serpentine) + Fe3O4 (Magnetite) + H2
+   * CO2 + 4 H2 -> CH4 + 2 H2O (FTT Methanogenesis)
+   * Reference: Ehlmann et al. (2010), Oze & Sharma (2005), McCollom (2013), Etiope et al. (2013) for Martian Serpentinization.
+   * @param {number} [olivineMassFraction=0.40] - Ultramafic olivine mass fraction in protolith (0.05 to 0.90)
+   * @param {number} [reactionTempC=250.0] - Hydrothermal fluid temperature in C (50 to 400 C)
+   * @param {number} [waterRockMassRatio=0.50] - Hydrothermal fluid/rock mass ratio (0.05 to 5.0)
+   * @param {number} [durationYears=100.0] - Reaction duration in years (0.1 to 10000 yr)
+   * @returns {{serpentinizationFraction: number, hydrogenYieldMolesPerKg: number, methaneYieldNmolPerKg: number, serpentinePrecipitatedWeightPercent: number, serpentinizedBasementThermalInertiaTIU: number, serpentinizationRegimeClass: string, serpentinizationContext: string}}
+   */
+  static computeMartianOlivineSerpentinizationMethaneYield(olivineMassFraction = 0.40, reactionTempC = 250.0, waterRockMassRatio = 0.50, durationYears = 100.0) {
+    const wOl = Math.max(0.01, Math.min(0.95, olivineMassFraction));
+    const TC = Math.max(20.0, Math.min(450.0, reactionTempC));
+    const wrRatio = Math.max(0.01, Math.min(10.0, waterRockMassRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.80e4; // 68 kJ/mol
+
+    // Temperature optimum bell-curve factor (peak serpentinization around 250-300 C)
+    const tempBell = Math.exp(-Math.pow(TC - 260.0, 2.0) / (2.0 * Math.pow(60.0, 2.0)));
+    const kRate = 1.5e-1 * Math.exp(-Ea / (Rgas * TK)) * tempBell * Math.min(2.0, wrRatio);
+
+    const alphaSerp = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Hydrogen and Serpentine yield
+    const molesH2PerKg = alphaSerp * wOl * 0.052; // mol H2 / kg rock
+    const wSerpPct = alphaSerp * wOl * 115.0; // wt% Serpentine precipitated
+
+    // Fischer-Tropsch Type (FTT) Methane synthesis (Sabatier reaction with dissolved CO2)
+    const fttEfficiency = 0.065 * tempBell;
+    const nmolCH4PerKg = (molesH2PerKg / 4.0) * fttEfficiency * 1.0e9;
+
+    // Thermal inertia of serpentinized basement rock
+    const kTherm = 2.10; // W/(m K)
+    const rhoBulk = 2600.0; // kg/m^3
+    const Cspec = 1050.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let regClass = 'Low-Temperature Sluggish Serpentinization';
+    if (alphaSerp >= 0.60 && nmolCH4PerKg >= 1.0e4) {
+      regClass = 'Active High-Yield Hydrothermal Serpentinization & Methanogenesis Engine (Nili Fossae / Claritas Fossae Analogue)';
+    } else if (alphaSerp >= 0.20) {
+      regClass = 'Moderate Hydrothermal Olivine Carbonation and Serpentinization';
+    }
+
+    return {
+      serpentinizationFraction: parseFloat(alphaSerp.toFixed(3)),
+      hydrogenYieldMolesPerKg: parseFloat(molesH2PerKg.toFixed(4)),
+      methaneYieldNmolPerKg: parseFloat(nmolCH4PerKg.toFixed(1)),
+      serpentinePrecipitatedWeightPercent: parseFloat(wSerpPct.toFixed(1)),
+      serpentinizedBasementThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      serpentinizationRegimeClass: regClass,
+      serpentinizationContext: `Serpentinization at ${TC.toFixed(0)} C (${(alphaSerp * 100).toFixed(1)}% reacted, ${nmolCH4PerKg.toFixed(0)} nmol CH4/kg, TIU=${TIU.toFixed(0)}, ${regClass})`
+    };
+  }
 }
 
 

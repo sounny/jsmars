@@ -763,3 +763,20 @@ TEST FAILURE: Unit test suite failed (2 failures):
 ?: ReferenceError: regimeClass is not defined
     at KRCEngine.computeMartianCryochamberFreezingPressurization (http://127.0.0.1:51715/src/features/krc/KRCEngine.js:8932:21)
     at n.<anonymous> (unit.js:13832:32)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 04:46:19 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate interplanetary direct transfer from Mars to 2:3 resonant Plutino dwarf planet 90482 Orcus
+?: AssertionError: expected 22421.4 to be close to 24304.5 +/- 1200
+    at n.<anonymous> (unit.js:13867:46)
+- should calculate hydrothermal serpentinization of ultramafic olivine, H2 degassing, and FTT methanogenesis
+?: AssertionError: expected 0.001 to be above 0.5
+    at n.<anonymous> (unit.js:13878:53)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 04:46:38 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary direct transfer from Mars to 2:3 resonant Plutino dwarf planet 90482 Orcus
+?: AssertionError: expected 2.92 to be close to 1.63 +/- 0.4
+    at n.<anonymous> (unit.js:13870:58)

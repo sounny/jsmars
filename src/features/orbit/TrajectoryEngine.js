@@ -8861,6 +8861,78 @@ export class TrajectoryEngine {
       gonggongContext: `Mars-to-Gonggong (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, GOI=${dvGoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to 2:3 resonant Plutino dwarf planet 90482 Orcus and orbit capture.
+   * a = ( r_mars + r_orcus ) / 2
+   * e = ( r_orcus - r_mars ) / ( r_orcus + r_mars )
+   * Reference: Brown et al. (2010), Ortiz et al. (2011), Curtis (2013) for Kuiper Belt Plutino Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [orcusDistanceAU=47.88] - Orcus heliocentric distance in AU (30.0 to 55.0 AU)
+   * @param {number} [orcusPeriapsisAltitudeKm=250.0] - Orcus orbit insertion periapsis altitude in km (50 to 5000 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, orcusOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, orcusContext: string}}
+   */
+  static computeMarsToOrcusTransfer(marsParkingAltitudeKm = 300.0, orcusDistanceAU = 47.88, orcusPeriapsisAltitudeKm = 250.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rOAU = Math.max(25.0, Math.min(65.0, orcusDistanceAU));
+    const hpOKm = Math.max(30.0, orcusPeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muOrcus = 42.8; // km^3/s^2
+    const rOrcusKm = 458.0; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rODistKm = rOAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rODistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rODistKm - rMarsDistKm) / (rODistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvToiKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Orcus capture
+    const vOCircKmS = Math.sqrt(muSun / rODistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rODistKm) - (1.0 / aKm)));
+    const vInfOKmS = Math.abs(vOCircKmS - vArrKmS);
+
+    const rpOKm = rOrcusKm + hpOKm;
+    const eCap = 0.85; // Capture orbit
+    const aCapKm = rpOKm / (1.0 - eCap);
+
+    const vHypOKmS = Math.sqrt(Math.pow(vInfOKmS, 2.0) + ((2.0 * muOrcus) / rpOKm));
+    const vCapOKmS = Math.sqrt(muOrcus * ((2.0 / rpOKm) - (1.0 / aCapKm)));
+    const dvOoiKmS = vHypOKmS - vCapOKmS;
+
+    const dvTotKmS = dvToiKmS + dvOoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvToiKmS.toFixed(3)),
+      orcusOrbitInsertionDeltaVKmS: parseFloat(dvOoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      orcusContext: `Mars-to-Orcus (${tofYrs.toFixed(1)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, OOI=${dvOoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 

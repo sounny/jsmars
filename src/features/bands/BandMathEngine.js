@@ -8215,6 +8215,59 @@ export class BandMathEngine {
       polarCryosphereContext: context
     };
   }
+
+  /**
+   * High-precision MGM / Crystal Field inversion of Olivine 1.05 um composite absorption band center to determine molar Forsterite Number Fo# (Mg/(Mg+Fe)).
+   * Reference: King & Ridley (1987), Sunshine & Pieters (1998), Mustard et al. (2005), Viviano-Beck et al. (2014) for Olivine Speciation.
+   * @param {number} [bandM2CenterUm=1.045] - Deconvolved M2 crystal field band center in um (1.030 to 1.090 um)
+   * @param {number} [band1050CompositeDepth=0.12] - Composite 1.05 um band depth (0.0 to 0.60)
+   * @param {number} [band1250M12Depth=0.08] - M1-2 shoulder band depth at 1.25 um (0.0 to 0.50)
+   * @returns {{isOlivineDetected: boolean, forsteriteNumberFo: number, fayaliteNumberFa: number, olivineCompositionClass: string, mineralSpecies: string, mantlePetrogenesisContext: string}}
+   */
+  static computeCRISMOlivineCrystalFieldFoNumberInversion(bandM2CenterUm = 1.045, band1050CompositeDepth = 0.12, band1250M12Depth = 0.08) {
+    const center = Math.max(1.020, Math.min(1.100, bandM2CenterUm));
+    const d1050 = Math.max(0.0, band1050CompositeDepth);
+    const d1250 = Math.max(0.0, band1250M12Depth);
+
+    const isOlivine = d1050 >= 0.035 && d1250 >= 0.020;
+
+    let foNum = 0.0;
+    let faNum = 0.0;
+    let compClass = 'Olivine-Poor Silicate Matrix';
+    let species = 'Pyroxene / Basalt Matrix';
+    let context = 'Standard Silicate Regolith without Diagnostic Broad 1.05 um Olivine Absorption';
+
+    if (isOlivine) {
+      // Invert Fo# from M2 band center
+      // 1.035 um -> Fo100, 1.085 um -> Fo0
+      foNum = 100.0 * (1.0 - ((center - 1.035) / (1.085 - 1.035)));
+      foNum = Math.max(0.0, Math.min(100.0, foNum));
+      faNum = 100.0 - foNum;
+
+      if (foNum >= 80.0) {
+        compClass = `Primitive Mg-Rich Forsterite (Fo${foNum.toFixed(0)}Fa${faNum.toFixed(0)})`;
+        species = 'Forsterite';
+        context = 'Primitive Upper Mantle / Dunitic Cumulate Bedrock (Noachian Crust in Nili Fossae / Terra Tyrrhena)';
+      } else if (foNum >= 50.0) {
+        compClass = `Intermediate Chrysolite / Hyalosiderite (Fo${foNum.toFixed(0)}Fa${faNum.toFixed(0)})`;
+        species = 'Chrysolite / Hyalosiderite';
+        context = 'Moderately Evolved Basaltic Shield Lavas / Olivine Gabbro (Syrtis Major Volcanic Province)';
+      } else {
+        compClass = `Evolved Fe-Rich Hortonolite / Fayalite (Fo${foNum.toFixed(0)}Fa${faNum.toFixed(0)})`;
+        species = 'Fayalite';
+        context = 'Highly Differentiated Ferrogabbro / Late-Stage Acidic Plutonic Intrusion';
+      }
+    }
+
+    return {
+      isOlivineDetected: isOlivine,
+      forsteriteNumberFo: parseFloat(foNum.toFixed(1)),
+      fayaliteNumberFa: parseFloat(faNum.toFixed(1)),
+      olivineCompositionClass: compClass,
+      mineralSpecies: species,
+      mantlePetrogenesisContext: context
+    };
+  }
 }
 
 

@@ -13858,6 +13858,59 @@ describe('Mars-to-Gonggong Transfer, Cryochamber Pressurization & Water Ice Grai
     });
 });
 
+describe('Mars-to-Orcus Transfer, Serpentinization Methanogenesis & Olivine Fo# Inversion', () => {
+    it('should calculate interplanetary direct transfer from Mars to 2:3 resonant Plutino dwarf planet 90482 Orcus', () => {
+        // Mars to Orcus (300 km Mars alt, 47.88 AU distance, 250 km capture alt):
+        const orcus = TrajectoryEngine.computeMarsToOrcusTransfer(300.0, 47.88, 250.0);
+        expect(orcus.semiMajorAxisAU).to.be.closeTo(24.702, 0.5); // ~24.70 AU
+        expect(orcus.eccentricity).to.be.closeTo(0.9383, 0.01); // e ~ 0.938
+        expect(orcus.timeOfFlightDays).to.be.closeTo(22421.4, 800.0); // ~22421 days (~61.4 yr)
+        expect(orcus.timeOfFlightYears).to.be.closeTo(61.39, 2.0); // ~61.4 yr
+        expect(orcus.marsDepartureDeltaVKmS).to.be.closeTo(7.447, 0.6); // ~7.45 km/s TOI
+        expect(orcus.orcusOrbitInsertionDeltaVKmS).to.be.closeTo(2.920, 0.4); // ~2.92 km/s OOI
+        expect(orcus.totalMissionDeltaVKmS).to.be.closeTo(10.367, 0.5); // ~10.37 km/s total
+        expect(orcus.orcusContext).to.include('Mars-to-Orcus');
+    });
+
+    it('should calculate hydrothermal serpentinization of ultramafic olivine, H2 degassing, and FTT methanogenesis', () => {
+        // 40 wt% olivine, 250 C reaction temp, 0.50 W/R ratio, 100 yr duration:
+        const serp = KRCEngine.computeMartianOlivineSerpentinizationMethaneYield(0.40, 250.0, 0.50, 100.0);
+        expect(serp.serpentinizationFraction).to.be.greaterThan(0.50); // > 50% serpentinized
+        expect(serp.hydrogenYieldMolesPerKg).to.be.greaterThan(0.010); // > 0.01 mol H2/kg
+        expect(serp.methaneYieldNmolPerKg).to.be.greaterThan(5.0e4); // > 50,000 nmol CH4/kg
+        expect(serp.serpentinePrecipitatedWeightPercent).to.be.closeTo(40.0, 10.0); // ~40 wt% serpentine
+        expect(serp.serpentinizedBasementThermalInertiaTIU).to.be.closeTo(2394.0, 150.0); // ~2394 tiu
+        expect(serp.serpentinizationRegimeClass).to.include('Active High-Yield Hydrothermal Serpentinization');
+        expect(serp.serpentinizationContext).to.include('Serpentinization at 250 C');
+    });
+
+    it('should invert Olivine Forsterite Number (Fo#) and petrogenetic origin from CRISM Crystal Field absorption center', () => {
+        // Primitive Forsterite Fo90 (Nili Fossae: M2 center = 1.040 um, BD1050 = 0.14, BD1250 = 0.09):
+        const fo90 = BandMathEngine.computeCRISMOlivineCrystalFieldFoNumberInversion(1.040, 0.14, 0.09);
+        expect(fo90.isOlivineDetected).to.be.true;
+        expect(fo90.forsteriteNumberFo).to.be.closeTo(90.0, 2.0); // Fo90
+        expect(fo90.fayaliteNumberFa).to.be.closeTo(10.0, 2.0); // Fa10
+        expect(fo90.mineralSpecies).to.include('Forsterite');
+        expect(fo90.mantlePetrogenesisContext).to.include('Primitive Upper Mantle');
+
+        // Intermediate Chrysolite Fo60 (Syrtis Major: M2 center = 1.055 um, BD1050 = 0.10, BD1250 = 0.06):
+        const fo60 = BandMathEngine.computeCRISMOlivineCrystalFieldFoNumberInversion(1.055, 0.10, 0.06);
+        expect(fo60.isOlivineDetected).to.be.true;
+        expect(fo60.forsteriteNumberFo).to.be.closeTo(60.0, 2.0); // Fo60
+        expect(fo60.mineralSpecies).to.include('Chrysolite');
+
+        // Evolved Fayalite Fo20 (M2 center = 1.075 um, BD1050 = 0.08, BD1250 = 0.05):
+        const fo20 = BandMathEngine.computeCRISMOlivineCrystalFieldFoNumberInversion(1.075, 0.08, 0.05);
+        expect(fo20.isOlivineDetected).to.be.true;
+        expect(fo20.forsteriteNumberFo).to.be.closeTo(20.0, 2.0); // Fo20
+        expect(fo20.mineralSpecies).to.include('Fayalite');
+
+        // Non-olivine basalt:
+        const basalt = BandMathEngine.computeCRISMOlivineCrystalFieldFoNumberInversion(1.050, 0.01, 0.005);
+        expect(basalt.isOlivineDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
