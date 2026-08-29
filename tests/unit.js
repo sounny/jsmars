@@ -14844,6 +14844,54 @@ describe('Mars-to-Io Transfer, Beidellite Smectite Kinetics & Smectite Speciatio
     });
 });
 
+describe('Mars-to-Callisto Transfer, Alunite-Jarosite Kinetics & Acid Sulfate Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to Jupiter/Callisto and orbit capture', () => {
+        // Mars to Callisto (300 km Mars alt, 5.2044 AU distance, 100 km capture alt):
+        const cal = TrajectoryEngine.computeMarsToCallistoTransfer(300.0, 5.2044, 100.0);
+        expect(cal.semiMajorAxisAU).to.be.closeTo(3.364, 0.1); // ~3.36 AU
+        expect(cal.eccentricity).to.be.closeTo(0.5471, 0.01); // e ~ 0.547
+        expect(cal.timeOfFlightDays).to.be.closeTo(1126.80, 50.0); // ~1127 days (~3.09 yr)
+        expect(cal.marsDepartureDeltaVKmS).to.be.closeTo(3.894, 0.5); // ~3.89 km/s TJI
+        expect(cal.callistoOrbitInsertionDeltaVKmS).to.be.closeTo(1.353, 0.5); // ~1.35 km/s COI
+        expect(cal.totalMissionDeltaVKmS).to.be.closeTo(5.247, 1.0); // ~5.25 km/s total
+        expect(cal.callistoContext).to.include('Mars-to-Callisto');
+    });
+
+    it('should calculate acid-sulfate alunite-jarosite solid solution kinetics, sulfate cementation, and indurated crust thermal inertia', () => {
+        // 25% initial porosity, 160 C hydrothermal temp, 1.20 Al/Fe ratio, 350 yr duration:
+        const alJar = KRCEngine.computeMartianAluniteJarositeSolidSolutionKinetics(0.25, 160.0, 1.20, 350.0);
+        expect(alJar.acidSulfateConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(alJar.sulfateMineralYieldWeightPercent).to.be.greaterThan(30.0); // > 30 wt% sulfate
+        expect(alJar.induratedSulfateThermalInertiaTIU).to.be.closeTo(2141.5, 200.0); // ~2142 tiu
+        expect(alJar.acidSulfateFaciesClass).to.include('Transitional Alunite-Jarosite Acid-Sulfate Sequence');
+        expect(alJar.acidSulfateContext).to.include('Acid Sulfate Facies at 160 C');
+    });
+
+    it('should discriminate Potassium Alunite vs Potassium Jarosite vs Solid Solution in CRISM spectra', () => {
+        // Potassium Alunite (Mawrth / Columbus: BD0900 = 0.010, BD1480 = 0.035, BD1760 = 0.040, BD2265Al = 0.060, BD2265Fe = 0.015):
+        const alu = BandMathEngine.computeCRISMAluniteJarositeSpeciationIndices(0.010, 0.035, 0.040, 0.060, 0.015);
+        expect(alu.isAcidSulfateDetected).to.be.true;
+        expect(alu.acidSulfateMineralClass).to.include('High-Alumina Potassium Alunite Facies');
+        expect(alu.mineralSpecies).to.include('Alunite');
+        expect(alu.pHGeochemicalEnvironment).to.include('Magmatic Acid-Sulfate Hydrothermal Leaching');
+
+        // Potassium Jarosite (Meridiani / Candor: BD0900 = 0.045, BD1480 = 0.015, BD1760 = 0.010, BD2265Al = 0.015, BD2265Fe = 0.045):
+        const jar = BandMathEngine.computeCRISMAluniteJarositeSpeciationIndices(0.045, 0.015, 0.010, 0.015, 0.045);
+        expect(jar.isAcidSulfateDetected).to.be.true;
+        expect(jar.acidSulfateMineralClass).to.include('Ferric Iron Potassium Jarosite Facies');
+        expect(jar.mineralSpecies).to.include('Jarosite');
+
+        // Solid Solution (BD0900 = 0.030, BD1480 = 0.025, BD1760 = 0.025, BD2265Al = 0.035, BD2265Fe = 0.020):
+        const sol = BandMathEngine.computeCRISMAluniteJarositeSpeciationIndices(0.030, 0.025, 0.025, 0.035, 0.020);
+        expect(sol.isAcidSulfateDetected).to.be.true;
+        expect(sol.acidSulfateMineralClass).to.include('Transitional Alunite-Jarosite Solid Solution');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMAluniteJarositeSpeciationIndices(0.005, 0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAcidSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

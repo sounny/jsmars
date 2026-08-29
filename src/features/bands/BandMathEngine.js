@@ -9263,6 +9263,62 @@ export class BandMathEngine {
       geochemicalAlterationRegime: regime
     };
   }
+
+  /**
+   * Discriminate Acid-Sulfate Mineral Species (Potassium Alunite vs Potassium Jarosite vs Natroalunite vs Intermediate Solid Solution) from CRISM 0.900 um, 1.480 um, 1.760 um, and 2.265 um absorption bands.
+   * Reference: Swayze et al. (2008), Ehlmann et al. (2011), Viviano-Beck et al. (2014) for Martian Acid-Sulfate Mineralogy.
+   * @param {number} [band0900FeDepth=0.010] - BD900/BD920 ferric iron charge-transfer band depth (0.0 to 0.50)
+   * @param {number} [band1480OHDepth=0.035] - BD1480 alunite OH vibration depth (0.0 to 0.40)
+   * @param {number} [band1760OHDepth=0.040] - BD1760 alunite diagnostic OH combination band depth (0.0 to 0.40)
+   * @param {number} [band2265AlOHDepth=0.060] - BD2265 alunite primary Al-OH doublet depth (0.0 to 0.50)
+   * @param {number} [band2265FeOHDepth=0.015] - BD2265 jarosite Fe-OH vibration depth (0.0 to 0.50)
+   * @returns {{isAcidSulfateDetected: boolean, acidSulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, pHGeochemicalEnvironment: string}}
+   */
+  static computeCRISMAluniteJarositeSpeciationIndices(band0900FeDepth = 0.010, band1480OHDepth = 0.035, band1760OHDepth = 0.040, band2265AlOHDepth = 0.060, band2265FeOHDepth = 0.015) {
+    const d0900 = Math.max(0.0, band0900FeDepth);
+    const d1480 = Math.max(0.0, band1480OHDepth);
+    const d1760 = Math.max(0.0, band1760OHDepth);
+    const d2265Al = Math.max(0.0, band2265AlOHDepth);
+    const d2265Fe = Math.max(0.0, band2265FeOHDepth);
+
+    const isAlunite = d1760 >= 0.025 && d2265Al >= 0.035 && d0900 < 0.025;
+    const isJarosite = d0900 >= 0.030 && (d2265Fe >= 0.030 || d2265Al >= 0.030) && d1760 < 0.020;
+    const isSolidSolution = d1760 >= 0.020 && d0900 >= 0.025 && d2265Al >= 0.025;
+
+    const isSulfate = isAlunite || isJarosite || isSolidSolution;
+
+    let sClass = 'Acid-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Protolith';
+    let formula = 'Silicate Matrix';
+    let env = 'Neutral-to-Alkaline Surface Regolith';
+
+    if (isSulfate) {
+      if (isAlunite) {
+        sClass = 'High-Alumina Potassium Alunite Facies';
+        species = 'Alunite';
+        formula = 'KAl3(SO4)2(OH)6';
+        env = 'High-Temperature Magmatic Acid-Sulfate Hydrothermal Leaching (pH 2.0-3.5, Mawrth / Columbus Crater)';
+      } else if (isJarosite) {
+        sClass = 'Ferric Iron Potassium Jarosite Facies';
+        species = 'Jarosite';
+        formula = 'KFe3(SO4)2(OH)6';
+        env = 'Low-to-Moderate Temperature Highly Acidic Oxidizing Brines (pH 1.0-2.5, Meridiani / Candor)';
+      } else {
+        sClass = 'Transitional Alunite-Jarosite Solid Solution';
+        species = 'Al-Jarosite';
+        formula = 'K(Al,Fe3+)3(SO4)2(OH)6';
+        env = 'Zoned Acid-Sulfate Hydrothermal / Playa Sequence';
+      }
+    }
+
+    return {
+      isAcidSulfateDetected: isSulfate,
+      acidSulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      pHGeochemicalEnvironment: env
+    };
+  }
 }
 
 

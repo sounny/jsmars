@@ -10052,6 +10052,67 @@ export class KRCEngine {
       smectiteContext: `Smectite Facies at ${TC.toFixed(0)} C, Al/Fe=${rAlFe.toFixed(1)} (${(alphaSmec * 100).toFixed(1)}% converted, ${wH2OPct.toFixed(2)}% interlayer H2O, TIU=${TIU.toFixed(0)}, ${sClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal/acid-sulfate alunite-jarosite solid solution crystallization, sulfate cementation, and indurated crust thermal inertia.
+   * Volcanic Ash + K+ + Al3+ + Fe3+ + H2SO4 (80-240 C) -> K(AlxFe1-x)3(SO4)2(OH)6 + Silica Sinter
+   * Reference: Swayze et al. (2008), Ehlmann et al. (2011), Viviano-Beck et al. (2014) for Martian Acid-Sulfate Alunite-Jarosite Deposits.
+   * @param {number} [pyroclasticPorosity=0.25] - Initial pyroclastic ash/basalt porosity (0.05 to 0.45)
+   * @param {number} [hydrothermalTempC=160.0] - Hydrothermal fluid temperature in C (60 to 300 C)
+   * @param {number} [alFeCationRatio=1.20] - Fluid Al/Fe cation activity ratio (0.1 to 10.0)
+   * @param {number} [durationYears=350.0] - Acid-sulfate alteration duration in years (0.1 to 5000 yr)
+   * @returns {{acidSulfateConversionFraction: number, sulfateMineralYieldWeightPercent: number, dominantSulfateSpecies: string, induratedSulfateThermalInertiaTIU: number, acidSulfateFaciesClass: string, acidSulfateContext: string}}
+   */
+  static computeMartianAluniteJarositeSolidSolutionKinetics(pyroclasticPorosity = 0.25, hydrothermalTempC = 160.0, alFeCationRatio = 1.20, durationYears = 350.0) {
+    const phi0 = Math.max(0.02, Math.min(0.50, pyroclasticPorosity));
+    const TC = Math.max(40.0, Math.min(350.0, hydrothermalTempC));
+    const rAlFe = Math.max(0.05, Math.min(15.0, alFeCationRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 5.40e4; // 54 kJ/mol for acid-sulfate crystallization
+
+    // Reaction rate constant
+    const kRate = 4.2e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.sqrt(rAlFe);
+    const alphaSulfate = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Sulfate mineral yield (wt%)
+    const wSulfatePct = alphaSulfate * 62.0;
+
+    // Sulfate cementation and pore reduction
+    const phiResidual = phi0 * (1.0 - (0.60 * alphaSulfate));
+    const rhoGrain = 2880.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 1.95; // W/(m K)
+    const Cspec = 840.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Intermediate Alunite-Jarosite Solid Solution';
+    let sClass = 'Acid-Sulfate Fumarolic/Lagoon Alteration';
+
+    if (rAlFe >= 2.5 && TC >= 120.0) {
+      species = 'Potassium Alunite (KAl3(SO4)2(OH)6)';
+      sClass = 'High-Temperature Acid-Sulfate Alunite Cap (Mawrth Vallis / Columbus Crater)';
+    } else if (rAlFe <= 0.40) {
+      species = 'Potassium Jarosite (KFe3(SO4)2(OH)6)';
+      sClass = 'Low-to-Moderate Temperature Ferric Sulfate Strata (Meridiani / Candor Chasma)';
+    } else {
+      species = 'Mixed Al-Jarosite Solid Solution (K(Al,Fe)3(SO4)2(OH)6)';
+      sClass = 'Transitional Alunite-Jarosite Acid-Sulfate Sequence';
+    }
+
+    return {
+      acidSulfateConversionFraction: parseFloat(alphaSulfate.toFixed(3)),
+      sulfateMineralYieldWeightPercent: parseFloat(wSulfatePct.toFixed(1)),
+      dominantSulfateSpecies: species,
+      induratedSulfateThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      acidSulfateFaciesClass: sClass,
+      acidSulfateContext: `Acid Sulfate Facies at ${TC.toFixed(0)} C, Al/Fe=${rAlFe.toFixed(1)} (${(alphaSulfate * 100).toFixed(1)}% converted, ${wSulfatePct.toFixed(1)}% Sulfate, TIU=${TIU.toFixed(0)}, ${sClass})`
+    };
+  }
 }
 
 

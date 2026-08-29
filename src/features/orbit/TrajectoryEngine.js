@@ -10223,6 +10223,75 @@ export class TrajectoryEngine {
       ioContext: `Mars-to-Io (${tofYrs.toFixed(2)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, IOI=${dvIoiKmS.toFixed(2)} km/s)`
     };
   }
+
+  /**
+   * Calculate interplanetary direct transfer trajectory from Mars to Jupiter/Callisto and outer Galilean moon orbit capture.
+   * a = ( r_mars + r_jupiter ) / 2
+   * e = ( r_jupiter - r_mars ) / ( r_jupiter + r_mars )
+   * Reference: JUICE Callisto Tour Baseline, Grasset et al. (2013), Curtis (2013) for Outer Galilean System Exploration.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [jupiterDistanceAU=5.2044] - Jupiter heliocentric distance in AU (4.9 to 5.5 AU)
+   * @param {number} [callistoOrbitAltitudeKm=100.0] - Callisto science orbit altitude in km (50 to 500 km)
+   * @returns {{semiMajorAxisAU: number, eccentricity: number, timeOfFlightDays: number, timeOfFlightYears: number, marsDepartureDeltaVKmS: number, callistoOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, callistoContext: string}}
+   */
+  static computeMarsToCallistoTransfer(marsParkingAltitudeKm = 300.0, jupiterDistanceAU = 5.2044, callistoOrbitAltitudeKm = 100.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const rJAU = Math.max(4.5, Math.min(6.0, jupiterDistanceAU));
+    const hpCKm = Math.max(25.0, callistoOrbitAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muCallisto = 7179.289; // km^3/s^2
+    const rCallistoKm = 2410.3; // km
+    const rMarsAU = 1.52368;
+
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rJDistKm = rJAU * AU_KM;
+
+    const aKm = (rMarsDistKm + rJDistKm) / 2.0;
+    const aAU = aKm / AU_KM;
+    const ecc = (rJDistKm - rMarsDistKm) / (rJDistKm + rMarsDistKm);
+
+    // Time of Flight (s -> days -> yr)
+    const tofSec = Math.PI * Math.sqrt(Math.pow(aKm, 3.0) / muSun);
+    const tofDays = tofSec / 86400.0;
+    const tofYrs = tofDays / 365.25;
+
+    // Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTjiMarsKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Callisto capture
+    const vInfCKmS = 2.450; // km/s in outer Jovian tour
+    const rpCKm = rCallistoKm + hpCKm;
+    const eCap = 0.50; // Science capture orbit
+    const aCapKm = rpCKm / (1.0 - eCap);
+
+    const vHypCKmS = Math.sqrt(Math.pow(vInfCKmS, 2.0) + ((2.0 * muCallisto) / rpCKm));
+    const vCapCKmS = Math.sqrt(muCallisto * ((2.0 / rpCKm) - (1.0 / aCapKm)));
+    const dvCoiKmS = vHypCKmS - vCapCKmS;
+
+    const dvTotKmS = dvTjiMarsKmS + dvCoiKmS;
+
+    return {
+      semiMajorAxisAU: parseFloat(aAU.toFixed(3)),
+      eccentricity: parseFloat(ecc.toFixed(4)),
+      timeOfFlightDays: parseFloat(tofDays.toFixed(1)),
+      timeOfFlightYears: parseFloat(tofYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTjiMarsKmS.toFixed(3)),
+      callistoOrbitInsertionDeltaVKmS: parseFloat(dvCoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      callistoContext: `Mars-to-Callisto (${tofYrs.toFixed(2)} yr TOF, e=${ecc.toFixed(4)}, Total Delta-V=${dvTotKmS.toFixed(2)} km/s, COI=${dvCoiKmS.toFixed(2)} km/s)`
+    };
+  }
 }
 
 
