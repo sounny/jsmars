@@ -8939,6 +8939,60 @@ export class BandMathEngine {
       metasomaticAureoleContext: context
     };
   }
+
+  /**
+   * Discriminate Epidote-Supergroup Metamorphic Minerals (Low-Fe Clinozoisite vs Zoisite vs Fe-Epidote vs Allanite) from CRISM 1.540 um, 2.210 um, 2.340 um, and 2.390 um absorption bands.
+   * Reference: Ehlmann et al. (2009, 2011), Viviano-Beck et al. (2014) for Martian Epidote-Supergroup Mineralogy.
+   * @param {number} [band1540OHDepth=0.030] - BD1540 clinozoisite sharp OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2210AlOHDepth=0.050] - BD2210 clinozoisite diagnostic Al-OH vibration depth (0.0 to 0.50)
+   * @param {number} [band2340FeOHDepth=0.015] - BD2340 epidote Fe-OH vibration depth (0.0 to 0.50)
+   * @param {number} [band2390MetalOHDepth=0.010] - BD2390 zoisite diagnostic metal-OH shoulder depth (0.0 to 0.40)
+   * @returns {{isEpidoteGroupDetected: boolean, epidoteSpeciesClass: string, mineralSpecies: string, chemicalFormula: string, metamorphicFaciesContext: string}}
+   */
+  static computeCRISMClinozoisiteZoisiteSpeciationIndices(band1540OHDepth = 0.030, band2210AlOHDepth = 0.050, band2340FeOHDepth = 0.015, band2390MetalOHDepth = 0.010) {
+    const d1540 = Math.max(0.0, band1540OHDepth);
+    const d2210 = Math.max(0.0, band2210AlOHDepth);
+    const d2340 = Math.max(0.0, band2340FeOHDepth);
+    const d2390 = Math.max(0.0, band2390MetalOHDepth);
+
+    const isClinozoisite = d1540 >= 0.020 && d2210 >= 0.035 && d2340 < 0.025;
+    const isEpidote = d2340 >= 0.030 && (d1540 >= 0.015 || d2210 >= 0.020);
+    const isZoisite = d2390 >= 0.025 && d1540 >= 0.015 && d2210 < 0.025;
+
+    const isEpiGroup = isClinozoisite || isEpidote || isZoisite;
+
+    let eClass = 'Epidote-Free Silicate Regolith';
+    let species = 'Basaltic Plagioclase Matrix';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Primordial Crust without Detectable Epidote-Supergroup Metamorphic Bands';
+
+    if (isEpiGroup) {
+      if (isClinozoisite) {
+        eClass = 'Low-Fe Clinozoisite Metamorphic Assemblage';
+        species = 'Clinozoisite';
+        formula = 'Ca2Al3(SiO4)3(OH)';
+        context = 'Hydrothermal Low-Fe Metasomatism / Altered Calcic Crust (Valles Marineris Wall Strata)';
+      } else if (isEpidote) {
+        eClass = 'Fe-Rich Epidote (Pistacite) Facies';
+        species = 'Epidote';
+        formula = 'Ca2(Al,Fe)3(SiO4)3(OH)';
+        context = 'Greenschist-Facies Hydrothermal Metamorphism / Subsurface Volcanic Circulation';
+      } else {
+        eClass = 'Orthorhombic Zoisite Hornfels';
+        species = 'Zoisite';
+        formula = 'Ca2Al3(SiO4)3(OH)';
+        context = 'High-Pressure Metamorphic Hornfels Facies';
+      }
+    }
+
+    return {
+      isEpidoteGroupDetected: isEpiGroup,
+      epidoteSpeciesClass: eClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      metamorphicFaciesContext: context
+    };
+  }
 }
 
 

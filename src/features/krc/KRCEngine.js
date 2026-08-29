@@ -9703,6 +9703,67 @@ export class KRCEngine {
       rodingiteContext: `Rodingitization at ${TC.toFixed(0)} C, Ca/Mg=${rCaMg.toFixed(1)} (${(alphaRoding * 100).toFixed(1)}% converted, ${wVesuvPct.toFixed(1)}% Vesuvianite, TIU=${TIU.toFixed(0)}, ${rClass})`
     };
   }
+
+  /**
+   * Calculate hydrothermal/burial metamorphism of calcic crust into epidote-supergroup polymorphs (clinozoisite vs zoisite), crystal densification, and hornfels thermal inertia.
+   * 4 Anorthite + H2O (280-520 C) -> 2 Clinozoisite (Ca2Al3(SiO4)3(OH)) + 2 Kyanite + Quartz
+   * Reference: Ehlmann et al. (2009, 2011), Viviano-Beck et al. (2014) for Martian Epidote-Supergroup Metamorphic Terranes.
+   * @param {number} [maficCrustPorosity=0.10] - Initial mafic basalt/anorthosite protolith porosity (0.01 to 0.30)
+   * @param {number} [metamorphicTempC=380.0] - Subsurface hydrothermal/burial metamorphic temperature in C (200 to 600 C)
+   * @param {number} [fe3AlRatio=0.20] - Molar Fe3+/(Fe3+ + Al) cation substitution ratio (0.0 to 0.80)
+   * @param {number} [durationYears=500.0] - Metamorphic alteration duration in years (0.1 to 5000 yr)
+   * @returns {{zoisiteConversionFraction: number, zoisitePolymorphYieldWeightPercent: number, dominantPolymorphSpecies: string, metamorphicHornfelsThermalInertiaTIU: number, metamorphicFaciesClass: string, zoisiteContext: string}}
+   */
+  static computeMartianClinozoisiteZoisiteMetamorphism(maficCrustPorosity = 0.10, metamorphicTempC = 380.0, fe3AlRatio = 0.20, durationYears = 500.0) {
+    const phi0 = Math.max(0.005, Math.min(0.35, maficCrustPorosity));
+    const TC = Math.max(150.0, Math.min(650.0, metamorphicTempC));
+    const rFeAl = Math.max(0.0, Math.min(0.90, fe3AlRatio));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 6.70e4; // 67 kJ/mol for epidote-group crystallization
+
+    // Reaction rate constant
+    const kRate = 4.2e-3 * Math.exp(-Ea / (Rgas * TK)) * (1.0 + rFeAl);
+    const alphaZoisite = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Polymorph mass fraction (wt%)
+    const wZoisitePct = alphaZoisite * 45.0;
+
+    // Compaction and high thermal inertia
+    const phiResidual = phi0 * (1.0 - (0.80 * alphaZoisite));
+    const rhoGrain = 3400.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 3.00; // W/(m K)
+    const Cspec = 830.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Clinozoisite (Monoclinic Ca2Al3(SiO4)3(OH))';
+    let fClass = 'Incipient Epidote-Facies Metamorphism';
+
+    if (rFeAl <= 0.15 && TC >= 300.0 && TC <= 500.0) {
+      species = 'Low-Fe Clinozoisite (Ca2Al3(SiO4)3(OH))';
+      fClass = 'Hydrothermal Low-Fe Clinozoisite Metasomatism (Valles Marineris Wall Strata)';
+    } else if (rFeAl > 0.35) {
+      species = 'Fe-Rich Epidote (Pistacite Ca2(Al,Fe)3(SiO4)3(OH))';
+      fClass = 'Greenschist-Facies Fe-Epidote Alteration';
+    } else {
+      species = 'Orthorhombic Zoisite (Ca2Al3(SiO4)3(OH))';
+      fClass = 'High-Pressure Amphibolite / Zoisite Hornfels Facies';
+    }
+
+    return {
+      zoisiteConversionFraction: parseFloat(alphaZoisite.toFixed(3)),
+      zoisitePolymorphYieldWeightPercent: parseFloat(wZoisitePct.toFixed(1)),
+      dominantPolymorphSpecies: species,
+      metamorphicHornfelsThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      metamorphicFaciesClass: fClass,
+      zoisiteContext: `Epidote-Group at ${TC.toFixed(0)} C, Fe/Al=${rFeAl.toFixed(2)} (${(alphaZoisite * 100).toFixed(1)}% converted, ${wZoisitePct.toFixed(1)}% ${species.split(' ')[0]}, TIU=${TIU.toFixed(0)}, ${fClass})`
+    };
+  }
 }
 
 

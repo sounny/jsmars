@@ -14548,6 +14548,56 @@ describe('Mars-to-Altjira Transfer, Rodingite Metasomatism & Vesuvianite Speciat
     });
 });
 
+describe('Mars-to-Borasisi Transfer, Clinozoisite-Zoisite Metamorphism & Epidote-Group Speciation', () => {
+    it('should calculate interplanetary direct transfer from Mars to binary classical KBO (66652) Borasisi-Pabu', () => {
+        // Mars to Borasisi (300 km Mars alt, 43.90 AU distance, 40 km capture alt):
+        const bora = TrajectoryEngine.computeMarsToBorasisiTransfer(300.0, 43.90, 40.0);
+        expect(bora.semiMajorAxisAU).to.be.closeTo(22.712, 0.5); // ~22.71 AU
+        expect(bora.eccentricity).to.be.closeTo(0.9329, 0.01); // e ~ 0.933
+        expect(bora.timeOfFlightDays).to.be.closeTo(21441.1, 2500.0); // ~21441 days (~58.7 yr)
+        expect(bora.timeOfFlightYears).to.be.closeTo(58.70, 6.0); // ~58.7 yr
+        expect(bora.marsDepartureDeltaVKmS).to.be.closeTo(7.325, 0.6); // ~7.33 km/s TBI
+        expect(bora.borasisiOrbitInsertionDeltaVKmS).to.be.closeTo(1.828, 1.5); // ~1.83 km/s BOI
+        expect(bora.totalMissionDeltaVKmS).to.be.closeTo(9.153, 2.0); // ~9.15 km/s total
+        expect(bora.borasisiContext).to.include('Mars-to-Borasisi');
+    });
+
+    it('should calculate hydrothermal/burial metamorphism into clinozoisite/zoisite polymorphs, densification, and hornfels thermal inertia', () => {
+        // 10% initial porosity, 380 C metamorphic temp, 0.20 Fe/Al ratio, 500 yr duration:
+        const zoi = KRCEngine.computeMartianClinozoisiteZoisiteMetamorphism(0.10, 380.0, 0.20, 500.0);
+        expect(zoi.zoisiteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(zoi.zoisitePolymorphYieldWeightPercent).to.be.greaterThan(20.0); // > 20 wt% zoisite/clinozoisite
+        expect(zoi.metamorphicHornfelsThermalInertiaTIU).to.be.closeTo(2901.1, 200.0); // ~2901 tiu
+        expect(zoi.metamorphicFaciesClass).to.include('High-Pressure Amphibolite / Zoisite Hornfels Facies');
+        expect(zoi.zoisiteContext).to.include('Epidote-Group at 380 C');
+    });
+
+    it('should discriminate Low-Fe Clinozoisite vs Zoisite vs Fe-Epidote in CRISM spectra', () => {
+        // Low-Fe Clinozoisite (Valles Marineris Wall: BD1540 = 0.030, BD2210 = 0.050, BD2340 = 0.015, BD2390 = 0.010):
+        const clino = BandMathEngine.computeCRISMClinozoisiteZoisiteSpeciationIndices(0.030, 0.050, 0.015, 0.010);
+        expect(clino.isEpidoteGroupDetected).to.be.true;
+        expect(clino.epidoteSpeciesClass).to.include('Low-Fe Clinozoisite Metamorphic Assemblage');
+        expect(clino.mineralSpecies).to.include('Clinozoisite');
+        expect(clino.metamorphicFaciesContext).to.include('Valles Marineris Wall Strata');
+
+        // Fe-Rich Epidote (BD1540 = 0.020, BD2210 = 0.025, BD2340 = 0.045, BD2390 = 0.015):
+        const epi = BandMathEngine.computeCRISMClinozoisiteZoisiteSpeciationIndices(0.020, 0.025, 0.045, 0.015);
+        expect(epi.isEpidoteGroupDetected).to.be.true;
+        expect(epi.epidoteSpeciesClass).to.include('Fe-Rich Epidote (Pistacite) Facies');
+        expect(epi.mineralSpecies).to.include('Epidote');
+
+        // Orthorhombic Zoisite (BD1540 = 0.020, BD2210 = 0.015, BD2340 = 0.015, BD2390 = 0.035):
+        const zois = BandMathEngine.computeCRISMClinozoisiteZoisiteSpeciationIndices(0.020, 0.015, 0.015, 0.035);
+        expect(zois.isEpidoteGroupDetected).to.be.true;
+        expect(zois.epidoteSpeciesClass).to.include('Orthorhombic Zoisite Hornfels');
+        expect(zois.mineralSpecies).to.include('Zoisite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMClinozoisiteZoisiteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isEpidoteGroupDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
