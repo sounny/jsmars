@@ -10021,6 +10021,60 @@ export class BandMathEngine {
       evaporiteSequence: seq
     };
   }
+
+  /**
+   * Discriminate Ferric-Ferrous Green Micas (Celadonite vs Glauconite vs Nontronite vs Chlorite) from CRISM 1.410 um, 2.250 um, 2.300 um, and 2.350 um absorption bands.
+   * Reference: Ehlmann et al. (2011), Viviano-Beck et al. (2014), Michalski et al. (2015) for Martian Green Mica Speciation.
+   * @param {number} [band1410OHDepth=0.040] - BD1410 celadonite sharp free OH overtone depth (0.0 to 0.40)
+   * @param {number} [band2250Fe3OHDepth=0.050] - BD2250 celadonite diagnostic octahedral Fe3+-OH combination depth (0.0 to 0.50)
+   * @param {number} [band2300Fe2OHDepth=0.040] - BD2300 octahedral (Mg,Fe2+)-OH combination depth (0.0 to 0.50)
+   * @param {number} [band2350MgOHDepth=0.030] - BD2350 secondary Mg-OH combination doublet depth (0.0 to 0.50)
+   * @returns {{isMicaDetected: boolean, micaMineralClass: string, mineralSpecies: string, chemicalFormula: string, alterationRegime: string}}
+   */
+  static computeCRISMCeladoniteMicaSpeciationIndices(band1410OHDepth = 0.040, band2250Fe3OHDepth = 0.050, band2300Fe2OHDepth = 0.040, band2350MgOHDepth = 0.030) {
+    const d1410 = Math.max(0.0, band1410OHDepth);
+    const d2250 = Math.max(0.0, band2250Fe3OHDepth);
+    const d2300 = Math.max(0.0, band2300Fe2OHDepth);
+    const d2350 = Math.max(0.0, band2350MgOHDepth);
+
+    const isCeladonite = d1410 >= 0.025 && d2250 >= 0.035 && d2300 >= 0.030 && d2350 >= 0.020;
+    const isGlauconite = d2250 >= 0.030 && d2300 >= 0.025 && d2350 < 0.020 && d1410 < 0.030;
+    const isNontronite = d2300 >= 0.035 && d2250 < 0.025 && d2350 < 0.020;
+
+    const isMic = isCeladonite || isGlauconite || isNontronite;
+
+    let mClass = 'Mica-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let regime = 'Unaltered Primary Basalt';
+
+    if (isMic) {
+      if (isCeladonite) {
+        mClass = 'Suboxic Celadonite Green Mica Facies';
+        species = 'Celadonite';
+        formula = 'K(Mg,Fe2+)Fe3+Si4O10(OH)2';
+        regime = 'Low-Temperature Suboxic Hydrothermal Alteration / Amygdaloid Infilling (Nili Fossae / Mawrth / Noctis)';
+      } else if (isGlauconite) {
+        mClass = 'Authigenic Glauconite Mica Facies';
+        species = 'Glauconite';
+        formula = '(K,Na)(Fe3+,Al,Mg)2(Si,Al)4O10(OH)2';
+        regime = 'Marine / Lacustrine Shallow Diagenesis';
+      } else {
+        mClass = 'Hydrated Fe-Smectite Nontronite Facies';
+        species = 'Nontronite';
+        formula = 'Ca0.25Fe3+2(Si3.5Al0.5)O10(OH)2·nH2O';
+        regime = 'Circum-Neutral Weathering / Moderate Aqueous Alteration';
+      }
+    }
+
+    return {
+      isMicaDetected: isMic,
+      micaMineralClass: mClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      alterationRegime: regime
+    };
+  }
 }
 
 

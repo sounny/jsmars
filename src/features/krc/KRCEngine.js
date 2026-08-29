@@ -10907,6 +10907,67 @@ export class KRCEngine {
       glauberiteContext: `Glauberite at ${TC.toFixed(0)} C, a(NaCa)=${aNaCa.toFixed(2)} (${(alphaGlb * 100).toFixed(1)}% converted, ${wGlbPct.toFixed(1)}% Glauberite, TIU=${TIU.toFixed(0)}, ${gClass})`
     };
   }
+
+  /**
+   * Calculate low-temperature suboxic hydrothermal metasomatism of vesicular basalt into green celadonite mica, amygdaloidal infilling, and thermal inertia.
+   * Basalt Vesicles + K+ + Fe3+ + (Mg,Fe2+) + SiO2(aq) + H2O (30-120 C) -> Celadonite (K(Mg,Fe2+)Fe3+Si4O10(OH)2)
+   * Reference: Ehlmann et al. (2011), Viviano-Beck et al. (2014), Michalski et al. (2015) for Martian Green Mica Terranes.
+   * @param {number} [initialBasaltVesiclePorosity=0.20] - Initial vesicular basalt porosity (0.02 to 0.45)
+   * @param {number} [hydrothermalTempC=60.0] - Low-temperature hydrothermal fluid temperature in C (15 to 160 C)
+   * @param {number} [potassiumIronActivityProduct=0.25] - Dissolved K-Fe fluid activity product (0.01 to 0.80)
+   * @param {number} [durationYears=350.0] - Metasomatic exposure duration in years (0.1 to 5000 yr)
+   * @returns {{celadoniteConversionFraction: number, boundHydroxylYieldWeightPercent: number, dominantMicaSpecies: string, amygdaloidalBasaltThermalInertiaTIU: number, micaFaciesClass: string, celadoniteContext: string}}
+   */
+  static computeMartianCeladoniteMetasomatism(initialBasaltVesiclePorosity = 0.20, hydrothermalTempC = 60.0, potassiumIronActivityProduct = 0.25, durationYears = 350.0) {
+    const phi0 = Math.max(0.01, Math.min(0.50, initialBasaltVesiclePorosity));
+    const TC = Math.max(10.0, Math.min(200.0, hydrothermalTempC));
+    const aKFe = Math.max(0.005, Math.min(1.0, potassiumIronActivityProduct));
+    const tYrs = Math.max(0.01, durationYears);
+
+    const TK = TC + 273.15;
+    const tSec = tYrs * 365.25 * 86400.0;
+    const Rgas = 8.314;
+    const Ea = 4.30e4; // 43 kJ/mol for celadonite crystallization
+
+    // Reaction rate constant
+    const kRate = 4.8e-3 * Math.exp(-Ea / (Rgas * TK)) * Math.pow(aKFe, 0.35);
+    const alphaCel = 1.0 - Math.exp(-Math.min(20.0, kRate * tSec));
+
+    // Bound hydroxyl yield (wt%)
+    const wOHPct = alphaCel * 4.65;
+
+    // Amygdaloidal vesicle infilling and crystalline densification
+    const phiResidual = phi0 * (1.0 - (0.75 * alphaCel));
+    const rhoGrain = 2950.0;
+    const rhoBulk = ((1.0 - phiResidual) * rhoGrain) + (phiResidual * 1000.0);
+
+    const kTherm = 2.45; // W/(m K)
+    const Cspec = 870.0; // J/(kg K)
+    const TIU = Math.sqrt(kTherm * rhoBulk * Cspec);
+
+    let species = 'Green Celadonite Mica (K(Mg,Fe2+)Fe3+Si4O10(OH)2)';
+    let mClass = 'Ferric-Ferrous Green Mica Facies';
+
+    if (alphaCel >= 0.50 && TC >= 30.0 && TC <= 120.0 && aKFe >= 0.12) {
+      species = 'Celadonite (K(Mg,Fe2+)Fe3+Si4O10(OH)2)';
+      mClass = 'Suboxic Celadonite Green Mica Facies (Nili Fossae / Mawrth / Noctis)';
+    } else if (TC > 120.0) {
+      species = 'Glauconite-Illite Transition Sequence';
+      mClass = 'Moderate-Temperature Illite-Mica Facies';
+    } else {
+      species = 'Nontronite-Celadonite Mixed-Layer Precursor';
+      mClass = 'Incipient Smectite-Mica Alteration Crust';
+    }
+
+    return {
+      celadoniteConversionFraction: parseFloat(alphaCel.toFixed(3)),
+      boundHydroxylYieldWeightPercent: parseFloat(wOHPct.toFixed(2)),
+      dominantMicaSpecies: species,
+      amygdaloidalBasaltThermalInertiaTIU: parseFloat(TIU.toFixed(1)),
+      micaFaciesClass: mClass,
+      celadoniteContext: `Celadonite at ${TC.toFixed(0)} C, a(KFe)=${aKFe.toFixed(2)} (${(alphaCel * 100).toFixed(1)}% converted, ${wOHPct.toFixed(2)}% OH, TIU=${TIU.toFixed(0)}, ${mClass})`
+    };
+  }
 }
 
 

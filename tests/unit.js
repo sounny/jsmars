@@ -15534,6 +15534,56 @@ describe('Mars-to-Psyche Transfer, Glauberite Metasomatism & Polyhaline Speciati
     });
 });
 
+describe('Mars-to-Thetis Transfer, Celadonite Metasomatism & Green Mica Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to stony main-belt asteroid (17) Thetis and orbit capture', () => {
+        // Mars to Thetis (300 km Mars alt, 2.470 AU distance, 15 km capture alt, 5.59 deg plane change):
+        const the = TrajectoryEngine.computeMarsToThetisTransfer(300.0, 2.470, 15.0, 5.59);
+        expect(the.semiMajorAxisAU).to.be.closeTo(1.997, 0.1); // ~2.00 AU
+        expect(the.eccentricity).to.be.closeTo(0.2369, 0.01); // e ~ 0.237
+        expect(the.timeOfFlightDays).to.be.closeTo(514.50, 30.0); // ~515 days (~1.41 yr)
+        expect(the.timeOfFlightYears).to.be.closeTo(1.41, 0.1); // ~1.41 yr
+        expect(the.marsDepartureDeltaVKmS).to.be.closeTo(2.560, 0.5); // ~2.56 km/s TTI
+        expect(the.thetisOrbitInsertionDeltaVKmS).to.be.closeTo(2.226, 0.5); // ~2.23 km/s TOI
+        expect(the.totalMissionDeltaVKmS).to.be.closeTo(4.786, 1.0); // ~4.79 km/s total
+        expect(the.thetisContext).to.include('Mars-to-Thetis');
+    });
+
+    it('should calculate low-temperature suboxic hydrothermal metasomatism of basalt into green celadonite mica and thermal inertia', () => {
+        // 20% initial porosity, 60 C hydrothermal temp, 0.25 a(KFe), 350 yr duration:
+        const cel = KRCEngine.computeMartianCeladoniteMetasomatism(0.20, 60.0, 0.25, 350.0);
+        expect(cel.celadoniteConversionFraction).to.be.greaterThan(0.50); // > 50% converted
+        expect(cel.boundHydroxylYieldWeightPercent).to.be.greaterThan(2.0); // > 2 wt% OH
+        expect(cel.amygdaloidalBasaltThermalInertiaTIU).to.be.closeTo(2465.3, 200.0); // ~2465 tiu
+        expect(cel.micaFaciesClass).to.include('Suboxic Celadonite Green Mica Facies');
+        expect(cel.celadoniteContext).to.include('Celadonite at 60 C');
+    });
+
+    it('should discriminate Celadonite vs Glauconite vs Nontronite in CRISM spectra', () => {
+        // Celadonite (Nili Fossae / Mawrth / Noctis: BD1410 = 0.040, BD2250 = 0.050, BD2300 = 0.040, BD2350 = 0.030):
+        const cel = BandMathEngine.computeCRISMCeladoniteMicaSpeciationIndices(0.040, 0.050, 0.040, 0.030);
+        expect(cel.isMicaDetected).to.be.true;
+        expect(cel.micaMineralClass).to.include('Suboxic Celadonite Green Mica Facies');
+        expect(cel.mineralSpecies).to.include('Celadonite');
+        expect(cel.alterationRegime).to.include('Low-Temperature Suboxic Hydrothermal');
+
+        // Glauconite (BD1410 = 0.020, BD2250 = 0.040, BD2300 = 0.035, BD2350 = 0.010):
+        const gla = BandMathEngine.computeCRISMCeladoniteMicaSpeciationIndices(0.020, 0.040, 0.035, 0.010);
+        expect(gla.isMicaDetected).to.be.true;
+        expect(gla.micaMineralClass).to.include('Authigenic Glauconite Mica Facies');
+        expect(gla.mineralSpecies).to.include('Glauconite');
+
+        // Nontronite (BD1410 = 0.010, BD2250 = 0.015, BD2300 = 0.045, BD2350 = 0.010):
+        const non = BandMathEngine.computeCRISMCeladoniteMicaSpeciationIndices(0.010, 0.015, 0.045, 0.010);
+        expect(non.isMicaDetected).to.be.true;
+        expect(non.micaMineralClass).to.include('Hydrated Fe-Smectite Nontronite Facies');
+        expect(non.mineralSpecies).to.include('Nontronite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMCeladoniteMicaSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isMicaDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }
