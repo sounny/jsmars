@@ -7375,6 +7375,56 @@ export class BandMathEngine {
       redoxPaleoenvironmentalContext: context
     };
   }
+
+  /**
+   * Discriminate Low-Silica Analcime vs High-Silica Clinoptilolite/Mordenite Zeolites from CRISM 1.40 um, 1.90 um, 2.15 um, and 2.49 um absorption features.
+   * Reference: Ehlmann et al. (2009), Ruff et al. (2011), Viviano-Beck et al. (2014) for Martian Zeolites.
+   * @param {number} [band1400WaterDepth=0.04] - BD1400 molecular H2O overtone depth (0.0 to 0.40)
+   * @param {number} [band1900WaterDepth=0.06] - BD1900 molecular H2O combination depth (0.0 to 0.50)
+   * @param {number} [band2150ZeoliteDepth=0.01] - BD2150 Clinoptilolite diagnostic absorption depth (0.0 to 0.40)
+   * @param {number} [band2490ZeoliteDepth=0.05] - BD2490 Analcime diagnostic framework combination depth (0.0 to 0.40)
+   * @returns {{isZeoliteDetected: boolean, zeoliteClass: string, mineralSpecies: string, chemicalFormula: string, alkalineAlterationContext: string}}
+   */
+  static computeCRISMZeoliteSpeciationIndices(band1400WaterDepth = 0.04, band1900WaterDepth = 0.06, band2150ZeoliteDepth = 0.01, band2490ZeoliteDepth = 0.05) {
+    const d1400 = Math.max(0.0, band1400WaterDepth);
+    const d1900 = Math.max(0.0, band1900WaterDepth);
+    const d2150 = Math.max(0.0, band2150ZeoliteDepth);
+    const d2490 = Math.max(0.0, band2490ZeoliteDepth);
+
+    const isZeo = d1900 >= 0.030 && (d2490 >= 0.025 || d2150 >= 0.025);
+
+    let zeoClass = 'Non-Zeolitic Silicate Matrix';
+    let species = 'Basalt / Dust';
+    let formula = 'Silicate Matrix';
+    let context = 'Standard Silicate Matrix without Diagnostic Zeolite Framework Absorption';
+
+    if (isZeo) {
+      if (d2490 >= 0.035 && d1400 >= 0.030) {
+        zeoClass = 'Isometric Low-Silica Zeolite (Analcime)';
+        species = 'Analcime';
+        formula = 'NaAlSi2O6 * H2O';
+        context = 'Alkaline Saline Paleolake Evaporation / Subaqueous Basaltic Ash Hydrothermal Zeolitization (Mawrth Vallis / Columbus Crater)';
+      } else if (d2150 >= 0.030) {
+        zeoClass = 'High-Silica Heulandite-Group Zeolite (Clinoptilolite / Mordenite)';
+        species = 'Clinoptilolite';
+        formula = '(Na,K,Ca)2-3Al3(Al,Si)2Si13O36 * 12H2O';
+        context = 'Low-Temperature Diagenetic Alteration of Volcanic Vitric Tuff / Pyroclastic Glass Deposits';
+      } else {
+        zeoClass = 'Mixed Zeolite-Phyllosilicate Assemblage';
+        species = 'Zeolite Alteration Complex';
+        formula = 'Hydrated Alumino-Silicate Framework';
+        context = 'Partially Zeolitized Volcaniclastic Strata';
+      }
+    }
+
+    return {
+      isZeoliteDetected: isZeo,
+      zeoliteClass: zeoClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      alkalineAlterationContext: context
+    };
+  }
 }
 
 

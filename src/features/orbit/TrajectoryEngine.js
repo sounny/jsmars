@@ -7634,6 +7634,79 @@ export class TrajectoryEngine {
       uranusTransferContext: `Mars-to-Uranus Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfUranusKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
     };
   }
+
+  /**
+   * Calculate interplanetary Hohmann transfer from Mars to outermost ice giant Neptune and Neptunian elliptical orbit insertion.
+   * a_trans = ( r_mars + r_neptune ) / 2
+   * TOF = pi * sqrt( a_trans^3 / mu_sun )
+   * Delta_V_tot = Delta_V_TNI + Delta_V_NOI
+   * Reference: Bate, Mueller & White (1971), Curtis (2013) for Outer Planet Transfers.
+   * @param {number} [marsParkingAltitudeKm=300.0] - Mars parking orbit altitude in km (150 to 1000 km)
+   * @param {number} [neptunePeriapsisAltitudeKm=30000.0] - Neptune capture periapsis altitude in km (5000 to 500000 km)
+   * @returns {{transferTimeDays: number, transferTimeYears: number, marsDepartureDeltaVKmS: number, neptuneArrivalExcessKmS: number, neptuneOrbitInsertionDeltaVKmS: number, totalMissionDeltaVKmS: number, transferEccentricity: number, transferSemiMajorAxisAU: number, neptuneTransferContext: string}}
+   */
+  static computeMarsToNeptuneDirectTransfer(marsParkingAltitudeKm = 300.0, neptunePeriapsisAltitudeKm = 30000.0) {
+    const hpMarsKm = Math.max(150.0, marsParkingAltitudeKm);
+    const hpNKm = Math.max(5000.0, neptunePeriapsisAltitudeKm);
+
+    const AU_KM = 1.495978707e8;
+    const muSun = 1.32712440018e11;
+    const muMars = 42828.37;
+    const rMarsKm = 3389.5;
+    const muNeptune = 6.836529e6;
+    const rNeptuneKm = 24764.0;
+
+    const rMarsAU = 1.52368;
+    const rNeptuneAU = 30.0699;
+    const rMarsDistKm = rMarsAU * AU_KM;
+    const rNeptuneDistKm = rNeptuneAU * AU_KM;
+
+    // Hohmann geometry
+    const aTransKm = (rMarsDistKm + rNeptuneDistKm) / 2.0;
+    const aTransAU = aTransKm / AU_KM;
+    const eTrans = (rNeptuneDistKm - rMarsDistKm) / (rNeptuneDistKm + rMarsDistKm);
+
+    const tofsSec = Math.PI * Math.sqrt(Math.pow(aTransKm, 3.0) / muSun);
+    const tofsDays = tofsSec / 86400.0;
+    const tofsYrs = tofsDays / 365.25;
+
+    // Speeds at Mars departure
+    const vMarsCircKmS = Math.sqrt(muSun / rMarsDistKm);
+    const vDepKmS = Math.sqrt(muSun * ((2.0 / rMarsDistKm) - (1.0 / aTransKm)));
+    const vInfMarsKmS = Math.abs(vDepKmS - vMarsCircKmS);
+
+    const rParkMarsKm = rMarsKm + hpMarsKm;
+    const vParkMarsKmS = Math.sqrt(muMars / rParkMarsKm);
+    const vHypMarsKmS = Math.sqrt(Math.pow(vInfMarsKmS, 2.0) + ((2.0 * muMars) / rParkMarsKm));
+    const dvTniKmS = vHypMarsKmS - vParkMarsKmS;
+
+    // Speeds at Neptune arrival
+    const vNeptuneCircKmS = Math.sqrt(muSun / rNeptuneDistKm);
+    const vArrKmS = Math.sqrt(muSun * ((2.0 / rNeptuneDistKm) - (1.0 / aTransKm)));
+    const vInfNeptuneKmS = Math.abs(vNeptuneCircKmS - vArrKmS);
+
+    const rpNKm = rNeptuneKm + hpNKm;
+    const eCap = 0.98; // Highly elliptical capture orbit
+    const aCapKm = rpNKm / (1.0 - eCap);
+
+    const vHypNKmS = Math.sqrt(Math.pow(vInfNeptuneKmS, 2.0) + ((2.0 * muNeptune) / rpNKm));
+    const vCapNKmS = Math.sqrt(muNeptune * ((2.0 / rpNKm) - (1.0 / aCapKm)));
+    const dvNoiKmS = vHypNKmS - vCapNKmS;
+
+    const dvTotKmS = dvTniKmS + dvNoiKmS;
+
+    return {
+      transferTimeDays: parseFloat(tofsDays.toFixed(1)),
+      transferTimeYears: parseFloat(tofsYrs.toFixed(2)),
+      marsDepartureDeltaVKmS: parseFloat(dvTniKmS.toFixed(3)),
+      neptuneArrivalExcessKmS: parseFloat(vInfNeptuneKmS.toFixed(3)),
+      neptuneOrbitInsertionDeltaVKmS: parseFloat(dvNoiKmS.toFixed(3)),
+      totalMissionDeltaVKmS: parseFloat(dvTotKmS.toFixed(3)),
+      transferEccentricity: parseFloat(eTrans.toFixed(4)),
+      transferSemiMajorAxisAU: parseFloat(aTransAU.toFixed(3)),
+      neptuneTransferContext: `Mars-to-Neptune Direct (${tofsYrs.toFixed(1)} yr TOF, ${vInfNeptuneKmS.toFixed(2)} km/s v_inf, ${dvTotKmS.toFixed(2)} km/s Total Delta-V)`
+    };
+  }
 }
 
 

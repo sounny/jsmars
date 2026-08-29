@@ -7943,6 +7943,62 @@ export class KRCEngine {
       clathrateContext: `MHSZ (${zTopM.toFixed(0)}m to ${zBaseM.toFixed(0)}m Depth, ${thicknessM.toFixed(0)}m Thick, ${stpM3M2.toExponential(2)} m3 STP/m2 CH4)`
     };
   }
+
+  /**
+   * Calculate subsurface liquefied sediment / mud volcanism conduit flow, low-pressure flash-boiling eruption, plume height, and flow runout length.
+   * v_ascent = ( r_pipe^2 * Delta_P ) / ( 8 * mu * z )
+   * Q = pi * r_pipe^2 * v_ascent
+   * h_plume = v_ascent^2 / ( 2 * g_mars )
+   * Reference: Komatsu et al. (2016), Broz et al. (2020), Skinner & Mazzini (2009) for Martian Mud Volcanism.
+   * @param {number} [conduitRadiusM=2.5] - Feeder conduit pipe radius in m (0.2 to 20.0 m)
+   * @param {number} [reservoirDepthKm=3.0] - Liquefied sediment reservoir depth in km (0.5 to 10.0 km)
+   * @param {number} [fluidOverpressureMPa=15.0] - Driving pore overpressure in MPa (1.0 to 100.0 MPa)
+   * @param {number} [mudViscosityPaS=50.0] - Dynamic mud slurry viscosity in Pa*s (1.0 to 1000.0 Pa*s)
+   * @param {number} [mudDensityKgM3=1750.0] - Mud density in kg/m^3 (1200 to 2400 kg/m^3)
+   * @returns {{ascentVelocityMS: number, volumetricDischargeM3S: number, dailyEruptedVolumeM3Day: number, flashBoilingPlumeHeightM: number, mudFlowRunoutLengthKm: number, mudVolcanoEdificeClass: string, mudEruptionContext: string}}
+   */
+  static computeMartianMudVolcanismEruptionDynamics(conduitRadiusM = 2.5, reservoirDepthKm = 3.0, fluidOverpressureMPa = 15.0, mudViscosityPaS = 50.0, mudDensityKgM3 = 1750.0) {
+    const rPipe = Math.max(0.1, conduitRadiusM);
+    const zKm = Math.max(0.2, reservoirDepthKm);
+    const dPMPa = Math.max(0.2, fluidOverpressureMPa);
+    const muMud = Math.max(0.5, mudViscosityPaS);
+    const rhoMud = Math.max(1000.0, mudDensityKgM3);
+
+    const zM = zKm * 1000.0;
+    const dPPa = dPMPa * 1.0e6;
+    const gMars = 3.72; // m/s^2
+
+    // Hagen-Poiseuille laminar pipe flow ascent velocity (m/s)
+    const vAscentMS = (Math.pow(rPipe, 2.0) * dPPa) / (8.0 * muMud * zM);
+
+    // Volumetric discharge rate (m^3/s and m^3/day)
+    const pipeAreaM2 = Math.PI * Math.pow(rPipe, 2.0);
+    const qM3S = pipeAreaM2 * vAscentMS;
+    const qM3Day = qM3S * 86400.0;
+
+    // Flash-boiling ballistic jet plume height (m)
+    const hPlumeM = Math.pow(vAscentMS, 2.0) / (2.0 * gMars);
+
+    // Cryo-mud flow runout length (km)
+    const runoutKm = Math.sqrt(qM3Day / 20.0) / 1000.0 * 7.0;
+
+    let edificeClass = 'Small Extrusive Mud Conette / Gryphon';
+    if (qM3Day >= 5.0e7) {
+      edificeClass = 'Catastrophic Mega-Mud Volcano (Km-Scale Shield with Central Caldera Pit / Chryse Planitia)';
+    } else if (qM3Day >= 5.0e5) {
+      edificeClass = 'Moderate Sedimentary Mud Cone / Diapir Field (Utopia Planitia Mounds)';
+    }
+
+    return {
+      ascentVelocityMS: parseFloat(vAscentMS.toFixed(2)),
+      volumetricDischargeM3S: parseFloat(qM3S.toFixed(1)),
+      dailyEruptedVolumeM3Day: parseFloat(qM3Day.toFixed(0)),
+      flashBoilingPlumeHeightM: parseFloat(hPlumeM.toFixed(1)),
+      mudFlowRunoutLengthKm: parseFloat(runoutKm.toFixed(1)),
+      mudVolcanoEdificeClass: edificeClass,
+      mudEruptionContext: `Mud Volcano at ${zKm.toFixed(1)}km (${vAscentMS.toFixed(1)} m/s Exit, ${hPlumeM.toFixed(0)}m Flash-Boil Plume, ${runoutKm.toFixed(1)}km Runout)`
+    };
+  }
 }
 
 

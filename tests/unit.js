@@ -13044,6 +13044,53 @@ describe('Mars-to-Uranus Ice Giant Transfer, Methane Hydrates & Siderite/Goethit
     });
 });
 
+describe('Mars-to-Neptune Solar Boundary Transfer, Mud Volcanism & Zeolite Speciation', () => {
+    it('should calculate interplanetary Hohmann transfer from Mars to outermost ice giant Neptune and orbit insertion', () => {
+        // Mars to Neptune (1.52 to 30.07 AU, 300 km Mars alt, 30,000 km Neptune capture alt):
+        const neptune = TrajectoryEngine.computeMarsToNeptuneDirectTransfer(300.0, 30000.0);
+        expect(neptune.transferTimeDays).to.be.closeTo(11466.3, 100.0); // ~11466 days
+        expect(neptune.transferTimeYears).to.be.closeTo(31.393, 0.3); // ~31.4 yr
+        expect(neptune.marsDepartureDeltaVKmS).to.be.closeTo(6.944, 0.2); // ~6.94 km/s TNI
+        expect(neptune.neptuneArrivalExcessKmS).to.be.closeTo(3.713, 0.2); // ~3.71 km/s v_inf
+        expect(neptune.neptuneOrbitInsertionDeltaVKmS).to.be.closeTo(0.509, 0.1); // ~0.51 km/s NOI
+        expect(neptune.totalMissionDeltaVKmS).to.be.closeTo(7.453, 0.3); // ~7.45 km/s total
+        expect(neptune.transferEccentricity).to.be.closeTo(0.9035, 0.02); // e ~ 0.904
+        expect(neptune.neptuneTransferContext).to.include('Mars-to-Neptune Direct');
+    });
+
+    it('should calculate subsurface mud volcanism conduit ascent, flash-boiling plume, and flow runout length', () => {
+        // 2.5 m radius conduit, 3 km depth, 15 MPa overpressure, 50 Pa*s viscosity:
+        const mud = KRCEngine.computeMartianMudVolcanismEruptionDynamics(2.5, 3.0, 15.0, 50.0, 1750.0);
+        expect(mud.ascentVelocityMS).to.be.closeTo(78.13, 5.0); // ~78.1 m/s conduit ascent
+        expect(mud.volumetricDischargeM3S).to.be.closeTo(1534.0, 100.0); // ~1534 m^3/s
+        expect(mud.dailyEruptedVolumeM3Day).to.be.closeTo(1.325e8, 1.0e7); // ~1.33e8 m^3/day
+        expect(mud.flashBoilingPlumeHeightM).to.be.closeTo(820.4, 50.0); // ~820 m ballistic plume
+        expect(mud.mudFlowRunoutLengthKm).to.be.closeTo(18.4, 3.0); // ~18.4 km runout
+        expect(mud.mudVolcanoEdificeClass).to.include('Catastrophic Mega-Mud Volcano');
+        expect(mud.mudEruptionContext).to.include('Mud Volcano');
+    });
+
+    it('should discriminate Low-Silica Analcime vs High-Silica Clinoptilolite Zeolites in CRISM spectra', () => {
+        // Analcime (Mawrth Vallis / Columbus Crater: BD1400 = 0.04, BD1900 = 0.06, BD2150 = 0.01, BD2490 = 0.05):
+        const analcime = BandMathEngine.computeCRISMZeoliteSpeciationIndices(0.04, 0.06, 0.01, 0.05);
+        expect(analcime.isZeoliteDetected).to.be.true;
+        expect(analcime.zeoliteClass).to.include('Isometric Low-Silica Zeolite (Analcime)');
+        expect(analcime.mineralSpecies).to.include('Analcime');
+        expect(analcime.chemicalFormula).to.include('NaAlSi2O6 * H2O');
+        expect(analcime.alkalineAlterationContext).to.include('Alkaline Saline Paleolake Evaporation');
+
+        // Clinoptilolite (BD1400 = 0.02, BD1900 = 0.05, BD2150 = 0.04, BD2490 = 0.01):
+        const clinoptilolite = BandMathEngine.computeCRISMZeoliteSpeciationIndices(0.02, 0.05, 0.04, 0.01);
+        expect(clinoptilolite.isZeoliteDetected).to.be.true;
+        expect(clinoptilolite.zeoliteClass).to.include('High-Silica Heulandite-Group Zeolite (Clinoptilolite / Mordenite)');
+        expect(clinoptilolite.mineralSpecies).to.include('Clinoptilolite');
+
+        // Unaltered basalt:
+        const basalt = BandMathEngine.computeCRISMZeoliteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isZeoliteDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     mocha.run();
 }

@@ -577,3 +577,20 @@ TEST FAILURE: Unit test suite failed (2 failures):
 - should calculate subsurface Methane Clathrate Hydrate Stability Zone (MHSZ) depth extent and gas storage capacity
 ?: AssertionError: expected 302.3 to be close to 285 +/- 5
     at n.<anonymous> (unit.js:13018:64)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 00:30:52 UTC]
+TEST FAILURE: Unit test suite failed (2 failures):
+- should calculate interplanetary Hohmann transfer from Mars to outermost ice giant Neptune and orbit insertion
+?: AssertionError: expected 11466.3 to be close to 11207.2 +/- 100
+    at n.<anonymous> (unit.js:13051:48)
+- should calculate subsurface mud volcanism conduit ascent, flash-boiling plume, and flow runout length
+?: AssertionError: expected 1.8 to be close to 18.4 +/- 3
+    at n.<anonymous> (unit.js:13068:49)
+
+
+### Automated 4-Hour Check Alert [2026-08-29 00:31:15 UTC]
+TEST FAILURE: Unit test suite failed (1 failures):
+- should calculate interplanetary Hohmann transfer from Mars to outermost ice giant Neptune and orbit insertion
+?: AssertionError: expected 6.944 to be close to 7.504 +/- 0.3
+    at n.<anonymous> (unit.js:13053:54)
