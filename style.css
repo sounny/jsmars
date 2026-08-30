@@ -1066,67 +1066,6 @@ html {
 }
 
 /* ==========================================================================
-   24. Quick Actions
-   ========================================================================== */
-
-.quick-actions {
-  background: #171717;
-  border: 1px solid #3a3a3a;
-  border-radius: 6px;
-  padding: 8px;
-  text-align: left;
-}
-
-.quick-actions-label {
-  display: block;
-  font-size: 11px;
-  color: #b8b8b8;
-  margin-bottom: 6px;
-}
-
-.quick-actions-row {
-  display: flex;
-  gap: 6px;
-}
-
-.quick-actions-input {
-  flex: 1;
-  min-width: 0;
-  background: #0f0f0f;
-  color: #eee;
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  padding: 6px 8px;
-  font-size: 12px;
-}
-
-.quick-actions-input:focus {
-  outline: 2px solid #5aa8ff;
-  outline-offset: 1px;
-}
-
-.quick-actions-run-btn {
-  min-width: 56px;
-  font-size: 12px;
-  padding: 6px 8px;
-}
-
-.quick-actions-hint {
-  margin: 6px 0 0;
-  color: #969696;
-  font-size: 11px;
-}
-
-.quick-actions kbd {
-  border: 1px solid #555;
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  padding: 0 4px;
-  background: #202020;
-  font-size: 11px;
-}
-
-/* ==========================================================================
    25. P1/P2 Feature Styles
    ========================================================================== */
 

@@ -9,7 +9,7 @@
  * 4. Never precache unconstrained scientific rasters or gigabytes of tiles.
  */
 
-const CACHE_NAME = 'jsmars-shell-v1.0.0';
+const CACHE_NAME = 'jsmars-shell-v1.2.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -34,7 +34,6 @@ const PRECACHE_ASSETS = [
   './src/ui/layer-manager.js',
   './src/ui/BodySelector.js',
   './src/ui/SessionManager.js',
-  './src/ui/QuickActions.js',
   './src/layers/index.js',
   './src/layers/GraticuleLayer.js',
   './src/util/geo.js',
@@ -45,6 +44,7 @@ const PRECACHE_ASSETS = [
 
 // Install: Precache owned application shell
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       console.log('[SW] Precaching JSMARS application shell...');

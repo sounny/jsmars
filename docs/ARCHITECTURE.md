@@ -65,7 +65,6 @@ a browser-based planetary GIS application inspired by the JMARS Java desktop app
     CollapsibleGroup.js         # Tool section collapse
     FixedOverlays.js            # Grid, scalebar, north arrow, panner
     layer-manager.js            # Layer list with drag-reorder
-    QuickActions.js             # Ctrl+K palette
     SearchBar.js                # Location search
     SessionManager.js           # JSON session save/load
     Sidebar.js                  # Sidebar collapse/expand

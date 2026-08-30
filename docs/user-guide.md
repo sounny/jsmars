@@ -13,10 +13,12 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 - **Settings:** Double-click an active layer, press **Enter/Space** when the layer item is focused, or use the **⚙ settings button** to open its settings panel with metadata, attribution, and a quick opacity control.
 
 
-## Quick Actions
-- Use the **Quick Command** box below the logo to run common actions quickly.
-- Supported commands include: `Save Session`, `Load Session`, `Reset View`, `Open Layer Manager`, `Open Tools`, and `Toggle Sidebar`.
-- Press **Ctrl+K** (or **⌘+K** on macOS) to focus the command input from anywhere in the app.
+## Keyboard Shortcuts & Navigation
+- **Zoom In / Out:** Press `+` or `-` (or use numeric keys `1` to `5` for quick zoom levels).
+- **Reset View:** Press `R` to return to the global overview.
+- **Go to Coordinates:** Press `Ctrl+G` to jump to any latitude/longitude coordinate.
+- **Save & Load Sessions:** Press `Ctrl+S` to save your active session to JSON, or `Ctrl+O` to load a saved session.
+- **Export Map:** Press `Ctrl+Shift+E` to download a high-resolution PNG export.
 
 ## Mars Solar Time & Calendar ($L_s$)
 - The **Mars Solar Time** slider in the sidebar allows you to scrub through the Martian orbit ($L_s$ from 0° to 360°), Mars Sol Date (MSD), and Mars Year (MY).

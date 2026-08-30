@@ -37,33 +37,9 @@ export class QuickActions {
      * @private
      */
     render() {
-        this.container.innerHTML = `
-            <div class="quick-actions" aria-label="Quick actions panel">
-                <label for="quick-action-input" class="quick-actions-label">Quick Command</label>
-                <div class="quick-actions-row">
-                    <input
-                        id="quick-action-input"
-                        class="quick-actions-input"
-                        type="text"
-                        list="quick-action-suggestions"
-                        placeholder="Try: Save Session"
-                        aria-label="Quick command input"
-                    />
-                    <button id="quick-action-run" class="tool-btn quick-actions-run-btn" type="button">Run</button>
-                </div>
-                <datalist id="quick-action-suggestions">
-                    <option value="Save Session"></option>
-                    <option value="Load Session"></option>
-                    <option value="Reset View"></option>
-                    <option value="Open Layer Manager"></option>
-                    <option value="Open Tools"></option>
-                    <option value="Toggle Sidebar"></option>
-                </datalist>
-                <p class="quick-actions-hint">Shortcut: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd></p>
-            </div>
-        `;
-
-        this.commandInput = this.container.querySelector('#quick-action-input');
+        if (!this.container) return;
+        this.container.innerHTML = '';
+        this.commandInput = null;
     }
 
     /**
