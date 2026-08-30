@@ -78,10 +78,14 @@ export class StatusBar {
     this.zoomEl = this.container.querySelector('#status-zoom');
     this.scaleEl = this.container.querySelector('#status-scale');
 
-    // 2. On-Map Floating Live Coordinate HUD
-    this.initMapHUD();
+    // Remove any existing floating HUD badge if present
+    const mapContainer = this.map.getContainer();
+    const existingHud = mapContainer ? mapContainer.querySelector('#map-coord-hud') : null;
+    if (existingHud) {
+      existingHud.remove();
+    }
 
-    // 3. Leaflet Scale Control
+    // Leaflet Scale Control
     this.scaleControl = L.control.scale({
       position: 'bottomleft',
       maxWidth: 200,
@@ -95,70 +99,6 @@ export class StatusBar {
 
     scaleContainer.classList.remove('leaflet-bottom', 'leaflet-left', 'leaflet-control');
     scaleContainer.style.margin = '0';
-  }
-
-  /**
-   * Create floating on-map Coordinate HUD badge.
-   * @private
-   */
-  initMapHUD() {
-    const mapContainer = this.map.getContainer();
-    if (!mapContainer) return;
-
-    // Check if HUD already exists
-    let hud = mapContainer.querySelector('#map-coord-hud');
-    if (!hud) {
-      hud = document.createElement('div');
-      hud.id = 'map-coord-hud';
-      hud.className = 'map-coord-hud-badge';
-      hud.style.position = 'absolute';
-      hud.style.top = '12px';
-      hud.style.left = '60px';
-      hud.style.zIndex = '999';
-      hud.style.background = 'rgba(15, 23, 42, 0.88)';
-      hud.style.backdropFilter = 'blur(8px)';
-      hud.style.border = '1px solid rgba(56, 189, 248, 0.4)';
-      hud.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.5)';
-      hud.style.borderRadius = '6px';
-      hud.style.padding = '5px 12px';
-      hud.style.color = '#e2e8f0';
-      hud.style.fontSize = '12px';
-      hud.style.fontWeight = '500';
-      hud.style.display = 'flex';
-      hud.style.alignItems = 'center';
-      hud.style.gap = '10px';
-      hud.style.pointerEvents = 'auto';
-      hud.style.userSelect = 'none';
-
-      hud.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 4px;">
-          <span style="color: #38bdf8; font-size: 13px;">📍</span>
-          <span id="hud-coords-text" style="font-family: monospace; font-weight: 600; color: #f8fafc;">Lat: 0.0000°, Lon: 0.0000°</span>
-        </div>
-        <div id="hud-elev-text" style="font-family: monospace; font-size: 11px; color: #4ade80; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 8px;">Elev: --</div>
-        <button id="hud-copy-btn" title="Copy coordinates to clipboard" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #94a3b8; border-radius: 3px; padding: 2px 6px; font-size: 10px; cursor: pointer;">📋 Copy</button>
-      `;
-
-      mapContainer.appendChild(hud);
-
-      const copyBtn = hud.querySelector('#hud-copy-btn');
-      copyBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const text = hud.querySelector('#hud-coords-text').textContent;
-        navigator.clipboard.writeText(text).then(() => {
-          copyBtn.textContent = '✓ Copied!';
-          copyBtn.style.color = '#4ade80';
-          setTimeout(() => {
-            copyBtn.textContent = '📋 Copy';
-            copyBtn.style.color = '#94a3b8';
-          }, 1800);
-        }).catch(() => {});
-      });
-    }
-
-    this.mapHud = hud;
-    this.hudCoordsText = hud.querySelector('#hud-coords-text');
-    this.hudElevText = hud.querySelector('#hud-elev-text');
   }
 
   /**
@@ -247,17 +187,9 @@ export class StatusBar {
       const parts = formatted.split(', ');
       this.latValEl.textContent = `${parts[0]}°`;
       this.lonValEl.textContent = `${parts[1]}°`;
-      if (this.hudCoordsText) {
-        const prefix = isCenter ? 'Center: ' : '';
-        this.hudCoordsText.textContent = `${prefix}Lat: ${parts[0]}°, Lon: ${parts[1]}°`;
-      }
     } else {
       this.latValEl.textContent = formatted;
       this.lonValEl.textContent = '';
-      if (this.hudCoordsText) {
-        const prefix = isCenter ? 'Center: ' : '';
-        this.hudCoordsText.textContent = `${prefix}${formatted}`;
-      }
     }
 
     // Debounced Elevation Sampling (Mars only)
@@ -268,16 +200,13 @@ export class StatusBar {
           if (Number.isFinite(elev)) {
             const elevStr = `${Math.round(elev)} m (${(elev / 1000).toFixed(2)} km)`;
             if (this.elevValEl) this.elevValEl.textContent = elevStr;
-            if (this.hudElevText) this.hudElevText.textContent = `Elev: ${Math.round(elev)} m`;
           } else {
             if (this.elevValEl) this.elevValEl.textContent = '--';
-            if (this.hudElevText) this.hudElevText.textContent = 'Elev: --';
           }
         }).catch(() => {});
       }, 150);
     } else {
       if (this.elevValEl) this.elevValEl.textContent = 'N/A';
-      if (this.hudElevText) this.hudElevText.textContent = 'Elev: N/A';
     }
   }
 

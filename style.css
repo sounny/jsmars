@@ -825,19 +825,6 @@ html {
   border-color: #38bdf8;
 }
 
-.map-coord-hud-badge {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-@media (max-width: 768px) {
-  .map-coord-hud-badge {
-    left: 10px !important;
-    top: 50px !important;
-    font-size: 10px !important;
-    padding: 3px 8px !important;
-  }
-}
-
 /* ==========================================================================
    16. Panner (Overview Map)
    ========================================================================== */

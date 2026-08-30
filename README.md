@@ -131,6 +131,18 @@ See [docs/jsmars-roadmap.md](docs/jsmars-roadmap.md) for detailed development pl
 
 ---
 
+## 💼 Institutional Services, Support & Training
+
+For university departments, research laboratories, and space mission teams, we offer dedicated professional services:
+* 🎓 **Academic Curriculum & 16-Week Lab Kits:** Turnkey planetary GIS lab exercises, crater counting/CSFD dating modules, and faculty certification.
+* 🛡️ **Support Retainers & SLAs:** Guaranteed 24/48-hour response times, browser compatibility assurance, and mission-critical stability.
+* 🚀 **NASA / NSF Grant Subcontracting:** Co-Investigator (Co-I) software work packages for NASA ROSES/PDART/SSW proposals adhering to NASA TOPS Open Science mandates.
+* ☁️ **Managed Private Cloud & SSO:** Dedicated AWS/GCP deployment with institutional authentication (Google Workspace, Entra ID, Okta) and private landing site data hosting.
+
+Explore options or request a quote at [**jsmars.sounny.com/services.html**](https://jsmars.sounny.com/services.html).
+
+---
+
 ## 🤝 Contributing
 
 Contributions from planetary scientists, GIS professionals, and web developers are warmly welcome!
