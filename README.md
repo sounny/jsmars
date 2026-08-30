@@ -139,7 +139,7 @@ For university departments, research laboratories, and space mission teams, we o
 * 🚀 **NASA / NSF Grant Subcontracting:** Co-Investigator (Co-I) software work packages for NASA ROSES/PDART/SSW proposals adhering to NASA TOPS Open Science mandates.
 * ☁️ **Managed Private Cloud & SSO:** Dedicated AWS/GCP deployment with institutional authentication (Google Workspace, Entra ID, Okta) and private landing site data hosting.
 
-Explore options or request a quote at [**jsmars.sounny.com/services.html**](https://jsmars.sounny.com/services.html).
+Explore options or request a quote at [**jsmars.sounny.com/services.html**](https://jsmars.sounny.com/services.html) or email [**jsmars@sounny.com**](mailto:jsmars@sounny.com).
 
 ---
 
