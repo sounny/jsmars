@@ -16841,6 +16841,56 @@ describe('Mars-to-Ariadne Transfer, Wattevillite Dehydration & Na-Ca Speciation'
     });
 });
 
+describe('Mars-to-Nysa Transfer, Eugsterite Dehydration & Double Sulfate Speciation', () => {
+    it('should calculate interplanetary 3D direct transfer from Mars to high-albedo E-type asteroid (44) Nysa and orbit capture', () => {
+        // Mars to Nysa (300 km Mars alt, 2.423 AU distance, 15 km capture alt, 3.70 deg plane change):
+        const ny = TrajectoryEngine.computeMarsToNysaTransfer(300.0, 2.423, 15.0, 3.70);
+        expect(ny.semiMajorAxisAU).to.be.closeTo(1.973, 0.1); // ~1.97 AU
+        expect(ny.eccentricity).to.be.closeTo(0.2279, 0.01); // e ~ 0.228
+        expect(ny.timeOfFlightDays).to.be.closeTo(505.63, 30.0); // ~506 days (~1.38 yr)
+        expect(ny.timeOfFlightYears).to.be.closeTo(1.38, 0.1); // ~1.38 yr
+        expect(ny.marsDepartureDeltaVKmS).to.be.closeTo(2.240, 0.5); // ~2.24 km/s TNyI
+        expect(ny.nysaOrbitInsertionDeltaVKmS).to.be.closeTo(2.198, 0.5); // ~2.20 km/s NyOI
+        expect(ny.totalMissionDeltaVKmS).to.be.closeTo(4.438, 1.0); // ~4.44 km/s total
+        expect(ny.nysaContext).to.include('Mars-to-Nysa');
+    });
+
+    it('should calculate hydrothermal dehydration of dihydrated eugsterite into anhydrous sodium-rich double sulfate and thermal inertia', () => {
+        // 22% initial porosity, 46 C surface temp, 0.07 RH, 250 yr duration:
+        const edh = KRCEngine.computeMartianEugsteriteDehydration(0.22, 46.0, 0.07, 250.0);
+        expect(edh.eugsteriteDehydrationFraction).to.be.greaterThan(0.50); // > 50% dehydrated
+        expect(edh.boundWaterYieldWeightPercent).to.be.lessThan(4.0); // < 4 wt% bound H2O
+        expect(edh.induratedAnhydrousThermalInertiaTIU).to.be.closeTo(1815.9, 200.0); // ~1816 tiu
+        expect(edh.doubleSulfateDehydrationFaciesClass).to.include('Indurated Anhydrous Eugsterite Facies');
+        expect(edh.eugsteriteDehydrationContext).to.include('Anhydrous Eugsterite at 46 C');
+    });
+
+    it('should discriminate Anhydrous Eugsterite vs Eugsterite Dihydrate vs Hydroglauberite in CRISM spectra', () => {
+        // Anhydrous Eugsterite (Eberswalde / Holden / Jezero: BD1440 = 0.010, BD1940 = 0.015, BD2210 = 0.040, BD2400 = 0.045):
+        const anhEug = BandMathEngine.computeCRISMAnhydrousEugsteriteSpeciationIndices(0.010, 0.015, 0.040, 0.045);
+        expect(anhEug.isAnhydrousDoubleSulfateDetected).to.be.true;
+        expect(anhEug.sulfateMineralClass).to.include('Anhydrous Sodium-Rich Double Sulfate Facies');
+        expect(anhEug.mineralSpecies).to.include('Anhydrous Eugsterite');
+        expect(anhEug.evaporiteEnvironment).to.include('Desiccated High-Temperature Sodium-Rich Evaporite Crust');
+
+        // Eugsterite Dihydrate (BD1440 = 0.035, BD1940 = 0.045, BD2210 = 0.040, BD2400 = 0.035):
+        const eug = BandMathEngine.computeCRISMAnhydrousEugsteriteSpeciationIndices(0.035, 0.045, 0.040, 0.035);
+        expect(eug.isAnhydrousDoubleSulfateDetected).to.be.true;
+        expect(eug.sulfateMineralClass).to.include('Dihydrated Eugsterite Double Sulfate Facies');
+        expect(eug.mineralSpecies).to.include('Eugsterite');
+
+        // Hydroglauberite (BD1440 = 0.035, BD1940 = 0.045, BD2210 = 0.010, BD2400 = 0.035):
+        const hgb = BandMathEngine.computeCRISMAnhydrousEugsteriteSpeciationIndices(0.035, 0.045, 0.010, 0.035);
+        expect(hgb.isAnhydrousDoubleSulfateDetected).to.be.true;
+        expect(hgb.sulfateMineralClass).to.include('Hexahydrated Hydroglauberite Complex Sulfate Facies');
+        expect(hgb.mineralSpecies).to.include('Hydroglauberite');
+
+        // Basalt baseline:
+        const basalt = BandMathEngine.computeCRISMAnhydrousEugsteriteSpeciationIndices(0.005, 0.005, 0.005, 0.005);
+        expect(basalt.isAnhydrousDoubleSulfateDetected).to.be.false;
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

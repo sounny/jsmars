@@ -11427,6 +11427,60 @@ export class BandMathEngine {
       evaporiteEnvironment: env
     };
   }
+
+  /**
+   * Discriminate Anhydrous Sodium-Rich Double Sulfates (Anhydrous Eugsterite vs Eugsterite Dihydrate vs Hydroglauberite) from CRISM 1.440 um, 1.940 um, 2.210 um, and 2.400 um absorption bands.
+   * Reference: Bishop et al. (2009), Viviano-Beck et al. (2014), Sowe et al. (2015) for Martian Alkali-Alkaline Earth Sulfates.
+   * @param {number} [band1440H2ODepth=0.010] - BD1440 structural OH doublet overtone depth (0.0 to 0.40)
+   * @param {number} [band1940H2ODepth=0.015] - BD1940 structural H2O fundamental depth (0.0 to 0.60)
+   * @param {number} [band2210NaCaDepth=0.040] - BD2210 eugsterite diagnostic Na-rich sulfate vibrational combination depth (0.0 to 0.50)
+   * @param {number} [band2400SO4Depth=0.045] - BD2400 sulfate vibrational combination overtone depth (0.0 to 0.50)
+   * @returns {{isAnhydrousDoubleSulfateDetected: boolean, sulfateMineralClass: string, mineralSpecies: string, chemicalFormula: string, evaporiteEnvironment: string}}
+   */
+  static computeCRISMAnhydrousEugsteriteSpeciationIndices(band1440H2ODepth = 0.010, band1940H2ODepth = 0.015, band2210NaCaDepth = 0.040, band2400SO4Depth = 0.045) {
+    const d1440 = Math.max(0.0, band1440H2ODepth);
+    const d1940 = Math.max(0.0, band1940H2ODepth);
+    const d2210 = Math.max(0.0, band2210NaCaDepth);
+    const d2400 = Math.max(0.0, band2400SO4Depth);
+
+    const isAnhydrousEug = d2210 >= 0.025 && d2400 >= 0.030 && d1940 < 0.020;
+    const isEugsterite = d2210 >= 0.025 && d1440 >= 0.020 && d1940 >= 0.025 && d2400 >= 0.025;
+    const isHydroglauberite = d1940 >= 0.040 && d2400 >= 0.030 && d2210 < 0.020;
+
+    const isDoubleSulfate = isAnhydrousEug || isEugsterite || isHydroglauberite;
+
+    let sClass = 'Double-Sulfate-Free Silicate Matrix';
+    let species = 'Basaltic Matrix';
+    let formula = 'Silicate Matrix';
+    let env = 'Unaltered Primary Crust';
+
+    if (isDoubleSulfate) {
+      if (isAnhydrousEug) {
+        sClass = 'Anhydrous Sodium-Rich Double Sulfate Facies';
+        species = 'Anhydrous Eugsterite';
+        formula = 'Na4Ca(SO4)3';
+        env = 'Desiccated High-Temperature Sodium-Rich Evaporite Crust (Eberswalde / Holden / Jezero)';
+      } else if (isEugsterite) {
+        sClass = 'Dihydrated Eugsterite Double Sulfate Facies';
+        species = 'Eugsterite';
+        formula = 'Na4Ca(SO4)3·2H2O';
+        env = 'Hydrated Saline Lacustrine Deltaic Evaporite Outcrop';
+      } else {
+        sClass = 'Hexahydrated Hydroglauberite Complex Sulfate Facies';
+        species = 'Hydroglauberite';
+        formula = 'Na10Ca3(SO4)8·6H2O';
+        env = 'Saline Playa Efflorescent Crust';
+      }
+    }
+
+    return {
+      isAnhydrousDoubleSulfateDetected: isDoubleSulfate,
+      sulfateMineralClass: sClass,
+      mineralSpecies: species,
+      chemicalFormula: formula,
+      evaporiteEnvironment: env
+    };
+  }
 }
 
 
