@@ -9,7 +9,7 @@
  * 4. Never precache unconstrained scientific rasters or gigabytes of tiles.
  */
 
-const CACHE_NAME = 'jsmars-shell-v1.4.0';
+const CACHE_NAME = 'jsmars-shell-v1.4.1';
 
 const PRECACHE_ASSETS = [
   './',
