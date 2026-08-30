@@ -850,3 +850,9 @@ TEST FAILURE: Unit test suite failed (1 failures):
 - should calculate low-to-moderate temperature alkaline metasomatism of basalt into fibrous sepiolite and thermal inertia
 ?: AssertionError: expected 'Alkaline Lacustrine Sepiolite Facies ?' to include 'Fibrous Magnesium Silicate Facies'
     at n.<anonymous> (unit.js:15458:43)
+
+
+### Automated 4-Hour Check Alert [2026-08-30 08:53:04 UTC]
+TEST FAILURE: Browser console errors encountered during UI interaction:
+[pageerror] molaDem.getElevation is not a function
+[pageerror] molaDem.getElevation is not a function

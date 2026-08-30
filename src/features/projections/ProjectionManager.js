@@ -28,6 +28,40 @@ export class ProjectionManager {
   init() {
     this.container.innerHTML = `
       <div style="padding: 10px; font-size: 12px; color: #e2e8f0;">
+        <!-- Live Coordinate Viewer Box -->
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 6px; padding: 8px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">📍 Coordinate Viewer</span>
+            <button id="proj-copy-coords-btn" class="tool-btn" style="padding: 1px 6px; font-size: 10px; background: rgba(255,255,255,0.1); border: 1px solid #475569;" title="Copy current center coordinates">📋 Copy</button>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-family: monospace; font-size: 11px;">
+            <div style="background: rgba(0,0,0,0.3); padding: 4px 6px; border-radius: 4px;">
+              <span style="color: #94a3b8; font-size: 9px; display: block;">LATITUDE</span>
+              <span id="proj-live-lat" style="color: #38bdf8; font-weight: 600;">0.0000°</span>
+            </div>
+            <div style="background: rgba(0,0,0,0.3); padding: 4px 6px; border-radius: 4px;">
+              <span style="color: #94a3b8; font-size: 9px; display: block;">LONGITUDE</span>
+              <span id="proj-live-lon" style="color: #fbbf24; font-weight: 600;">0.0000°</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Go To Coordinates Input -->
+        <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid #334155; border-radius: 6px; padding: 8px; margin-bottom: 12px;">
+          <label style="font-size: 10px; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 4px;">✈️ JUMP TO LAT / LON</label>
+          <div style="display: flex; gap: 4px; margin-bottom: 6px;">
+            <input id="proj-goto-lat" type="number" step="any" min="-90" max="90" placeholder="Lat (e.g. 18.65)" class="tool-input" style="flex: 1; padding: 4px 6px; font-size: 11px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 4px;" />
+            <input id="proj-goto-lon" type="number" step="any" min="-180" max="360" placeholder="Lon (e.g. 226.2)" class="tool-input" style="flex: 1; padding: 4px 6px; font-size: 11px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 4px;" />
+            <button id="proj-goto-btn" class="tool-btn" style="background: #0284c7; color: #fff; font-weight: 600; padding: 4px 10px; font-size: 11px;">Go</button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            <button class="proj-preset-btn tool-btn" data-lat="18.65" data-lon="226.2" style="font-size: 9px; padding: 2px 5px; background: #1e293b; border: 1px solid #334155;">🌋 Olympus</button>
+            <button class="proj-preset-btn tool-btn" data-lat="-5.37" data-lon="137.81" style="font-size: 9px; padding: 2px 5px; background: #1e293b; border: 1px solid #334155;">🤖 Gale</button>
+            <button class="proj-preset-btn tool-btn" data-lat="18.38" data-lon="77.58" style="font-size: 9px; padding: 2px 5px; background: #1e293b; border: 1px solid #334155;">🚀 Jezero</button>
+            <button class="proj-preset-btn tool-btn" data-lat="-14.0" data-lon="300.8" style="font-size: 9px; padding: 2px 5px; background: #1e293b; border: 1px solid #334155;">峡 Valles</button>
+          </div>
+        </div>
+
         <div style="margin-bottom: 8px;">
           <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Map Viewpoint / Region</label>
           <div style="display: flex; gap: 4px;">
@@ -63,7 +97,16 @@ export class ProjectionManager {
     this.latSelect = this.container.querySelector('#proj-lat-select');
     this.lonSelect = this.container.querySelector('#proj-lon-select');
 
+    this.liveLatEl = this.container.querySelector('#proj-live-lat');
+    this.liveLonEl = this.container.querySelector('#proj-live-lon');
+    this.copyCoordsBtn = this.container.querySelector('#proj-copy-coords-btn');
+    this.gotoLatInput = this.container.querySelector('#proj-goto-lat');
+    this.gotoLonInput = this.container.querySelector('#proj-goto-lon');
+    this.gotoBtn = this.container.querySelector('#proj-goto-btn');
+    this.presetBtns = this.container.querySelectorAll('.proj-preset-btn');
+
     this.bindEvents();
+    this.updateLiveCoordinates();
   }
 
   bindEvents() {
@@ -85,12 +128,94 @@ export class ProjectionManager {
     this.latSelect.addEventListener('change', (e) => {
       this.latConvention = e.target.value;
       this.broadcastCoordFormat();
+      this.updateLiveCoordinates();
     });
 
     this.lonSelect.addEventListener('change', (e) => {
       this.lonConvention = e.target.value;
       this.broadcastCoordFormat();
+      this.updateLiveCoordinates();
     });
+
+    // Copy Coordinates button
+    if (this.copyCoordsBtn) {
+      this.copyCoordsBtn.addEventListener('click', () => {
+        const text = `${this.liveLatEl.textContent}, ${this.liveLonEl.textContent}`;
+        navigator.clipboard.writeText(text).then(() => {
+          this.copyCoordsBtn.textContent = '✓ Copied!';
+          setTimeout(() => {
+            this.copyCoordsBtn.textContent = '📋 Copy';
+          }, 1500);
+        }).catch(() => {});
+      });
+    }
+
+    // Go to Coordinates Handler
+    const handleGoto = () => {
+      const latVal = parseFloat(this.gotoLatInput.value);
+      const lonVal = parseFloat(this.gotoLonInput.value);
+      if (Number.isFinite(latVal) && Number.isFinite(lonVal)) {
+        let leafLon = lonVal;
+        if (leafLon > 180) leafLon -= 360;
+        if (this.map) {
+          this.map.setView([latVal, leafLon], Math.max(this.map.getZoom(), 5));
+        }
+      }
+    };
+
+    if (this.gotoBtn) {
+      this.gotoBtn.addEventListener('click', handleGoto);
+    }
+    if (this.gotoLatInput) {
+      this.gotoLatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleGoto(); });
+    }
+    if (this.gotoLonInput) {
+      this.gotoLonInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleGoto(); });
+    }
+
+    // Presets
+    if (this.presetBtns) {
+      this.presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pLat = parseFloat(btn.dataset.lat);
+          const pLon = parseFloat(btn.dataset.lon);
+          this.gotoLatInput.value = pLat;
+          this.gotoLonInput.value = pLon;
+          handleGoto();
+        });
+      });
+    }
+
+    // Live Map Tracking
+    if (this.map) {
+      this.map.on('mousemove', (e) => this.updateLiveCoordinates(e.latlng));
+      this.map.on('move', () => this.updateLiveCoordinates(this.map.getCenter()));
+    }
+  }
+
+  updateLiveCoordinates(latlng = null) {
+    if (!latlng && this.map) {
+      latlng = this.map.getCenter();
+    }
+    if (!latlng || !this.liveLatEl || !this.liveLonEl) return;
+
+    let lat = latlng.lat;
+    let lon = latlng.lng;
+
+    // Convert longitude to 0-360 E
+    const lon360E = ((lon % 360) + 360) % 360;
+    const lon180 = lon360E > 180 ? lon360E - 360 : lon360E;
+    const lon360W = (360 - lon360E) % 360;
+
+    let displayLon = `${lon360E.toFixed(4)}° E`;
+    if (this.lonConvention === 'east180') {
+      displayLon = `${lon180.toFixed(4)}°`;
+    } else if (this.lonConvention === 'west360') {
+      displayLon = `${lon360W.toFixed(4)}° W`;
+    }
+
+    this.liveLatEl.textContent = `${lat.toFixed(4)}°`;
+    this.liveLonEl.textContent = displayLon;
   }
 
   setProjection(proj) {

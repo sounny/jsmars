@@ -166,12 +166,26 @@ async function sampleElevations(points) {
 
 /**
  * Public API for MOLA DEM elevation queries.
- * @type {{SOURCE_ID: string, SOURCE_NAME: string, URL: string, ensureLoaded: Function, sampleElevations: Function}}
+ * @type {{SOURCE_ID: string, SOURCE_NAME: string, URL: string, ensureLoaded: Function, sampleElevations: Function, getElevation: Function}}
  */
 export const molaDem = {
   SOURCE_ID: 'mola_dem',
   SOURCE_NAME: 'MOLA DEM (USGS 128ppd)',
   URL: MOLA_TIFF_URL,
   ensureLoaded: getMolaContext,
-  sampleElevations
+  sampleElevations,
+  /**
+   * Sample elevation for a single point (lat, lon).
+   * @param {number} lat - Latitude
+   * @param {number} lon - Longitude
+   * @returns {Promise<number|null>}
+   */
+  async getElevation(lat, lon) {
+    try {
+      const res = await sampleElevations([{ lat, lng: lon }]);
+      return res && res.length > 0 ? res[0] : null;
+    } catch {
+      return null;
+    }
+  }
 };
