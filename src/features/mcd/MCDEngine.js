@@ -1453,9 +1453,18 @@ export class MCDEngine {
     const lmdCgiUrl = `https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?${queryParams.toString()}`;
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(lmdCgiUrl)}`;
 
-    const response = await fetch(proxyUrl);
-    if (!response.ok) {
-      throw new Error(`LMD MCD server returned HTTP ${response.status}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    let response;
+    try {
+      response = await fetch(proxyUrl, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!response || !response.ok) {
+      throw new Error(`LMD MCD server returned HTTP ${response?.status || 'timeout'}`);
     }
 
     const html = await response.text();
@@ -1467,8 +1476,16 @@ export class MCDEngine {
     const txtUrl = new URL(txtMatch[1], lmdCgiUrl).href;
     const proxyTxtUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(txtUrl)}`;
 
-    const txtResponse = await fetch(proxyTxtUrl);
-    if (!txtResponse.ok) {
+    const txtController = new AbortController();
+    const txtTimeoutId = setTimeout(() => txtController.abort(), 3500);
+    let txtResponse;
+    try {
+      txtResponse = await fetch(proxyTxtUrl, { signal: txtController.signal });
+    } finally {
+      clearTimeout(txtTimeoutId);
+    }
+
+    if (!txtResponse || !txtResponse.ok) {
       throw new Error(`Failed to download LMD MCD profile text data`);
     }
 

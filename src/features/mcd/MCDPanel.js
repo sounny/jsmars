@@ -26,18 +26,18 @@ export class MCDPanel {
 
   init() {
     this.container.innerHTML = `
-      <div style="padding: 10px; font-size: 12px; color: #e2e8f0;">
+      <div style="padding: 10px; font-size: 12px; color: #f8fafc;">
         <div style="margin-bottom: 8px;">
-          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Model Engine & Data Source</label>
-          <select id="mcd-input-source" class="tool-select" style="width: 100%; box-sizing: border-box; font-size: 11px;">
-            <option value="lmd_live" selected>📡 LMD MCD v6.1 (Live GCM / Spacecraft-Calibrated)</option>
-            <option value="analytical">🧪 1D Analytical Physics Model</option>
+          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Model Engine & Data Source</label>
+          <select id="mcd-input-source" class="tool-select" style="width: 100%; box-sizing: border-box; font-size: 11px; background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
+            <option value="analytical" selected>🧪 1D Analytical Physics Model (Instant / Offline)</option>
+            <option value="lmd_live">📡 LMD MCD v6.1 (Live GCM / Remote Server)</option>
           </select>
         </div>
 
         <div style="margin-bottom: 8px;">
-          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Climatology Scenario</label>
-          <select id="mcd-input-scenario" class="tool-select" style="width: 100%; box-sizing: border-box; font-size: 11px;">
+          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Climatology Scenario</label>
+          <select id="mcd-input-scenario" class="tool-select" style="width: 100%; box-sizing: border-box; font-size: 11px; background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
             <option value="1" selected>Climatology (Average Solar / TES Climatology)</option>
             <option value="2">Cold Scenario (Min Solar / Low Dust)</option>
             <option value="3">Warm Scenario (Max Solar / High Dust)</option>
@@ -47,28 +47,28 @@ export class MCDPanel {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
           <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block;">Latitude (°)</label>
-            <input type="number" id="mcd-input-lat" class="tool-select" style="width: 100%; box-sizing: border-box;" value="0" min="-90" max="90" step="1">
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Latitude (°)</label>
+            <input type="number" id="mcd-input-lat" class="tool-select" style="width: 100%; box-sizing: border-box; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="0" min="-90" max="90" step="1">
           </div>
           <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block;">Longitude (°E)</label>
-            <input type="number" id="mcd-input-lon" class="tool-select" style="width: 100%; box-sizing: border-box;" value="0" min="0" max="360" step="5">
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Longitude (°E)</label>
+            <input type="number" id="mcd-input-lon" class="tool-select" style="width: 100%; box-sizing: border-box; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="0" min="0" max="360" step="5">
           </div>
           <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block;">Solar Longitude L<sub>s</sub> (°)</label>
-            <input type="number" id="mcd-input-ls" class="tool-select" style="width: 100%; box-sizing: border-box;" value="0" min="0" max="360" step="5">
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Solar Longitude L<sub>s</sub> (°)</label>
+            <input type="number" id="mcd-input-ls" class="tool-select" style="width: 100%; box-sizing: border-box; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="0" min="0" max="360" step="5">
           </div>
           <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block;">Local Hour (0-24h)</label>
-            <input type="number" id="mcd-input-hour" class="tool-select" style="width: 100%; box-sizing: border-box;" value="12" min="0" max="24" step="1">
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Local Hour (0-24h)</label>
+            <input type="number" id="mcd-input-hour" class="tool-select" style="width: 100%; box-sizing: border-box; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="12" min="0" max="24" step="1">
           </div>
           <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block;">Elevation (m)</label>
-            <input type="number" id="mcd-input-elev" class="tool-select" style="width: 100%; box-sizing: border-box;" value="0" min="-8000" max="22000" step="500">
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Elevation (m)</label>
+            <input type="number" id="mcd-input-elev" class="tool-select" style="width: 100%; box-sizing: border-box; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="0" min="-8000" max="22000" step="500">
           </div>
           <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block;">Max Altitude (km)</label>
-            <input type="number" id="mcd-input-maxalt" class="tool-select" style="width: 100%; box-sizing: border-box;" value="50" min="20" max="80" step="10">
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Max Altitude (km)</label>
+            <input type="number" id="mcd-input-maxalt" class="tool-select" style="width: 100%; box-sizing: border-box; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="50" min="20" max="80" step="10">
           </div>
         </div>
 
