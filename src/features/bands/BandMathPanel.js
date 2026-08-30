@@ -26,27 +26,27 @@ export class BandMathPanel {
 
   init() {
     this.container.innerHTML = `
-      <div style="padding: 10px; font-size: 12px; color: #e2e8f0;">
+      <div style="padding: 10px; font-size: 12px; color: #f8fafc;">
         <div style="margin-bottom: 8px;">
-          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Mineral Index Preset</label>
-          <select id="bm-preset-select" class="tool-select" style="width: 100%; box-sizing: border-box;">
+          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Mineral Index Preset</label>
+          <select id="bm-preset-select" class="tool-select" style="width: 100%; box-sizing: border-box; background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
             ${BandMathEngine.MINERAL_PRESETS.map(p => `<option value="${p.id}">${p.name}</option>`).join("")}
             <option value="custom">-- Custom Band Math Formula --</option>
           </select>
         </div>
 
         <div id="bm-formula-group" style="margin-bottom: 8px;">
-          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Spectral Formula</label>
-          <input type="text" id="bm-formula-input" class="tool-select" style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 11px;" value="1.0 - (B530 / (0.5 * (B440 + B600)))">
-          <div id="bm-desc-text" style="font-size: 10px; color: #64748b; margin-top: 2px;">
+          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Spectral Formula</label>
+          <input type="text" id="bm-formula-input" class="tool-select" style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 11px; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="1.0 - (B530 / (0.5 * (B440 + B600)))">
+          <div id="bm-desc-text" style="font-size: 11px; color: #94a3b8; margin-top: 3px; line-height: 1.4;">
             Band depth at 530 nm diagnostic of crystalline ferric oxides.
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
           <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block;">Colormap</label>
-            <select id="bm-colormap-select" class="tool-select" style="width: 100%;">
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Colormap</label>
+            <select id="bm-colormap-select" class="tool-select" style="width: 100%; background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
               <option value="magma">Magma</option>
               <option value="viridis">Viridis</option>
               <option value="coolwarm">Coolwarm</option>
@@ -56,18 +56,18 @@ export class BandMathPanel {
             </select>
           </div>
           <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block;">Min / Max Stretch</label>
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Min / Max Stretch</label>
             <div style="display: flex; gap: 4px;">
-              <input type="number" id="bm-min-val" class="tool-select" style="width: 50%;" value="0.0" step="0.05">
-              <input type="number" id="bm-max-val" class="tool-select" style="width: 50%;" value="0.25" step="0.05">
+              <input type="number" id="bm-min-val" class="tool-select" style="width: 50%; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="0.0" step="0.05">
+              <input type="number" id="bm-max-val" class="tool-select" style="width: 50%; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="0.25" step="0.05">
             </div>
           </div>
         </div>
 
         <div style="margin-bottom: 8px;">
-          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-bottom: 2px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; font-weight: 500; margin-bottom: 3px;">
             <span>Overlay Opacity</span>
-            <span id="bm-opacity-val">65%</span>
+            <span id="bm-opacity-val" style="color: #38bdf8; font-weight: 600;">65%</span>
           </div>
           <input type="range" id="bm-opacity-slider" min="10" max="100" value="65" style="width: 100%; cursor: pointer;">
         </div>
