@@ -376,7 +376,7 @@ export class JMARSMap {
     if (leafletLayer) {
       leafletLayer.addTo(this.map);
       this.activeLayers[layerId] = leafletLayer;
-      console.debug(`Added layer to map: ${layerId}`);
+      console.log(`%c[JSMARS:Map] %cAdded layer to map: %c${layerId}`, 'color: #10b981; font-weight: bold;', 'color: #f8fafc;', 'color: #38bdf8; font-weight: 600;');
     } else {
       console.error('Failed to create leaflet layer for:', layerId);
     }
@@ -390,7 +390,7 @@ export class JMARSMap {
     if (this.activeLayers[layerId]) {
       this.map.removeLayer(this.activeLayers[layerId]);
       delete this.activeLayers[layerId];
-      console.log(`Removed layer: ${layerId}`);
+      console.log(`%c[JSMARS:Map] %cRemoved layer from map: %c${layerId}`, 'color: #ef4444; font-weight: bold;', 'color: #f8fafc;', 'color: #f87171; font-weight: 600;');
     }
   }
 
@@ -403,6 +403,7 @@ export class JMARSMap {
     const layer = this.activeLayers[layerId];
     if (layer && typeof layer.setOpacity === 'function') {
       layer.setOpacity(opacity);
+      console.log(`%c[JSMARS:Map] %cSet opacity of "${layerId}" to ${(opacity * 100).toFixed(0)}%`, 'color: #ec4899; font-weight: bold;', 'color: #f8fafc;');
     }
   }
 

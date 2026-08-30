@@ -58,6 +58,7 @@ export class ToolManager {
     }
 
     this.activeTool = name;
+    console.log(`%c[JSMARS:ToolManager] Activated tool: %c"${name}" (mode: ${mode || 'default'})`, 'color: #06b6d4; font-weight: bold;', 'color: #f8fafc;');
     if (typeof entry.tool.activate === 'function') {
       entry.tool.activate(mode);
     }
@@ -86,6 +87,7 @@ export class ToolManager {
 
     const prevTool = this.activeTool;
     this.activeTool = null;
+    console.log(`%c[JSMARS:ToolManager] Deactivated tool: %c"${prevTool}"`, 'color: #64748b; font-weight: bold;', 'color: #cbd5e1;');
     EventBus.emit(EVENTS.TOOL_DEACTIVATED, { tool: prevTool });
   }
 

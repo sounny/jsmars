@@ -201,7 +201,9 @@ export class ColorStretchControl {
     ];
     if (opts.invert) parts.push('invert(1)');
 
-    el.style.filter = parts.join(' ');
+    const filterValue = parts.join(' ');
+    el.style.filter = filterValue;
+    console.log(`%c[JSMARS:ColorStretch] %cApplied filter to layer: %c${filterValue}`, 'color: #38bdf8; font-weight: bold;', 'color: #cbd5e1;', 'color: #f8fafc; font-weight: 600;');
   }
 
   /**

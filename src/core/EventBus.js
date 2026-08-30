@@ -42,6 +42,7 @@ export class EventBus {
    * @param {*} [detail=null] - Event payload accessible via `event.detail`.
    */
   static emit(eventName, detail = null) {
+    console.log(`%c[JSMARS:Event] %c${eventName}`, 'color: #38bdf8; font-weight: bold;', 'color: #f1f5f9;', detail ?? '');
     document.dispatchEvent(new CustomEvent(eventName, { detail }));
   }
 

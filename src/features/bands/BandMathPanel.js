@@ -176,6 +176,8 @@ export class BandMathPanel {
       opacity: opacity
     };
 
+    console.log(`%c[JSMARS:BandMath] %cApplying mineral index: %c${presetName} %c(colormap: ${colormap}, min: ${detail.min}, max: ${detail.max}, opacity: ${opacity})`, 'color: #10b981; font-weight: bold;', 'color: #f8fafc;', 'color: #38bdf8; font-weight: bold;', 'color: #94a3b8;', detail);
+
     this.layer.setParams(detail);
     this.layer.activate();
 
@@ -190,6 +192,7 @@ export class BandMathPanel {
   }
 
   clearLayer() {
+    console.log('%c[JSMARS:BandMath] %cCleared mineral colormap overlay from map', 'color: #ef4444; font-weight: bold;', 'color: #f8fafc;');
     this.layer.deactivate();
     this.statusBanner.style.display = "none";
     this.applyBtn.innerText = "Apply Color Stretch";

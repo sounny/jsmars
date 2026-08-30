@@ -555,6 +555,10 @@
     import { TrajectoryPanel } from './src/features/orbit/TrajectoryPanel.js';
     import { PWAManager } from './src/pwa/PWAManager.js';
     import { MobileSheet } from './src/ui/MobileSheet.js';
+    import { InteractionLogger } from './src/util/InteractionLogger.js';
+
+    // Initialize Global Interaction & Event Logging
+    InteractionLogger.init();
 
     // Initialize Map
     const jmars = new JMARSMap('map');
