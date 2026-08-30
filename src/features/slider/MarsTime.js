@@ -126,6 +126,7 @@ export class MarsTime {
       jdTT,
       msd,
       mtc,
+      MTC: mtc,
       Ls,
       MY,
       r_AU,

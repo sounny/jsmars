@@ -120,7 +120,8 @@ export class InvestigateTool {
 
             // Astronomical state
             const marsState = MarsTime.computeState(new Date());
-            const ltst = MarsTime.computeLTST(marsState.Ls, marsState.MTC, lng360);
+            const mtc = marsState.mtc ?? marsState.MTC ?? 12;
+            const ltst = MarsTime.computeLTST(marsState.Ls, mtc, lng360);
             const ltstHours = Math.floor(ltst);
             const ltstMins = Math.floor((ltst - ltstHours) * 60);
             const ltstStr = `${String(ltstHours).padStart(2, '0')}:${String(ltstMins).padStart(2, '0')}`;
