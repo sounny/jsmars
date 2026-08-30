@@ -91,7 +91,6 @@
     <div style="padding: 15px; text-align: center; border-bottom: 1px solid #444; flex-shrink: 0;">
       <img src="jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;" />
       <div id="body-selector-container" style="margin-top: 10px;"></div>
-      <div id="quick-actions-container" style="margin-top: 12px;"></div>
 
       <!-- PWA Install Banner -->
       <div id="pwa-install-banner">
@@ -522,7 +521,6 @@
     import { SampleTable } from './src/features/sampling/SampleTable.js';
     import { EVENTS } from './src/constants.js';
     import { JMARS_CONFIG } from './src/jmars-config.js';
-    import { QuickActions } from './src/ui/QuickActions.js';
     // New P1/P2 features
     import { StampLayer } from './src/features/stamp/StampLayer.js';
     import { StampQueryPanel } from './src/features/stamp/StampQueryPanel.js';
@@ -891,21 +889,6 @@
 
     // Session Manager (include bookmarksTool)
     const sessionManager = new SessionManager(craterLayer, measureTool, bookmarksTool);
-    new QuickActions('quick-actions-container', {
-      onSaveSession: () => sessionManager.saveSession(),
-      onLoadSession: () => document.getElementById('session-load-input').click(),
-      onOpenLayers: () => openAccordionSection('Layer Manager'),
-      onOpenTools: () => openAccordionSection('Tools'),
-      onToggleSidebar: () => {
-        document.getElementById('controls').classList.toggle('collapsed');
-        document.getElementById('sidebar-toggle').classList.toggle('collapsed');
-      },
-      onResetView: () => {
-        const body = JMARS_CONFIG.bodies[jmars.currentBody];
-        if (!body) return;
-        jmars.map.setView(body.center, body.zoom);
-      }
-    });
 
     // Session Event Listeners
     document.getElementById('session-save-btn').addEventListener('click', () => sessionManager.saveSession());
@@ -1044,10 +1027,6 @@
     const shortcuts = new KeyboardShortcuts(jmars.map, {
       saveSession: () => sessionManager.saveSession(),
       loadSession: () => document.getElementById('session-load-input').click(),
-      quickActions: () => {
-        const input = document.querySelector('#quick-actions-container input');
-        if (input) input.focus();
-      },
       exportMap: () => exportTool.exportPNG(),
       cancelTool: () => {
         deactivateAllTools();

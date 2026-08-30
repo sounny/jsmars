@@ -62,13 +62,6 @@ export class KeyboardShortcuts {
       return;
     }
 
-    // Ctrl+K: Quick actions
-    if (ctrl && key === 'k') {
-      e.preventDefault();
-      this.handlers.quickActions?.();
-      return;
-    }
-
     // Ctrl+Shift+E: Export map
     if (ctrl && shift && key === 'e') {
       e.preventDefault();
@@ -181,7 +174,6 @@ export class KeyboardShortcuts {
             <h3>Session</h3>
             <div class="shortcut-row"><kbd>Ctrl+S</kbd> <span>Save session</span></div>
             <div class="shortcut-row"><kbd>Ctrl+O</kbd> <span>Load session</span></div>
-            <div class="shortcut-row"><kbd>Ctrl+K</kbd> <span>Quick actions</span></div>
           </div>
           <div class="shortcut-section">
             <h3>Tools</h3>

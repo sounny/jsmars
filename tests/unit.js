@@ -16891,6 +16891,56 @@ describe('Mars-to-Nysa Transfer, Eugsterite Dehydration & Double Sulfate Speciat
     });
 });
 
+describe('3D Interactive Globe & Planetary Texture Engine', () => {
+    it('should accurately convert latitude and longitude to 3D Cartesian coordinates and inverse project back', () => {
+        // Mars Equator at Prime Meridian (0 deg N, 0 deg E):
+        const pt0 = ThreeDEngine.convertLatLonToSpherePoint(0.0, 0.0, 22.0);
+        expect(pt0.y).to.be.closeTo(0.0, 0.01);
+        expect(Math.sqrt(pt0.x * pt0.x + pt0.y * pt0.y + pt0.z * pt0.z)).to.be.closeTo(22.0, 0.01);
+
+        const inv0 = ThreeDEngine.convertSpherePointToLatLon(pt0, 22.0);
+        expect(inv0.lat).to.be.closeTo(0.0, 0.01);
+        expect(inv0.lon).to.be.closeTo(0.0, 0.01);
+
+        // Olympus Mons (18.65 deg N, -133.8 deg W):
+        const ptOlympus = ThreeDEngine.convertLatLonToSpherePoint(18.65, -133.8, 22.0);
+        expect(ptOlympus.y).to.be.closeTo(22.0 * Math.sin((18.65 * Math.PI) / 180), 0.05);
+
+        const invOlympus = ThreeDEngine.convertSpherePointToLatLon(ptOlympus, 22.0);
+        expect(invOlympus.lat).to.be.closeTo(18.65, 0.05);
+        expect(invOlympus.lon).to.be.closeTo(-133.8, 0.05);
+
+        // North Pole (90 deg N):
+        const ptNP = ThreeDEngine.convertLatLonToSpherePoint(90.0, 0.0, 22.0);
+        expect(ptNP.y).to.be.closeTo(22.0, 0.01);
+        expect(ptNP.x).to.be.closeTo(0.0, 0.01);
+        expect(ptNP.z).to.be.closeTo(0.0, 0.01);
+
+        const invNP = ThreeDEngine.convertSpherePointToLatLon(ptNP, 22.0);
+        expect(invNP.lat).to.be.closeTo(90.0, 0.01);
+    });
+
+    it('should generate high-resolution procedural planetary textures for Mars, Moon, and Earth', () => {
+        // Mars texture canvas
+        const marsCanvas = ThreeDEngine.generatePlanetaryTexture('mars', 512, 256);
+        expect(marsCanvas).to.exist;
+        expect(marsCanvas.width).to.equal(512);
+        expect(marsCanvas.height).to.equal(256);
+
+        // Moon texture canvas
+        const moonCanvas = ThreeDEngine.generatePlanetaryTexture('moon', 512, 256);
+        expect(moonCanvas).to.exist;
+        expect(moonCanvas.width).to.equal(512);
+        expect(moonCanvas.height).to.equal(256);
+
+        // Earth texture canvas
+        const earthCanvas = ThreeDEngine.generatePlanetaryTexture('earth', 512, 256);
+        expect(earthCanvas).to.exist;
+        expect(earthCanvas.width).to.equal(512);
+        expect(earthCanvas.height).to.equal(256);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {

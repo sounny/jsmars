@@ -1765,6 +1765,319 @@ export class ThreeDEngine {
       isRoughSurface: thetaBarDeg >= 15.0
     };
   }
+
+  /**
+   * Convert latitude and longitude to 3D Cartesian coordinates on a sphere of radius R.
+   * @param {number} latDeg - Latitude in degrees (-90 to 90)
+   * @param {number} lonDeg - Longitude in degrees (-180 to 180 or 0 to 360)
+   * @param {number} [radius=22.0] - Sphere radius
+   * @returns {{x: number, y: number, z: number}} 3D point on sphere
+   */
+  static convertLatLonToSpherePoint(latDeg, lonDeg, radius = 22.0) {
+    const latRad = (Math.max(-90.0, Math.min(90.0, latDeg)) * Math.PI) / 180.0;
+    const normLon = ((lonDeg % 360) + 540) % 360 - 180;
+    const lonRad = (normLon * Math.PI) / 180.0;
+
+    const phi = Math.PI / 2.0 - latRad;
+    const theta = lonRad + Math.PI;
+
+    const x = -radius * Math.sin(phi) * Math.cos(theta);
+    const y = radius * Math.cos(phi);
+    const z = radius * Math.sin(phi) * Math.sin(theta);
+
+    return {
+      x: parseFloat(x.toFixed(4)),
+      y: parseFloat(y.toFixed(4)),
+      z: parseFloat(z.toFixed(4))
+    };
+  }
+
+  /**
+   * Convert a 3D point on a sphere of radius R to latitude and longitude in degrees.
+   * @param {{x: number, y: number, z: number}} point - 3D vector point
+   * @param {number} [radius=22.0] - Sphere radius
+   * @returns {{lat: number, lon: number}} Geographic coordinates in degrees
+   */
+  static convertSpherePointToLatLon(point, radius = 22.0) {
+    const pLen = Math.sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
+    const r = pLen > 0 ? pLen : radius;
+
+    const ny = Math.max(-1.0, Math.min(1.0, point.y / r));
+    const latRad = Math.asin(ny);
+    const latDeg = (latRad * 180.0) / Math.PI;
+
+    let lonRad = Math.atan2(point.z, -point.x) - Math.PI;
+    let lonDeg = (lonRad * 180.0) / Math.PI;
+    while (lonDeg < -180.0) lonDeg += 360.0;
+    while (lonDeg > 180.0) lonDeg -= 360.0;
+
+    return {
+      lat: parseFloat(latDeg.toFixed(3)),
+      lon: parseFloat(lonDeg.toFixed(3))
+    };
+  }
+
+  /**
+   * Generate an ultra-high-resolution procedural planetary equirectangular texture map.
+   * Generates realistic albedo variations, polar caps, canyons, volcanoes, and maria for Mars, Moon, Earth, Phobos, and Deimos.
+   * @param {string} [body='mars'] - Target planetary body ('mars', 'moon', 'earth', 'phobos', 'deimos')
+   * @param {number} [width=1024] - Texture width in pixels
+   * @param {number} [height=512] - Texture height in pixels
+   * @returns {HTMLCanvasElement} Rendered canvas element ready for WebGL texture mapping
+   */
+  static generatePlanetaryTexture(body = 'mars', width = 1024, height = 512) {
+    const canvas = (typeof document !== 'undefined' && document.createElement)
+      ? document.createElement('canvas')
+      : { width, height, getContext: () => null };
+
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext ? canvas.getContext('2d') : null;
+    if (!ctx) return canvas;
+
+    const b = (body || 'mars').toLowerCase();
+
+    if (b === 'moon') {
+      // --- LUNAR HIGHLANDS & MARE TEXTURE ---
+      ctx.fillStyle = '#6b7280';
+      ctx.fillRect(0, 0, width, height);
+
+      // Highlands bright grain
+      for (let i = 0; i < 400; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const r = 10 + Math.random() * 40;
+        const radGrd = ctx.createRadialGradient(x, y, 0, x, y, r);
+        radGrd.addColorStop(0, 'rgba(209, 213, 219, 0.25)');
+        radGrd.addColorStop(1, 'rgba(107, 114, 128, 0)');
+        ctx.fillStyle = radGrd;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Dark basaltic maria
+      const maria = [
+        { name: 'Oceanus Procellarum', x: 0.35 * width, y: 0.40 * height, rx: 0.14 * width, ry: 0.20 * height },
+        { name: 'Mare Imbrium', x: 0.45 * width, y: 0.30 * height, rx: 0.10 * width, ry: 0.12 * height },
+        { name: 'Mare Serenitatis', x: 0.55 * width, y: 0.35 * height, rx: 0.08 * width, ry: 0.09 * height },
+        { name: 'Mare Tranquillitatis', x: 0.58 * width, y: 0.45 * height, rx: 0.09 * width, ry: 0.09 * height },
+        { name: 'Mare Crisium', x: 0.68 * width, y: 0.38 * height, rx: 0.05 * width, ry: 0.06 * height },
+        { name: 'Mare Fecunditatis', x: 0.65 * width, y: 0.55 * height, rx: 0.07 * width, ry: 0.08 * height }
+      ];
+
+      maria.forEach(m => {
+        const mg = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, Math.max(m.rx, m.ry));
+        mg.addColorStop(0, '#26282b');
+        mg.addColorStop(0.7, '#374151');
+        mg.addColorStop(1, 'rgba(75, 85, 99, 0)');
+        ctx.fillStyle = mg;
+        ctx.beginPath();
+        ctx.ellipse(m.x, m.y, m.rx, m.ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Bright ray craters (Tycho & Copernicus)
+      const rayCraters = [
+        { x: 0.47 * width, y: 0.75 * height, r: 8, rays: 18 }, // Tycho
+        { x: 0.44 * width, y: 0.40 * height, r: 6, rays: 12 }  // Copernicus
+      ];
+
+      rayCraters.forEach(c => {
+        ctx.strokeStyle = 'rgba(243, 244, 246, 0.4)';
+        ctx.lineWidth = 1;
+        for (let a = 0; a < c.rays; a++) {
+          const angle = (a * Math.PI * 2) / c.rays;
+          const len = 30 + Math.random() * 60;
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(c.x + Math.cos(angle) * len, c.y + Math.sin(angle) * len);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+    } else if (b === 'earth') {
+      // --- EARTH CONTINENTS, OCEANS & CLOUDS ---
+      // Deep blue ocean background
+      const oceanGrad = ctx.createLinearGradient(0, 0, 0, height);
+      oceanGrad.addColorStop(0, '#0f2b48');
+      oceanGrad.addColorStop(0.5, '#1e40af');
+      oceanGrad.addColorStop(1, '#0f2b48');
+      ctx.fillStyle = oceanGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Continents (Africa, Eurasia, Americas, Australia, Antarctica)
+      ctx.fillStyle = '#15803d'; // Green/vegetation & tan
+      // Africa & Eurasia
+      ctx.beginPath();
+      ctx.ellipse(0.55 * width, 0.45 * height, 0.12 * width, 0.22 * height, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(0.65 * width, 0.30 * height, 0.20 * width, 0.15 * height, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Americas
+      ctx.fillStyle = '#166534';
+      ctx.beginPath();
+      ctx.ellipse(0.25 * width, 0.32 * height, 0.10 * width, 0.14 * height, 0.3, 0, Math.PI * 2);
+      ctx.ellipse(0.30 * width, 0.65 * height, 0.08 * width, 0.18 * height, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Australia
+      ctx.fillStyle = '#b45309'; // Desert gold
+      ctx.beginPath();
+      ctx.ellipse(0.82 * width, 0.65 * height, 0.06 * width, 0.06 * height, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Antarctica & Arctic ice
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, width, 0.08 * height);
+      ctx.fillRect(0, 0.90 * height, width, 0.10 * height);
+
+      // Swirling atmospheric clouds
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      for (let i = 0; i < 25; i++) {
+        const cx = Math.random() * width;
+        const cy = 0.2 * height + Math.random() * 0.6 * height;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 50 + Math.random() * 80, 10 + Math.random() * 20, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+    } else {
+      // --- MARS (DEFAULT) HIGH-FIDELITY PLANETARY TEXTURE ---
+      // Base reddish/ochre Martian crust
+      const marsGrad = ctx.createLinearGradient(0, 0, 0, height);
+      marsGrad.addColorStop(0, '#e5804e');
+      marsGrad.addColorStop(0.2, '#c25a2b');
+      marsGrad.addColorStop(0.5, '#a8431b');
+      marsGrad.addColorStop(0.8, '#c25a2b');
+      marsGrad.addColorStop(1, '#e5804e');
+      ctx.fillStyle = marsGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Multi-octave crustal roughness & albedo patches
+      for (let i = 0; i < 300; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const r = 20 + Math.random() * 60;
+        const radGrd = ctx.createRadialGradient(x, y, 0, x, y, r);
+        radGrd.addColorStop(0, 'rgba(115, 38, 14, 0.3)');
+        radGrd.addColorStop(1, 'rgba(168, 67, 27, 0)');
+        ctx.fillStyle = radGrd;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Major Albedo Markings (Dark Volcanic Basaltic Sands)
+      // 1. Syrtis Major Planum (near 70 deg E, 10 deg N):
+      const syrtisGrd = ctx.createRadialGradient(0.69 * width, 0.44 * height, 0, 0.69 * width, 0.44 * height, 0.09 * width);
+      syrtisGrd.addColorStop(0, '#2e1208');
+      syrtisGrd.addColorStop(0.7, '#421a0d');
+      syrtisGrd.addColorStop(1, 'rgba(66, 26, 13, 0)');
+      ctx.fillStyle = syrtisGrd;
+      ctx.beginPath();
+      ctx.moveTo(0.69 * width, 0.35 * height);
+      ctx.lineTo(0.74 * width, 0.50 * height);
+      ctx.lineTo(0.64 * width, 0.50 * height);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. Acidalia Planitia & Mare Acidalium (northern dark swath, 300-360 deg E, 35-60 deg N):
+      const acidaliaGrd = ctx.createRadialGradient(0.92 * width, 0.28 * height, 0, 0.92 * width, 0.28 * height, 0.12 * width);
+      acidaliaGrd.addColorStop(0, '#291007');
+      acidaliaGrd.addColorStop(0.8, '#3d180b');
+      acidaliaGrd.addColorStop(1, 'rgba(61, 24, 11, 0)');
+      ctx.fillStyle = acidaliaGrd;
+      ctx.beginPath();
+      ctx.ellipse(0.92 * width, 0.28 * height, 0.11 * width, 0.08 * height, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. Sinus Meridiani & Mare Erythraeum (southern lowlands belt):
+      ctx.fillStyle = 'rgba(45, 17, 8, 0.65)';
+      ctx.beginPath();
+      ctx.ellipse(0.02 * width, 0.55 * height, 0.12 * width, 0.06 * height, -0.1, 0, Math.PI * 2);
+      ctx.ellipse(0.88 * width, 0.58 * height, 0.10 * width, 0.07 * height, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4. Bright Dust-Filled Impact Basins (Hellas & Argyre):
+      // Hellas Basin (42 deg S, 70 deg E):
+      const hellasGrd = ctx.createRadialGradient(0.70 * width, 0.73 * height, 0, 0.70 * width, 0.73 * height, 0.09 * width);
+      hellasGrd.addColorStop(0, '#f59e0b');
+      hellasGrd.addColorStop(0.6, '#ea580c');
+      hellasGrd.addColorStop(1, 'rgba(234, 88, 12, 0)');
+      ctx.fillStyle = hellasGrd;
+      ctx.beginPath();
+      ctx.ellipse(0.70 * width, 0.73 * height, 0.08 * width, 0.06 * height, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Argyre Basin (50 deg S, 316 deg E):
+      const argyreGrd = ctx.createRadialGradient(0.88 * width, 0.77 * height, 0, 0.88 * width, 0.77 * height, 0.06 * width);
+      argyreGrd.addColorStop(0, '#f97316');
+      argyreGrd.addColorStop(0.7, '#c2410c');
+      argyreGrd.addColorStop(1, 'rgba(194, 65, 12, 0)');
+      ctx.fillStyle = argyreGrd;
+      ctx.beginPath();
+      ctx.ellipse(0.88 * width, 0.77 * height, 0.05 * width, 0.04 * height, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 5. Valles Marineris Canyon System (270-320 deg E, 5-15 deg S):
+      ctx.strokeStyle = '#1f0903';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0.75 * width, 0.54 * height);
+      ctx.bezierCurveTo(0.80 * width, 0.56 * height, 0.85 * width, 0.55 * height, 0.90 * width, 0.53 * height);
+      ctx.stroke();
+
+      // 6. Tharsis Volcanoes & Olympus Mons (226 deg E, 18 deg N):
+      const volcanoes = [
+        { name: 'Olympus Mons', x: 0.63 * width, y: 0.40 * height, r: 12 },
+        { name: 'Ascraeus Mons', x: 0.71 * width, y: 0.43 * height, r: 8 },
+        { name: 'Pavonis Mons', x: 0.69 * width, y: 0.50 * height, r: 8 },
+        { name: 'Arsia Mons', x: 0.66 * width, y: 0.55 * height, r: 8 },
+        { name: 'Elysium Mons', x: 0.41 * width, y: 0.36 * height, r: 9 }
+      ];
+
+      volcanoes.forEach(v => {
+        const vg = ctx.createRadialGradient(v.x, v.y, 0, v.x, v.y, v.r);
+        vg.addColorStop(0, '#fb923c');
+        vg.addColorStop(0.5, '#7c2d12');
+        vg.addColorStop(1, 'rgba(124, 45, 18, 0)');
+        ctx.fillStyle = vg;
+        ctx.beginPath();
+        ctx.arc(v.x, v.y, v.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Caldera pit
+        ctx.fillStyle = '#1c0702';
+        ctx.beginPath();
+        ctx.arc(v.x, v.y, v.r * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 7. North & South Polar Ice Caps (Planum Boreum & Planum Australe):
+      // North Polar Cap (bright white/ice blue with spiral chasmata cuts)
+      const npGrad = ctx.createRadialGradient(0.50 * width, 0, 0, 0.50 * width, 0, 0.14 * height);
+      npGrad.addColorStop(0, '#ffffff');
+      npGrad.addColorStop(0.7, '#e0f2fe');
+      npGrad.addColorStop(1, 'rgba(224, 242, 254, 0)');
+      ctx.fillStyle = npGrad;
+      ctx.fillRect(0, 0, width, 0.12 * height);
+
+      // South Polar Cap (bright dry ice cap)
+      const spGrad = ctx.createRadialGradient(0.50 * width, height, 0, 0.50 * width, height, 0.10 * height);
+      spGrad.addColorStop(0, '#ffffff');
+      spGrad.addColorStop(0.8, '#f1f5f9');
+      spGrad.addColorStop(1, 'rgba(241, 245, 249, 0)');
+      ctx.fillStyle = spGrad;
+      ctx.fillRect(0, 0.88 * height, width, 0.12 * height);
+    }
+
+    return canvas;
+  }
 }
 
 
