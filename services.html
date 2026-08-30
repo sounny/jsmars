@@ -1527,7 +1527,12 @@
                         </p>
                     </div>
 
-                    <form action="mailto:jsmars@sounny.com" method="post" enctype="text/plain" id="consultation-form">
+                    <form action="https://sounny-forms.web.app/api/submit" method="POST" id="consultation-form" data-sounnyform="jsmars_institutional">
+                        <!-- SounnyForms Configuration -->
+                        <input type="hidden" name="_to" value="sounny@gmail.com">
+                        <input type="hidden" name="_subject" value="New JSMARS Institutional Inquiry">
+                        <input type="text" name="_honey" style="position:absolute!important;left:-9999px!important;opacity:0!important;pointer-events:none!important;visibility:hidden!important;" tabindex="-1" autocomplete="off">
+
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="name">Full Name *</label>
@@ -1568,7 +1573,7 @@
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                         </button>
                         <p class="form-note">
-                            Direct email: <a href="mailto:jsmars@sounny.com" style="color: var(--accent-warm); text-decoration: none; font-weight: 600;">jsmars@sounny.com</a> &bull; Response within 1 business day &bull; Quotes provided on university / institutional purchase orders.
+                            Direct email: <a href="mailto:sounny@gmail.com" style="color: var(--accent-warm); text-decoration: none; font-weight: 600;">sounny@gmail.com</a> &bull; Response within 1 business day &bull; Quotes provided on university / institutional purchase orders.
                         </p>
                     </form>
                 </div>
@@ -1657,6 +1662,9 @@
             </div>
         </div>
     </footer>
+
+    <!-- SounnyForms Integration -->
+    <script src="src/util/sounny-forms.js" data-endpoint="https://sounny-forms.web.app/api/submit"></script>
 </body>
 
 </html>
