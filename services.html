@@ -165,34 +165,29 @@
             z-index: 1;
         }
 
-        /* Dynamic Floating Transparent Glass Navigation */
+        /* Floating Transparent Glass Navigation at Top */
         header {
-            position: fixed;
-            left: 50%;
-            transform: translateX(-50%);
-            top: calc(100vh - 90px - env(safe-area-inset-bottom, 0px));
+            position: sticky;
+            top: 16px;
             z-index: 1000;
             width: calc(100% - 48px);
             max-width: 1220px;
-            background: rgba(6, 9, 17, 0.38);
+            margin: 16px auto 0;
+            background: rgba(6, 9, 17, 0.42);
             backdrop-filter: blur(28px) saturate(190%);
             -webkit-backdrop-filter: blur(28px) saturate(190%);
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: var(--radius-full);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-            transition: top 0.55s cubic-bezier(0.16, 1, 0.3, 1),
-                        background 0.35s ease,
-                        border-color 0.35s ease,
-                        box-shadow 0.35s ease;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
         }
 
         header.scrolled-top {
-            top: calc(16px + env(safe-area-inset-top, 0px));
-            background: rgba(6, 9, 17, 0.52);
+            background: rgba(6, 9, 17, 0.65);
             backdrop-filter: blur(32px) saturate(200%);
             -webkit-backdrop-filter: blur(32px) saturate(200%);
-            border-color: rgba(255, 255, 255, 0.14);
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.16);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.18);
         }
 
         .nav-inner {
@@ -1102,10 +1097,8 @@
         @media (max-width: 840px) {
             header {
                 width: calc(100% - 24px);
-                top: calc(100vh - 78px - env(safe-area-inset-bottom, 0px));
-            }
-            header.scrolled-top {
-                top: calc(12px + env(safe-area-inset-top, 0px));
+                top: 12px;
+                margin: 12px auto 0;
             }
             .nav-inner {
                 height: 58px;
@@ -1701,17 +1694,16 @@
     <!-- SounnyForms Integration -->
     <script src="src/util/sounny-forms.js" data-endpoint="https://sounny-forms.web.app/api/submit"></script>
 
-    <!-- Dynamic Floating Navigation Scroll Handler -->
+    <!-- Top Glass Navigation Scroll State Handler -->
     <script>
         (function() {
             const header = document.querySelector('header');
             if (!header) return;
 
             let ticking = false;
-            function updateNavPosition() {
+            function updateNavGlass() {
                 const scrollY = window.scrollY || window.pageYOffset;
-                // Transition smoothly to top when scrolling down past 80px
-                if (scrollY > 80) {
+                if (scrollY > 30) {
                     header.classList.add('scrolled-top');
                 } else {
                     header.classList.remove('scrolled-top');
@@ -1721,13 +1713,12 @@
 
             window.addEventListener('scroll', function() {
                 if (!ticking) {
-                    window.requestAnimationFrame(updateNavPosition);
+                    window.requestAnimationFrame(updateNavGlass);
                     ticking = true;
                 }
             }, { passive: true });
 
-            // Initial check on page load
-            updateNavPosition();
+            updateNavGlass();
         })();
     </script>
 </body>
