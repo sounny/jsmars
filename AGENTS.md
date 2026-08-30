@@ -11,11 +11,13 @@ This file explains the project goals, architecture, and rules for contributors (
 
 ## 📚 Reference Material
 The original Java-based JMARS application is located in the `jmars/` folder at the root of this repository.
+- **Upstream Source**: ASU Mars Space Flight Facility Subversion repository at `https://oss.mars.asu.edu/svn/jmars/default/trunk/`.
+- **Sync Cadence**: Check every **3 months** for upstream updates or new release tags (`python scripts/sync_jmars_svn.py --check`). Run `python scripts/sync_jmars_svn.py` to synchronize any new upstream files.
 - **Usage**: Use this to compare features, UI/UX flows, and data visualization styles.
 - **Goal**: We aim for feature parity where possible, but adapted for modern web patterns.
 
 > [!WARNING]
-> **DO NOT MODIFY** the contents of the `jmars/` folder. It is strictly for reference purposes only. Any changes to the reference application will invalidate it as a source of truth.
+> **DO NOT MODIFY** the contents of the `jmars/` folder directly. It is strictly for reference purposes only and should only be updated via the upstream sync script. Any manual changes to the reference application will invalidate it as a source of truth.
 
 ## 2. Architecture & Patterns
 
