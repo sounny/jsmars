@@ -1,6 +1,7 @@
-import { BandMathEngine } from './BandMathEngine.js';
-import { EventBus } from '../../core/EventBus.js';
-import { EVENTS } from '../../constants.js';
+import { BandMathEngine } from "./BandMathEngine.js";
+import { BandMathLayer } from "./BandMathLayer.js";
+import { EventBus } from "../../core/EventBus.js";
+import { EVENTS } from "../../constants.js";
 
 /**
  * @module BandMathPanel
@@ -12,8 +13,9 @@ export class BandMathPanel {
    * @param {L.Map} map - Leaflet map instance
    */
   constructor(container, map) {
-    this.container = typeof container === 'string' ? document.getElementById(container) : container;
+    this.container = typeof container === "string" ? document.getElementById(container) : container;
     this.map = map;
+    this.layer = new BandMathLayer(map);
     this.canvas = null;
     this.ctx = null;
 
@@ -28,7 +30,7 @@ export class BandMathPanel {
         <div style="margin-bottom: 8px;">
           <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Mineral Index Preset</label>
           <select id="bm-preset-select" class="tool-select" style="width: 100%; box-sizing: border-box;">
-            ${BandMathEngine.MINERAL_PRESETS.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+            ${BandMathEngine.MINERAL_PRESETS.map(p => `<option value="${p.id}">${p.name}</option>`).join("")}
             <option value="custom">-- Custom Band Math Formula --</option>
           </select>
         </div>
@@ -62,35 +64,52 @@ export class BandMathPanel {
           </div>
         </div>
 
+        <div style="margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-bottom: 2px;">
+            <span>Overlay Opacity</span>
+            <span id="bm-opacity-val">65%</span>
+          </div>
+          <input type="range" id="bm-opacity-slider" min="10" max="100" value="65" style="width: 100%; cursor: pointer;">
+        </div>
+
         <div style="margin-bottom: 8px; text-align: center;">
-          <canvas id="bm-preview-canvas" width="220" height="70" style="border-radius: 4px; border: 1px solid #334155; background: #0f172a; width: 100%; height: 70px; display: block;"></canvas>
+          <canvas id="bm-preview-canvas" width="220" height="50" style="border-radius: 4px; border: 1px solid #334155; background: #0f172a; width: 100%; height: 50px; display: block;"></canvas>
+        </div>
+
+        <div id="bm-status-banner" style="display: none; padding: 6px 8px; margin-bottom: 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; font-size: 11px; color: #6ee7b7; text-align: center;">
+          ● Active Mineral Colormap Overlay
         </div>
 
         <div style="display: flex; gap: 6px;">
           <button id="bm-apply-btn" class="tool-btn" style="flex: 1; font-size: 11px; background: #0284c7; font-weight: 600;">Apply Color Stretch</button>
+          <button id="bm-clear-btn" class="tool-btn" style="display: none; width: 70px; font-size: 11px; background: #475569;">Clear</button>
         </div>
       </div>
     `;
 
-    this.presetSelect = this.container.querySelector('#bm-preset-select');
-    this.formulaInput = this.container.querySelector('#bm-formula-input');
-    this.descText = this.container.querySelector('#bm-desc-text');
-    this.colormapSelect = this.container.querySelector('#bm-colormap-select');
-    this.minInput = this.container.querySelector('#bm-min-val');
-    this.maxInput = this.container.querySelector('#bm-max-val');
-    this.canvas = this.container.querySelector('#bm-preview-canvas');
-    this.ctx = this.canvas.getContext('2d');
-    this.applyBtn = this.container.querySelector('#bm-apply-btn');
+    this.presetSelect = this.container.querySelector("#bm-preset-select");
+    this.formulaInput = this.container.querySelector("#bm-formula-input");
+    this.descText = this.container.querySelector("#bm-desc-text");
+    this.colormapSelect = this.container.querySelector("#bm-colormap-select");
+    this.minInput = this.container.querySelector("#bm-min-val");
+    this.maxInput = this.container.querySelector("#bm-max-val");
+    this.opacitySlider = this.container.querySelector("#bm-opacity-slider");
+    this.opacityVal = this.container.querySelector("#bm-opacity-val");
+    this.canvas = this.container.querySelector("#bm-preview-canvas");
+    this.ctx = this.canvas.getContext("2d");
+    this.statusBanner = this.container.querySelector("#bm-status-banner");
+    this.applyBtn = this.container.querySelector("#bm-apply-btn");
+    this.clearBtn = this.container.querySelector("#bm-clear-btn");
 
     this.bindEvents();
     this.updatePreview();
   }
 
   bindEvents() {
-    this.presetSelect.addEventListener('change', (e) => {
+    this.presetSelect.addEventListener("change", (e) => {
       const presetId = e.target.value;
-      if (presetId === 'custom') {
-        this.descText.innerText = 'Custom band arithmetic: use standard band labels (e.g. B1, B2) and math operators.';
+      if (presetId === "custom") {
+        this.descText.innerText = "Custom band arithmetic: use standard band labels (e.g. B1, B2) and math operators.";
       } else {
         const preset = BandMathEngine.MINERAL_PRESETS.find(p => p.id === presetId);
         if (preset) {
@@ -102,24 +121,80 @@ export class BandMathPanel {
         }
       }
       this.updatePreview();
+      if (this.layer.isActive) {
+        this.applyLayer();
+      }
+    });
+
+    this.opacitySlider.addEventListener("input", (e) => {
+      const val = parseInt(e.target.value, 10);
+      this.opacityVal.innerText = `${val}%`;
+      this.layer.setParams({ opacity: val / 100 });
     });
 
     [this.formulaInput, this.colormapSelect, this.minInput, this.maxInput].forEach(el => {
-      el.addEventListener('input', () => this.updatePreview());
-      el.addEventListener('change', () => this.updatePreview());
+      el.addEventListener("input", () => {
+        this.updatePreview();
+        if (this.layer.isActive) {
+          this.applyLayer();
+        }
+      });
+      el.addEventListener("change", () => {
+        this.updatePreview();
+        if (this.layer.isActive) {
+          this.applyLayer();
+        }
+      });
     });
 
-    this.applyBtn.addEventListener('click', () => {
-      const detail = {
-        preset: this.presetSelect.value,
-        formula: this.formulaInput.value,
-        colormap: this.colormapSelect.value,
-        min: parseFloat(this.minInput.value) || 0,
-        max: parseFloat(this.maxInput.value) || 1
-      };
-      EventBus.emit(EVENTS.BAND_MATH_APPLIED, detail);
-      alert(`Applied mineral index: ${this.presetSelect.options[this.presetSelect.selectedIndex].text}`);
+    this.applyBtn.addEventListener("click", () => {
+      this.applyLayer();
     });
+
+    this.clearBtn.addEventListener("click", () => {
+      this.clearLayer();
+    });
+
+    EventBus.on(EVENTS.BODY_CHANGED, () => {
+      if (this.layer.isActive) {
+        this.clearLayer();
+      }
+    });
+  }
+
+  applyLayer() {
+    const presetName = this.presetSelect.options[this.presetSelect.selectedIndex].text;
+    const colormap = this.colormapSelect.value;
+    const opacity = parseInt(this.opacitySlider.value, 10) / 100;
+
+    const detail = {
+      preset: this.presetSelect.value,
+      formula: this.formulaInput.value,
+      colormap: colormap,
+      min: parseFloat(this.minInput.value) || 0,
+      max: parseFloat(this.maxInput.value) || 1,
+      opacity: opacity
+    };
+
+    this.layer.setParams(detail);
+    this.layer.activate();
+
+    // Update UI state
+    this.statusBanner.style.display = "block";
+    this.statusBanner.innerText = `● Active: ${presetName.split(" ")[0]} (${colormap.toUpperCase()})`;
+    this.applyBtn.innerText = "✓ Update Stretch";
+    this.applyBtn.style.background = "#059669";
+    this.clearBtn.style.display = "block";
+
+    EventBus.emit(EVENTS.BAND_MATH_APPLIED, detail);
+  }
+
+  clearLayer() {
+    this.layer.deactivate();
+    this.statusBanner.style.display = "none";
+    this.applyBtn.innerText = "Apply Color Stretch";
+    this.applyBtn.style.background = "#0284c7";
+    this.clearBtn.style.display = "none";
   }
 
   updatePreview() {
