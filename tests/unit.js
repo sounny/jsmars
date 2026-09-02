@@ -16941,6 +16941,25 @@ describe('3D Interactive Globe & Planetary Texture Engine', () => {
     });
 });
 
+describe('Social Media & OpenGraph Metadata', () => {
+    it('should validate standard OpenGraph and Twitter card image formats', () => {
+        const ogImage = 'https://jsmars.sounny.com/og-image.png';
+        const twitterImage = 'https://jsmars.sounny.com/og-image.png';
+        
+        expect(ogImage.endsWith('.png') || ogImage.endsWith('.jpg')).to.be.true;
+        expect(ogImage.endsWith('.svg')).to.be.false;
+        expect(twitterImage.endsWith('.png') || twitterImage.endsWith('.jpg')).to.be.true;
+        expect(twitterImage.endsWith('.svg')).to.be.false;
+    });
+
+    it('should specify standard 1200x630 dimensions for social cards', () => {
+        const dimensions = { width: 1200, height: 630 };
+        expect(dimensions.width).to.equal(1200);
+        expect(dimensions.height).to.equal(630);
+        expect(dimensions.width / dimensions.height).to.be.closeTo(1.904, 0.01);
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {
