@@ -423,19 +423,19 @@ export class JMARSMap {
 
   /**
    * Reorder active layers by z-index.
-   * @param {string[]} layerIds - Layer IDs from top (highest z-index) to bottom.
+   * activeLayers state array is ordered [Bottom, ..., Top].
+   * @param {string[]} layerIds - Layer IDs ordered from bottom to top.
    */
   updateLayerOrder(layerIds) {
     const total = layerIds.length;
     layerIds.forEach((id, index) => {
       const layer = this.activeLayers[id];
       if (layer && typeof layer.setZIndex === 'function') {
-        // Higher zIndex = rendered on top
-        layer.setZIndex(total - index);
-      } else if (layer && layer.setStyle) {
-        // Vector layers use bringToFront/bringToBack
-        if (index === 0) layer.bringToFront();
-        else if (index === total - 1) layer.bringToBack();
+        // Higher index in array = higher zIndex (rendered on top)
+        layer.setZIndex(index + 1);
+      } else if (layer && typeof layer.bringToFront === 'function') {
+        if (index === total - 1) layer.bringToFront();
+        else if (index === 0 && typeof layer.bringToBack === 'function') layer.bringToBack();
       }
     });
   }
