@@ -86,24 +86,20 @@ export class JMARSMap {
     if (typeof window !== 'undefined' && window.location) {
       const urlState = URLStateEngine.parseURLToState(window.location.search || window.location.hash);
       if (urlState.hasState) {
-        if (urlState.body) {
-          this.currentBody = urlState.body;
-        }
-        if (urlState.lat !== null && urlState.lon !== null) {
-          const z = urlState.zoom !== null ? urlState.zoom : JMARS_CONFIG.initialView.zoom;
-          this.map.setView([urlState.lat, urlState.lon], z);
-          this.bodyStates[this.currentBody] = {
-            center: [urlState.lat, urlState.lon],
-            zoom: z,
-            activeLayers: urlState.activeLayers || []
-          };
-        } else if (urlState.activeLayers && urlState.activeLayers.length > 0) {
-          this.bodyStates[this.currentBody] = {
-            center: this.map.getCenter(),
-            zoom: this.map.getZoom(),
-            activeLayers: urlState.activeLayers
-          };
-        }
+        const targetBody = (urlState.body || this.currentBody || 'mars').toLowerCase();
+        this.currentBody = targetBody;
+
+        const bodyCfg = JMARS_CONFIG.bodies[targetBody] || JMARS_CONFIG.bodies.mars;
+        const z = urlState.zoom !== null ? urlState.zoom : (bodyCfg?.zoom || JMARS_CONFIG.initialView.zoom);
+        const lat = urlState.lat !== null ? urlState.lat : (bodyCfg?.center ? bodyCfg.center[0] : 0);
+        const lon = urlState.lon !== null ? urlState.lon : (bodyCfg?.center ? bodyCfg.center[1] : 0);
+
+        this.bodyStates[targetBody] = {
+          center: [lat, lon],
+          zoom: z,
+          activeLayers: (urlState.activeLayers && urlState.activeLayers.length > 0) ? urlState.activeLayers : null
+        };
+
         if (urlState.colorStretch) {
           document.dispatchEvent(new CustomEvent('jmars:color-stretch-changed', { detail: urlState.colorStretch }));
         }
@@ -113,6 +109,7 @@ export class JMARSMap {
     this.switchBody(this.currentBody);
     this.discoverLayers();
     this.addControls();
+    this._initialized = true;
 
     // Auto-sync view changes to jmarsState and browser URL query string
     let syncTimer = null;
@@ -188,8 +185,8 @@ export class JMARSMap {
 
     console.log(`Switching to body: ${bodyConfig.name}`);
 
-    // 1. Save current body state (deep clone layer objects to avoid shared references)
-    if (this.currentBody) {
+    // 1. Only save previous body state if actively switching from a different loaded body
+    if (this._initialized && this.currentBody && this.currentBody !== key) {
       this.bodyStates[this.currentBody] = {
         center: this.map.getCenter(),
         zoom: this.map.getZoom(),
@@ -237,14 +234,17 @@ export class JMARSMap {
     document.dispatchEvent(event);
 
     // 5. Restore saved state or set defaults
-    const savedState = this.bodyStates[bodyKey];
+    const savedState = this.bodyStates[key];
     let newActiveLayers = [];
 
     if (savedState) {
       this.map.setView(savedState.center, savedState.zoom);
-      newActiveLayers = savedState.activeLayers;
-    } else {
-      this.map.setView(bodyConfig.center, bodyConfig.zoom);
+      if (savedState.activeLayers && savedState.activeLayers.length > 0) {
+        newActiveLayers = savedState.activeLayers;
+      }
+    }
+    if (newActiveLayers.length === 0) {
+      this.map.setView(savedState?.center || bodyConfig.center, savedState?.zoom || bodyConfig.zoom);
       const defaultId = bodyConfig.defaultLayer;
       const defaultLayer = defaultId
         ? this.availableLayers.find(l => l.id === defaultId)
