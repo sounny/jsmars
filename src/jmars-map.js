@@ -135,6 +135,16 @@ export class JMARSMap {
     this.map.on('moveend', syncViewToURL);
     this.map.on('zoomend', syncViewToURL);
 
+    // Auto-sync browser URL whenever layers are added, removed, reordered, or opacity changes
+    document.addEventListener(EVENTS.LAYERS_CHANGED, () => {
+      syncViewToURL();
+    });
+
+    // Auto-sync color stretch adjustments
+    document.addEventListener('jmars:color-stretch-changed', () => {
+      syncViewToURL();
+    });
+
     // Listen for body changes from the BodySelector UI
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
       const body = e?.detail?.body;
