@@ -92,8 +92,12 @@ export class JMARSMap {
         if (urlState.lat !== null && urlState.lon !== null) {
           const z = urlState.zoom !== null ? urlState.zoom : JMARS_CONFIG.initialView.zoom;
           this.map.setView([urlState.lat, urlState.lon], z);
-        }
-        if (urlState.activeLayers && urlState.activeLayers.length > 0) {
+          this.bodyStates[this.currentBody] = {
+            center: [urlState.lat, urlState.lon],
+            zoom: z,
+            activeLayers: urlState.activeLayers || []
+          };
+        } else if (urlState.activeLayers && urlState.activeLayers.length > 0) {
           this.bodyStates[this.currentBody] = {
             center: this.map.getCenter(),
             zoom: this.map.getZoom(),
