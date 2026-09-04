@@ -88,12 +88,33 @@ export class BookmarksTool {
   goTo(bookmark) {
     if (!bookmark) return;
     const targetBody = (bookmark.body || 'mars').toLowerCase();
+    
+    // If we need to switch bodies, wait for the switch to complete before panning
     if (targetBody !== this.currentBody) {
       this.currentBody = targetBody;
+      
+      // Use a Promise-based approach to wait for body switch completion
+      const bodyChangePromise = new Promise((resolve) => {
+        const listener = () => {
+          document.removeEventListener(EVENTS.BODY_CHANGED, listener);
+          // Give the map a moment to complete layer clearing and initialization
+          setTimeout(resolve, 100);
+        };
+        document.addEventListener(EVENTS.BODY_CHANGED, listener);
+      });
+      
+      // Trigger the body change
       jmarsState.set('body', targetBody);
       document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: targetBody } }));
+      
+      // Pan after body switch completes
+      bodyChangePromise.then(() => {
+        this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
+      });
+    } else {
+      // Same body, just pan immediately
+      this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
     }
-    this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
   }
 
   remove(id) {

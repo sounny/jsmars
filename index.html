@@ -916,8 +916,8 @@
       }
     });
 
-    // Session Manager (include bookmarksTool)
-    const sessionManager = new SessionManager(craterLayer, measureTool, bookmarksTool);
+    // Session Manager (include bookmarksTool and map for live viewport capture)
+    const sessionManager = new SessionManager(craterLayer, measureTool, bookmarksTool, jmars.map);
 
     // Session Event Listeners
     document.getElementById('session-save-btn').addEventListener('click', () => sessionManager.saveSession());

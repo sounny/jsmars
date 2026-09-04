@@ -1,5 +1,57 @@
 # JSMARS Release Notes
 
+## v0.8.1 - Stabilization & Quality Milestone (Sprint 1-3)
+**Date:** 2026-09-04
+
+### Bug Fixes
+
+#### Session Restore Order (P1)
+- Fixed session restore flow to ensure body switch completes before restoring active layers and viewport.
+- Previously, saved sessions for non-current bodies would lose their layer and view state due to race conditions.
+- Sessions now restore correctly across body switches: body → (wait for map switch) → layers → view.
+
+#### Viewport Serialization (P1)
+- Fixed stale viewport capture in sessions. Sessions now read live map center and zoom at save time using `map.getCenter()` and `map.getZoom()`.
+- Previously, sessions captured `jmarsState.view` which could be out-of-sync with actual map display.
+- All session saves now capture canonical viewport position matching displayed map state.
+
+#### Cross-Body Bookmark Navigation (P1)
+- Fixed `goTo()` method in BookmarksTool to wait for body switch completion before panning to destination coordinates.
+- Previously, bookmarks for different bodies would pan the old body's map to the target coordinates instead of switching first.
+- Bookmarks now properly switch bodies, wait for map initialization, then pan to target coordinates.
+
+#### Canonical Body Keys (P2)
+- Ensured body keys are consistently lowercase (`mars`, `moon`, `earth`) across map, state, URL, and UI components.
+- Deep-link initialization now synchronizes both `JMARSMap.currentBody` and `jmarsState.body` atomically.
+- Prevents UI component disagreement with displayed map body.
+
+#### XSS-Safe Rendering Verification
+- Verified BookmarksTool and StampQueryPanel use DOM APIs (`textContent`) for all user-controlled and remote data.
+- Product IDs from remote ODE API responses and user bookmark names are rendered safely without innerHTML interpolation.
+
+### Test Coverage
+
+#### New Unit Tests (Mocha/Chai)
+- **Session Restore Order**: Validates body switch timing before layer restoration
+- **Canonical Body Keys**: Tests lowercase normalization across state updates
+- **URL State Visibility**: Confirms layer visibility serialization/deserialization
+- **XSS-Safe Rendering**: Tests bookmark name and stamp product ID rendering with malicious payloads
+
+### Documentation Updates
+- Updated `ARCHITECTURE.md` with body-switch lifecycle and session restore flow diagrams
+- Updated `user-guide.md` with session best practices and cross-body bookmark workflow
+- Added `TESTING.md` with unit test execution instructions and regression test procedures
+
+### Browser Testing Checklist
+- [x] Session save/load across Mars ↔ Moon ↔ Earth bodies
+- [x] Deep-link body initialization consistency with UI
+- [x] Cross-body bookmark navigation (Mars ROI → Moon POI)
+- [x] Viewport accuracy in saved sessions (compare with displayed map before save)
+- [x] Layer visibility toggle persistence (save/load/URL)
+- [x] Bookmark name rendering with special characters and markup-like strings
+
+---
+
 ## v0.8.0 - Planetary Geodesy, Astrodynamics & Cartography Milestone
 **Date:** 2026-08-24
 

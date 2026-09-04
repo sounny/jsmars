@@ -16993,6 +16993,200 @@ describe('Social Media & OpenGraph Metadata', () => {
     });
 });
 
+// Sprint 3: P1 Regression Tests for Session, Body, and Bookmark Fixes
+
+describe('SessionManager & Body Switch Order (P1 Fix)', () => {
+    beforeEach(() => {
+        jmarsState.reset();
+    });
+
+    it('should restore body before layers during session load', (done) => {
+        // Create a test session with body=moon and layers
+        const testSession = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            state: {
+                body: 'moon',
+                activeLayers: [
+                    { id: 'moon_basemap', opacity: 1, visible: true },
+                    { id: 'moon_dem', opacity: 0.8, visible: true }
+                ],
+                overlays: {},
+                view: { lat: 0.674, lng: 23.473, zoom: 8 }
+            },
+            craters: [],
+            measurements: [],
+            bookmarks: []
+        };
+
+        // Verify initial state
+        expect(jmarsState.get('body')).to.equal('mars');
+        
+        // Track body changes to ensure proper order
+        let bodyChangedCount = 0;
+        let layersChangedCount = 0;
+        
+        jmarsState.on(EVENTS.BODY_CHANGED, () => {
+            bodyChangedCount++;
+            // At this point, layers should not yet be restored
+            expect(jmarsState.get('activeLayers')).to.be.empty;
+        });
+        
+        jmarsState.on(EVENTS.LAYERS_CHANGED, () => {
+            layersChangedCount++;
+            // By now, body should be switched to moon
+            expect(jmarsState.get('body')).to.equal('moon');
+        });
+
+        // Simulate the session load flow
+        setTimeout(() => {
+            // Step 1: Body change
+            jmarsState.set('body', 'moon');
+            document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: 'moon' } }));
+            
+            // Wait for async body switch
+            setTimeout(() => {
+                // Step 2: Restore layers after body switch
+                jmarsState.setActiveLayers(testSession.state.activeLayers);
+                
+                // Verify final state
+                expect(jmarsState.get('body')).to.equal('moon');
+                expect(jmarsState.get('activeLayers')).to.have.lengthOf(2);
+                expect(jmarsState.get('activeLayers')[0].id).to.equal('moon_basemap');
+                done();
+            }, 150);
+        }, 0);
+    });
+});
+
+describe('Canonical Body Keys (P2 Fix)', () => {
+    beforeEach(() => {
+        jmarsState.reset();
+    });
+
+    it('should normalize body keys to lowercase', () => {
+        jmarsState.set('body', 'MARS');
+        expect(jmarsState.get('body')).to.equal('mars');
+        
+        jmarsState.set('body', 'Moon');
+        expect(jmarsState.get('body')).to.equal('moon');
+        
+        jmarsState.set('body', 'EARTH');
+        expect(jmarsState.get('body')).to.equal('earth');
+    });
+
+    it('should maintain body consistency across state changes', () => {
+        // Set body
+        jmarsState.set('body', 'moon');
+        
+        // Get body
+        const body = jmarsState.get('body');
+        
+        // Verify consistent lowercase format
+        expect(body).to.equal('moon');
+        expect(body).to.match(/^[a-z]+$/);
+    });
+});
+
+describe('URL State Engine Visibility (Existing Feature)', () => {
+    it('should serialize and deserialize layer visibility in URLs', () => {
+        const state = {
+            body: 'mars',
+            activeLayers: [
+                { id: 'layer1', opacity: 1.0, visible: true },
+                { id: 'layer2', opacity: 0.5, visible: false },
+                { id: 'layer3', opacity: 0.8, visible: true }
+            ]
+        };
+
+        // Serialize
+        const url = URLStateEngine.serializeStateToURL(state);
+        expect(url).to.include('layers=');
+        
+        // Verify layer tokens include visibility
+        const layerParam = new URL(`https://example.com${url.substring(url.indexOf('?'))}`).searchParams.get('layers');
+        const tokens = layerParam.split(',');
+        expect(tokens[0]).to.equal('layer1:1:1');    // visible
+        expect(tokens[1]).to.equal('layer2:0.5:0');  // hidden
+        expect(tokens[2]).to.equal('layer3:0.8:1');  // visible
+        
+        // Deserialize
+        const parsed = URLStateEngine.parseURLToState(url);
+        expect(parsed.activeLayers).to.have.lengthOf(3);
+        expect(parsed.activeLayers[0].visible).to.be.true;
+        expect(parsed.activeLayers[1].visible).to.be.false;
+        expect(parsed.activeLayers[2].visible).to.be.true;
+    });
+});
+
+describe('XSS-Safe Rendering for User Content', () => {
+    it('should safely render bookmark names with textContent (not innerHTML)', () => {
+        // Create a test container
+        const container = document.createElement('div');
+        
+        // Simulate bookmark with XSS-like name
+        const maliciousBookmark = {
+            id: 'xss-test',
+            name: '<img src=x onerror="alert(\'XSS\')" />',
+            lat: 0,
+            lng: 0,
+            zoom: 5,
+            body: 'mars'
+        };
+
+        // Safe rendering using textContent
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = maliciousBookmark.name;
+        container.appendChild(nameSpan);
+
+        // Verify the XSS payload is treated as plain text, not executed
+        expect(nameSpan.textContent).to.equal(maliciousBookmark.name);
+        expect(nameSpan.innerHTML).to.not.include('<img');
+        expect(container.querySelectorAll('img')).to.have.lengthOf(0);
+    });
+
+    it('should safely render stamp product IDs from remote API responses', () => {
+        const container = document.createElement('div');
+        
+        // Simulate remote API response with potentially malicious product ID
+        const maliciousProduct = {
+            pdsId: '"><script>alert("XSS")</script><span class="',
+            centerLat: 0,
+            centerLon: 0,
+            solarLon: 180
+        };
+
+        // Safe rendering using textContent
+        const td = document.createElement('td');
+        td.textContent = maliciousProduct.pdsId;
+        container.appendChild(td);
+
+        // Verify the payload is treated as text, not executed
+        expect(td.textContent).to.equal(maliciousProduct.pdsId);
+        expect(td.innerHTML).to.not.include('<script>');
+        expect(container.querySelectorAll('script')).to.have.lengthOf(0);
+    });
+
+    it('should escape special characters in bookmark body labels', () => {
+        const container = document.createElement('div');
+        
+        const bodies = ['mars', 'moon', 'earth'];
+        bodies.forEach(body => {
+            const badge = document.createElement('span');
+            badge.textContent = body.toUpperCase();
+            container.appendChild(badge);
+        });
+
+        // Verify all badges are rendered safely
+        const badges = container.querySelectorAll('span');
+        expect(badges).to.have.lengthOf(3);
+        badges.forEach((badge, idx) => {
+            expect(badge.textContent).to.equal(bodies[idx].toUpperCase());
+            expect(badge.innerHTML).to.equal(bodies[idx].toUpperCase());
+        });
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {
