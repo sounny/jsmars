@@ -6,6 +6,7 @@ This file explains the project goals, architecture, and rules for contributors (
 
 ## 1. Project Overview
 - **Goal:** Build a JavaScript, browser-based client inspired by JMARS.
+- **Live URL:** https://jsmars.sounny.com/
 - **Stack:** Vanilla JS (ES Modules), Leaflet, CSS. **No Build Step.**
 - **License:** GPLv3 Compatible.
 

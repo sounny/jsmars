@@ -8152,6 +8152,39 @@ describe('PWA Manifest, PWAManager & MobileSheet Architecture', () => {
         // Cleanup
         document.body.removeChild(container);
     });
+
+    it('should validate sw.js service worker routing for query parameters, offline tile fallbacks, and updates', async () => {
+        const swRes = await fetch('../sw.js');
+        expect(swRes.status).to.equal(200);
+        const swContent = await swRes.text();
+
+        // Must define current version
+        expect(swContent).to.include("CACHE_NAME = 'jsmars-shell-v1.4.3'");
+
+        // Must handle navigation requests with query parameters
+        expect(swContent).to.include("request.mode === 'navigate'");
+        expect(swContent).to.include("targetShell = './index.html'");
+
+        // Must use ignoreSearch for static assets
+        expect(swContent).to.include("ignoreSearch: true");
+
+        // Must define transparent tile fallback for offline image/tile requests
+        expect(swContent).to.include("TRANSPARENT_PIXEL");
+        expect(swContent).to.include("Offline Transparent Tile");
+
+        // Must support message-based skipWaiting
+        expect(swContent).to.include("SKIP_WAITING");
+
+        // Ensure every fetch has error catching to prevent unhandled promise rejections
+        expect(swContent).to.not.include("return fetch(request).then((networkResponse) => {\n          if (networkResponse && networkResponse.status === 200) {\n            const responseToCache = networkResponse.clone();\n            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));\n          }\n          return networkResponse;\n        });\n      })\n    );\n    return;");
+
+        // Verify that fetching the app shell with deep-link query parameters succeeds with 200 OK
+        const queryRes = await fetch('../index.html?lat=18.7811&lon=-134.7858&z=6&layers=mars_wms_viking%3A1%3A1%2Cmars_viking%3A0.31%3A1');
+        expect(queryRes.status).to.equal(200);
+        const queryHtml = await queryRes.text();
+        expect(queryHtml).to.include('id="map"');
+        expect(queryHtml).to.include('JSMARS');
+    });
 });
 
 describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Prevention & Visibility', () => {
