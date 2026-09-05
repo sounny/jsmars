@@ -339,91 +339,118 @@ export class LayerManager {
     const div = document.createElement('div');
     div.className = 'layer-item-container';
     div.setAttribute('tabindex', '0');
-    div.style.padding = '8px';
-    div.style.background = '#222';
-    div.style.marginBottom = '5px';
-    div.style.borderRadius = '4px';
-    div.title = 'Double-click to view layer settings';
+    div.title = `${name} (${layerState.id}) — Double-click to view layer settings`;
 
     const config = this.availableLayers.find(l => l.id === layerState.id);
 
-    // Header: Name + Actions
+    // Header: Drag Handle + Name + Actions
     const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
-    header.style.marginBottom = '5px';
-    header.style.gap = '6px';
+    header.className = 'layer-item-header';
 
+    // Drag Handle
+    const dragHandle = document.createElement('span');
+    dragHandle.className = 'layer-drag-handle';
+    dragHandle.innerHTML = '&#8942;&#8942;'; // ⋮⋮ grip handle
+    dragHandle.title = 'Drag to reorder layer';
+    dragHandle.setAttribute('aria-hidden', 'true');
+
+    // Layer Title
     const title = document.createElement('span');
+    title.className = 'layer-item-title';
     title.textContent = name;
-    title.title = `${rawName || name} — click for layer info`;
-    title.style.fontWeight = 'bold';
-    title.style.fontSize = '13px';
-    title.style.cursor = 'pointer';
-    title.style.overflow = 'hidden';
-    title.style.textOverflow = 'ellipsis';
-    title.style.whiteSpace = 'nowrap';
-    title.style.flex = '1 1 auto';
-    title.style.minWidth = '0';
-    // Clicking the name opens the metadata/info popup directly, without
-    // needing to drill into Layer Settings first.
+    title.title = `${rawName || name} (${layerState.id}) — click for metadata`;
     title.addEventListener('click', (event) => {
       event.stopPropagation();
       this.showLayerInfo(config, layerState.id);
     });
 
+    // Action Buttons Container (single-row flexbox with nowrap)
     const actions = document.createElement('div');
+    actions.className = 'layer-item-actions';
 
-    // Reorder Buttons
-    // Visual: Top (index 0). State: [Bottom...Top].
-    // Moving "Up" visually means decreasing visualIndex, which means moving towards end of State array.
+    // 1. Visibility Button
+    const isVisible = layerState.visible !== false;
+    const btnVisibility = document.createElement('button');
+    btnVisibility.type = 'button';
+    btnVisibility.className = `layer-action-btn visibility-btn ${isVisible ? 'active' : 'hidden'}`;
+    btnVisibility.innerHTML = isVisible ? '&#128065;' : '&#128584;'; // 👁️ or 🙈
+    btnVisibility.title = isVisible ? 'Hide Layer' : 'Show Layer';
+    btnVisibility.setAttribute('aria-label', `${isVisible ? 'Hide' : 'Show'} layer ${name}`);
+    btnVisibility.onclick = (e) => {
+      e.stopPropagation();
+      jmarsState.updateLayer(layerState.id, { visible: !isVisible });
+    };
 
+    // 2. Reorder Up (Towards Front / Top of stack)
     const btnUp = document.createElement('button');
+    btnUp.type = 'button';
+    btnUp.className = 'layer-action-btn move-up-btn';
     btnUp.innerHTML = '&uarr;';
     btnUp.title = 'Move Up (Front)';
-    btnUp.style.marginRight = '5px';
+    btnUp.setAttribute('aria-label', `Move layer ${name} up (to front)`);
     btnUp.disabled = visualIndex === 0; // Already at top
-    btnUp.onclick = () => this.moveLayer(layerState.id, 1); // +1 in state array (towards Top)
+    btnUp.onclick = (e) => {
+      e.stopPropagation();
+      this.moveLayer(layerState.id, 1);
+    };
 
+    // 3. Reorder Down (Towards Back / Bottom of stack)
     const btnDown = document.createElement('button');
+    btnDown.type = 'button';
+    btnDown.className = 'layer-action-btn move-down-btn';
     btnDown.innerHTML = '&darr;';
     btnDown.title = 'Move Down (Back)';
-    btnDown.style.marginRight = '5px';
+    btnDown.setAttribute('aria-label', `Move layer ${name} down (to back)`);
     btnDown.disabled = visualIndex === total - 1; // Already at bottom
-    btnDown.onclick = () => this.moveLayer(layerState.id, -1); // -1 in state array (towards Bottom)
+    btnDown.onclick = (e) => {
+      e.stopPropagation();
+      this.moveLayer(layerState.id, -1);
+    };
 
-    const btnRemove = document.createElement('button');
-    btnRemove.innerHTML = '&times;';
-    btnRemove.title = 'Remove Layer';
-    btnRemove.style.background = '#d6336c';
-    btnRemove.style.border = 'none';
-    btnRemove.style.color = 'white';
-    btnRemove.style.borderRadius = '3px';
-    btnRemove.style.cursor = 'pointer';
-    btnRemove.onclick = () => jmarsState.removeLayer(layerState.id);
-
-    const isVisible = layerState.visible !== false;
-
+    // 4. Layer Info (ⓘ metadata popup)
     const btnInfo = document.createElement('button');
+    btnInfo.type = 'button';
+    btnInfo.className = 'layer-action-btn info-btn';
     btnInfo.innerHTML = '&#9432;'; // ⓘ
-    btnInfo.title = 'Layer Info';
+    btnInfo.title = `View metadata for ${name}`;
     btnInfo.setAttribute('aria-label', `View metadata for ${name}`);
-    btnInfo.style.marginRight = '5px';
-    btnInfo.onclick = () => this.showLayerInfo(config, layerState.id);
+    btnInfo.onclick = (e) => {
+      e.stopPropagation();
+      this.showLayerInfo(config, layerState.id);
+    };
 
+    // 5. Layer Settings
     const btnSettings = document.createElement('button');
+    btnSettings.type = 'button';
+    btnSettings.className = 'layer-action-btn settings-btn';
     btnSettings.innerHTML = '&#9881;';
     btnSettings.title = 'Layer Settings';
     btnSettings.setAttribute('aria-label', `Open settings for ${name}`);
-    btnSettings.style.marginRight = '5px';
-    btnSettings.onclick = () => this.openLayerSettings(layerState.id);
+    btnSettings.onclick = (e) => {
+      e.stopPropagation();
+      this.openLayerSettings(layerState.id);
+    };
 
-    actions.appendChild(btnInfo);
-    actions.appendChild(btnSettings);
+    // 6. Remove Layer
+    const btnRemove = document.createElement('button');
+    btnRemove.type = 'button';
+    btnRemove.className = 'layer-action-btn remove-btn';
+    btnRemove.innerHTML = '&times;';
+    btnRemove.title = 'Remove Layer';
+    btnRemove.setAttribute('aria-label', `Remove layer ${name}`);
+    btnRemove.onclick = (e) => {
+      e.stopPropagation();
+      jmarsState.removeLayer(layerState.id);
+    };
+
+    actions.appendChild(btnVisibility);
     actions.appendChild(btnUp);
     actions.appendChild(btnDown);
+    actions.appendChild(btnInfo);
+    actions.appendChild(btnSettings);
     actions.appendChild(btnRemove);
+
+    header.appendChild(dragHandle);
     header.appendChild(title);
     header.appendChild(actions);
     div.appendChild(header);
@@ -470,6 +497,7 @@ export class LayerManager {
     slider.step = 0.01;
     slider.value = layerState.opacity;
     slider.style.flex = 1;
+    slider.setAttribute('aria-label', `Opacity for ${name}`);
     slider.addEventListener('input', (e) => {
       jmarsState.updateLayer(layerState.id, { opacity: parseFloat(e.target.value) });
     });
@@ -483,7 +511,7 @@ export class LayerManager {
     div.dataset.layerId = layerState.id;
 
     div.addEventListener('dblclick', (event) => {
-      if (event.target.closest('button')) return;
+      if (event.target.closest('button, input')) return;
       this.openLayerSettings(layerState.id);
     });
 
@@ -497,80 +525,93 @@ export class LayerManager {
     });
     
     div.addEventListener('dragstart', (e) => {
+      // Prevent drag initiation from interactive controls (sliders, buttons)
+      if (e.target.closest('input, button')) {
+        e.preventDefault();
+        return;
+      }
       e.dataTransfer.setData('text/plain', layerState.id);
       e.dataTransfer.effectAllowed = 'move';
-      div.style.opacity = '0.4';
-      // Store the element being dragged
+      div.classList.add('is-dragging');
       this.draggedElement = div;
     });
 
-    div.addEventListener('dragend', (e) => {
-      div.style.opacity = '1';
+    div.addEventListener('dragend', () => {
+      div.classList.remove('is-dragging');
       this.draggedElement = null;
       this.container.querySelectorAll('.layer-item-container').forEach(el => {
-        el.style.borderTop = '';
-        el.style.borderBottom = '';
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
       });
     });
 
     div.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
+      if (this.draggedElement === div) return false;
+
+      const rect = div.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        div.classList.add('drag-over-top');
+        div.classList.remove('drag-over-bottom');
+      } else {
+        div.classList.add('drag-over-bottom');
+        div.classList.remove('drag-over-top');
+      }
       return false;
     });
 
-    div.addEventListener('dragenter', (e) => {
-      e.preventDefault();
-      if (this.draggedElement === div) return;
-      div.style.background = '#444';
-    });
-
     div.addEventListener('dragleave', (e) => {
-      if (this.draggedElement === div) return;
-      div.style.background = '#222'; // Restore default
+      // Only remove indicator when truly leaving the container element
+      if (!div.contains(e.relatedTarget)) {
+        div.classList.remove('drag-over-top', 'drag-over-bottom');
+      }
     });
 
     div.addEventListener('drop', (e) => {
-      e.stopPropagation(); // stops the browser from redirecting.
+      e.stopPropagation();
       e.preventDefault();
       
-      div.style.background = '#222'; // Restore default
+      const insertBefore = div.classList.contains('drag-over-top');
+      div.classList.remove('drag-over-top', 'drag-over-bottom');
 
       const draggedId = e.dataTransfer.getData('text/plain');
       const targetId = layerState.id;
 
-      if (draggedId === targetId) return;
+      if (!draggedId || draggedId === targetId) return false;
 
-      this.handleReorder(draggedId, targetId);
+      this.handleReorder(draggedId, targetId, insertBefore);
       return false;
     });
 
     return div;
   }
 
-  handleReorder(draggedId, targetId) {
+  handleReorder(draggedId, targetId, insertBefore = true) {
     // State order is [Bottom, ..., Top]
     // DOM order is [Top, ..., Bottom]
     
-    // We want to think in DOM order (Top to Bottom) because that's what the user sees.
-    // Get current IDs in DOM order (which is State reversed)
     const stateLayers = [...jmarsState.get('activeLayers')];
     const domOrderIds = stateLayers.map(l => l.id).reverse();
 
     const oldIndex = domOrderIds.indexOf(draggedId);
-    const newIndex = domOrderIds.indexOf(targetId);
+    if (oldIndex < 0) return;
 
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    // Move draggedId to newIndex position in DOM order
+    // Remove dragged item from DOM sequence
     domOrderIds.splice(oldIndex, 1);
+
+    let newIndex = domOrderIds.indexOf(targetId);
+    if (newIndex < 0) return;
+
+    if (!insertBefore) {
+      newIndex += 1;
+    }
+
+    // Insert at target position in DOM sequence
     domOrderIds.splice(newIndex, 0, draggedId);
 
-    // Now domOrderIds is [NewTop, ..., NewBottom]
-    // State expects [Bottom, ..., Top]
-    // So reverse it back
+    // Reverse back to state order [Bottom, ..., Top]
     const newStateOrder = domOrderIds.reverse();
-
     jmarsState.reorderLayers(newStateOrder);
   }
 
@@ -591,7 +632,9 @@ export class LayerManager {
     const span = document.createElement('span');
     span.textContent = displayName;
     span.title = `${layer.name || layer.id || ''} — click for layer info`;
-    span.style.fontSize = '13px';
+    span.style.fontSize = '12px';
+    span.style.fontWeight = '500';
+    span.style.color = '#e2e8f0';
     span.style.cursor = 'pointer';
     // Let the label shrink/truncate instead of pushing the Add button
     // off the edge of the sidebar for very long layer names.
@@ -617,17 +660,18 @@ export class LayerManager {
     btnInfo.onclick = () => this.showLayerInfo(layer);
 
     const btnAdd = document.createElement('button');
-    btnAdd.textContent = '+';
+    btnAdd.type = 'button';
+    btnAdd.textContent = '+ Add';
     btnAdd.title = `Add ${displayName}`;
     btnAdd.setAttribute('aria-label', `Add ${displayName}`);
-    btnAdd.style.background = '#339af0';
-    btnAdd.style.border = 'none';
+    btnAdd.style.background = '#0284c7';
+    btnAdd.style.border = '1px solid #0369a1';
     btnAdd.style.color = 'white';
-    btnAdd.style.padding = '2px 10px';
-    btnAdd.style.borderRadius = '3px';
+    btnAdd.style.padding = '3px 8px';
+    btnAdd.style.borderRadius = '4px';
+    btnAdd.style.fontSize = '11px';
+    btnAdd.style.fontWeight = '600';
     btnAdd.style.cursor = 'pointer';
-    btnAdd.style.fontWeight = 'bold';
-    // Keep the button a fixed, always-visible size regardless of label length.
     btnAdd.style.flex = '0 0 auto';
     btnAdd.onclick = () => jmarsState.addLayer(layer.id);
 

@@ -34,6 +34,7 @@ import { URLStateEngine } from '../src/util/URLStateEngine.js';
 import { PWAManager } from '../src/pwa/PWAManager.js';
 import { MobileSheet } from '../src/ui/MobileSheet.js';
 import { SessionManager } from '../src/ui/SessionManager.js';
+import { LayerManager } from '../src/ui/layer-manager.js';
 import { StampQueryPanel } from '../src/features/stamp/StampQueryPanel.js';
 import { normalizeBodyKey, switchActiveBody } from '../src/util/body.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
@@ -17034,6 +17035,192 @@ describe('Social Media & OpenGraph Metadata', () => {
         expect(dimensions.width).to.equal(1200);
         expect(dimensions.height).to.equal(630);
         expect(dimensions.width / dimensions.height).to.be.closeTo(1.904, 0.01);
+    });
+});
+
+describe('LayerManager & Layer Ordering', () => {
+    let container;
+    let mockMap;
+    let layerManager;
+
+    beforeEach(() => {
+        jmarsState.reset();
+        container = document.createElement('div');
+        container.id = 'test-layer-container';
+        document.body.appendChild(container);
+
+        mockMap = {
+            activeLayers: {
+                'layer_base': { setZIndex(z) { mockMap.zIndices['layer_base'] = z; }, setOpacity() {} },
+                'layer_mid': { setZIndex(z) { mockMap.zIndices['layer_mid'] = z; }, setOpacity() {} },
+                'layer_top': { setZIndex(z) { mockMap.zIndices['layer_top'] = z; }, setOpacity() {} }
+            },
+            zIndices: {},
+            lastOrder: [],
+            availableLayers: [
+                { id: 'layer_base', name: 'Base Layer' },
+                { id: 'layer_mid', name: 'Middle Layer' },
+                { id: 'layer_top', name: 'Top Layer' }
+            ],
+            updateLayerOrder(ids) {
+                mockMap.lastOrder = [...ids];
+                ids.forEach((id, idx) => {
+                    if (this.activeLayers[id]) {
+                        this.activeLayers[id].setZIndex(idx + 1);
+                    }
+                });
+            },
+            addLayer(id) {
+                if (!this.activeLayers[id]) {
+                    this.activeLayers[id] = { setZIndex(z) { mockMap.zIndices[id] = z; }, setOpacity() {} };
+                }
+            },
+            removeLayer(id) {
+                delete this.activeLayers[id];
+                delete this.zIndices[id];
+            },
+            setLayerOpacity() {}
+        };
+
+        layerManager = new LayerManager(container, mockMap);
+    });
+
+    afterEach(() => {
+        if (container && container.parentNode) {
+            container.parentNode.removeChild(container);
+        }
+    });
+
+    it('should synchronize state layers [Bottom...Top] to map zIndex in ascending order', () => {
+        // State is ordered [bottom, middle, top]
+        const stateLayers = [
+            { id: 'layer_base', opacity: 1, visible: true },
+            { id: 'layer_mid', opacity: 1, visible: true },
+            { id: 'layer_top', opacity: 1, visible: true }
+        ];
+        jmarsState.setActiveLayers(stateLayers);
+
+        // Map order must be received from bottom to top so index corresponds to zIndex
+        expect(mockMap.lastOrder).to.deep.equal(['layer_base', 'layer_mid', 'layer_top']);
+        expect(mockMap.zIndices['layer_base']).to.equal(1);
+        expect(mockMap.zIndices['layer_mid']).to.equal(2);
+        expect(mockMap.zIndices['layer_top']).to.equal(3);
+        // Top layer must have highest z-index
+        expect(mockMap.zIndices['layer_top']).to.be.greaterThan(mockMap.zIndices['layer_base']);
+    });
+
+    it('should exclude hidden layers from active map zIndex ordering', () => {
+        const stateLayers = [
+            { id: 'layer_base', opacity: 1, visible: true },
+            { id: 'layer_mid', opacity: 1, visible: false },
+            { id: 'layer_top', opacity: 1, visible: true }
+        ];
+        jmarsState.setActiveLayers(stateLayers);
+
+        expect(mockMap.lastOrder).to.deep.equal(['layer_base', 'layer_top']);
+        expect(mockMap.zIndices['layer_base']).to.equal(1);
+        expect(mockMap.zIndices['layer_top']).to.equal(2);
+    });
+
+    it('should render active layers in reverse order (Top layer at top of UI list)', () => {
+        const stateLayers = [
+            { id: 'layer_base', opacity: 1, visible: true },
+            { id: 'layer_top', opacity: 1, visible: true }
+        ];
+        jmarsState.setActiveLayers(stateLayers);
+
+        const items = container.querySelectorAll('.layer-item-container');
+        expect(items.length).to.be.at.least(2);
+        const topItemTitle = items[0].querySelector('.layer-item-title');
+        expect(topItemTitle.textContent).to.equal('Top Layer');
+    });
+
+    it('should disable Up button on the top layer and Down button on the bottom layer', () => {
+        const stateLayers = [
+            { id: 'layer_base', opacity: 1, visible: true },
+            { id: 'layer_top', opacity: 1, visible: true }
+        ];
+        jmarsState.setActiveLayers(stateLayers);
+
+        const items = container.querySelectorAll('.layer-item-container');
+        const topItemUpBtn = items[0].querySelector('.move-up-btn');
+        const topItemDownBtn = items[0].querySelector('.move-down-btn');
+        const bottomItemUpBtn = items[1].querySelector('.move-up-btn');
+        const bottomItemDownBtn = items[1].querySelector('.move-down-btn');
+
+        expect(topItemUpBtn.disabled).to.be.true;
+        expect(topItemDownBtn.disabled).to.be.false;
+        expect(bottomItemUpBtn.disabled).to.be.false;
+        expect(bottomItemDownBtn.disabled).to.be.true;
+    });
+
+    it('should move layer up towards front when moveLayer(id, 1) is called', () => {
+        // [base, mid, top]
+        const stateLayers = [
+            { id: 'layer_base', opacity: 1, visible: true },
+            { id: 'layer_mid', opacity: 1, visible: true },
+            { id: 'layer_top', opacity: 1, visible: true }
+        ];
+        jmarsState.setActiveLayers(stateLayers);
+
+        // Move base layer up by 1 position (swaps with mid)
+        layerManager.moveLayer('layer_base', 1);
+
+        const newLayers = jmarsState.get('activeLayers');
+        expect(newLayers.map(l => l.id)).to.deep.equal(['layer_mid', 'layer_base', 'layer_top']);
+        expect(mockMap.lastOrder).to.deep.equal(['layer_mid', 'layer_base', 'layer_top']);
+        expect(mockMap.zIndices['layer_base']).to.equal(2);
+        expect(mockMap.zIndices['layer_mid']).to.equal(1);
+    });
+
+    it('should move layer down towards back when moveLayer(id, -1) is called', () => {
+        const stateLayers = [
+            { id: 'layer_base', opacity: 1, visible: true },
+            { id: 'layer_mid', opacity: 1, visible: true },
+            { id: 'layer_top', opacity: 1, visible: true }
+        ];
+        jmarsState.setActiveLayers(stateLayers);
+
+        // Move top layer down by 1 position (swaps with mid)
+        layerManager.moveLayer('layer_top', -1);
+
+        const newLayers = jmarsState.get('activeLayers');
+        expect(newLayers.map(l => l.id)).to.deep.equal(['layer_base', 'layer_top', 'layer_mid']);
+        expect(mockMap.lastOrder).to.deep.equal(['layer_base', 'layer_top', 'layer_mid']);
+        expect(mockMap.zIndices['layer_top']).to.equal(2);
+        expect(mockMap.zIndices['layer_mid']).to.equal(3);
+    });
+
+    it('should not move layer beyond stack boundaries', () => {
+        const stateLayers = [
+            { id: 'layer_base', opacity: 1, visible: true },
+            { id: 'layer_top', opacity: 1, visible: true }
+        ];
+        jmarsState.setActiveLayers(stateLayers);
+
+        layerManager.moveLayer('layer_top', 1); // Already at top
+        expect(jmarsState.get('activeLayers').map(l => l.id)).to.deep.equal(['layer_base', 'layer_top']);
+
+        layerManager.moveLayer('layer_base', -1); // Already at bottom
+        expect(jmarsState.get('activeLayers').map(l => l.id)).to.deep.equal(['layer_base', 'layer_top']);
+    });
+
+    it('should correctly reorder layers via handleReorder (drag-and-drop)', () => {
+        // State: [base, mid, top] -> DOM: [top, mid, base]
+        const stateLayers = [
+            { id: 'layer_base', opacity: 1, visible: true },
+            { id: 'layer_mid', opacity: 1, visible: true },
+            { id: 'layer_top', opacity: 1, visible: true }
+        ];
+        jmarsState.setActiveLayers(stateLayers);
+
+        // Drag base to before top in DOM (making base the new top)
+        layerManager.handleReorder('layer_base', 'layer_top', true);
+
+        const updated = jmarsState.get('activeLayers').map(l => l.id);
+        // In state [bottom...top], layer_base should now be at the end (top)
+        expect(updated).to.deep.equal(['layer_mid', 'layer_top', 'layer_base']);
+        expect(mockMap.zIndices['layer_base']).to.equal(3);
     });
 });
 
