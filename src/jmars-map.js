@@ -384,6 +384,7 @@ export class JMARSMap {
           name: l.title,
           type: 'wms',
           url: wmsUrl,
+          abstract: l.abstract || '',
           options: {
             layers: l.name,
             format: 'image/png',

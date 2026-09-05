@@ -171,10 +171,11 @@ export class LayerManager {
       }
     });
 
-    // Update Order for visible layers
+    // Update Order for visible layers.
+    // `activeLayers` state is already ordered [Bottom, ..., Top], which is
+    // exactly what JMARSMap.updateLayerOrder expects — do not reverse it.
     const visibleIds = activeLayers.filter(l => l.visible !== false).map(l => l.id);
-    const reversedIds = [...visibleIds].reverse();
-    this.jmarsMap.updateLayerOrder(reversedIds);
+    this.jmarsMap.updateLayerOrder(visibleIds);
   }
 
   render() {
@@ -206,9 +207,12 @@ export class LayerManager {
     // Render Top to Bottom (Reverse of array)
     activeLayers.reverse().forEach((layerState, index) => {
       const config = getConfig(layerState.id);
-      const name = config ? config.name : layerState.id;
+      const rawName = config ? config.name : layerState.id;
+      // Humanize raw ids like "MERRA2_2m_Air_Temperature_Monthly" by
+      // dropping underscores; the full raw name/id is kept as a tooltip.
+      const name = (rawName || '').replace(/_/g, ' ');
 
-      const el = this.createActiveLayerItem(layerState, name, index, activeLayers.length);
+      const el = this.createActiveLayerItem(layerState, name, index, activeLayers.length, rawName);
       activeContent.appendChild(el);
     });
 
@@ -331,7 +335,7 @@ export class LayerManager {
     return header;
   }
 
-  createActiveLayerItem(layerState, name, visualIndex, total) {
+  createActiveLayerItem(layerState, name, visualIndex, total, rawName) {
     const div = document.createElement('div');
     div.className = 'layer-item-container';
     div.setAttribute('tabindex', '0');
@@ -341,17 +345,33 @@ export class LayerManager {
     div.style.borderRadius = '4px';
     div.title = 'Double-click to view layer settings';
 
+    const config = this.availableLayers.find(l => l.id === layerState.id);
+
     // Header: Name + Actions
     const header = document.createElement('div');
     header.style.display = 'flex';
     header.style.justifyContent = 'space-between';
     header.style.alignItems = 'center';
     header.style.marginBottom = '5px';
+    header.style.gap = '6px';
 
     const title = document.createElement('span');
     title.textContent = name;
+    title.title = `${rawName || name} — click for layer info`;
     title.style.fontWeight = 'bold';
     title.style.fontSize = '13px';
+    title.style.cursor = 'pointer';
+    title.style.overflow = 'hidden';
+    title.style.textOverflow = 'ellipsis';
+    title.style.whiteSpace = 'nowrap';
+    title.style.flex = '1 1 auto';
+    title.style.minWidth = '0';
+    // Clicking the name opens the metadata/info popup directly, without
+    // needing to drill into Layer Settings first.
+    title.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.showLayerInfo(config, layerState.id);
+    });
 
     const actions = document.createElement('div');
 
@@ -385,6 +405,13 @@ export class LayerManager {
 
     const isVisible = layerState.visible !== false;
 
+    const btnInfo = document.createElement('button');
+    btnInfo.innerHTML = '&#9432;'; // ⓘ
+    btnInfo.title = 'Layer Info';
+    btnInfo.setAttribute('aria-label', `View metadata for ${name}`);
+    btnInfo.style.marginRight = '5px';
+    btnInfo.onclick = () => this.showLayerInfo(config, layerState.id);
+
     const btnSettings = document.createElement('button');
     btnSettings.innerHTML = '&#9881;';
     btnSettings.title = 'Layer Settings';
@@ -392,6 +419,7 @@ export class LayerManager {
     btnSettings.style.marginRight = '5px';
     btnSettings.onclick = () => this.openLayerSettings(layerState.id);
 
+    actions.appendChild(btnInfo);
     actions.appendChild(btnSettings);
     actions.appendChild(btnUp);
     actions.appendChild(btnDown);
@@ -552,25 +580,75 @@ export class LayerManager {
     div.style.display = 'flex';
     div.style.justifyContent = 'space-between';
     div.style.alignItems = 'center';
+    div.style.gap = '6px';
     div.style.padding = '5px 8px';
 
+    // Many WMS layer IDs (e.g. GIBS "MERRA2_2m_Air_Temperature_Monthly") use
+    // underscores as word separators. Render a human-readable label while
+    // keeping the raw id/name available via the title tooltip.
+    const displayName = (layer.name || layer.id || '').replace(/_/g, ' ');
+
     const span = document.createElement('span');
-    span.textContent = layer.name;
+    span.textContent = displayName;
+    span.title = `${layer.name || layer.id || ''} — click for layer info`;
     span.style.fontSize = '13px';
+    span.style.cursor = 'pointer';
+    // Let the label shrink/truncate instead of pushing the Add button
+    // off the edge of the sidebar for very long layer names.
+    span.style.flex = '1 1 auto';
+    span.style.minWidth = '0';
+    span.style.overflow = 'hidden';
+    span.style.textOverflow = 'ellipsis';
+    span.style.whiteSpace = 'nowrap';
+    // Clicking the name previews metadata (abstract, source, attribution)
+    // before the user decides to add the layer.
+    span.addEventListener('click', () => this.showLayerInfo(layer));
+
+    const btnInfo = document.createElement('button');
+    btnInfo.innerHTML = '&#9432;'; // ⓘ
+    btnInfo.title = `View metadata for ${displayName}`;
+    btnInfo.setAttribute('aria-label', `View metadata for ${displayName}`);
+    btnInfo.style.background = 'transparent';
+    btnInfo.style.border = '1px solid #444';
+    btnInfo.style.color = '#cbd5e1';
+    btnInfo.style.borderRadius = '3px';
+    btnInfo.style.cursor = 'pointer';
+    btnInfo.style.flex = '0 0 auto';
+    btnInfo.onclick = () => this.showLayerInfo(layer);
 
     const btnAdd = document.createElement('button');
-    btnAdd.textContent = '+ Add';
+    btnAdd.textContent = '+';
+    btnAdd.title = `Add ${displayName}`;
+    btnAdd.setAttribute('aria-label', `Add ${displayName}`);
     btnAdd.style.background = '#339af0';
     btnAdd.style.border = 'none';
     btnAdd.style.color = 'white';
-    btnAdd.style.padding = '2px 8px';
+    btnAdd.style.padding = '2px 10px';
     btnAdd.style.borderRadius = '3px';
     btnAdd.style.cursor = 'pointer';
+    btnAdd.style.fontWeight = 'bold';
+    // Keep the button a fixed, always-visible size regardless of label length.
+    btnAdd.style.flex = '0 0 auto';
     btnAdd.onclick = () => jmarsState.addLayer(layer.id);
 
     div.appendChild(span);
+    div.appendChild(btnInfo);
     div.appendChild(btnAdd);
     return div;
+  }
+
+  /**
+   * Show the metadata/info popup for a layer (active or not-yet-added).
+   * Wires the layer config's `abstract` (parsed from WMS GetCapabilities,
+   * see JMARSWMS.parseCapabilities) into the InfoPanel's "capabilities"
+   * argument so the Description section renders when available.
+   * @param {object} config - Layer config from availableLayers.
+   * @param {string} [layerId] - Fallback layer id if config lookup failed.
+   */
+  showLayerInfo(config, layerId) {
+    if (!window.jsmarsInfoPanel) return;
+    const layerConfig = config || { id: layerId, name: layerId };
+    window.jsmarsInfoPanel.open(layerConfig, { abstract: layerConfig.abstract });
   }
 
   moveLayer(layerId, direction) {
@@ -743,10 +821,7 @@ export class LayerManager {
     infoBtn.style.flex = '1';
     infoBtn.addEventListener('click', () => {
       this.closeLayerSettings();
-      if (window.jsmarsInfoPanel) {
-        // Fetch Capabilities (dummy capabilities for now, we'll just pass config)
-        window.jsmarsInfoPanel.open(config);
-      }
+      this.showLayerInfo(config, layerId);
     });
 
     const stretchBtn = document.createElement('button');
