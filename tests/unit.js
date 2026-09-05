@@ -8206,12 +8206,22 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
     });
 
     it('should handle cross-body bookmark navigation by dispatching BODY_CHANGED event', (done) => {
+        let bodyChanged = false;
         const mockMap = {
             center: [0, 0],
             zoom: 2,
             setView: (c, z) => {
                 mockMap.center = c;
                 mockMap.zoom = z;
+                try {
+                    expect(bodyChanged).to.be.true;
+                    expect(mockMap.center[0]).to.equal(0.67);
+                    expect(mockMap.center[1]).to.equal(23.47);
+                    expect(mockMap.zoom).to.equal(8);
+                    done();
+                } catch (err) {
+                    done(err);
+                }
             }
         };
 
@@ -8219,16 +8229,19 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
         bookmarks.currentBody = 'mars';
 
         const bodyChangeHandler = (e) => {
-            expect(e.detail.body).to.equal('moon');
-            document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
-            done();
+            try {
+                expect(e.detail.body).to.equal('moon');
+                bodyChanged = true;
+            } catch (err) {
+                done(err);
+            } finally {
+                document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+            }
         };
         document.addEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
 
         // Navigate to Moon POI
         bookmarks.goTo({ id: 'apollo11', name: 'Apollo 11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
-        expect(mockMap.center[0]).to.equal(0.67);
-        expect(mockMap.center[1]).to.equal(23.47);
     });
 
     it('should render bookmark names safely without executing markup strings (XSS resilience)', () => {
