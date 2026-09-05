@@ -98,13 +98,12 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 ## Session Management
 
 ### Saving and Loading Sessions
-1. **Save Session:** Press `Ctrl+S` or use **File → Save Session** to capture your current view, layers, layer visibility, shapes, bookmarks, and measurements.
+1. **Save Session:** Press `Ctrl+S` or use **File → Save Session** to capture your current view, layers, layer visibility, bookmarks, and measurements.
 2. **Load Session:** Press `Ctrl+O` or use **File → Load Session** to restore a previously saved JSON session file.
 3. **Session Contents:** Sessions preserve:
    - Active body (Mars, Moon, Earth)
    - All active layers with opacity and visibility state
    - Current map viewport (center coordinates and zoom level)
-   - All drawn shapes (ROIs) with attributes
    - Measurements and crater counts
    - Bookmarks with navigation coordinates
 
