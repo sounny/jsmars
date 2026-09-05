@@ -17048,7 +17048,7 @@ describe('SessionManager & Body Switch Order (P1 Fix)', () => {
         jmarsState.reset();
     });
 
-    it('should restore body before layers during session load', (done) => {
+    it('should restore body before layers during session load', async () => {
         // Create a test session with body=moon and layers
         const testSession = {
             version: '1.0',
@@ -17070,59 +17070,55 @@ describe('SessionManager & Body Switch Order (P1 Fix)', () => {
         // Verify initial state
         expect(jmarsState.get('body')).to.equal('mars');
         
-        // Track body changes to ensure proper order
+        // Track both DOM events so the test verifies the observable restore order.
         let bodyChangedCount = 0;
         let layersChangedCount = 0;
+        const eventOrder = [];
+        let activeLayersAtBodyChange;
+        let bodyAtLayersChange;
 
-        // NOTE: jmarsState.set('body', ...) only emits the internal
-        // 'change'/'change:body' events; EVENTS.BODY_CHANGED is a DOM
-        // CustomEvent dispatched manually by calling code (e.g. the map's
-        // body-switch flow), not by JMARSState itself. Listen on the
-        // document for it so this assertion actually runs, and clean the
-        // listener up on every exit path so it cannot leak into later tests.
         const bodyChangeHandler = () => {
-            try {
-                bodyChangedCount++;
-                // At this point, layers should not yet be restored
-                expect(jmarsState.get('activeLayers')).to.be.empty;
-            } catch (err) {
-                document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
-                done(err);
-            }
+            bodyChangedCount++;
+            eventOrder.push('body');
+            activeLayersAtBodyChange = jmarsState.get('activeLayers').length;
         };
-        document.addEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
 
-        jmarsState.on(EVENTS.LAYERS_CHANGED, () => {
+        const layersChangeHandler = () => {
             layersChangedCount++;
-            // By now, body should be switched to moon
-            expect(jmarsState.get('body')).to.equal('moon');
-        });
+            eventOrder.push('layers');
+            bodyAtLayersChange = jmarsState.get('body');
+        };
 
-        // Simulate the session load flow
-        setTimeout(() => {
+        document.addEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+        document.addEventListener(EVENTS.LAYERS_CHANGED, layersChangeHandler);
+
+        try {
+            // Simulate the session load flow without relying on a timing window.
+            await new Promise(resolve => setTimeout(resolve, 0));
+
             // Step 1: Body change
             jmarsState.set('body', 'moon');
             document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: 'moon' } }));
-            
-            // Wait for async body switch
-            setTimeout(() => {
-                document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
-                try {
-                    // Step 2: Restore layers after body switch
-                    jmarsState.setActiveLayers(testSession.state.activeLayers);
 
-                    // Verify final state
-                    expect(jmarsState.get('body')).to.equal('moon');
-                    expect(jmarsState.get('activeLayers')).to.have.lengthOf(2);
-                    expect(jmarsState.get('activeLayers')[0].id).to.equal('moon_basemap');
-                    // Guard against the BODY_CHANGED listener silently never firing
-                    expect(bodyChangedCount).to.equal(1);
-                    done();
-                } catch (err) {
-                    done(err);
-                }
-            }, 150);
-        }, 0);
+            // Wait for async body switch
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Step 2: Restore layers after body switch
+            jmarsState.setActiveLayers(testSession.state.activeLayers);
+
+            // Verify final state and the exact observable event sequence.
+            expect(jmarsState.get('body')).to.equal('moon');
+            expect(jmarsState.get('activeLayers')).to.have.lengthOf(2);
+            expect(jmarsState.get('activeLayers')[0].id).to.equal('moon_basemap');
+            expect(bodyChangedCount).to.equal(1);
+            expect(layersChangedCount).to.equal(1);
+            expect(eventOrder).to.deep.equal(['body', 'layers']);
+            expect(activeLayersAtBodyChange).to.equal(0);
+            expect(bodyAtLayersChange).to.equal('moon');
+        } finally {
+            document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+            document.removeEventListener(EVENTS.LAYERS_CHANGED, layersChangeHandler);
+        }
     });
 });
 
