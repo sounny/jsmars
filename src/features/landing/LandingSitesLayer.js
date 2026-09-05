@@ -1,5 +1,6 @@
 import { EVENTS } from '../../constants.js';
 import { computeEllipsePolygon } from '../../util/geo.js';
+import { jmarsState } from '../../jmars-state.js';
 
 /**
  * LandingSitesLayer displays markers and landing dispersion ellipses for
@@ -10,7 +11,7 @@ export class LandingSitesLayer {
     this.map = map;
     this.markerGroup = L.layerGroup();
     this.isActive = false;
-    this.currentBody = 'mars';
+    this.currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
     this.showEllipses = true;
     this.sites = [];
     this._onBodyChanged = this._onBodyChanged.bind(this);
@@ -70,7 +71,7 @@ export class LandingSitesLayer {
    * @param {CustomEvent} e
    */
   _onBodyChanged(e) {
-    const body = e?.detail?.body;
+    const body = e?.detail?.body?.toLowerCase();
     if (body) {
       this.currentBody = body;
       this._render();
@@ -344,6 +345,5 @@ export class LandingSitesLayer {
     return normDistSq <= 1.0;
   }
 }
-
 
 

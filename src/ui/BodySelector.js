@@ -1,21 +1,23 @@
 import { JMARS_CONFIG } from '../jmars-config.js';
 import { jmarsState } from '../jmars-state.js';
 import { EVENTS } from '../constants.js';
+import { switchActiveBody } from '../util/body.js';
 
 /**
  * @module BodySelector
  * @description Dropdown selector for switching planetary bodies (Mars, Moon, Earth).
- * Reads available bodies from JMARS_CONFIG and dispatches BODY_CHANGED events
- * when the user selects a different body. Also listens for external body changes
- * (e.g., from session restore) to keep the dropdown in sync.
+ * Reads available bodies from JMARS_CONFIG and switches via the canonical
+ * JMARSMap body-switch path. Also listens for external body changes to keep
+ * the dropdown in sync.
  */
 export class BodySelector {
     /**
      * Create a new BodySelector.
      * @param {string} containerId - DOM id of the container element
      */
-    constructor(containerId) {
+    constructor(containerId, jmarsMap) {
         this.container = document.getElementById(containerId);
+        this.jmarsMap = jmarsMap;
         if (!this.container) return;
 
         this.init();
@@ -48,7 +50,7 @@ export class BodySelector {
         }
 
         // Set initial value
-        const currentBody = (jmarsState.get('body') || 'Mars').toLowerCase();
+        const currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
         select.value = currentBody;
         console.debug('BodySelector initial value:', currentBody);
 
@@ -56,9 +58,7 @@ export class BodySelector {
         select.addEventListener('change', (e) => {
             const newBody = e.target.value;
             console.debug('BodySelector changed to:', newBody);
-            jmarsState.set('body', newBody);
-            const event = new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: newBody } });
-            document.dispatchEvent(event);
+            switchActiveBody(this.jmarsMap, newBody);
         });
 
         // Listen for external changes (e.g. loaded session)

@@ -1,6 +1,7 @@
 import { EVENTS } from '../constants.js';
 import { formatLatLon } from '../util/geo.js';
 import { molaDem } from '../util/mola-dem.js';
+import { jmarsState } from '../jmars-state.js';
 
 /**
  * @module StatusBar
@@ -38,7 +39,7 @@ export class StatusBar {
     ];
 
     /** @type {string} Current planetary body key */
-    this.currentBody = 'mars';
+    this.currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
 
     /** @type {boolean} Tracks pending rAF frame for mousemove throttling */
     this._pendingFrame = false;
@@ -225,4 +226,3 @@ export class StatusBar {
     this.updateCoords(this.map.getCenter(), true);
   }
 }
-

@@ -30,8 +30,8 @@
  * @property {string} thumbnail - Base64-encoded thumbnail image.
  */
 export const JMARS_CONFIG = {
-  /** @type {string} Default body shown on startup (capitalized; lowercase keys used internally). */
-  body: 'Mars',
+  /** @type {string} Default body shown on startup (canonical lowercase key). */
+  body: 'mars',
   // Initial view
   initialView: {
     lat: 0,

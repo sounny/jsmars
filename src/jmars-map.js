@@ -19,6 +19,7 @@ import { JMARSVectors } from './jmars-vectors.js';
 import { jmarsState } from './jmars-state.js';
 import { EVENTS } from './constants.js';
 import { URLStateEngine } from './util/URLStateEngine.js';
+import { normalizeBodyKey, switchActiveBody } from './util/body.js';
 
 /**
  * @class JMARSMap
@@ -48,6 +49,8 @@ export class JMARSMap {
     this.customLayerInstances = {};
     /** @type {AbortController|null} Abort controller for in-flight WMS discovery. */
     this._discoveryAbort = null;
+    /** @type {number|null} Debounced view sync timer. */
+    this._viewSyncTimer = null;
 
     if (window.L) {
       // Initialize Leaflet map with Plate Carree projection (standard for planetary WMS)
@@ -86,7 +89,7 @@ export class JMARSMap {
     if (typeof window !== 'undefined' && window.location) {
       const urlState = URLStateEngine.parseURLToState(window.location.search || window.location.hash);
       if (urlState.hasState) {
-        const targetBody = (urlState.body || this.currentBody || 'mars').toLowerCase();
+        const targetBody = normalizeBodyKey(urlState.body || this.currentBody || 'mars');
         this.currentBody = targetBody;
 
         const bodyCfg = JMARS_CONFIG.bodies[targetBody] || JMARS_CONFIG.bodies.mars;
@@ -106,48 +109,23 @@ export class JMARSMap {
       }
     }
 
-    this.switchBody(this.currentBody);
-    this.discoverLayers();
+    switchActiveBody(this, this.currentBody, { emitEvent: false, force: true });
+    this.syncViewState({ updateUrl: false });
     this.addControls();
     this._initialized = true;
 
-    // Auto-sync view changes to jmarsState and browser URL query string
-    let syncTimer = null;
-    const syncViewToURL = () => {
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => {
-        const center = this.map.getCenter();
-        const zoom = this.map.getZoom();
-        jmarsState.set('view', { lat: center.lat, lng: center.lng, zoom });
-        URLStateEngine.syncToBrowserURL({
-          body: this.currentBody,
-          lat: center.lat,
-          lon: center.lng,
-          zoom: zoom,
-          activeLayers: jmarsState.get('activeLayers')
-        });
-      }, 400);
-    };
-
-    this.map.on('moveend', syncViewToURL);
-    this.map.on('zoomend', syncViewToURL);
+    const scheduleViewSync = () => this.scheduleViewStateSync();
+    this.map.on('moveend', scheduleViewSync);
+    this.map.on('zoomend', scheduleViewSync);
 
     // Auto-sync browser URL whenever layers are added, removed, reordered, or opacity changes
     document.addEventListener(EVENTS.LAYERS_CHANGED, () => {
-      syncViewToURL();
+      scheduleViewSync();
     });
 
     // Auto-sync color stretch adjustments
     document.addEventListener('jmars:color-stretch-changed', () => {
-      syncViewToURL();
-    });
-
-    // Listen for body changes from the BodySelector UI
-    document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
-      const body = e?.detail?.body;
-      if (!body) return;
-      this.switchBody(body);
-      syncViewToURL();
+      scheduleViewSync();
     });
 
     // Listen for copy share link requests
@@ -161,15 +139,84 @@ export class JMARSMap {
    * @returns {Promise<string>}
    */
   async copyShareLink() {
-    const center = this.map.getCenter();
+    const view = this.getViewState();
     const state = {
       body: this.currentBody,
-      lat: center.lat,
-      lon: center.lng,
-      zoom: this.map.getZoom(),
+      lat: view.lat,
+      lon: view.lng,
+      zoom: view.zoom,
       activeLayers: jmarsState.get('activeLayers')
     };
     return await URLStateEngine.copyShareLink(state);
+  }
+
+  /**
+   * Return the live Leaflet view as a serializable state object.
+   * @returns {{lat:number, lng:number, zoom:number}|null}
+   */
+  getViewState() {
+    if (!this.map) return null;
+    const center = this.map.getCenter();
+    return {
+      lat: center.lat,
+      lng: center.lng,
+      zoom: this.map.getZoom()
+    };
+  }
+
+  /**
+   * Synchronize the live map view into app state and optionally the browser URL.
+   * This is the single source-of-truth path for view -> state synchronization.
+   * @param {{updateUrl?: boolean}} [options]
+   * @returns {{lat:number, lng:number, zoom:number}|null}
+   */
+  syncViewState(options = {}) {
+    const updateUrl = options.updateUrl !== false;
+    const view = this.getViewState();
+    if (!view) return null;
+
+    jmarsState.set('view', view);
+
+    if (updateUrl) {
+      URLStateEngine.syncToBrowserURL({
+        body: this.currentBody,
+        lat: view.lat,
+        lon: view.lng,
+        zoom: view.zoom,
+        activeLayers: jmarsState.get('activeLayers')
+      });
+    }
+
+    return view;
+  }
+
+  /**
+   * Debounce syncViewState so URL/state updates follow settled map interactions.
+   * @param {{delay?: number, updateUrl?: boolean}} [options]
+   */
+  scheduleViewStateSync(options = {}) {
+    const delay = typeof options.delay === 'number' ? options.delay : 400;
+    clearTimeout(this._viewSyncTimer);
+    this._viewSyncTimer = window.setTimeout(() => {
+      this.syncViewState({ updateUrl: options.updateUrl !== false });
+    }, delay);
+  }
+
+  /**
+   * Apply a serialized view to the live map and immediately resync state.
+   * @param {{lat:number, lng:number, zoom:number}} view
+   * @param {{updateUrl?: boolean}} [options]
+   * @returns {{lat:number, lng:number, zoom:number}|null}
+   */
+  applyViewState(view, options = {}) {
+    if (!this.map || !view) return null;
+    const lat = Number(view.lat);
+    const lng = Number(view.lng);
+    const zoom = Number(view.zoom);
+    if (![lat, lng, zoom].every(Number.isFinite)) return null;
+
+    this.map.setView([lat, lng], zoom);
+    return this.syncViewState(options);
   }
 
   /**
@@ -179,7 +226,7 @@ export class JMARSMap {
    * @param {string} bodyKey - Lowercase body key (e.g., 'mars', 'moon', 'earth').
    */
   switchBody(bodyKey) {
-    const key = (bodyKey || 'mars').toLowerCase();
+    const key = normalizeBodyKey(bodyKey);
     const bodyConfig = JMARS_CONFIG.bodies[key];
     if (!bodyConfig) return;
 
@@ -196,9 +243,6 @@ export class JMARSMap {
 
     // 2. Update context
     this.currentBody = key;
-    if (jmarsState.get('body') !== key) {
-      jmarsState.set('body', key);
-    }
 
     // Normalize layer configs so Leaflet always has options objects
     this.availableLayers = (bodyConfig.layers || []).map(l => {
@@ -340,6 +384,7 @@ export class JMARSMap {
           name: l.title,
           type: 'wms',
           url: wmsUrl,
+          abstract: l.abstract || '',
           options: {
             layers: l.name,
             format: 'image/png',

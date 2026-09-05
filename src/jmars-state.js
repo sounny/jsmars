@@ -45,6 +45,35 @@ export class JMARSState {
   }
 
   /**
+   * Normalize a layer state object to the persisted app contract.
+   * @param {object} layer
+   * @returns {{id:string, opacity:number, visible:boolean}|null}
+   */
+  normalizeLayerState(layer) {
+    if (!layer || !layer.id) return null;
+    const opacity = typeof layer.opacity === 'number' && Number.isFinite(layer.opacity)
+      ? Math.max(0, Math.min(1, layer.opacity))
+      : 1;
+
+    return {
+      ...layer,
+      id: layer.id,
+      opacity,
+      visible: layer.visible !== false
+    };
+  }
+
+  /**
+   * Normalize an array of layer state objects.
+   * @param {Array<{id:string, opacity:number, visible:boolean}>} layers
+   * @returns {Array<{id:string, opacity:number, visible:boolean}>}
+   */
+  normalizeActiveLayers(layers) {
+    if (!Array.isArray(layers)) return [];
+    return layers.map(layer => this.normalizeLayerState(layer)).filter(Boolean);
+  }
+
+  /**
    * Get a top-level state value by key.
    * @param {string} key - The state property name ('body', 'activeLayers', 'overlays', 'view').
    * @returns {*} The current value.
@@ -77,7 +106,7 @@ export class JMARSState {
    */
   addLayer(layerId) {
     if (this.state.activeLayers.find(l => l.id === layerId)) return;
-    this.state.activeLayers.push({ id: layerId, opacity: 1, visible: true });
+    this.state.activeLayers.push(this.normalizeLayerState({ id: layerId, opacity: 1, visible: true }));
     this.emit(EVENTS.LAYERS_CHANGED, this.state.activeLayers);
   }
 
@@ -98,7 +127,8 @@ export class JMARSState {
   updateLayer(layerId, updates) {
     const layer = this.state.activeLayers.find(l => l.id === layerId);
     if (layer) {
-      Object.assign(layer, updates);
+      const normalized = this.normalizeLayerState({ ...layer, ...updates });
+      Object.assign(layer, normalized);
       this.emit(EVENTS.LAYERS_CHANGED, this.state.activeLayers);
     }
   }
@@ -108,8 +138,7 @@ export class JMARSState {
    * @param {Array<{id:string, opacity:number, visible:boolean}>} layers - New layer stack.
    */
   setActiveLayers(layers) {
-    // Guard against null/undefined to prevent downstream crashes
-    this.state.activeLayers = Array.isArray(layers) ? layers : [];
+    this.state.activeLayers = this.normalizeActiveLayers(layers);
     this.emit(EVENTS.LAYERS_CHANGED, this.state.activeLayers);
   }
 
@@ -120,9 +149,9 @@ export class JMARSState {
    */
   reorderLayers(newOrderIds) {
     const currentLayers = [...this.state.activeLayers];
-    this.state.activeLayers = newOrderIds
+    this.state.activeLayers = this.normalizeActiveLayers(newOrderIds
       .map(id => currentLayers.find(l => l.id === id))
-      .filter(Boolean);
+      .filter(Boolean));
     this.emit(EVENTS.LAYERS_CHANGED, this.state.activeLayers);
   }
 
