@@ -8244,6 +8244,41 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
         bookmarks.goTo({ id: 'apollo11', name: 'Apollo 11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
     });
 
+    it('should cancel a pending bookmark view when the body changes externally', (done) => {
+        const mockMap = {
+            setView: () => done(new Error('A stale bookmark view was applied'))
+        };
+        const bookmarks = new BookmarksTool(mockMap, null);
+        bookmarks.currentBody = 'mars';
+
+        bookmarks.goTo({ id: 'apollo11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
+        jmarsState.set('body', 'earth');
+        document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: 'earth' } }));
+
+        setTimeout(() => done(), 150);
+    });
+
+    it('should supersede a pending bookmark view with a newer bookmark request', (done) => {
+        const views = [];
+        const mockMap = {
+            setView: (center, zoom) => views.push({ center, zoom })
+        };
+        const bookmarks = new BookmarksTool(mockMap, null);
+        bookmarks.currentBody = 'mars';
+
+        bookmarks.goTo({ id: 'apollo11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
+        bookmarks.goTo({ id: 'earth-view', lat: 12.3, lng: 45.6, zoom: 5, body: 'earth' });
+
+        setTimeout(() => {
+            try {
+                expect(views).to.deep.equal([{ center: [12.3, 45.6], zoom: 5 }]);
+                done();
+            } catch (err) {
+                done(err);
+            }
+        }, 150);
+    });
+
     it('should render bookmark names safely without executing markup strings (XSS resilience)', () => {
         const container = document.createElement('div');
         const mockMap = { setView: () => {} };
@@ -17214,4 +17249,3 @@ if (typeof mocha !== 'undefined') {
         });
     }
 }
-
