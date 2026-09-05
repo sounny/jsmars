@@ -108,7 +108,7 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
    - Bookmarks with navigation coordinates
 
 ### Cross-Body Sessions
-- **Save on Mars, Load on Moon:** Sessions can be created on one body and loaded on another. For example, save a Mars observation session, then switch to the Moon and load that same session to view the saved layers and viewport on the Moon map.
+- **Save on Mars, Load on Moon:** Sessions can be created on one body and loaded while another body is active. For example, save a Mars observation session, switch to the Moon, and load that session; the map switches back to Mars before restoring the saved layers and viewport.
 - **Viewport Accuracy:** Saved sessions capture the exact map center and zoom level at save time, ensuring your view is restored precisely.
 - **Bookmark Navigation:** Bookmarks automatically include their source body. Click a bookmark's **Go to** button to:
   1. Switch to the bookmark's body (Mars → Moon, etc.)
