@@ -30,11 +30,7 @@ export class StampQueryPanel {
       <div class="stamp-panel">
         <div class="stamp-controls">
           <label class="stamp-label">Instrument</label>
-          <select id="stamp-instrument-select" class="stamp-select">
-            ${this.stampLayer.getInstruments().map(i =>
-              `<option value="${i.id}" ${i.id === 'THEMIS' ? 'selected' : ''}>${i.name}</option>`
-            ).join('')}
-          </select>
+          <select id="stamp-instrument-select" class="stamp-select"></select>
 
           <label class="stamp-label">Max Results</label>
           <select id="stamp-limit-select" class="stamp-select">
@@ -69,6 +65,14 @@ export class StampQueryPanel {
     this.instrumentSelect = this.container.querySelector('#stamp-instrument-select');
     this.limitSelect = this.container.querySelector('#stamp-limit-select');
     this.resultsContainer = this.container.querySelector('#stamp-results-container');
+
+    this.stampLayer.getInstruments().forEach((instrument) => {
+      const option = document.createElement('option');
+      option.value = instrument.id;
+      option.textContent = instrument.name;
+      option.selected = instrument.id === 'THEMIS';
+      this.instrumentSelect.appendChild(option);
+    });
   }
 
   _bindEvents() {

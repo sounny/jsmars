@@ -1,5 +1,6 @@
 import { jmarsState } from '../jmars-state.js';
 import { EVENTS } from '../constants.js';
+import { normalizeBodyKey, switchActiveBody } from '../util/body.js';
 
 /**
  * @module SessionManager
@@ -11,11 +12,13 @@ import { EVENTS } from '../constants.js';
 export class SessionManager {
     /**
      * Create a new SessionManager.
+     * @param {object|null} jmarsMap - JMARSMap controller instance (or null)
      * @param {object|null} craterLayer - CraterCounter instance (or null)
      * @param {object|null} measureTool - MeasureTool instance (or null)
      * @param {object|null} bookmarksTool - BookmarksTool instance (or null)
      */
-    constructor(craterLayer, measureTool, bookmarksTool) {
+    constructor(jmarsMap, craterLayer, measureTool, bookmarksTool) {
+        this.jmarsMap = jmarsMap;
         this.craterLayer = craterLayer;
         this.measureTool = measureTool;
         this.bookmarksTool = bookmarksTool;
@@ -27,11 +30,9 @@ export class SessionManager {
      * live object references. Captures live map viewport.
      */
     saveSession() {
+        this.jmarsMap?.syncViewState?.({ updateUrl: true });
         const liveState = JSON.parse(JSON.stringify(jmarsState.state));
-        // Canonicalize body key to lowercase
-        if (liveState.body) {
-            liveState.body = liveState.body.toLowerCase();
-        }
+        liveState.body = normalizeBodyKey(liveState.body);
 
         const session = {
             version: '1.0',
@@ -64,12 +65,9 @@ export class SessionManager {
 
             // 1. Restore Planetary Body FIRST so switchBody does not overwrite restored layers
             if (session.state && session.state.body) {
-                const targetBody = session.state.body.toLowerCase();
-                const currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
-                if (targetBody !== currentBody) {
-                    jmarsState.set('body', targetBody);
-                    const event = new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: targetBody } });
-                    document.dispatchEvent(event);
+                const targetBody = normalizeBodyKey(session.state.body);
+                if (this.jmarsMap) {
+                    await Promise.resolve(switchActiveBody(this.jmarsMap, targetBody));
                 }
             }
 
@@ -80,7 +78,6 @@ export class SessionManager {
 
             // 3. Restore View (Lat/Lon/Zoom)
             if (session.state && session.state.view) {
-                jmarsState.set('view', session.state.view);
                 const event = new CustomEvent(EVENTS.UPDATE_VIEW, { 
                     detail: session.state.view 
                 });

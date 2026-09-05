@@ -35,6 +35,7 @@ import { PWAManager } from '../src/pwa/PWAManager.js';
 import { MobileSheet } from '../src/ui/MobileSheet.js';
 import { SessionManager } from '../src/ui/SessionManager.js';
 import { StampQueryPanel } from '../src/features/stamp/StampQueryPanel.js';
+import { normalizeBodyKey, switchActiveBody } from '../src/util/body.js';
 import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
 
 const expect = chai.expect;
@@ -8188,11 +8189,27 @@ describe('PWA Manifest, PWAManager & MobileSheet Architecture', () => {
 });
 
 describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Prevention & Visibility', () => {
+    it('should normalize body keys to canonical lowercase values', () => {
+        expect(normalizeBodyKey('Moon')).to.equal('moon');
+        expect(normalizeBodyKey(' EARTH ')).to.equal('earth');
+        expect(normalizeBodyKey('unknown-world')).to.equal('mars');
+    });
+
+    it('should preserve layer visibility when restoring state arrays', () => {
+        jmarsState.setActiveLayers([{ id: 'hidden_layer', opacity: 0.4, visible: false }]);
+        const [layer] = jmarsState.get('activeLayers');
+        expect(layer.visible).to.equal(false);
+        expect(layer.opacity).to.equal(0.4);
+    });
+
     it('should serialize live session state with canonical lowercase body key', () => {
         jmarsState.set('body', 'Moon');
         jmarsState.set('view', { lat: 15.5, lng: -45.2, zoom: 6 });
 
-        const sessionMgr = new SessionManager(null, null, null);
+        const mockMapController = {
+            syncViewState: () => {}
+        };
+        const sessionMgr = new SessionManager(mockMapController, null, null, null);
         let downloadedContent = null;
         sessionMgr.downloadFile = (name, content) => {
             downloadedContent = JSON.parse(content);
@@ -8205,30 +8222,57 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
         expect(downloadedContent.state.view.lng).to.equal(-45.2);
     });
 
-    it('should handle cross-body bookmark navigation by dispatching BODY_CHANGED event', (done) => {
-        const mockMap = {
+    it('should switch body first and then navigate cross-body bookmarks', async () => {
+        const calls = [];
+        const mockLeafletMap = {
             center: [0, 0],
             zoom: 2,
             setView: (c, z) => {
-                mockMap.center = c;
-                mockMap.zoom = z;
+                calls.push(`view:${c[0]},${c[1]},${z}`);
+                mockLeafletMap.center = c;
+                mockLeafletMap.zoom = z;
+            }
+        };
+        const mockMapController = {
+            map: mockLeafletMap,
+            currentBody: 'mars',
+            switchBody: (body) => {
+                calls.push(`switch:${body}`);
+                mockMapController.currentBody = body;
             }
         };
 
-        const bookmarks = new BookmarksTool(mockMap, null);
-        bookmarks.currentBody = 'mars';
-
+        const seenBodies = [];
         const bodyChangeHandler = (e) => {
-            expect(e.detail.body).to.equal('moon');
-            document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
-            done();
+            seenBodies.push(e.detail.body);
         };
         document.addEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
 
-        // Navigate to Moon POI
-        bookmarks.goTo({ id: 'apollo11', name: 'Apollo 11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
-        expect(mockMap.center[0]).to.equal(0.67);
-        expect(mockMap.center[1]).to.equal(23.47);
+        const bookmarks = new BookmarksTool(mockMapController, null);
+        bookmarks.currentBody = 'mars';
+        await bookmarks.goTo({ id: 'apollo11', name: 'Apollo 11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
+
+        document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+        expect(calls).to.deep.equal(['switch:moon', 'view:0.67,23.47,8']);
+        expect(seenBodies).to.deep.equal(['moon']);
+        expect(mockLeafletMap.center[0]).to.equal(0.67);
+        expect(mockLeafletMap.center[1]).to.equal(23.47);
+    });
+
+    it('should switch map state before dispatching BODY_CHANGED', () => {
+        const mapController = {
+            currentBody: 'mars',
+            switchBody: (body) => {
+                mapController.currentBody = body;
+            }
+        };
+        let bodyDuringEvent = null;
+        const handler = () => {
+            bodyDuringEvent = mapController.currentBody;
+        };
+        document.addEventListener(EVENTS.BODY_CHANGED, handler, { once: true });
+        switchActiveBody(mapController, 'Moon');
+        expect(bodyDuringEvent).to.equal('moon');
     });
 
     it('should render bookmark names safely without executing markup strings (XSS resilience)', () => {
@@ -17007,4 +17051,3 @@ if (typeof mocha !== 'undefined') {
         });
     }
 }
-

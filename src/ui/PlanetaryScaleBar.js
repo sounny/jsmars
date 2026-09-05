@@ -26,7 +26,7 @@ export class PlanetaryScaleBar {
     this.container = null;
     this.barEl = null;
     this.labelEl = null;
-    this.currentBody = 'mars';
+    this.currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
 
     this._onMove = this._onMove.bind(this);
     this._onBodyChanged = this._onBodyChanged.bind(this);

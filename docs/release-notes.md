@@ -1,5 +1,16 @@
 # JSMARS Release Notes
 
+## v0.8.1 - Stabilization Milestone
+**Date:** 2026-09-05
+
+### Fixes
+- Fixed session restore sequencing so saved body switches complete before saved layers and viewport are restored.
+- Fixed stale session/share view serialization by consolidating live map view sync into one JMARSMap state/URL path.
+- Fixed cross-body bookmark navigation so Moon/Earth/Mars bookmarks switch the active body before panning.
+- Removed unsafe dynamic HTML insertion for bookmark and stamp result content by using DOM APIs/textContent.
+- Canonicalized active body keys to lowercase across map initialization, state, deep links, and late-created UI consumers.
+- Added enforceable layer visibility state with explicit layer-manager visibility checkboxes and map rendering parity.
+
 ## v0.8.0 - Planetary Geodesy, Astrodynamics & Cartography Milestone
 **Date:** 2026-08-24
 

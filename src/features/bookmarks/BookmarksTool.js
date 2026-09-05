@@ -1,5 +1,6 @@
 import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
+import { normalizeBodyKey, switchActiveBody } from '../../util/body.js';
 
 /**
  * @module BookmarksTool
@@ -23,13 +24,14 @@ export class BookmarksTool {
    * @param {L.Map} map - Leaflet map instance
    * @param {string|HTMLElement} containerOrId - DOM element ID or container
    */
-  constructor(map, containerOrId) {
-    this.map = map;
+  constructor(mapOrController, containerOrId) {
+    this.jmarsMap = mapOrController?.map ? mapOrController : null;
+    this.map = this.jmarsMap?.map || mapOrController;
     this.container = typeof containerOrId === 'string'
       ? document.getElementById(containerOrId)
       : containerOrId;
     this.bookmarks = [];
-    this.currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
+    this.currentBody = normalizeBodyKey(jmarsState.get('body'));
 
     if (this.container) {
       this.init();
@@ -50,11 +52,19 @@ export class BookmarksTool {
     this.render();
   }
 
+  normalizeBookmark(bookmark) {
+    if (!bookmark) return null;
+    return {
+      ...bookmark,
+      body: normalizeBodyKey(bookmark.body)
+    };
+  }
+
   loadFromStorage() {
     const stored = localStorage.getItem('jmars_bookmarks');
     if (stored) {
       try {
-        this.bookmarks = JSON.parse(stored);
+        this.bookmarks = JSON.parse(stored).map(bookmark => this.normalizeBookmark(bookmark)).filter(Boolean);
       } catch (e) {
         console.error('Failed to parse bookmarks', e);
         this.bookmarks = [];
@@ -72,26 +82,28 @@ export class BookmarksTool {
     const name = prompt('Enter a name for this bookmark:', `ROI ${this.bookmarks.length + 1}`);
 
     if (name) {
-      this.bookmarks.push({
+      this.bookmarks.push(this.normalizeBookmark({
         id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         name: name,
         lat: center.lat,
         lng: center.lng,
         zoom: zoom,
         body: this.currentBody
-      });
+      }));
       this.saveToStorage();
       this.render();
     }
   }
 
-  goTo(bookmark) {
+  async goTo(bookmark) {
     if (!bookmark) return;
-    const targetBody = (bookmark.body || 'mars').toLowerCase();
+    const targetBody = normalizeBodyKey(bookmark.body);
     if (targetBody !== this.currentBody) {
-      this.currentBody = targetBody;
-      jmarsState.set('body', targetBody);
-      document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: targetBody } }));
+      if (this.jmarsMap) {
+        await Promise.resolve(switchActiveBody(this.jmarsMap, targetBody));
+      } else {
+        this.currentBody = targetBody;
+      }
     }
     this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
   }
@@ -186,7 +198,7 @@ export class BookmarksTool {
       nameSpan.textContent = b.name || 'Unnamed Bookmark';
       link.appendChild(nameSpan);
 
-      link.onclick = () => this.goTo(b);
+      link.onclick = () => { void this.goTo(b); };
 
       const delBtn = document.createElement('span');
       delBtn.textContent = '×';
@@ -219,12 +231,12 @@ export class BookmarksTool {
   }
 
   getData() {
-    return this.bookmarks;
+    return this.bookmarks.map(bookmark => this.normalizeBookmark(bookmark));
   }
 
   loadData(data) {
     if (Array.isArray(data)) {
-      this.bookmarks = data;
+      this.bookmarks = data.map(bookmark => this.normalizeBookmark(bookmark)).filter(Boolean);
       this.saveToStorage();
       this.render();
     }
@@ -250,7 +262,7 @@ export class BookmarksTool {
         properties: {
           name: b.name,
           zoom: b.zoom,
-          body: b.body || 'mars'
+          body: normalizeBodyKey(b.body)
         }
       }))
     };
@@ -273,7 +285,7 @@ export class BookmarksTool {
         lat: f.geometry.coordinates[1],
         lng: f.geometry.coordinates[0],
         zoom: f.properties?.zoom || 6,
-        body: f.properties?.body || 'mars'
+        body: normalizeBodyKey(f.properties?.body)
       }));
   }
 
@@ -305,4 +317,3 @@ export class BookmarksTool {
     };
   }
 }
-

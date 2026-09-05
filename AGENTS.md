@@ -102,6 +102,8 @@ application-state, and DOM-event state can become inconsistent.
   session's active layers and view after the map has completed the body switch.
   A session saved for a non-current body must reopen with its own layers and
   viewport intact.
+- **Resolved 2026-09-05:** Session loading now awaits the canonical JMARSMap
+  body-switch path before restoring layers and dispatching the saved view.
 
 ### P1 — Sessions save a stale viewport
 
@@ -111,6 +113,8 @@ application-state, and DOM-event state can become inconsistent.
 - **Required behavior:** Session output must contain the actual `map.getCenter()`
   and `map.getZoom()` values. Prefer a single, well-defined view-sync path so
   sessions, share URLs, and state agree.
+- **Resolved 2026-09-05:** `JMARSMap.syncViewState()` is now the single live
+  view → state/URL sync path, and session save forces one final live sync first.
 
 ### P1 — Cross-body bookmarks do not switch the map
 
@@ -121,6 +125,8 @@ application-state, and DOM-event state can become inconsistent.
 - **Required behavior:** Use one body-switch API/event path, then set the
   destination view after the body transition. Add a regression test using a
   Mars-to-Moon bookmark.
+- **Resolved 2026-09-05:** Bookmarks now use the same canonical body-switch
+  helper as sessions/UI, then apply the bookmark view after the switch.
 
 ### P1 — Do not insert bookmark or remote stamp data with `innerHTML`
 
@@ -131,6 +137,8 @@ application-state, and DOM-event state can become inconsistent.
 - **Required behavior:** Build these elements with DOM APIs and assign dynamic
   values through `textContent` (and validated `dataset`/attributes where
   necessary). Add tests using markup-like strings.
+- **Resolved 2026-09-05:** Bookmark labels and stamp result rows/options are
+  now built with DOM APIs and unit-tested with markup-like strings.
 
 ### P2 — Canonicalize the active body across map, store, and UI
 
@@ -141,6 +149,8 @@ application-state, and DOM-event state can become inconsistent.
 - **Required behavior:** Use lowercase body keys (`mars`, `moon`, `earth`) as
   the single canonical value, and update map state, store state, and body-change
   event consumers through one operation.
+- **Resolved 2026-09-05:** Body changes now flow through one canonical helper
+  using lowercase keys, and late-created UI components initialize from state.
 
 ### P2 — Either implement or remove layer `visible`
 
@@ -151,6 +161,8 @@ application-state, and DOM-event state can become inconsistent.
 - **Required behavior:** Add a real visibility control and map application
   behavior, or remove the flag from serialized/state contracts. Rendering,
   exports, and data queries must agree on visibility.
+- **Resolved 2026-09-05:** Layer visibility is normalized in state, enforced by
+  the map sync path, and exposed via explicit visibility checkboxes in the UI.
 
 ### Verification expectations for this milestone
 

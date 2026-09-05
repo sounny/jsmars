@@ -1,5 +1,6 @@
 import { EVENTS } from '../../constants.js';
 import { to180 } from '../../util/geo.js';
+import { jmarsState } from '../../jmars-state.js';
 
 /**
  * @class NomenclatureLayer
@@ -14,7 +15,7 @@ export class NomenclatureLayer {
     this.map = map;
     this.layerGroup = L.layerGroup();
     this.landmarks = [];
-    this.currentBody = 'mars';
+    this.currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
     this.searchQuery = '';
 
     /** @type {Object<string, boolean>} Visibility state for each feature type. */

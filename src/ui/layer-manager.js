@@ -384,20 +384,6 @@ export class LayerManager {
     btnRemove.onclick = () => jmarsState.removeLayer(layerState.id);
 
     const isVisible = layerState.visible !== false;
-    const btnVisibility = document.createElement('button');
-    btnVisibility.innerHTML = isVisible ? '&#128065;' : '&#128584;'; // 👁️ or 🙈
-    btnVisibility.title = isVisible ? 'Hide Layer' : 'Show Layer';
-    btnVisibility.setAttribute('aria-label', `${isVisible ? 'Hide' : 'Show'} layer ${name}`);
-    btnVisibility.style.marginRight = '5px';
-    btnVisibility.style.background = isVisible ? '#334155' : '#1e293b';
-    btnVisibility.style.border = '1px solid #475569';
-    btnVisibility.style.color = isVisible ? '#38bdf8' : '#64748b';
-    btnVisibility.style.borderRadius = '3px';
-    btnVisibility.style.cursor = 'pointer';
-    btnVisibility.style.padding = '1px 5px';
-    btnVisibility.onclick = () => {
-      jmarsState.updateLayer(layerState.id, { visible: !isVisible });
-    };
 
     const btnSettings = document.createElement('button');
     btnSettings.innerHTML = '&#9881;';
@@ -406,7 +392,6 @@ export class LayerManager {
     btnSettings.style.marginRight = '5px';
     btnSettings.onclick = () => this.openLayerSettings(layerState.id);
 
-    actions.appendChild(btnVisibility);
     actions.appendChild(btnSettings);
     actions.appendChild(btnUp);
     actions.appendChild(btnDown);
@@ -415,10 +400,34 @@ export class LayerManager {
     header.appendChild(actions);
     div.appendChild(header);
 
+    const visibilityContainer = document.createElement('label');
+    visibilityContainer.style.display = 'flex';
+    visibilityContainer.style.alignItems = 'center';
+    visibilityContainer.style.gap = '6px';
+    visibilityContainer.style.marginBottom = '6px';
+    visibilityContainer.style.fontSize = '11px';
+    visibilityContainer.style.color = '#cbd5e1';
+
+    const visibilityCheckbox = document.createElement('input');
+    visibilityCheckbox.type = 'checkbox';
+    visibilityCheckbox.checked = isVisible;
+    visibilityCheckbox.setAttribute('aria-label', `Toggle visibility for ${name}`);
+    visibilityCheckbox.addEventListener('change', (event) => {
+      jmarsState.updateLayer(layerState.id, { visible: event.target.checked });
+    });
+
+    const visibilityLabel = document.createElement('span');
+    visibilityLabel.textContent = 'Visible on map';
+
+    visibilityContainer.appendChild(visibilityCheckbox);
+    visibilityContainer.appendChild(visibilityLabel);
+    div.appendChild(visibilityContainer);
+
     // Opacity Slider
     const sliderContainer = document.createElement('div');
     sliderContainer.style.display = 'flex';
     sliderContainer.style.alignItems = 'center';
+    sliderContainer.style.opacity = isVisible ? '1' : '0.55';
 
     const sliderLabel = document.createElement('span');
     sliderLabel.textContent = 'Opacity: ';
@@ -615,6 +624,31 @@ export class LayerManager {
     const opacitySection = document.createElement('div');
     opacitySection.className = 'layer-settings-opacity';
 
+    const visibilitySection = document.createElement('div');
+    visibilitySection.className = 'layer-settings-visibility';
+    visibilitySection.style.marginBottom = '12px';
+
+    const visibilityLabel = document.createElement('label');
+    visibilityLabel.style.display = 'flex';
+    visibilityLabel.style.alignItems = 'center';
+    visibilityLabel.style.gap = '8px';
+    visibilityLabel.style.fontSize = '12px';
+    visibilityLabel.style.color = '#e2e8f0';
+
+    const visibilityInput = document.createElement('input');
+    visibilityInput.type = 'checkbox';
+    visibilityInput.checked = layerState.visible !== false;
+    visibilityInput.addEventListener('change', (event) => {
+      jmarsState.updateLayer(layerId, { visible: event.target.checked });
+    });
+
+    const visibilityText = document.createElement('span');
+    visibilityText.textContent = 'Visible on map';
+
+    visibilityLabel.appendChild(visibilityInput);
+    visibilityLabel.appendChild(visibilityText);
+    visibilitySection.appendChild(visibilityLabel);
+
     const opacityLabel = document.createElement('label');
     opacityLabel.textContent = 'Opacity';
     opacityLabel.setAttribute('for', 'layer-settings-opacity');
@@ -744,7 +778,9 @@ export class LayerManager {
     actions.appendChild(removeButton);
 
     this.settingsContent.appendChild(infoList);
+    this.settingsContent.appendChild(visibilitySection);
     this.settingsContent.appendChild(opacitySection);
+    this.settingsContent.appendChild(blendSection);
     this.settingsContent.appendChild(actions);
 
     this.settingsModal.style.display = 'flex';

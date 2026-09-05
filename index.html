@@ -631,7 +631,7 @@
     window.mobileSheet = mobileSheet;
     const searchBar = new SearchBar(jmars.map, 'search-bar-container');
     const toolsGroup = new CollapsibleGroup('tools-list');
-    const bodySelector = new BodySelector('body-selector-container');
+    const bodySelector = new BodySelector('body-selector-container', jmars);
 
     const openAccordionSection = (sectionTitle) => {
       const sections = document.querySelectorAll('.accordion-section');
@@ -667,7 +667,7 @@
     const investigateTool = new InvestigateTool(jmars.map);
     const investigateBtn = document.getElementById('investigate-tool-btn');
 
-    const bookmarksTool = new BookmarksTool(jmars.map, 'bookmarks-tool-container');
+    const bookmarksTool = new BookmarksTool(jmars, 'bookmarks-tool-container');
 
     const enhancedProfileTool = new EnhancedProfileTool(jmars.map);
     const enhancedProfileSource = document.getElementById('enhanced-profile-source');
@@ -744,7 +744,7 @@
     const placesManager = new PlacesManager(jmars.map);
 
     // -- NEW: MiniMap Overview --
-    const miniMapUrl = JMARS_CONFIG.services.mars_basemap;
+    const miniMapUrl = JMARS_CONFIG.bodies[jmars.currentBody]?.layers?.[0]?.url || JMARS_CONFIG.services.mars_basemap;
     const miniMap = new MiniMap(jmars.map, miniMapUrl);
     miniMap.activate();
     // Update minimap when body changes
@@ -917,7 +917,7 @@
     });
 
     // Session Manager (include bookmarksTool)
-    const sessionManager = new SessionManager(craterLayer, measureTool, bookmarksTool);
+    const sessionManager = new SessionManager(jmars, craterLayer, measureTool, bookmarksTool);
 
     // Session Event Listeners
     document.getElementById('session-save-btn').addEventListener('click', () => sessionManager.saveSession());
@@ -949,7 +949,7 @@
     // View Update Listener
     document.addEventListener('jmars:update-view', (e) => {
       if (e.detail) {
-        jmars.map.setView([e.detail.lat, e.detail.lng], e.detail.zoom);
+        jmars.applyViewState(e.detail);
       }
     });
 
