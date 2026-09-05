@@ -118,7 +118,7 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 ### Layer Visibility
 - **Toggle Visibility:** Use the eye icon next to each active layer to toggle visibility on/off.
 - **Visibility Persistence:** Layer visibility state is saved with sessions and serialized in shareable URLs.
-- **Visible Layers Only:** Only visible layers are included in map exports and measurements.
+- **Visible Layers Only:** Only visible layers are included in map exports. Measurements are drawn geometries tracked independently of layer visibility.
 
 ### Shareable Links
 - Deep-link URLs (containing `?body=mars&layers=...`) remember your current body, zoom level, and active layers.
