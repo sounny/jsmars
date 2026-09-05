@@ -286,3 +286,121 @@ remain usable when installation and service workers are unavailable.
 - Document deployment requirements: HTTPS in production, correct manifest and
   service-worker MIME types, service-worker scope, cache invalidation/release
   procedure, supported browser behavior, and how users clear offline data.
+
+---
+
+## 9. Desktop-Parity Review Follow-up (2026-09-05)
+
+A parity accounting against the JMARS desktop app identified remaining gaps
+beyond the P1/P2 stabilization items in section 7. These are open backlog
+items, not yet scheduled — pick them up after section 7's plumbing fixes are
+verified. Do not start section 3.3/3.4 roadmap work until the state-plumbing
+P1s are merged, since several of these tools (measurement, shapes, spectral
+plots) will build on the same map/state contracts.
+
+### A. Unimplemented roadmap items (see `docs/jsmars-roadmap.md` Phase 2–4, 9)
+
+- **Unified top nav bar**: No persistent bar with zoom controls, a live
+  lat/lon cursor readout, and a single unified search box (landmarks +
+  bookmarks + coordinates). Currently search/zoom controls are scattered
+  across the sidebar and Leaflet's default zoom control.
+- **Custom shapes & geologic pattern library**: No canvas/SVG fill patterns
+  for Ejecta, Crater Material, Fracture Zone, Plain, etc., and no style
+  manager to apply them to drawn polygons (`src/features/shapes/`
+  currently only wraps Leaflet.Draw for basic point/line/polygon geometry).
+- **Independent measurement tools**: No azimuth, perimeter, or standalone
+  distance/area tool decoupled from the profile/contour features. JMARS
+  desktop treats measurement as its own tool, not a byproduct of drawing.
+- **Investigate tool spectral plot**: `src/features/investigate/
+  InvestigateTool.js` supports pixel/value inspection at a clicked point but
+  has no spectral plot for multi-band data (see item F below — this is
+  blocked on real per-pixel/multi-band raster access).
+- **Landmark fuzzy search**: `src/features/search/SearchBar.js` and
+  `src/ui/SearchBar.js` do partial matching but not true fuzzy/typo-tolerant
+  search against the local landmark JSON (`src/data/landmarks.json`).
+- **Configurable multi-CRS endpoints**: `src/jmars-config.js` hardcodes one
+  WMS/XYZ endpoint set per body. There is no per-body/per-layer coordinate
+  reference system override or alternate-endpoint fallback list.
+- **Live in-doc tool sandboxes / API doc generation**: `docs/index.html`
+  documents tools in prose but has no embedded interactive widgets (e.g. a
+  live KRC/MCD/CSFD calculator) and there is no JSDoc-driven API reference
+  generation for `src/` modules.
+
+### B. Vector/GIS I/O gap
+
+- `src/util/ShapeIO.js` supports GeoJSON and WKT round-trips only. There is
+  no shapefile-grade export/import (`.shp`/`.shx`/`.dbf` triad, or even a
+  zipped GeoJSON-to-shapefile conversion via a browser-side library), and no
+  attribute-table editing UI for drawn features beyond name/style.
+
+### C. Collaboration & output gap
+
+- No multi-user/collaborative session support (sessions are single-user,
+  client-side JSON only — see section 7 for even that being unreliable
+  until the P1 fixes land).
+- No print/plate composer (a JMARS desktop feature for producing publication
+  map layouts with scale bar, north arrow, legend, and title block baked into
+  an exportable image/PDF). `src/features/export/ExportTool.js` currently
+  exports world files and raw canvas/PNG, not a composed layout.
+
+### D. "Parity theater" — simulated vs. live science data (flagged by user as top priority)
+
+Several flagship science tools present physically-based **client-side
+models** in a way that can be mistaken for **live server/spacecraft data**.
+This is the biggest trust risk for "no reason to use the desktop app," since
+a domain scientist will notice immediately if a "radargram" or "atmospheric
+profile" doesn't match the authoritative source.
+
+- **KRC (`src/features/krc/KRCEngine.js`)**: A legitimate 1D thermal
+  conduction physics model (analogous to Kieffer's KRC), always run
+  client-side. It does not claim to be live data anywhere in the UI
+  (`KRCPanel.js` labels it as a simulation), so this one is arguably fine as
+  a *model*, not fake *data* — but confirm the UI language stays unambiguous
+  as other panels are touched.
+- **MCD atmospheric profiler (`src/features/mcd/MCDEngine.js`,
+  `MCDPanel.js`)**: Already has an honest design — it offers an explicit
+  `analytical` (offline physics model) vs `lmd_live` (real LMD/CNRS/ESA MCD
+  v6.1 GCM, fetched via a public CORS proxy at `api.allorigins.win`) choice,
+  labels the resulting `profile.source` string accordingly, and falls back
+  to the analytical model with a labeled `(Offline Fallback)` suffix if the
+  live fetch fails. Remaining risk: dependence on a third-party public CORS
+  proxy (`allorigins.win`) for the "live" path is fragile (rate limits,
+  uptime, and it is a privacy-sensitive relay of the user's query). Longer
+  term, stand up a small first-party proxy/serverless function for the LMD
+  MCD endpoint instead of relying on a public relay, and surface proxy
+  health/latency in the UI.
+- **Radar sounder (`src/features/radar/RadarSounderEngine.js`,
+  `RadarPanel.js`)**: Fully synthetic. `RadarSounderEngine.PRESETS` are
+  hand-authored plausible layer/dielectric values for four named regions
+  (Planum Boreum, Planum Australe, Medusae Fossae, Utopia Planitia); there is
+  no fetch of real SHARAD/MARSIS radargram data anywhere. The panel button
+  already says "Synthesize Radargram" (reasonably honest), but nothing in the
+  UI states these are illustrative preset parameters rather than measured
+  reflectors. **Required follow-up**: either (a) clearly label the panel/
+  results as "physically-based simulation using illustrative parameters, not
+  observed radar returns," including a visible disclaimer and a link to the
+  real PDS Geosciences Node SHARAD/MARSIS archives for the same regions, or
+  (b) integrate real data — e.g. fetch actual SHARAD RGRAM browse
+  products/quicklook images from the PDS Geosciences Node
+  (`https://pds-geosciences.wustl.edu/missions/mro/sharad.htm`) or the
+  MARSIS archive for the selected ground track and display them alongside
+  (not instead of) the synthetic model, clearly attributed. Do not present
+  (b) as a replacement for the physics model — both have value, but they
+  must never be visually or textually conflated.
+- **Band math / spectral tools (`src/features/bands/BandMathEngine.js`)**:
+  Currently keys off single-band mosaic imagery approximations, not real
+  per-pixel, multi-band raster or spectral-cube data (e.g. CRISM cubes).
+  There is no image-cube ingestion path. Required follow-up before claiming
+  spectral analysis parity: either source real per-band raster tiles (WMS
+  band-selectable layers or COG/cube tiles) so band math operates on actual
+  DN values, or explicitly relabel the feature as an educational/approximate
+  mineral-index visualizer until real per-pixel data is wired in.
+
+### General rule for any tool producing modeled/synthetic scientific output
+
+When adding or touching a science tool, always make the data provenance
+explicit and inspectable in the UI (a visible "Model" vs "Live/Measured"
+badge or source string, as MCDPanel.js already does), never silently blend
+synthetic and real data in the same visualization without a legend/label
+distinguishing them, and prefer graceful, clearly-labeled fallback over a
+tool that fails silently or misrepresents its output as authoritative.
