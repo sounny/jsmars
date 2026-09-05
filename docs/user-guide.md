@@ -95,6 +95,38 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 - **Map Viewpoints:** Use the Map Options panel to jump between Global Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) views.
 - **North Arrow & Planetary Scale Bar:** View real-time physical scale bars calibrated to true planetary radii ($R_{\text{Mars}} = 3389.5\text{ km}$, $R_{\text{Moon}} = 1737.4\text{ km}$) with cosine latitude distortion.
 
+## Session Management
+
+### Saving and Loading Sessions
+1. **Save Session:** Press `Ctrl+S` or use **File → Save Session** to capture your current view, layers, layer visibility, bookmarks, and measurements.
+2. **Load Session:** Press `Ctrl+O` or use **File → Load Session** to restore a previously saved JSON session file.
+3. **Session Contents:** Sessions preserve:
+   - Active body (Mars, Moon, Earth)
+   - All active layers with opacity and visibility state
+   - Current map viewport (center coordinates and zoom level)
+   - Measurements and crater counts
+   - Bookmarks with navigation coordinates
+
+### Cross-Body Sessions
+- **Save on Mars, Load on Moon:** Sessions can be created on one body and loaded while another body is active. For example, save a Mars observation session, switch to the Moon, and load that session; the map switches back to Mars before restoring the saved layers and viewport.
+- **Viewport Accuracy:** Saved sessions capture the exact map center and zoom level at save time, ensuring your view is restored precisely.
+- **Bookmark Navigation:** Bookmarks automatically include their source body. Click a bookmark's **Go to** button to:
+  1. Switch to the bookmark's body (Mars → Moon, etc.)
+  2. Wait for the map to initialize the new body
+  3. Pan to the bookmark's saved coordinates
+
+### Layer Visibility
+- **Toggle Visibility:** Use the eye icon next to each active layer to toggle visibility on/off.
+- **Visibility Persistence:** Layer visibility state is saved with sessions and serialized in shareable URLs.
+- **Visible Layers Only:** Only visible layers are included in map exports. Measurements are drawn geometries tracked independently of layer visibility.
+
+### Shareable Links
+- Deep-link URLs (containing `?body=mars&layers=...`) remember your current body, zoom level, and active layers.
+- Copy the URL from your browser address bar to share your exact map view with colleagues.
+- Bookmarks can also include planetary landmarks or saved coordinates for easy team sharing.
+
 ## Troubleshooting
 - **"Loading map data..." stuck?** The map server might be slow or down. Try refreshing the page.
 - **Missing Layers?** Check your internet connection; layers are fetched dynamically from USGS/OpenPlanetary.
+- **Session restore shows wrong body?** Ensure your saved session was for the body you're trying to load on. Cross-body sessions work correctly and will switch your map automatically.
+- **Bookmark goes to wrong location?** Verify the bookmark was created on the target body. Use the bookmark's body label to confirm before navigating.

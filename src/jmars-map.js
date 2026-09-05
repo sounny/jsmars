@@ -82,12 +82,16 @@ export class JMARSMap {
   init() {
     if (!this.map) return;
 
-    // Check for Deep-Link URL State
+    // Check for Deep-Link URL State FIRST and sync jmarsState immediately
+    let targetBody = this.currentBody; // default
     if (typeof window !== 'undefined' && window.location) {
       const urlState = URLStateEngine.parseURLToState(window.location.search || window.location.hash);
       if (urlState.hasState) {
-        const targetBody = (urlState.body || this.currentBody || 'mars').toLowerCase();
+        targetBody = (urlState.body || this.currentBody || 'mars').toLowerCase();
+        
+        // Sync jmarsState.body immediately to ensure UI components agree with map body
         this.currentBody = targetBody;
+        jmarsState.set('body', targetBody);
 
         const bodyCfg = JMARS_CONFIG.bodies[targetBody] || JMARS_CONFIG.bodies.mars;
         const z = urlState.zoom !== null ? urlState.zoom : (bodyCfg?.zoom || JMARS_CONFIG.initialView.zoom);
@@ -106,7 +110,7 @@ export class JMARSMap {
       }
     }
 
-    this.switchBody(this.currentBody);
+    this.switchBody(targetBody);
     this.discoverLayers();
     this.addControls();
     this._initialized = true;

@@ -30,6 +30,7 @@ export class BookmarksTool {
       : containerOrId;
     this.bookmarks = [];
     this.currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
+    this._navigationId = 0;
 
     if (this.container) {
       this.init();
@@ -37,6 +38,9 @@ export class BookmarksTool {
 
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
       this.currentBody = (e?.detail?.body || 'mars').toLowerCase();
+      if (e?.detail?.bookmarkNavigationId !== this._navigationId) {
+        this._navigationId += 1;
+      }
       this.render();
     });
   }
@@ -60,6 +64,7 @@ export class BookmarksTool {
         this.bookmarks = [];
       }
     }
+
   }
 
   saveToStorage() {
@@ -88,12 +93,53 @@ export class BookmarksTool {
   goTo(bookmark) {
     if (!bookmark) return;
     const targetBody = (bookmark.body || 'mars').toLowerCase();
+    const navigationId = ++this._navigationId;
+    
+    // If we need to switch bodies, wait for the switch to complete before panning
     if (targetBody !== this.currentBody) {
       this.currentBody = targetBody;
+      
+      // Use a Promise-based approach to wait for body switch completion
+      const bodyChangePromise = new Promise((resolve) => {
+        const listener = (event) => {
+          if (
+            event?.detail?.body?.toLowerCase() !== targetBody ||
+            event?.detail?.bookmarkNavigationId !== navigationId ||
+            this._navigationId !== navigationId
+          ) {
+            if (this._navigationId !== navigationId) {
+              document.removeEventListener(EVENTS.BODY_CHANGED, listener);
+            }
+            return;
+          }
+          document.removeEventListener(EVENTS.BODY_CHANGED, listener);
+          // Give the map a moment to complete layer clearing and initialization
+          setTimeout(resolve, 100);
+        };
+        document.addEventListener(EVENTS.BODY_CHANGED, listener);
+      });
+      
+      // Trigger the body change
       jmarsState.set('body', targetBody);
-      document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: targetBody } }));
+      document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, {
+        detail: { body: targetBody, bookmarkNavigationId: navigationId }
+      }));
+      
+      // Pan after body switch completes
+      bodyChangePromise.then(() => {
+        if (
+          this._navigationId !== navigationId ||
+          this.currentBody !== targetBody ||
+          jmarsState.get('body') !== targetBody
+        ) {
+          return;
+        }
+        this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
+      });
+    } else {
+      // Same body, just pan immediately
+      this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
     }
-    this.map.setView([bookmark.lat, bookmark.lng], bookmark.zoom);
   }
 
   remove(id) {
@@ -305,4 +351,3 @@ export class BookmarksTool {
     };
   }
 }
-

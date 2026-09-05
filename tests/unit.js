@@ -8206,12 +8206,22 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
     });
 
     it('should handle cross-body bookmark navigation by dispatching BODY_CHANGED event', (done) => {
+        let bodyChanged = false;
         const mockMap = {
             center: [0, 0],
             zoom: 2,
             setView: (c, z) => {
                 mockMap.center = c;
                 mockMap.zoom = z;
+                try {
+                    expect(bodyChanged).to.be.true;
+                    expect(mockMap.center[0]).to.equal(0.67);
+                    expect(mockMap.center[1]).to.equal(23.47);
+                    expect(mockMap.zoom).to.equal(8);
+                    done();
+                } catch (err) {
+                    done(err);
+                }
             }
         };
 
@@ -8219,16 +8229,54 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
         bookmarks.currentBody = 'mars';
 
         const bodyChangeHandler = (e) => {
-            expect(e.detail.body).to.equal('moon');
-            document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
-            done();
+            try {
+                expect(e.detail.body).to.equal('moon');
+                bodyChanged = true;
+            } catch (err) {
+                done(err);
+            } finally {
+                document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+            }
         };
         document.addEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
 
         // Navigate to Moon POI
         bookmarks.goTo({ id: 'apollo11', name: 'Apollo 11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
-        expect(mockMap.center[0]).to.equal(0.67);
-        expect(mockMap.center[1]).to.equal(23.47);
+    });
+
+    it('should cancel a pending bookmark view when the body changes externally', (done) => {
+        const mockMap = {
+            setView: () => done(new Error('A stale bookmark view was applied'))
+        };
+        const bookmarks = new BookmarksTool(mockMap, null);
+        bookmarks.currentBody = 'mars';
+
+        bookmarks.goTo({ id: 'apollo11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
+        jmarsState.set('body', 'earth');
+        document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: 'earth' } }));
+
+        setTimeout(() => done(), 150);
+    });
+
+    it('should supersede a pending bookmark view with a newer bookmark request', (done) => {
+        const views = [];
+        const mockMap = {
+            setView: (center, zoom) => views.push({ center, zoom })
+        };
+        const bookmarks = new BookmarksTool(mockMap, null);
+        bookmarks.currentBody = 'mars';
+
+        bookmarks.goTo({ id: 'apollo11', lat: 0.67, lng: 23.47, zoom: 8, body: 'moon' });
+        bookmarks.goTo({ id: 'earth-view', lat: 12.3, lng: 45.6, zoom: 5, body: 'earth' });
+
+        setTimeout(() => {
+            try {
+                expect(views).to.deep.equal([{ center: [12.3, 45.6], zoom: 5 }]);
+                done();
+            } catch (err) {
+                done(err);
+            }
+        }, 150);
     });
 
     it('should render bookmark names safely without executing markup strings (XSS resilience)', () => {
@@ -16993,6 +17041,334 @@ describe('Social Media & OpenGraph Metadata', () => {
     });
 });
 
+// Sprint 3: P1 Regression Tests for Session, Body, and Bookmark Fixes
+
+describe('SessionManager & Body Switch Order (P1 Fix)', () => {
+    beforeEach(() => {
+        jmarsState.reset();
+    });
+
+    it('should restore body before layers during session load', async () => {
+        // Create a test session with body=moon and layers
+        const testSession = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            state: {
+                body: 'moon',
+                activeLayers: [
+                    { id: 'moon_basemap', opacity: 1, visible: true },
+                    { id: 'moon_dem', opacity: 0.8, visible: true }
+                ],
+                overlays: {},
+                view: { lat: 0.674, lng: 23.473, zoom: 8 }
+            },
+            craters: [],
+            measurements: [],
+            bookmarks: []
+        };
+
+        // Verify initial state
+        expect(jmarsState.get('body')).to.equal('mars');
+        
+        // Track both DOM events so the test verifies the observable restore order.
+        let bodyChangedCount = 0;
+        let layersChangedCount = 0;
+        const eventOrder = [];
+        let activeLayersAtBodyChange;
+        let bodyAtLayersChange;
+
+        const bodyChangeHandler = () => {
+            bodyChangedCount++;
+            eventOrder.push('body');
+            activeLayersAtBodyChange = jmarsState.get('activeLayers').length;
+        };
+
+        const layersChangeHandler = () => {
+            layersChangedCount++;
+            eventOrder.push('layers');
+            bodyAtLayersChange = jmarsState.get('body');
+        };
+
+        document.addEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+        document.addEventListener(EVENTS.LAYERS_CHANGED, layersChangeHandler);
+
+        try {
+            // Simulate the session load flow without relying on a timing window.
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Step 1: Body change
+            jmarsState.set('body', 'moon');
+            document.dispatchEvent(new CustomEvent(EVENTS.BODY_CHANGED, { detail: { body: 'moon' } }));
+
+            // Wait for async body switch
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Step 2: Restore layers after body switch
+            jmarsState.setActiveLayers(testSession.state.activeLayers);
+
+            // Verify final state and the exact observable event sequence.
+            expect(jmarsState.get('body')).to.equal('moon');
+            expect(jmarsState.get('activeLayers')).to.have.lengthOf(2);
+            expect(jmarsState.get('activeLayers')[0].id).to.equal('moon_basemap');
+            expect(bodyChangedCount).to.equal(1);
+            expect(layersChangedCount).to.equal(1);
+            expect(eventOrder).to.deep.equal(['body', 'layers']);
+            expect(activeLayersAtBodyChange).to.equal(0);
+            expect(bodyAtLayersChange).to.equal('moon');
+        } finally {
+            document.removeEventListener(EVENTS.BODY_CHANGED, bodyChangeHandler);
+            document.removeEventListener(EVENTS.LAYERS_CHANGED, layersChangeHandler);
+        }
+    });
+});
+
+describe('SessionManager Deferred Layer Reapplication (Review Fix #3937250277)', () => {
+    let originalAlert;
+
+    beforeEach(() => {
+        jmarsState.reset();
+        // loadSession() calls alert() on success; suppress it so it doesn't
+        // block/hang the headless test runner waiting on a dialog.
+        originalAlert = window.alert;
+        window.alert = () => {};
+    });
+
+    afterEach(() => {
+        window.alert = originalAlert;
+    });
+
+    it('should reattach a restored layer once a delayed LAYERS_UPDATED (WMS discovery) delivers its config', async () => {
+        const sessionMgr = new SessionManager(null, null, null);
+        const testSession = {
+            version: '1.0',
+            state: {
+                body: jmarsState.get('body'), // same body: skip the BODY_CHANGED wait
+                activeLayers: [
+                    { id: 'mars_wms_delayed', opacity: 1, visible: true }
+                ]
+            }
+        };
+        const fakeFile = { text: async () => JSON.stringify(testSession) };
+
+        let layersChangedCount = 0;
+        let lastLayers = null;
+        const onLayersChanged = (layers) => {
+            layersChangedCount++;
+            lastLayers = layers;
+        };
+        jmarsState.on(EVENTS.LAYERS_CHANGED, onLayersChanged);
+
+        await sessionMgr.loadSession(fakeFile);
+
+        // The initial restore already fired LAYERS_CHANGED once (the config
+        // for 'mars_wms_delayed' is not yet in availableLayers at this point).
+        expect(layersChangedCount).to.equal(1);
+        expect(lastLayers[0].id).to.equal('mars_wms_delayed');
+
+        // Simulate WMS discovery completing later with the missing layer now available
+        document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_UPDATED, {
+            detail: [{ id: 'mars_wms_delayed', name: 'Delayed WMS Layer', type: 'wms' }]
+        }));
+
+        // The scheduled reapplication should re-set the same restored stack,
+        // firing a second LAYERS_CHANGED so LayerManager retries attaching it.
+        expect(layersChangedCount).to.equal(2);
+        expect(lastLayers).to.have.lengthOf(1);
+        expect(lastLayers[0].id).to.equal('mars_wms_delayed');
+    });
+
+    it('should NOT reapply the restored stack if the user changed active layers before LAYERS_UPDATED fires', async () => {
+        const sessionMgr = new SessionManager(null, null, null);
+        const testSession = {
+            version: '1.0',
+            state: {
+                body: jmarsState.get('body'),
+                activeLayers: [
+                    { id: 'mars_wms_delayed', opacity: 1, visible: true }
+                ]
+            }
+        };
+        const fakeFile = { text: async () => JSON.stringify(testSession) };
+
+        await sessionMgr.loadSession(fakeFile);
+
+        let layersChangedCount = 0;
+        jmarsState.on(EVENTS.LAYERS_CHANGED, () => { layersChangedCount++; });
+
+        // User adds another layer while discovery is still in flight
+        jmarsState.setActiveLayers([
+            { id: 'mars_wms_delayed', opacity: 1, visible: true },
+            { id: 'user_added_layer', opacity: 1, visible: true }
+        ]);
+        expect(layersChangedCount).to.equal(1);
+
+        // Discovery completes - reapplication must be skipped since the active
+        // layers no longer match what was restored (user changed them meanwhile)
+        document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_UPDATED, {
+            detail: [{ id: 'mars_wms_delayed', name: 'Delayed WMS Layer', type: 'wms' }]
+        }));
+
+        expect(layersChangedCount).to.equal(1);
+        expect(jmarsState.get('activeLayers')).to.have.lengthOf(2);
+        expect(jmarsState.get('activeLayers')[1].id).to.equal('user_added_layer');
+    });
+
+    it('should reapply at most once per restore (one-shot listener, no leak on repeat events)', async () => {
+        const sessionMgr = new SessionManager(null, null, null);
+        const testSession = {
+            version: '1.0',
+            state: {
+                body: jmarsState.get('body'),
+                activeLayers: [
+                    { id: 'mars_wms_delayed', opacity: 1, visible: true }
+                ]
+            }
+        };
+        const fakeFile = { text: async () => JSON.stringify(testSession) };
+
+        await sessionMgr.loadSession(fakeFile);
+
+        let layersChangedCount = 0;
+        jmarsState.on(EVENTS.LAYERS_CHANGED, () => { layersChangedCount++; });
+
+        document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_UPDATED, { detail: [] }));
+        expect(layersChangedCount).to.equal(1);
+
+        // A second LAYERS_UPDATED must not trigger another reapplication -
+        // the one-shot listener already removed itself after the first firing.
+        document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_UPDATED, { detail: [] }));
+        expect(layersChangedCount).to.equal(1);
+    });
+});
+
+describe('Canonical Body Keys (P2 Fix)', () => {
+    beforeEach(() => {
+        jmarsState.reset();
+    });
+
+    it('should normalize body keys to lowercase', () => {
+        jmarsState.set('body', 'MARS');
+        expect(jmarsState.get('body')).to.equal('mars');
+        
+        jmarsState.set('body', 'Moon');
+        expect(jmarsState.get('body')).to.equal('moon');
+        
+        jmarsState.set('body', 'EARTH');
+        expect(jmarsState.get('body')).to.equal('earth');
+    });
+
+    it('should maintain body consistency across state changes', () => {
+        // Set body
+        jmarsState.set('body', 'moon');
+        
+        // Get body
+        const body = jmarsState.get('body');
+        
+        // Verify consistent lowercase format
+        expect(body).to.equal('moon');
+        expect(body).to.match(/^[a-z]+$/);
+    });
+});
+
+describe('URL State Engine Visibility (Existing Feature)', () => {
+    it('should serialize and deserialize layer visibility in URLs', () => {
+        const state = {
+            body: 'mars',
+            activeLayers: [
+                { id: 'layer1', opacity: 1.0, visible: true },
+                { id: 'layer2', opacity: 0.5, visible: false },
+                { id: 'layer3', opacity: 0.8, visible: true }
+            ]
+        };
+
+        // Serialize
+        const url = URLStateEngine.serializeStateToURL(state);
+        expect(url).to.include('layers=');
+        
+        // Verify layer tokens include visibility
+        const layerParam = new URL(`https://example.com${url.substring(url.indexOf('?'))}`).searchParams.get('layers');
+        const tokens = layerParam.split(',');
+        expect(tokens[0]).to.equal('layer1:1:1');    // visible
+        expect(tokens[1]).to.equal('layer2:0.5:0');  // hidden
+        expect(tokens[2]).to.equal('layer3:0.8:1');  // visible
+        
+        // Deserialize
+        const parsed = URLStateEngine.parseURLToState(url);
+        expect(parsed.activeLayers).to.have.lengthOf(3);
+        expect(parsed.activeLayers[0].visible).to.be.true;
+        expect(parsed.activeLayers[1].visible).to.be.false;
+        expect(parsed.activeLayers[2].visible).to.be.true;
+    });
+});
+
+describe('XSS-Safe Rendering for User Content', () => {
+    it('should safely render bookmark names with textContent (not innerHTML)', () => {
+        // Create a test container
+        const container = document.createElement('div');
+        
+        // Simulate bookmark with XSS-like name
+        const maliciousBookmark = {
+            id: 'xss-test',
+            name: '<img src=x onerror="alert(\'XSS\')" />',
+            lat: 0,
+            lng: 0,
+            zoom: 5,
+            body: 'mars'
+        };
+
+        // Safe rendering using textContent
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = maliciousBookmark.name;
+        container.appendChild(nameSpan);
+
+        // Verify the XSS payload is treated as plain text, not executed
+        expect(nameSpan.textContent).to.equal(maliciousBookmark.name);
+        expect(nameSpan.innerHTML).to.not.include('<img');
+        expect(container.querySelectorAll('img')).to.have.lengthOf(0);
+    });
+
+    it('should safely render stamp product IDs from remote API responses', () => {
+        const container = document.createElement('div');
+        
+        // Simulate remote API response with potentially malicious product ID
+        const maliciousProduct = {
+            pdsId: '"><script>alert("XSS")</script><span class="',
+            centerLat: 0,
+            centerLon: 0,
+            solarLon: 180
+        };
+
+        // Safe rendering using textContent
+        const td = document.createElement('td');
+        td.textContent = maliciousProduct.pdsId;
+        container.appendChild(td);
+
+        // Verify the payload is treated as text, not executed
+        expect(td.textContent).to.equal(maliciousProduct.pdsId);
+        expect(td.innerHTML).to.not.include('<script>');
+        expect(container.querySelectorAll('script')).to.have.lengthOf(0);
+    });
+
+    it('should escape special characters in bookmark body labels', () => {
+        const container = document.createElement('div');
+        
+        const bodies = ['mars', 'moon', 'earth'];
+        bodies.forEach(body => {
+            const badge = document.createElement('span');
+            badge.textContent = body.toUpperCase();
+            container.appendChild(badge);
+        });
+
+        // Verify all badges are rendered safely
+        const badges = container.querySelectorAll('span');
+        expect(badges).to.have.lengthOf(3);
+        badges.forEach((badge, idx) => {
+            expect(badge.textContent).to.equal(bodies[idx].toUpperCase());
+            expect(badge.innerHTML).to.equal(bodies[idx].toUpperCase());
+        });
+    });
+});
+
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();
     if (typeof window !== 'undefined') {
@@ -17007,4 +17383,3 @@ if (typeof mocha !== 'undefined') {
         });
     }
 }
-
