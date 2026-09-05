@@ -17107,6 +17107,125 @@ describe('SessionManager & Body Switch Order (P1 Fix)', () => {
     });
 });
 
+describe('SessionManager Deferred Layer Reapplication (Review Fix #3937250277)', () => {
+    let originalAlert;
+
+    beforeEach(() => {
+        jmarsState.reset();
+        // loadSession() calls alert() on success; suppress it so it doesn't
+        // block/hang the headless test runner waiting on a dialog.
+        originalAlert = window.alert;
+        window.alert = () => {};
+    });
+
+    afterEach(() => {
+        window.alert = originalAlert;
+    });
+
+    it('should reattach a restored layer once a delayed LAYERS_UPDATED (WMS discovery) delivers its config', async () => {
+        const sessionMgr = new SessionManager(null, null, null);
+        const testSession = {
+            version: '1.0',
+            state: {
+                body: jmarsState.get('body'), // same body: skip the BODY_CHANGED wait
+                activeLayers: [
+                    { id: 'mars_wms_delayed', opacity: 1, visible: true }
+                ]
+            }
+        };
+        const fakeFile = { text: async () => JSON.stringify(testSession) };
+
+        let layersChangedCount = 0;
+        let lastLayers = null;
+        const onLayersChanged = (layers) => {
+            layersChangedCount++;
+            lastLayers = layers;
+        };
+        jmarsState.on(EVENTS.LAYERS_CHANGED, onLayersChanged);
+
+        await sessionMgr.loadSession(fakeFile);
+
+        // The initial restore already fired LAYERS_CHANGED once (the config
+        // for 'mars_wms_delayed' is not yet in availableLayers at this point).
+        expect(layersChangedCount).to.equal(1);
+        expect(lastLayers[0].id).to.equal('mars_wms_delayed');
+
+        // Simulate WMS discovery completing later with the missing layer now available
+        document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_UPDATED, {
+            detail: [{ id: 'mars_wms_delayed', name: 'Delayed WMS Layer', type: 'wms' }]
+        }));
+
+        // The scheduled reapplication should re-set the same restored stack,
+        // firing a second LAYERS_CHANGED so LayerManager retries attaching it.
+        expect(layersChangedCount).to.equal(2);
+        expect(lastLayers).to.have.lengthOf(1);
+        expect(lastLayers[0].id).to.equal('mars_wms_delayed');
+    });
+
+    it('should NOT reapply the restored stack if the user changed active layers before LAYERS_UPDATED fires', async () => {
+        const sessionMgr = new SessionManager(null, null, null);
+        const testSession = {
+            version: '1.0',
+            state: {
+                body: jmarsState.get('body'),
+                activeLayers: [
+                    { id: 'mars_wms_delayed', opacity: 1, visible: true }
+                ]
+            }
+        };
+        const fakeFile = { text: async () => JSON.stringify(testSession) };
+
+        await sessionMgr.loadSession(fakeFile);
+
+        let layersChangedCount = 0;
+        jmarsState.on(EVENTS.LAYERS_CHANGED, () => { layersChangedCount++; });
+
+        // User adds another layer while discovery is still in flight
+        jmarsState.setActiveLayers([
+            { id: 'mars_wms_delayed', opacity: 1, visible: true },
+            { id: 'user_added_layer', opacity: 1, visible: true }
+        ]);
+        expect(layersChangedCount).to.equal(1);
+
+        // Discovery completes - reapplication must be skipped since the active
+        // layers no longer match what was restored (user changed them meanwhile)
+        document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_UPDATED, {
+            detail: [{ id: 'mars_wms_delayed', name: 'Delayed WMS Layer', type: 'wms' }]
+        }));
+
+        expect(layersChangedCount).to.equal(1);
+        expect(jmarsState.get('activeLayers')).to.have.lengthOf(2);
+        expect(jmarsState.get('activeLayers')[1].id).to.equal('user_added_layer');
+    });
+
+    it('should reapply at most once per restore (one-shot listener, no leak on repeat events)', async () => {
+        const sessionMgr = new SessionManager(null, null, null);
+        const testSession = {
+            version: '1.0',
+            state: {
+                body: jmarsState.get('body'),
+                activeLayers: [
+                    { id: 'mars_wms_delayed', opacity: 1, visible: true }
+                ]
+            }
+        };
+        const fakeFile = { text: async () => JSON.stringify(testSession) };
+
+        await sessionMgr.loadSession(fakeFile);
+
+        let layersChangedCount = 0;
+        jmarsState.on(EVENTS.LAYERS_CHANGED, () => { layersChangedCount++; });
+
+        document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_UPDATED, { detail: [] }));
+        expect(layersChangedCount).to.equal(1);
+
+        // A second LAYERS_UPDATED must not trigger another reapplication -
+        // the one-shot listener already removed itself after the first firing.
+        document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_UPDATED, { detail: [] }));
+        expect(layersChangedCount).to.equal(1);
+    });
+});
+
 describe('Canonical Body Keys (P2 Fix)', () => {
     beforeEach(() => {
         jmarsState.reset();
