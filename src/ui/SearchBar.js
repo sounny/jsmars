@@ -69,43 +69,81 @@ export class SearchBar {
      */
     render() {
         this.container.innerHTML = '';
-        this.container.style.position = 'relative';
+        this.container.className = 'modern-search-wrapper';
+
+        // Search Input Box
+        const box = document.createElement('div');
+        box.className = 'modern-search-input-box';
+
+        // Search Icon (Monoline SVG)
+        const icon = document.createElement('span');
+        icon.className = 'modern-search-icon';
+        icon.innerHTML = `
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        `;
 
         // Input
         const input = document.createElement('input');
         input.type = 'text';
-        input.placeholder = 'Search Mars...';
-        input.style.width = '100%';
-        input.style.padding = '8px';
-        input.style.boxSizing = 'border-box';
-        input.style.background = '#222';
-        input.style.border = '1px solid #555';
-        input.style.color = '#eee';
-        input.style.borderRadius = '4px';
+        input.className = 'modern-search-input';
+        input.placeholder = 'Search landmarks & POIs...';
+        input.setAttribute('aria-label', 'Search planetary landmarks');
+        this.input = input;
+
+        // Clear Button
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.className = 'modern-search-clear-btn';
+        clearBtn.setAttribute('aria-label', 'Clear search');
+        clearBtn.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        `;
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            clearBtn.style.display = 'none';
+            if (this.resultsContainer) this.resultsContainer.style.display = 'none';
+            input.focus();
+        });
 
         // Debounced input handler (200ms)
         input.addEventListener('input', (e) => {
+            const val = e.target.value;
+            clearBtn.style.display = val ? 'flex' : 'none';
             clearTimeout(this._debounceTimer);
-            this._debounceTimer = setTimeout(() => this.handleInput(e.target.value), 200);
+            this._debounceTimer = setTimeout(() => this.handleInput(val), 200);
         });
         input.addEventListener('focus', (e) => this.handleInput(e.target.value));
 
+        // Keyboard navigation (Esc to close)
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (this.resultsContainer) this.resultsContainer.style.display = 'none';
+            }
+        });
+
+        box.appendChild(icon);
+        box.appendChild(input);
+        box.appendChild(clearBtn);
+
         // Results Dropdown
         this.resultsContainer = document.createElement('div');
-        this.resultsContainer.style.position = 'absolute';
-        this.resultsContainer.style.top = '100%';
-        this.resultsContainer.style.left = '0';
-        this.resultsContainer.style.right = '0';
-        this.resultsContainer.style.background = '#222';
-        this.resultsContainer.style.border = '1px solid #555';
-        this.resultsContainer.style.borderTop = 'none';
-        this.resultsContainer.style.zIndex = '1000';
-        this.resultsContainer.style.maxHeight = '200px';
-        this.resultsContainer.style.overflowY = 'auto';
-        this.resultsContainer.style.display = 'none';
+        this.resultsContainer.className = 'modern-search-results custom-slim-scroll';
 
-        this.container.appendChild(input);
+        this.container.appendChild(box);
         this.container.appendChild(this.resultsContainer);
+
+        // Update placeholder on body change
+        document.addEventListener('jmars:body-changed', (e) => {
+            const body = e?.detail?.body || 'Mars';
+            const capBody = body.charAt(0).toUpperCase() + body.slice(1);
+            input.placeholder = `Search ${capBody} landmarks...`;
+        });
     }
 
     /**
@@ -136,25 +174,30 @@ export class SearchBar {
 
         if (matches.length === 0) {
             const noRes = document.createElement('div');
-            noRes.textContent = 'No results found';
-            noRes.style.padding = '8px';
-            noRes.style.color = '#888';
+            noRes.textContent = 'No matching landmarks';
+            noRes.style.padding = '10px';
+            noRes.style.color = '#64748b';
+            noRes.style.fontSize = '11px';
             noRes.style.fontStyle = 'italic';
+            noRes.style.textAlign = 'center';
             this.resultsContainer.appendChild(noRes);
         } else {
-            matches.forEach(match => {
+            matches.slice(0, 15).forEach(match => {
                 const item = document.createElement('div');
-                item.textContent = match.name;
-                item.style.padding = '8px';
-                item.style.cursor = 'pointer';
-                item.style.borderBottom = '1px solid #333';
+                item.className = 'modern-search-item';
 
-                item.addEventListener('mouseover', () => {
-                    item.style.background = '#333';
-                });
-                item.addEventListener('mouseout', () => {
-                    item.style.background = 'transparent';
-                });
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = match.name;
+                nameSpan.style.fontWeight = '500';
+
+                const coordsSpan = document.createElement('span');
+                coordsSpan.style.fontFamily = 'monospace';
+                coordsSpan.style.fontSize = '9px';
+                coordsSpan.style.color = '#64748b';
+                coordsSpan.textContent = `${match.lat.toFixed(1)}°, ${match.lon.toFixed(1)}°`;
+
+                item.appendChild(nameSpan);
+                item.appendChild(coordsSpan);
 
                 item.addEventListener('click', () => {
                     this.selectLandmark(match);
@@ -177,11 +220,8 @@ export class SearchBar {
         let targetLon = landmark.lon;
         if (targetLon > 180) targetLon -= 360;
 
-        this.map.setView([landmark.lat, targetLon], 6);
+        this.map.setView([landmark.lat, targetLon], Math.max(this.map.getZoom(), 6));
         this.resultsContainer.style.display = 'none';
-
-        // Update input value
-        const input = this.container.querySelector('input');
-        if (input) input.value = landmark.name;
+        if (this.input) this.input.value = landmark.name;
     }
 }

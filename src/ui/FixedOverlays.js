@@ -37,56 +37,77 @@ export class FixedOverlays {
   }
 
   render() {
-    // If container is empty, we add structure.
-    // If we are appending to a specific container meant for this, good.
+    this.container.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'titanium-card';
 
     const header = document.createElement('div');
-    header.className = 'control-header';
-    header.style.borderTop = '1px solid #444'; // visual separator
-    header.innerHTML = '<span>Fixed Overlays</span>';
+    header.className = 'titanium-card-header';
+    header.innerHTML = `
+      <span class="titanium-card-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        Display Overlays
+      </span>
+    `;
 
-    const content = document.createElement('div');
-    content.style.padding = '10px';
+    card.appendChild(header);
 
     // Graticule
-    this.checkGraticule = this.createToggle('Lat/Lon Grid', 'graticule');
-    content.appendChild(this.checkGraticule.container);
+    this.checkGraticule = this.createToggle('Lat/Lon Grid', 'Coordinate graticule overlay', 'graticule');
+    card.appendChild(this.checkGraticule.container);
 
     // Panner
-    this.checkPanner = this.createToggle('Panner View', 'panner');
-    content.appendChild(this.checkPanner.container);
+    this.checkPanner = this.createToggle('Panner View', 'Minimap locator overview', 'panner');
+    card.appendChild(this.checkPanner.container);
 
-
-
-    this.container.appendChild(header);
-    this.container.appendChild(content);
+    this.container.appendChild(card);
   }
 
-  createToggle(label, id) {
-    const div = document.createElement('div');
-    div.style.marginBottom = '5px';
-    div.style.display = 'flex';
-    div.style.alignItems = 'center';
+  createToggle(label, subLabel, id) {
+    const row = document.createElement('div');
+    row.className = 'switch-toggle-row';
+
+    const labelGroup = document.createElement('div');
+    labelGroup.className = 'switch-label-group';
+
+    const mainLbl = document.createElement('label');
+    mainLbl.className = 'switch-main-label';
+    mainLbl.htmlFor = `toggle-${id}`;
+    mainLbl.textContent = label;
+    mainLbl.style.cursor = 'pointer';
+
+    const subLbl = document.createElement('span');
+    subLbl.className = 'switch-sub-label';
+    subLbl.textContent = subLabel || '';
+
+    labelGroup.appendChild(mainLbl);
+    if (subLabel) labelGroup.appendChild(subLbl);
+
+    const switchLabel = document.createElement('label');
+    switchLabel.className = 'toggle-switch';
 
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.id = `toggle-${id}`;
-    input.style.marginRight = '8px';
-    input.style.cursor = 'pointer';
     input.onchange = (e) => {
       jmarsState.toggleOverlay(id, e.target.checked);
     };
 
-    const lbl = document.createElement('label');
-    lbl.htmlFor = `toggle-${id}`;
-    lbl.textContent = label;
-    lbl.style.cursor = 'pointer';
-    lbl.style.fontSize = '14px';
+    const slider = document.createElement('span');
+    slider.className = 'toggle-slider';
 
-    div.appendChild(input);
-    div.appendChild(lbl);
+    switchLabel.appendChild(input);
+    switchLabel.appendChild(slider);
 
-    return { container: div, input };
+    row.appendChild(labelGroup);
+    row.appendChild(switchLabel);
+
+    return { container: row, input };
   }
 
   updateUI(overlays) {

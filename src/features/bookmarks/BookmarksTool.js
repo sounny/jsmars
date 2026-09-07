@@ -130,104 +130,147 @@ export class BookmarksTool {
     if (!this.container) return;
     this.container.innerHTML = '';
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'bookmarks-block';
-    wrapper.style.display = 'flex';
-    wrapper.style.flexDirection = 'column';
-    wrapper.style.gap = '8px';
-    wrapper.style.padding = '8px';
+    const card = document.createElement('div');
+    card.className = 'titanium-card';
 
-    const btnRow = document.createElement('div');
-    btnRow.style.display = 'flex';
-    btnRow.style.gap = '4px';
+    // Header with Title & Action Buttons
+    const header = document.createElement('div');
+    header.className = 'titanium-card-header';
+
+    const title = document.createElement('span');
+    title.className = 'titanium-card-title';
+    title.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+      </svg>
+      Saved Views & ROIs
+    `;
+
+    const btnGroup = document.createElement('div');
+    btnGroup.style.display = 'flex';
+    btnGroup.style.gap = '4px';
 
     const addBtn = document.createElement('button');
-    addBtn.className = 'tool-btn';
-    addBtn.textContent = '+ Save View';
-    addBtn.style.flex = '1';
     addBtn.type = 'button';
+    addBtn.className = 'glass-pill-btn';
+    addBtn.title = 'Save current map view as bookmark';
+    addBtn.innerHTML = `
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>Save</span>
+    `;
     addBtn.onclick = () => this.addCurrentView();
-    btnRow.appendChild(addBtn);
 
     const exportBtn = document.createElement('button');
-    exportBtn.className = 'tool-btn';
-    exportBtn.textContent = 'Export JSON';
-    exportBtn.style.flex = '1';
     exportBtn.type = 'button';
+    exportBtn.className = 'glass-pill-btn';
+    exportBtn.title = 'Export bookmarks as JSON';
+    exportBtn.innerHTML = `
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <span>Export</span>
+    `;
     exportBtn.onclick = () => this.exportJSON();
-    btnRow.appendChild(exportBtn);
 
-    wrapper.appendChild(btnRow);
+    btnGroup.appendChild(addBtn);
+    btnGroup.appendChild(exportBtn);
+
+    header.appendChild(title);
+    header.appendChild(btnGroup);
+    card.appendChild(header);
 
     const list = document.createElement('div');
-    list.style.maxHeight = '180px';
-    list.style.overflowY = 'auto';
-    list.style.background = '#0f172a';
-    list.style.border = '1px solid #1e293b';
-    list.style.borderRadius = '4px';
+    list.className = 'bookmark-card-list custom-slim-scroll';
 
     this.bookmarks.forEach(b => {
       const item = document.createElement('div');
-      item.style.display = 'flex';
-      item.style.justifyContent = 'space-between';
-      item.style.alignItems = 'center';
-      item.style.padding = '6px 8px';
-      item.style.borderBottom = '1px solid #1e293b';
-      item.style.fontSize = '11px';
-      item.style.cursor = 'pointer';
+      item.className = 'bookmark-list-item';
 
-      const link = document.createElement('div');
-      link.style.flex = '1';
-      link.style.display = 'flex';
-      link.style.alignItems = 'center';
+      const info = document.createElement('div');
+      info.className = 'bookmark-info';
+
+      const pinIcon = document.createElement('span');
+      pinIcon.className = 'bookmark-icon';
+      pinIcon.innerHTML = `
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+      `;
+
+      const textGroup = document.createElement('div');
+      textGroup.className = 'bookmark-title-group';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'bookmark-name';
+      // Clean up any leading emoji if present, e.g. "🌋 Olympus Mons Summit" -> "Olympus Mons Summit"
+      const cleanName = (b.name || 'Unnamed Bookmark').replace(/^[\p{Emoji}\s]+/u, '').trim() || b.name;
+      nameSpan.textContent = cleanName;
+
+      const coordsSpan = document.createElement('span');
+      coordsSpan.className = 'bookmark-coords';
+      if (Number.isFinite(b.lat) && Number.isFinite(b.lng)) {
+        coordsSpan.textContent = `${b.lat.toFixed(2)}°, ${b.lng.toFixed(2)}°`;
+      }
+
+      textGroup.appendChild(nameSpan);
+      if (coordsSpan.textContent) textGroup.appendChild(coordsSpan);
+
+      info.appendChild(pinIcon);
+      info.appendChild(textGroup);
+      info.onclick = () => { void this.goTo(b); };
+
+      const actions = document.createElement('div');
+      actions.style.display = 'flex';
+      actions.style.alignItems = 'center';
+      actions.style.gap = '6px';
 
       if (b.body) {
         const bodyBadge = document.createElement('span');
-        bodyBadge.style.fontSize = '9px';
-        bodyBadge.style.color = '#38bdf8';
-        bodyBadge.style.background = '#1e293b';
-        bodyBadge.style.padding = '1px 4px';
-        bodyBadge.style.borderRadius = '2px';
-        bodyBadge.style.marginRight = '4px';
+        bodyBadge.className = 'bookmark-badge';
         bodyBadge.textContent = b.body.toUpperCase();
-        link.appendChild(bodyBadge);
+        actions.appendChild(bodyBadge);
       }
 
-      const nameSpan = document.createElement('span');
-      nameSpan.style.color = '#f8fafc';
-      nameSpan.textContent = b.name || 'Unnamed Bookmark';
-      link.appendChild(nameSpan);
-
-      link.onclick = () => { void this.goTo(b); };
-
-      const delBtn = document.createElement('span');
-      delBtn.textContent = '×';
-      delBtn.style.color = '#f43f5e';
-      delBtn.style.fontSize = '14px';
-      delBtn.style.cursor = 'pointer';
-      delBtn.style.padding = '0 4px';
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'bookmark-delete-btn';
       delBtn.title = 'Delete Bookmark';
+      delBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      `;
       delBtn.onclick = (e) => {
         e.stopPropagation();
         this.remove(b.id);
       };
+      actions.appendChild(delBtn);
 
-      item.appendChild(link);
-      item.appendChild(delBtn);
+      item.appendChild(info);
+      item.appendChild(actions);
       list.appendChild(item);
     });
 
     if (this.bookmarks.length === 0) {
       const empty = document.createElement('div');
-      empty.textContent = 'No bookmarks saved.';
-      empty.style.color = '#94a3b8';
+      empty.style.padding = '14px 10px';
+      empty.style.textAlign = 'center';
+      empty.style.color = '#64748b';
+      empty.style.fontSize = '11px';
       empty.style.fontStyle = 'italic';
-      empty.style.padding = '8px';
+      empty.textContent = 'No saved views yet. Click "+ Save" to bookmark.';
       list.appendChild(empty);
     }
 
-    wrapper.appendChild(list);
-    this.container.appendChild(wrapper);
+    card.appendChild(list);
+    this.container.appendChild(card);
   }
 
   getData() {

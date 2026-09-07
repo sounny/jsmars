@@ -27,65 +27,103 @@ export class ProjectionManager {
 
   init() {
     this.container.innerHTML = `
-      <div style="padding: 10px; font-size: 12px; color: #e2e8f0;">
-        <!-- Live Coordinate Viewer Box -->
-        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 6px; padding: 8px; margin-bottom: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">📍 Coordinate Viewer</span>
-            <button id="proj-copy-coords-btn" class="tool-btn" style="padding: 1px 6px; font-size: 10px; background: rgba(255,255,255,0.1); border: 1px solid #475569;" title="Copy current center coordinates">📋 Copy</button>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Live Coordinate Telemetry Card -->
+        <div class="titanium-card">
+          <div class="titanium-card-header">
+            <span class="titanium-card-title">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="22" y1="12" x2="18" y2="12"></line>
+                <line x1="6" y1="12" x2="2" y2="12"></line>
+                <line x1="12" y1="6" x2="12" y2="2"></line>
+                <line x1="12" y1="22" x2="12" y2="18"></line>
+              </svg>
+              Coordinate Telemetry
+            </span>
+            <button id="proj-copy-coords-btn" class="glass-pill-btn" type="button" title="Copy center coordinates">
+              <svg id="proj-copy-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span id="proj-copy-text">Copy</span>
+            </button>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-family: monospace; font-size: 11px;">
-            <div style="background: rgba(0,0,0,0.3); padding: 4px 6px; border-radius: 4px;">
-              <span style="color: #94a3b8; font-size: 9px; display: block;">LATITUDE</span>
-              <span id="proj-live-lat" style="color: #38bdf8; font-weight: 600;">0.0000°</span>
+          <div class="telemetry-grid">
+            <div class="telemetry-stat">
+              <span class="telemetry-stat-label">Latitude</span>
+              <span id="proj-live-lat" class="telemetry-stat-value lat">0.0000°</span>
             </div>
-            <div style="background: rgba(0,0,0,0.3); padding: 4px 6px; border-radius: 4px;">
-              <span style="color: #94a3b8; font-size: 9px; display: block;">LONGITUDE</span>
-              <span id="proj-live-lon" style="color: #fbbf24; font-weight: 600;">0.0000°</span>
+            <div class="telemetry-stat">
+              <span class="telemetry-stat-label">Longitude</span>
+              <span id="proj-live-lon" class="telemetry-stat-value lon">0.0000° E</span>
             </div>
           </div>
         </div>
 
-        <!-- Go To Coordinates Input -->
-        <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid #334155; border-radius: 6px; padding: 8px; margin-bottom: 12px;">
-          <label style="font-size: 10px; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 4px;">✈️ JUMP TO LAT / LON</label>
-          <div style="display: flex; gap: 4px; margin-bottom: 6px;">
-            <input id="proj-goto-lat" type="number" step="any" min="-90" max="90" placeholder="Lat (e.g. 18.65)" class="tool-input" style="flex: 1; padding: 4px 6px; font-size: 11px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 4px;" />
-            <input id="proj-goto-lon" type="number" step="any" min="-180" max="360" placeholder="Lon (e.g. 226.2)" class="tool-input" style="flex: 1; padding: 4px 6px; font-size: 11px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 4px;" />
-            <button id="proj-goto-btn" class="tool-btn" style="background: #0284c7; color: #fff; font-weight: 600; padding: 4px 10px; font-size: 11px;">Go</button>
+        <!-- Jump to Coordinates & POIs -->
+        <div class="titanium-card">
+          <div class="titanium-card-header">
+            <span class="titanium-card-title">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+              </svg>
+              Jump to Location
+            </span>
           </div>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-            <button class="proj-preset-btn tool-btn" data-lat="18.65" data-lon="226.2" style="font-size: 9px; padding: 2px 5px; background: #1e293b; border: 1px solid #334155;">🌋 Olympus</button>
-            <button class="proj-preset-btn tool-btn" data-lat="-5.37" data-lon="137.81" style="font-size: 9px; padding: 2px 5px; background: #1e293b; border: 1px solid #334155;">🤖 Gale</button>
-            <button class="proj-preset-btn tool-btn" data-lat="18.38" data-lon="77.58" style="font-size: 9px; padding: 2px 5px; background: #1e293b; border: 1px solid #334155;">🚀 Jezero</button>
-            <button class="proj-preset-btn tool-btn" data-lat="-14.0" data-lon="300.8" style="font-size: 9px; padding: 2px 5px; background: #1e293b; border: 1px solid #334155;">峡 Valles</button>
+          <div class="coord-input-row">
+            <input id="proj-goto-lat" type="number" step="any" min="-90" max="90" placeholder="Lat (e.g. 18.65)" class="coord-input-field" />
+            <input id="proj-goto-lon" type="number" step="any" min="-180" max="360" placeholder="Lon (e.g. 226.2)" class="coord-input-field" />
+            <button id="proj-goto-btn" class="coord-go-btn" type="button" title="Jump to coordinates">
+              <span>Go</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+          <div id="proj-quick-chips-container" class="quick-chips-row">
+            <!-- Dynamically populated chips -->
           </div>
         </div>
 
-        <div style="margin-bottom: 8px;">
-          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Map Viewpoint / Region</label>
-          <div style="display: flex; gap: 4px;">
-            <button id="proj-btn-cyl" class="tool-btn" style="flex: 1; font-size: 10px; background: #0284c7;">Global</button>
-            <button id="proj-btn-north" class="tool-btn" style="flex: 1; font-size: 10px; background: #334155;">North Pole</button>
-            <button id="proj-btn-south" class="tool-btn" style="flex: 1; font-size: 10px; background: #334155;">South Pole</button>
+        <!-- Map Viewpoint / Region -->
+        <div class="titanium-card">
+          <div class="titanium-card-header">
+            <span class="titanium-card-title">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              Viewpoint & Region
+            </span>
           </div>
-        </div>
+          <div class="segmented-pill-control">
+            <button id="proj-btn-cyl" class="seg-btn active" type="button">Global</button>
+            <button id="proj-btn-north" class="seg-btn" type="button">North Pole</button>
+            <button id="proj-btn-south" class="seg-btn" type="button">South Pole</button>
+          </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-          <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Latitude</label>
-            <select id="proj-lat-select" class="tool-select" style="width: 100%; font-size: 11px;">
-              <option value="centric">Planetocentric</option>
-              <option value="graphic">Planetographic</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Longitude</label>
-            <select id="proj-lon-select" class="tool-select" style="width: 100%; font-size: 11px;">
-              <option value="east360">0° – 360° East</option>
-              <option value="east180">-180° – +180°</option>
-              <option value="west360">0° – 360° West</option>
-            </select>
+          <div class="select-pair-grid">
+            <div class="custom-select-wrapper">
+              <select id="proj-lat-select" aria-label="Latitude convention">
+                <option value="centric">Planetocentric</option>
+                <option value="graphic">Planetographic</option>
+              </select>
+              <span class="select-arrow">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+            <div class="custom-select-wrapper">
+              <select id="proj-lon-select" aria-label="Longitude convention">
+                <option value="east360">0° – 360° East</option>
+                <option value="east180">-180° – +180°</option>
+                <option value="west360">0° – 360° West</option>
+              </select>
+              <span class="select-arrow">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -100,91 +138,139 @@ export class ProjectionManager {
     this.liveLatEl = this.container.querySelector('#proj-live-lat');
     this.liveLonEl = this.container.querySelector('#proj-live-lon');
     this.copyCoordsBtn = this.container.querySelector('#proj-copy-coords-btn');
+    this.copyTextEl = this.container.querySelector('#proj-copy-text');
+    this.copyIconEl = this.container.querySelector('#proj-copy-icon');
     this.gotoLatInput = this.container.querySelector('#proj-goto-lat');
     this.gotoLonInput = this.container.querySelector('#proj-goto-lon');
     this.gotoBtn = this.container.querySelector('#proj-goto-btn');
-    this.presetBtns = this.container.querySelectorAll('.proj-preset-btn');
+    this.chipsContainer = this.container.querySelector('#proj-quick-chips-container');
 
+    this.renderChips('mars');
     this.bindEvents();
     this.updateLiveCoordinates();
   }
 
+  renderChips(body = 'mars') {
+    if (!this.chipsContainer) return;
+    this.chipsContainer.innerHTML = '';
+
+    const presetsByBody = {
+      mars: [
+        { name: 'Olympus', lat: 18.65, lon: 226.2 },
+        { name: 'Gale', lat: -5.37, lon: 137.81 },
+        { name: 'Jezero', lat: 18.38, lon: 77.58 },
+        { name: 'Valles', lat: -14.0, lon: 300.8 }
+      ],
+      moon: [
+        { name: 'Apollo 11', lat: 0.67, lon: 23.47 },
+        { name: 'Tycho', lat: -43.31, lon: 348.64 },
+        { name: 'Shackleton', lat: -89.67, lon: 129.78 },
+        { name: 'Copernicus', lat: 9.62, lon: 339.92 }
+      ],
+      earth: [
+        { name: 'Greenwich', lat: 51.48, lon: 0.0 },
+        { name: 'Equator', lat: 0.0, lon: 0.0 },
+        { name: 'Everest', lat: 27.99, lon: 86.93 }
+      ]
+    };
+
+    const list = presetsByBody[body.toLowerCase()] || presetsByBody.mars;
+
+    list.forEach(p => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'proj-preset-btn quick-chip';
+      chip.dataset.lat = p.lat;
+      chip.dataset.lon = p.lon;
+      chip.innerHTML = `
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
+        </svg>
+        <span>${p.name}</span>
+      `;
+      chip.addEventListener('click', () => {
+        if (this.gotoLatInput) this.gotoLatInput.value = p.lat;
+        if (this.gotoLonInput) this.gotoLonInput.value = p.lon;
+        this.executeGoto();
+      });
+      this.chipsContainer.appendChild(chip);
+    });
+
+    this.presetBtns = this.container.querySelectorAll('.proj-preset-btn');
+  }
+
+  executeGoto() {
+    const latVal = parseFloat(this.gotoLatInput?.value);
+    const lonVal = parseFloat(this.gotoLonInput?.value);
+    if (Number.isFinite(latVal) && Number.isFinite(lonVal)) {
+      let leafLon = lonVal;
+      if (leafLon > 180) leafLon -= 360;
+      if (this.map) {
+        this.map.setView([latVal, leafLon], Math.max(this.map.getZoom(), 5));
+      }
+    }
+  }
+
   bindEvents() {
-    this.btnCyl.addEventListener('click', () => {
+    this.btnCyl?.addEventListener('click', () => {
       this.setProjection('cylindrical');
       if (this.map) this.map.setView([0, 0], 2);
     });
 
-    this.btnNorth.addEventListener('click', () => {
+    this.btnNorth?.addEventListener('click', () => {
       this.setProjection('north_polar');
       if (this.map) this.map.setView([85, 0], 5);
     });
 
-    this.btnSouth.addEventListener('click', () => {
+    this.btnSouth?.addEventListener('click', () => {
       this.setProjection('south_polar');
       if (this.map) this.map.setView([-85, 0], 5);
     });
 
-    this.latSelect.addEventListener('change', (e) => {
+    this.latSelect?.addEventListener('change', (e) => {
       this.latConvention = e.target.value;
       this.broadcastCoordFormat();
       this.updateLiveCoordinates();
     });
 
-    this.lonSelect.addEventListener('change', (e) => {
+    this.lonSelect?.addEventListener('change', (e) => {
       this.lonConvention = e.target.value;
       this.broadcastCoordFormat();
       this.updateLiveCoordinates();
     });
 
-    // Copy Coordinates button
+    // Copy Coordinates button with animated state
     if (this.copyCoordsBtn) {
       this.copyCoordsBtn.addEventListener('click', () => {
-        const text = `${this.liveLatEl.textContent}, ${this.liveLonEl.textContent}`;
+        const text = `${this.liveLatEl?.textContent || ''}, ${this.liveLonEl?.textContent || ''}`;
         navigator.clipboard.writeText(text).then(() => {
-          this.copyCoordsBtn.textContent = '✓ Copied!';
+          if (this.copyTextEl) this.copyTextEl.textContent = 'Copied!';
+          this.copyCoordsBtn.classList.add('success');
           setTimeout(() => {
-            this.copyCoordsBtn.textContent = '📋 Copy';
+            if (this.copyTextEl) this.copyTextEl.textContent = 'Copy';
+            this.copyCoordsBtn.classList.remove('success');
           }, 1500);
         }).catch(() => {});
       });
     }
 
     // Go to Coordinates Handler
-    const handleGoto = () => {
-      const latVal = parseFloat(this.gotoLatInput.value);
-      const lonVal = parseFloat(this.gotoLonInput.value);
-      if (Number.isFinite(latVal) && Number.isFinite(lonVal)) {
-        let leafLon = lonVal;
-        if (leafLon > 180) leafLon -= 360;
-        if (this.map) {
-          this.map.setView([latVal, leafLon], Math.max(this.map.getZoom(), 5));
-        }
-      }
-    };
-
     if (this.gotoBtn) {
-      this.gotoBtn.addEventListener('click', handleGoto);
+      this.gotoBtn.addEventListener('click', () => this.executeGoto());
     }
     if (this.gotoLatInput) {
-      this.gotoLatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleGoto(); });
+      this.gotoLatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.executeGoto(); });
     }
     if (this.gotoLonInput) {
-      this.gotoLonInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleGoto(); });
+      this.gotoLonInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.executeGoto(); });
     }
 
-    // Presets
-    if (this.presetBtns) {
-      this.presetBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const pLat = parseFloat(btn.dataset.lat);
-          const pLon = parseFloat(btn.dataset.lon);
-          this.gotoLatInput.value = pLat;
-          this.gotoLonInput.value = pLon;
-          handleGoto();
-        });
-      });
-    }
+    // Listen to body changes to update quick presets
+    document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
+      const body = (e?.detail?.body || 'mars').toLowerCase();
+      this.renderChips(body);
+    });
 
     // Live Map Tracking
     if (this.map) {
@@ -220,10 +306,15 @@ export class ProjectionManager {
 
   setProjection(proj) {
     this.currentProjection = proj;
-    [this.btnCyl, this.btnNorth, this.btnSouth].forEach(b => b.style.background = '#334155');
-    if (proj === 'cylindrical') this.btnCyl.style.background = '#0284c7';
-    else if (proj === 'north_polar') this.btnNorth.style.background = '#0284c7';
-    else if (proj === 'south_polar') this.btnSouth.style.background = '#0284c7';
+    [this.btnCyl, this.btnNorth, this.btnSouth].forEach(b => {
+      if (b) {
+        b.classList.remove('active');
+        b.style.background = '';
+      }
+    });
+    if (proj === 'cylindrical' && this.btnCyl) this.btnCyl.classList.add('active');
+    else if (proj === 'north_polar' && this.btnNorth) this.btnNorth.classList.add('active');
+    else if (proj === 'south_polar' && this.btnSouth) this.btnSouth.classList.add('active');
 
     EventBus.emit(EVENTS.PROJECTION_CHANGED, { projection: proj });
   }
