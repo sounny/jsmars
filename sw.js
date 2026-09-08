@@ -1,6 +1,6 @@
 /**
  * JSMARS - Service Worker (Application Shell & Offline Cache)
- * Version: jsmars-shell-v1.4.3
+ * Version: jsmars-shell-v1.4.4
  * 
  * Rules:
  * 1. Cache-first strategy for versioned owned local application shell assets.
@@ -11,7 +11,7 @@
  * 6. User-prompted update flow via SKIP_WAITING to avoid interrupting active workflows.
  */
 
-const CACHE_NAME = 'jsmars-shell-v1.4.3';
+const CACHE_NAME = 'jsmars-shell-v1.4.4';
 
 const PRECACHE_ASSETS = [
   './',
@@ -23,6 +23,7 @@ const PRECACHE_ASSETS = [
   './jsmars_logo.svg',
   './og-image.png',
   './assets/og-image.png',
+  './assets/icons/icon.svg',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable-192.png',

@@ -1728,29 +1728,88 @@ html {
 
   /* Leaflet Controls Safe Placement on Mobile */
   .leaflet-top.leaflet-right {
-    top: max(12px, env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
+    top: calc(38px + max(8px, env(safe-area-inset-top))) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+  }
+
+  .leaflet-top.leaflet-left {
+    top: calc(38px + max(8px, env(safe-area-inset-top))) !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  /* Separate Zoom Control to top-left on mobile for thumb reachability and less right-side crowding */
+  .leaflet-control-zoom {
+    position: fixed !important;
+    top: calc(38px + max(8px, env(safe-area-inset-top))) !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+    margin: 0 !important;
+    z-index: 1000 !important;
   }
 
   .leaflet-control-zoom a {
     width: 36px !important;
     height: 36px !important;
     line-height: 36px !important;
+    font-size: 18px !important;
   }
 
-  /* Mobile Status Bar */
+  .leaflet-bar a.reset-view-btn {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  /* Lift Bottom Controls (MiniMap & Overlays) cleanly above the Mobile Bottom Sheet Header */
+  .leaflet-bottom.leaflet-right {
+    bottom: calc(72px + max(12px, env(safe-area-inset-bottom))) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+  }
+
+  .leaflet-bottom.leaflet-left {
+    bottom: calc(72px + max(12px, env(safe-area-inset-bottom))) !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  /* Modern themed MiniMap styling */
+  .leaflet-control-minimap {
+    border: 1px solid rgba(56, 189, 248, 0.4) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(15, 23, 42, 0.8) !important;
+    overflow: hidden !important;
+    background: #020617 !important;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .leaflet-control-minimap a.minimized-bottomright,
+  .leaflet-control-minimap a.minimized-topright {
+    background-color: rgba(15, 23, 42, 0.95) !important;
+    border: 1px solid #334155 !important;
+    border-radius: 6px !important;
+  }
+
+  /* Mobile Status Bar - Fixed at top with blur & smooth horizontal scrolling */
   #status-bar {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 28px;
+    height: 30px;
     padding: 0 10px;
     padding-top: env(safe-area-inset-top);
-    background: rgba(15, 23, 42, 0.9);
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid #334155;
-    font-size: 10px;
+    font-size: 11px;
     z-index: 1500;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 8px;
+  }
+
+  #status-bar::-webkit-scrollbar {
+    display: none;
   }
 }
 

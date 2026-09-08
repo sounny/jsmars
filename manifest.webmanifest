@@ -41,7 +41,7 @@
       "purpose": "maskable"
     },
     {
-      "src": "jsmars_logo.svg",
+      "src": "assets/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
