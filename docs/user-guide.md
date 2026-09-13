@@ -4,7 +4,7 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 
 ## Getting Started
 1. Open `index.html` in your browser.
-2. The map will load centered on Mars (Lat 0, Lon 0).
+2. The map will load centered on Mars (Lat 0, Lon 0). Use the planetary body selector at the top of the sidebar to seamlessly switch between **Mars**, the **Moon**, **Earth**, and **Europa**.
 
 ## Managing Layers
 - **Add/Remove:** Use the buttons in the "Layer Manager" panel (top-right) to add layers from the available list or remove active layers.

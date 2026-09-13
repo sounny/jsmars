@@ -91,7 +91,10 @@ export class NomenclatureTool {
       { id: 'Planitia', color: '#a3e635' },
       { id: 'Planum', color: '#c084fc' },
       { id: 'Chaos', color: '#f43f5e' },
-      { id: 'Fossa', color: '#fb923c' }
+      { id: 'Fossa', color: '#fb923c' },
+      { id: 'Linea', color: '#06b6d4' },
+      { id: 'Macula', color: '#f59e0b' },
+      { id: 'Corona', color: '#ec4899' }
     ];
 
     types.forEach(t => {

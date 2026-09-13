@@ -64,7 +64,7 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] Save session (Active layers, order, opacity, panner, ROIs, bookmarks).
     - [x] Load session (JSON file upload).
 - [x] **Multi-body Support**:
-    - [x] Body selector (Mars, Moon, Earth, etc.).
+    - [x] Body selector (Mars, Moon, Earth, Europa).
     - [ ] Configurable endpoints and coordinate systems.
 
 ## Phase 5: Advanced Layers & Tools (Completed)
@@ -111,13 +111,13 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] Adaptive zoom spacing ($30^\circ \to 0.05^\circ$), major/minor subdivisions, edge labels.
     - [x] Multi-format coordinate labeling ($0^\circ-360^\circ\text{ E}$, $\pm 180^\circ$, $0^\circ-360^\circ\text{ W}$).
 - [x] **Comprehensive IAU Planetary Nomenclature**:
-    - [x] Multi-body gazetteer dataset for Mars and Moon across 9 morphological classes with instant search.
+    - [x] Multi-body gazetteer dataset for Mars, Moon, and Europa with instant search.
 - [x] **Planetary Scale Bar & North Arrow**:
     - [x] Exact planetary physical distance calculation accounting for body radii and latitude distortion.
 - [x] **Topographic Transect & Linked Map Cursor**:
     - [x] Bi-directional cursor linking driving synchronized crosshair marker on map track.
 - [x] **Spatial POI Bookmarks & Multi-Body Navigation**:
-    - [x] Pre-loaded scientific POIs across Mars and Moon with JSON import/export.
+    - [x] Pre-loaded scientific POIs across Mars, Moon, and Europa with JSON import/export.
 
 ## Phase 8: Planetary Geodesy, Astrodynamics & Publication Cartography (Completed)
 - [x] **Astrodynamics & Interplanetary Trajectories (`TrajectoryEngine.js`, `TrajectoryPanel.js`)**:

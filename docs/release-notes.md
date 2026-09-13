@@ -1,5 +1,17 @@
 # JSMARS Release Notes
 
+## v0.9.0 - Europa Planetary Body Integration
+**Date:** 2026-09-13
+
+### New Features
+- **Europa Planetary Body**: Added Jupiter's icy moon Europa as a fully-supported planetary body with canonical key `'europa'`.
+- **USGS Global Mosaic WMS Integration**: Live global controlled mosaic powered by USGS Astrogeology MapServer WMS (`GALILEO_VOYAGER` layer from Galileo SSI and Voyager missions).
+- **Physical Geodesy Constants**: Added Europa parameters to `BODIES` ($R_{\text{mean}} = 1560.8\text{ km}$, $R_{\text{eq}} = 1564.13\text{ km}$, $R_{\text{pol}} = 1557.40\text{ km}$, flattening $0.0043$).
+- **Dynamic Scale Bar & Measurement**: Scale bar and distance/area measurement tools automatically calibrate to Europa's radius ratio ($1560.8 / 6371 \approx 0.2450$).
+- **Europa Surface Nomenclature & Landmarks**: Added major IAU named surface features including Conamara Chaos, Pwyll Crater, Cilix Crater, Tyre impact structure, Agenor Linea, Astypalaea Linea, Thera Macula, Thrace Macula, and Tara Corona.
+- **Nomenclature Filtering**: Added support and visual category styling for icy world feature classes: *Linea* (tectonic bands), *Macula* (dark spots/chaos), and *Corona* (circular volcano-tectonic depressions).
+- **Default Scientific Bookmarks**: Added preset points of interest for Conamara Chaos, Pwyll Crater, Agenor Linea, Thera Macula, and Tyre structure.
+
 ## v0.8.1 - Stabilization Milestone
 **Date:** 2026-09-05
 

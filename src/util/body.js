@@ -6,7 +6,7 @@ import { EVENTS } from '../constants.js';
  * Normalize an arbitrary body identifier to the app's canonical lowercase key.
  * Falls back to Mars for unknown or missing values.
  * @param {string} bodyKey
- * @returns {'mars'|'moon'|'earth'}
+ * @returns {'mars'|'moon'|'earth'|'europa'}
  */
 export function normalizeBodyKey(bodyKey) {
   const key = typeof bodyKey === 'string' ? bodyKey.trim().toLowerCase() : '';

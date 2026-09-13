@@ -17,7 +17,12 @@ export class BookmarksTool {
     { id: 'poi-boreum', name: '🧊 Planum Boreum North Pole Cap', lat: 86.0, lng: 0.0, zoom: 5, body: 'mars' },
     { id: 'poi-apollo11', name: '🌕 Apollo 11 Tranquility Base', lat: 0.674, lng: 23.473, zoom: 8, body: 'moon' },
     { id: 'poi-tycho', name: '💥 Tycho Crater Peak & Rays', lat: -43.31, lng: -11.36, zoom: 7, body: 'moon' },
-    { id: 'poi-shackleton', name: '❄️ Shackleton South Pole Ice', lat: -89.67, lng: 129.78, zoom: 7, body: 'moon' }
+    { id: 'poi-shackleton', name: '❄️ Shackleton South Pole Ice', lat: -89.67, lng: 129.78, zoom: 7, body: 'moon' },
+    { id: 'poi-conamara', name: '❄️ Conamara Chaos (Disrupted Ice Rafts)', lat: -9.0, lng: -87.0, zoom: 6, body: 'europa' },
+    { id: 'poi-pwyll', name: '💥 Pwyll Crater (Rayed Impact Basin)', lat: -25.2, lng: -88.6, zoom: 6, body: 'europa' },
+    { id: 'poi-agenor', name: '〰️ Agenor Linea (Active Tectonic Ridge)', lat: -42.0, lng: 140.0, zoom: 6, body: 'europa' },
+    { id: 'poi-thera', name: '🌋 Thera Macula (Subsurface Lake Activity)', lat: -47.0, lng: -179.0, zoom: 6, body: 'europa' },
+    { id: 'poi-tyre', name: '🎯 Tyre Multi-Ring Impact Structure', lat: 34.2, lng: 146.5, zoom: 6, body: 'europa' }
   ];
 
   /**

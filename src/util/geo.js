@@ -1,6 +1,6 @@
 /**
  * Geographic utility functions for jsMars.
- * Includes planetary-specific calculations for Mars, Moon, and Earth.
+ * Includes planetary-specific calculations for Mars, Moon, Earth, and Europa.
  */
 
 // Planetary radii (km)
@@ -26,6 +26,13 @@ export const BODIES = {
     meanRadius: 6371.0,
     // WGS84 exact: 1/298.257223563 = 0.003352811; using rounded approximation
     flattening: 0.003353
+  },
+  europa: {
+    name: 'Europa',
+    equatorialRadius: 1564.13,
+    polarRadius: 1557.4,
+    meanRadius: 1560.8,
+    flattening: 0.0043
   }
 };
 

@@ -41,5 +41,17 @@
   {"name": "Mare Imbrium", "lat": 32.8, "lon": -15.6, "type": "Planitia", "body": "moon", "diameterKm": 1123, "origin": "Sea of Showers; vast lava-flooded impact basin."},
   {"name": "Mare Serenitatis", "lat": 28.0, "lon": 17.5, "type": "Planitia", "body": "moon", "diameterKm": 707, "origin": "Sea of Serenity; Apollo 17 landing site nearby."},
   {"name": "Oceanus Procellarum", "lat": 18.4, "lon": -57.4, "type": "Planitia", "body": "moon", "diameterKm": 2568, "origin": "Ocean of Storms; largest lunar mare."},
-  {"name": "Montes Apenninus", "lat": 18.9, "lon": -3.7, "type": "Mons", "body": "moon", "diameterKm": 600, "origin": "Apennine Mountains; border of Mare Imbrium; Apollo 15 landing site."}
+  {"name": "Montes Apenninus", "lat": 18.9, "lon": -3.7, "type": "Mons", "body": "moon", "diameterKm": 600, "origin": "Apennine Mountains; border of Mare Imbrium; Apollo 15 landing site."},
+
+  {"name": "Conamara Chaos", "lat": -9.0, "lon": -87.0, "type": "Chaos", "body": "europa", "diameterKm": 140, "origin": "Celtic mythical region; disrupted matrix of floating ice rafts and chaotic matrix terrain."},
+  {"name": "Pwyll Crater", "lat": -25.2, "lon": -88.6, "type": "Crater", "body": "europa", "diameterKm": 45, "origin": "Welsh Celtic god of the underworld; geologically youthful impact crater with bright rays."},
+  {"name": "Cilix Crater", "lat": 2.6, "lon": -178.1, "type": "Crater", "body": "europa", "diameterKm": 18, "origin": "Brother of Europa in Greek mythology; sharp central-peak crater."},
+  {"name": "Tyre Impact Structure", "lat": 34.2, "lon": 146.5, "type": "Crater", "body": "europa", "diameterKm": 140, "origin": "Ancient Phoenician city where Europa was born; concentric multi-ring impact basin formed in thin ice."},
+  {"name": "Callanish Impact Structure", "lat": -16.5, "lon": -25.5, "type": "Crater", "body": "europa", "diameterKm": 107, "origin": "Place in Scotland known for megalithic stone circle; multi-ring concentric fracture zone."},
+  {"name": "Agenor Linea", "lat": -42.0, "lon": 140.0, "type": "Linea", "body": "europa", "diameterKm": 1500, "origin": "Father of Europa; prominent bright linear ridge system shaped by diurnal tidal flexing."},
+  {"name": "Astypalaea Linea", "lat": -65.0, "lon": -167.0, "type": "Linea", "body": "europa", "diameterKm": 810, "origin": "Sister of Europa; prominent strike-slip transform fault cutting through south polar ice."},
+  {"name": "Thera Macula", "lat": -47.0, "lon": -179.0, "type": "Macula", "body": "europa", "diameterKm": 95, "origin": "Greek island of Santorini; low-albedo disrupted chaos depression likely overlying a liquid water lens."},
+  {"name": "Thrace Macula", "lat": -46.0, "lon": 172.0, "type": "Macula", "body": "europa", "diameterKm": 75, "origin": "Historical region in southeast Europe; dark fracture and chaos terrain."},
+  {"name": "Tara Corona", "lat": -10.0, "lon": -20.0, "type": "Corona", "body": "europa", "diameterKm": 340, "origin": "Ancient seat of Irish High Kings; circular volcano-tectonic depression."},
+  {"name": "Rhadamanthys Linea", "lat": 17.0, "lon": -160.0, "type": "Linea", "body": "europa", "diameterKm": 1100, "origin": "Son of Europa and Zeus; prominent cycloidal double-ridge lineament."}
 ]

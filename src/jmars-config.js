@@ -47,7 +47,9 @@ export const JMARS_CONFIG = {
     // USGS Astrogeology Moon WMS
     moon_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/moon/moon_simp_cyl.map',
     // NASA GIBS Earth WMS
-    earth_wms: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi'
+    earth_wms: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+    // USGS Astrogeology Europa WMS
+    europa_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/jupiter/europa_simp_cyl.map'
   },
   // Multi-body configurations
   bodies: {
@@ -130,6 +132,26 @@ export const JMARS_CONFIG = {
           }
         }
       ]
+    },
+    europa: {
+      name: "Europa",
+      center: [0, 0],
+      zoom: 2,
+      defaultLayer: 'europa_galileo_voyager',
+      layers: [
+        {
+          id: "europa_galileo_voyager",
+          name: "Europa Global Mosaic (USGS WMS)",
+          type: "wms",
+          url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/jupiter/europa_simp_cyl.map",
+          options: {
+            layers: "GALILEO_VOYAGER",
+            format: "image/png",
+            transparent: true,
+            attribution: "USGS Astrogeology / NASA / JPL"
+          }
+        }
+      ]
     }
   },
   // Optional mosaic catalog per body
@@ -174,6 +196,22 @@ export const JMARS_CONFIG = {
           format: "image/png",
           transparent: true,
           attribution: "USGS Astrogeology"
+        },
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
+      }
+    ],
+    europa: [
+      {
+        id: "europa_galileo_voyager_mosaic",
+        name: "Europa Global Mosaic (Voyager/Galileo)",
+        description: "Global controlled mosaic of Europa synthesized from Galileo SSI and Voyager 1 & 2 spacecraft data (USGS Astrogeology).",
+        type: "wms",
+        url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/jupiter/europa_simp_cyl.map",
+        options: {
+          layers: "GALILEO_VOYAGER",
+          format: "image/png",
+          transparent: true,
+          attribution: "USGS Astrogeology / NASA / JPL"
         },
         thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
       }

@@ -28,6 +28,9 @@ export class NomenclatureLayer {
       'Chasma': true,
       'Planum': true,
       'Fossa': true,
+      'Linea': true,
+      'Macula': true,
+      'Corona': true,
       'Other': true
     };
     this.isActive = false;
@@ -42,6 +45,9 @@ export class NomenclatureLayer {
       'Planum': '#c084fc',     // Purple
       'Chaos': '#f43f5e',      // Rose
       'Fossa': '#fb923c',      // Orange
+      'Linea': '#06b6d4',      // Cyan
+      'Macula': '#f59e0b',     // Warm Amber
+      'Corona': '#ec4899',     // Pink
       'Other': '#e2e8f0'       // Slate white
     };
 

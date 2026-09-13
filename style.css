@@ -29,6 +29,30 @@ html {
   background: #000;
 }
 
+/* Defensive Leaflet Layout Fallback:
+   Ensures map tiles, panes, and containers are always positioned absolutely,
+   preventing the diagonal "staircase" cascading tile bug if external stylesheets
+   experience any network jitter or load latency. */
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.leaflet-tile-container {
+  pointer-events: none;
+}
+
+.leaflet-tile {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 /* ==========================================================================
    2. Loading Indicator
    ========================================================================== */

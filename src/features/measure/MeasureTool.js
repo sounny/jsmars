@@ -35,9 +35,10 @@ export class MeasureTool {
          * Key = lowercase body name, value = bodyRadius / earthRadius.
          */
         this.scaleFactors = {
-            mars:  3389.5 / 6371,  // ~0.5319
-            moon:  1737.4 / 6371,  // ~0.2727
-            earth: 1.0
+            mars:   3389.5 / 6371,  // ~0.5319
+            moon:   1737.4 / 6371,  // ~0.2727
+            earth:  1.0,
+            europa: 1560.8 / 6371   // ~0.2450
         };
 
         this.onDrawCreated = this.onDrawCreated.bind(this);

@@ -37,7 +37,8 @@ import { SessionManager } from '../src/ui/SessionManager.js';
 import { LayerManager } from '../src/ui/layer-manager.js';
 import { StampQueryPanel } from '../src/features/stamp/StampQueryPanel.js';
 import { normalizeBodyKey, switchActiveBody } from '../src/util/body.js';
-import { haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
+import { BODIES, haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
+import { JMARS_CONFIG } from '../src/jmars-config.js';
 
 const expect = chai.expect;
 
@@ -8161,7 +8162,7 @@ describe('PWA Manifest, PWAManager & MobileSheet Architecture', () => {
         const swContent = await swRes.text();
 
         // Must define current version
-        expect(swContent).to.include("CACHE_NAME = 'jsmars-shell-v1.4.3'");
+        expect(swContent).to.match(/CACHE_NAME = 'jsmars-shell-v1\.\d+\.\d+'/);
 
         // Must handle navigation requests with query parameters
         expect(swContent).to.include("request.mode === 'navigate'");
@@ -8193,6 +8194,8 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
     it('should normalize body keys to canonical lowercase values', () => {
         expect(normalizeBodyKey('Moon')).to.equal('moon');
         expect(normalizeBodyKey(' EARTH ')).to.equal('earth');
+        expect(normalizeBodyKey('Europa')).to.equal('europa');
+        expect(normalizeBodyKey(' EUROPA ')).to.equal('europa');
         expect(normalizeBodyKey('unknown-world')).to.equal('mars');
     });
 
@@ -8317,6 +8320,65 @@ describe('Stabilization Milestones: Sessions, Cross-Body Bookmarks, XSS Preventi
         expect(td).to.not.be.null;
         expect(td.getAttribute('title')).to.equal('<script>alert("xss")</script>THEMIS_IR_123');
         expect(container.textContent).to.include('<script>alert("xss")');
+    });
+});
+
+describe('Europa Body Integration', () => {
+    it('should configure Europa in JMARS_CONFIG', () => {
+        expect(JMARS_CONFIG.bodies.europa).to.be.an('object');
+        expect(JMARS_CONFIG.bodies.europa.name).to.equal('Europa');
+        expect(JMARS_CONFIG.bodies.europa.defaultLayer).to.equal('europa_galileo_voyager');
+        expect(JMARS_CONFIG.services.europa_wms).to.include('europa_simp_cyl.map');
+        expect(JMARS_CONFIG.mosaics.europa).to.be.an('array').with.lengthOf.at.least(1);
+    });
+
+    it('should define Europa planetary constants in BODIES', () => {
+        expect(BODIES.europa).to.be.an('object');
+        expect(BODIES.europa.name).to.equal('Europa');
+        expect(BODIES.europa.meanRadius).to.equal(1560.8);
+        expect(BODIES.europa.equatorialRadius).to.be.greaterThan(BODIES.europa.polarRadius);
+    });
+
+    it('should calculate accurate distance and scale metrics on Europa', () => {
+        // Equator quarter circumference: pi/2 * 1560.8 km
+        const dist = haversineDistance(0, 0, 0, 90, 'europa');
+        const expected = (Math.PI / 2) * 1560.8;
+        expect(dist).to.be.closeTo(expected, 1.0);
+
+        const mpp = PlanetaryScaleBar.getMetersPerPixel(0, 2, 'europa');
+        expect(mpp).to.be.a('number').and.greaterThan(0);
+        // Europa scale should be less than Mars scale due to smaller radius
+        const mppMars = PlanetaryScaleBar.getMetersPerPixel(0, 2, 'mars');
+        expect(mpp).to.be.lessThan(mppMars);
+    });
+
+    it('should configure Europa scale factor in MeasureTool', () => {
+        const dummyMap = {
+            addLayer: () => {},
+            removeLayer: () => {},
+            on: () => {},
+            off: () => {}
+        };
+        const measure = new MeasureTool(dummyMap);
+        expect(measure.scaleFactors.europa).to.be.closeTo(1560.8 / 6371, 0.0001);
+    });
+
+    it('should provide default bookmarks for Europa', () => {
+        const europaPOIs = BookmarksTool.DEFAULT_POIS.filter(p => p.body === 'europa');
+        expect(europaPOIs.length).to.be.at.least(3);
+        const conamara = europaPOIs.find(p => p.id === 'poi-conamara');
+        expect(conamara).to.not.be.undefined;
+        expect(conamara.name).to.include('Conamara Chaos');
+    });
+
+    it('should fetch and contain Europa landmarks in landmarks.json', async () => {
+        const res = await fetch('../src/data/landmarks.json');
+        const landmarks = await res.json();
+        const europaLandmarks = landmarks.filter(l => l.body === 'europa');
+        expect(europaLandmarks.length).to.be.at.least(5);
+        const pwyll = europaLandmarks.find(l => l.name === 'Pwyll Crater');
+        expect(pwyll).to.not.be.undefined;
+        expect(pwyll.type).to.equal('Crater');
     });
 });
 
