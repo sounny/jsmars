@@ -48,6 +48,7 @@ export class StatusBar {
     this._elevTimer = null;
 
     this.initUI();
+    this.initTileTracker();
     this.bindEvents();
     this.update();
   }
@@ -68,6 +69,14 @@ export class StatusBar {
       </div>
       <button class="coord-format-btn" id="status-coord-format" title="Click to cycle coordinate format (E180 / E360 / DMS)">E180</button>
       <div class="status-item" id="status-zoom" style="font-family: monospace; color: #cbd5e1;">Zoom: 0</div>
+      <div class="status-item status-load-pill ready" id="status-load" role="status" aria-live="polite" title="Map Data Load Status">
+        <span class="status-load-icon" id="status-load-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </span>
+        <span class="status-load-text" id="status-load-text">Loaded</span>
+      </div>
       <div class="status-item" id="status-scale"></div>
     `;
 
@@ -78,6 +87,9 @@ export class StatusBar {
     this.formatBtn = this.container.querySelector('#status-coord-format');
     this.zoomEl = this.container.querySelector('#status-zoom');
     this.scaleEl = this.container.querySelector('#status-scale');
+    this.loadPillEl = this.container.querySelector('#status-load');
+    this.loadIconEl = this.container.querySelector('#status-load-icon');
+    this.loadTextEl = this.container.querySelector('#status-load-text');
 
     // Remove any existing floating HUD badge if present
     const mapContainer = this.map.getContainer();
@@ -224,5 +236,136 @@ export class StatusBar {
   update() {
     this.updateZoom();
     this.updateCoords(this.map.getCenter(), true);
+  }
+
+  /**
+   * Attach tile lifecycle listeners to map layers to track active tile requests.
+   * @private
+   */
+  initTileTracker() {
+    this.pendingTiles = 0;
+    this.failedTiles = 0;
+    this._statusDebounce = null;
+    this._trackedLayers = new Set();
+
+    const trackLayer = (layer) => {
+      if (!layer || typeof layer.on !== 'function' || this._trackedLayers.has(layer)) return;
+      // Identify tile layers (standard XYZ and WMS tile layers)
+      const isTileLayer = (window.L?.TileLayer && layer instanceof L.TileLayer) ||
+                          typeof layer.getTileUrl === 'function' ||
+                          layer._url;
+      if (!isTileLayer) return;
+
+      this._trackedLayers.add(layer);
+
+      layer.on('tileloadstart', () => {
+        this.pendingTiles++;
+        this.renderLoadStatus();
+      });
+
+      layer.on('tileload', () => {
+        this.pendingTiles = Math.max(0, this.pendingTiles - 1);
+        this.renderLoadStatus();
+      });
+
+      layer.on('tileerror', () => {
+        this.pendingTiles = Math.max(0, this.pendingTiles - 1);
+        this.failedTiles++;
+        this.renderLoadStatus();
+      });
+
+      layer.on('load', () => {
+        // When layer fires 'load', clear pending count if layer has completed
+        this.renderLoadStatus();
+      });
+    };
+
+    // Track layers already present on map
+    if (typeof this.map.eachLayer === 'function') {
+      this.map.eachLayer((layer) => trackLayer(layer));
+    }
+
+    // Track layers dynamically added to map
+    this.map.on('layeradd', (e) => trackLayer(e.layer));
+
+    // Clean up when layer removed
+    this.map.on('layerremove', (e) => {
+      if (this._trackedLayers.has(e.layer)) {
+        this._trackedLayers.delete(e.layer);
+      }
+      if (this._trackedLayers.size === 0) {
+        this.pendingTiles = 0;
+        this.renderLoadStatus();
+      }
+    });
+
+    // When body changes, reset failed tiles and show body transition
+    document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
+      this.failedTiles = 0;
+      const bName = e?.detail?.body || this.currentBody;
+      this.renderLoadStatus(`Loading ${bName}...`);
+    });
+
+    // Reset error count if user clicks status pill
+    if (this.loadPillEl) {
+      this.loadPillEl.addEventListener('click', () => {
+        if (this.failedTiles > 0) {
+          this.failedTiles = 0;
+          this.renderLoadStatus();
+        }
+      });
+    }
+
+    // Initial render
+    this.renderLoadStatus();
+  }
+
+  /**
+   * Render load status indicator (Loading / Ready / Warning) with smooth debouncing.
+   * @param {string|null} [customMessage=null] - Optional temporary status text
+   */
+  renderLoadStatus(customMessage = null) {
+    clearTimeout(this._statusDebounce);
+    this._statusDebounce = setTimeout(() => {
+      if (!this.loadPillEl || !this.loadIconEl || !this.loadTextEl) return;
+
+      if (this.pendingTiles > 0 || customMessage) {
+        this.loadPillEl.className = 'status-item status-load-pill loading';
+        this.loadPillEl.title = `Loading planetary map tiles (${this.pendingTiles} in flight)...`;
+        this.loadIconEl.innerHTML = `
+          <svg class="status-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="2" x2="12" y2="6"></line>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+            <line x1="2" y1="12" x2="6" y2="12"></line>
+            <line x1="18" y1="12" x2="22" y2="12"></line>
+            <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+          </svg>
+        `;
+        this.loadTextEl.textContent = customMessage || (this.pendingTiles > 1 ? `Loading (${this.pendingTiles})` : 'Loading...');
+      } else if (this.failedTiles > 0) {
+        this.loadPillEl.className = 'status-item status-load-pill error';
+        this.loadPillEl.title = `${this.failedTiles} tile(s) failed or timed out. Click to dismiss.`;
+        this.loadIconEl.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        `;
+        this.loadTextEl.textContent = 'Tile warning';
+      } else {
+        this.loadPillEl.className = 'status-item status-load-pill ready';
+        this.loadPillEl.title = 'All planetary map layers loaded and ready.';
+        this.loadIconEl.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        `;
+        this.loadTextEl.textContent = 'Loaded';
+      }
+    }, 40);
   }
 }

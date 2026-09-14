@@ -160,7 +160,10 @@ export class Panner {
   createLeafletLayer(layerConfig) {
     if (!layerConfig) return null;
     if (layerConfig.type === 'wms') {
-      return L.tileLayer.wms(layerConfig.url, layerConfig.options || {});
+      return L.tileLayer.wms(layerConfig.url, {
+        styles: '',
+        ...(layerConfig.options || {})
+      });
     }
     return L.tileLayer(layerConfig.url, layerConfig.options || {});
   }

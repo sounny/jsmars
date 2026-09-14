@@ -30,6 +30,7 @@ export class JMARSState {
       overlays: {
         graticule: false,
         panner: false,
+        labels: false,
         scalebar: true,
         northArrow: false
       },

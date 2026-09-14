@@ -1,7 +1,9 @@
 import { GraticuleLayer } from '../layers/GraticuleLayer.js';
 import { Panner } from './Panner.js';
 import { ResetViewControl } from './ResetViewControl.js';
+import { NomenclatureLayer } from '../features/nomenclature/NomenclatureLayer.js';
 import { jmarsState } from '../jmars-state.js';
+import { EVENTS } from '../constants.js';
 
 export class FixedOverlays {
   constructor(jmarsMap, containerId) {
@@ -16,6 +18,7 @@ export class FixedOverlays {
     // Instantiate features
     this.graticule = new GraticuleLayer();
     this.panner = new Panner(jmarsMap);
+    this.nomenclatureLayer = new NomenclatureLayer(jmarsMap.map);
     this.resetView = new ResetViewControl(jmarsMap.map);
 
     this.init();
@@ -25,11 +28,16 @@ export class FixedOverlays {
     this.resetView.add();
     this.render();
 
-    // Listen to state
-    jmarsState.on('overlays-changed', (overlays) => {
+    const handleOverlays = (overlays) => {
+      if (!overlays) return;
       this.applyState(overlays);
       this.updateUI(overlays);
-    });
+    };
+
+    // Listen to state both internally and via DOM event
+    jmarsState.on(EVENTS.OVERLAYS_CHANGED, handleOverlays);
+    jmarsState.on('overlays-changed', handleOverlays);
+    document.addEventListener(EVENTS.OVERLAYS_CHANGED, (e) => handleOverlays(e.detail));
 
     // Initial Apply
     this.applyState(jmarsState.get('overlays'));
@@ -60,6 +68,10 @@ export class FixedOverlays {
     // Graticule
     this.checkGraticule = this.createToggle('Lat/Lon Grid', 'Coordinate graticule overlay', 'graticule');
     card.appendChild(this.checkGraticule.container);
+
+    // Feature Labels
+    this.checkLabels = this.createToggle('Feature Labels', 'IAU nomenclature landmarks', 'labels');
+    card.appendChild(this.checkLabels.container);
 
     // Panner
     this.checkPanner = this.createToggle('Panner View', 'Minimap locator overview', 'panner');
@@ -112,6 +124,7 @@ export class FixedOverlays {
 
   updateUI(overlays) {
     if (this.checkGraticule) this.checkGraticule.input.checked = !!overlays.graticule;
+    if (this.checkLabels) this.checkLabels.input.checked = !!overlays.labels;
     if (this.checkPanner) this.checkPanner.input.checked = !!overlays.panner;
   }
 
@@ -127,9 +140,12 @@ export class FixedOverlays {
       }
     }
 
+    // Feature Labels
+    if (this.nomenclatureLayer) {
+      this.nomenclatureLayer.toggle(!!overlays?.labels);
+    }
+
     // Panner
-    this.panner.toggle(!!overlays.panner);
-
-
+    this.panner.toggle(!!overlays?.panner);
   }
 }

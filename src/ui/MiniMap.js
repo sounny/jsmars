@@ -7,14 +7,67 @@
 export class MiniMap {
   /**
    * @param {L.Map} map - Main Leaflet map
-   * @param {string} baseMapUrl - XYZ tile URL for the minimap
+   * @param {string|object} baseMapOrConfig - XYZ tile URL or layer configuration object
    */
-  constructor(map, baseMapUrl) {
+  constructor(map, baseMapOrConfig) {
     this.map = map;
-    this.baseMapUrl = baseMapUrl;
+    this.baseMapConfig = baseMapOrConfig;
     this.miniMap = null;
     this.isActive = false;
     this._loaded = false;
+  }
+
+  /**
+   * Create a Leaflet tile layer suitable for the minimap from a config or URL.
+   * Properly distinguishes WMS (USGS Europa, NASA Earth) from XYZ (OpenPlanetary Mars, Moon).
+   * @param {string|object} source - Layer config object or XYZ URL string
+   * @returns {L.TileLayer|L.TileLayer.WMS|null}
+   * @private
+   */
+  _createTileLayer(source) {
+    if (!source) return null;
+
+    // If source is a string URL
+    if (typeof source === 'string') {
+      const isWms = source.includes('wms') || !source.includes('{z}');
+      if (isWms) {
+        return L.tileLayer.wms(source, {
+          layers: 'GALILEO_VOYAGER',
+          format: 'image/png',
+          transparent: false,
+          styles: '',
+          minZoom: 0,
+          maxZoom: 8,
+          attribution: ''
+        });
+      }
+      return L.tileLayer(source, {
+        minZoom: 0,
+        maxZoom: 8,
+        attribution: ''
+      });
+    }
+
+    // If source is a layerConfig object
+    if (source.type === 'wms') {
+      return L.tileLayer.wms(source.url, {
+        layers: source.options?.layers || source.layers || '',
+        format: source.options?.format || 'image/png',
+        transparent: false,
+        styles: '',
+        minZoom: 0,
+        maxZoom: 8,
+        attribution: ''
+      });
+    }
+
+    // Default to XYZ tile layer
+    return L.tileLayer(source.url, {
+      minZoom: 0,
+      maxZoom: 8,
+      attribution: '',
+      ...(source.options || {})
+    });
   }
 
   /**
@@ -25,34 +78,32 @@ export class MiniMap {
 
     await this._ensurePlugin();
 
-    const miniLayer = L.tileLayer(this.baseMapUrl, {
-      minZoom: 0,
-      maxZoom: 8,
-      attribution: ''
-    });
+    const miniLayer = this._createTileLayer(this.baseMapConfig);
+    if (!miniLayer) return;
 
     this.miniMap = new L.Control.MiniMap(miniLayer, {
       toggleDisplay: true,
       minimized: true,
       position: 'bottomright',
-      width: 140,
-      height: 95,
+      width: 155,
+      height: 105,
       zoomLevelOffset: -4,
       zoomLevelFixed: false,
       centerFixed: false,
       zoomAnimation: false,
       autoToggleDisplay: true,
       aimingRectOptions: {
-        color: '#4dabf7',
-        weight: 1.5,
-        fillOpacity: 0.1,
-        dashArray: '3,3'
+        color: '#38bdf8',
+        weight: 2,
+        fillColor: '#38bdf8',
+        fillOpacity: 0.18,
+        dashArray: '4,4'
       },
       shadowRectOptions: {
-        color: '#888',
+        color: '#64748b',
         weight: 1,
         fillOpacity: 0,
-        dashArray: '5,5'
+        dashArray: '4,4'
       }
     });
 
@@ -86,12 +137,17 @@ export class MiniMap {
 
   /**
    * Update the minimap basemap when body changes.
-   * Async because re-activation loads the plugin if needed.
-   * @param {string} baseMapUrl - New XYZ tile URL
+   * Uses changeLayer if active to seamlessly swap layers without destroying the control.
+   * @param {string|object} baseMapOrConfig - New XYZ tile URL or layer configuration object
    */
-  async updateBaseMap(baseMapUrl) {
-    this.baseMapUrl = baseMapUrl;
-    if (this.isActive) {
+  async updateBaseMap(baseMapOrConfig) {
+    this.baseMapConfig = baseMapOrConfig;
+    if (this.isActive && this.miniMap) {
+      const newLayer = this._createTileLayer(baseMapOrConfig);
+      if (newLayer && typeof this.miniMap.changeLayer === 'function') {
+        this.miniMap.changeLayer(newLayer);
+        return;
+      }
       this.deactivate();
       await this.activate();
     }

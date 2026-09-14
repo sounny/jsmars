@@ -715,6 +715,89 @@ html {
   background: #444;
 }
 
+.coord-format-btn:hover {
+  background: #0284c7;
+  color: #fff;
+}
+
+/* Load Status Indicator Pill */
+.status-load-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.status-load-pill.loading {
+  border-color: #38bdf8;
+  background: rgba(14, 116, 144, 0.25);
+  color: #38bdf8;
+}
+
+.status-load-pill.ready {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+}
+
+.status-load-pill.error {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  cursor: pointer;
+}
+
+.status-load-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-spin {
+  animation: status-spin 1s linear infinite;
+  display: block;
+}
+
+@keyframes status-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   16. Panner & MiniMap (Overview Map)
+   ========================================================================== */
+
+/* Dark Titanium Theme for Leaflet.MiniMap */
+.leaflet-control-minimap {
+  border: 1.5px solid #334155 !important;
+  border-radius: 8px !important;
+  background: #090d16 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7) !important;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.leaflet-control-minimap:hover {
+  border-color: #38bdf8 !important;
+}
+
+.leaflet-control-minimap a.minimized-bottomright {
+  background-color: #1e293b !important;
+  border-radius: 6px 0 0 0 !important;
+  border: 1px solid #334155 !important;
+}
+
+.leaflet-control-minimap a.minimized-bottomright:hover {
+  background-color: #334155 !important;
+}
+
 /* ==========================================================================
    11. Crater Table
    ========================================================================== */

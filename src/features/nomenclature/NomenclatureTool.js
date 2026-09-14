@@ -32,6 +32,22 @@ export class NomenclatureTool {
         this.layer.render();
       }
     });
+
+    // Sync with jmarsState overlays
+    jmarsState.on('overlays-changed', (overlays) => {
+      const shouldBeActive = !!overlays?.labels;
+      if (this.isActive !== shouldBeActive) {
+        this.isActive = shouldBeActive;
+        if (this.toggleBtn) {
+          this.toggleBtn.classList.toggle('active', this.isActive);
+          this.toggleBtn.textContent = this.isActive ? 'Hide Nomenclature' : 'Show Nomenclature';
+        }
+        this.layer.toggle(this.isActive);
+        if (this.filterContainer) {
+          this.filterContainer.style.display = this.isActive ? 'block' : 'none';
+        }
+      }
+    });
   }
 
   renderUI() {
@@ -40,13 +56,15 @@ export class NomenclatureTool {
     // Toggle Button
     this.toggleBtn = document.createElement('button');
     this.toggleBtn.className = 'tool-btn';
-    this.toggleBtn.textContent = 'Show Nomenclature';
+    this.toggleBtn.textContent = this.isActive ? 'Hide Nomenclature' : 'Show Nomenclature';
+    if (this.isActive) this.toggleBtn.classList.add('active');
     this.toggleBtn.onclick = () => {
       this.isActive = !this.isActive;
       this.toggleBtn.classList.toggle('active', this.isActive);
       this.toggleBtn.textContent = this.isActive ? 'Hide Nomenclature' : 'Show Nomenclature';
       this.layer.toggle(this.isActive);
       this.filterContainer.style.display = this.isActive ? 'block' : 'none';
+      jmarsState.toggleOverlay('labels', this.isActive);
     };
     this.container.appendChild(this.toggleBtn);
 

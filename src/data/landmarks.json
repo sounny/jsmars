@@ -1,57 +1,731 @@
 [
-  {"name": "Olympus Mons", "lat": 18.65, "lon": 226.2, "type": "Mons", "body": "mars", "diameterKm": 624, "origin": "Mount Olympus, home of Greek gods; tallest planetary volcano."},
-  {"name": "Ascraeus Mons", "lat": 11.92, "lon": 255.92, "type": "Mons", "body": "mars", "diameterKm": 462, "origin": "Northernmost of the Tharsis Montes."},
-  {"name": "Pavonis Mons", "lat": 0.79, "lon": 246.96, "type": "Mons", "body": "mars", "diameterKm": 375, "origin": "Central shield volcano of Tharsis Montes."},
-  {"name": "Arsia Mons", "lat": -8.4, "lon": 239.05, "type": "Mons", "body": "mars", "diameterKm": 435, "origin": "Southernmost of the Tharsis Montes."},
-  {"name": "Elysium Mons", "lat": 24.8, "lon": 147.2, "type": "Mons", "body": "mars", "diameterKm": 240, "origin": "Volcanic peak in Elysium Planitia."},
-  {"name": "Alba Mons", "lat": 40.5, "lon": 250.1, "type": "Mons", "body": "mars", "diameterKm": 1600, "origin": "Broadest volcanic shield on Mars."},
-  {"name": "Valles Marineris", "lat": -13.9, "lon": 300.8, "type": "Valles", "body": "mars", "diameterKm": 4000, "origin": "Grand canyon system of Mars; Mariner 9 mission."},
-  {"name": "Kasei Valles", "lat": 24.6, "lon": 295.0, "type": "Valles", "body": "mars", "diameterKm": 1780, "origin": "Japanese word for Mars; giant outflow channel."},
-  {"name": "Ares Vallis", "lat": 10.4, "lon": 334.2, "type": "Valles", "body": "mars", "diameterKm": 1700, "origin": "Greek god of war; Pathfinder landing site."},
-  {"name": "Mawrth Vallis", "lat": 23.99, "lon": 341.04, "type": "Valles", "body": "mars", "diameterKm": 636, "origin": "Welsh word for Mars; clay-rich ancient outflow."},
-  {"name": "Gale Crater", "lat": -5.4, "lon": 137.8, "type": "Crater", "body": "mars", "diameterKm": 154, "origin": "Walter F. Gale, Australian astronomer; MSL Curiosity site."},
-  {"name": "Jezero Crater", "lat": 18.38, "lon": 77.58, "type": "Crater", "body": "mars", "diameterKm": 49, "origin": "Town in Bosnia and Herzegovina; Mars 2020 Perseverance site."},
-  {"name": "Gusev Crater", "lat": -14.6, "lon": 175.4, "type": "Crater", "body": "mars", "diameterKm": 166, "origin": "Matvey Gusev, Russian astronomer; MER Spirit site."},
-  {"name": "Victoria Crater", "lat": -2.05, "lon": 354.5, "type": "Crater", "body": "mars", "diameterKm": 0.8, "origin": "Magellan's ship; explored by Opportunity rover."},
-  {"name": "Endeavour Crater", "lat": -2.28, "lon": 354.77, "type": "Crater", "body": "mars", "diameterKm": 22, "origin": "HMS Endeavour; Opportunity rover destination."},
-  {"name": "Korolev Crater", "lat": 72.77, "lon": 164.58, "type": "Crater", "body": "mars", "diameterKm": 81, "origin": "Sergei Korolev, Soviet rocket engineer; filled with permanent water ice."},
-  {"name": "Schiaparelli Crater", "lat": -2.71, "lon": 16.78, "type": "Crater", "body": "mars", "diameterKm": 471, "origin": "Giovanni Schiaparelli, Italian astronomer."},
-  {"name": "Hellas Planitia", "lat": -42.4, "lon": 70.5, "type": "Planitia", "body": "mars", "diameterKm": 2300, "origin": "Classical name for Greece; deepest impact basin on Mars."},
-  {"name": "Argyre Planitia", "lat": -49.7, "lon": 316.0, "type": "Planitia", "body": "mars", "diameterKm": 800, "origin": "Mythical silver island in the Indian Ocean."},
-  {"name": "Isidis Planitia", "lat": 12.9, "lon": 87.0, "type": "Planitia", "body": "mars", "diameterKm": 1500, "origin": "Egyptian goddess Isis."},
-  {"name": "Utopia Planitia", "lat": 46.7, "lon": 117.5, "type": "Planitia", "body": "mars", "diameterKm": 3300, "origin": "Nowhere Land; Viking 2 and Zhurong landing site."},
-  {"name": "Acidalia Planitia", "lat": 49.8, "lon": 339.3, "type": "Planitia", "body": "mars", "diameterKm": 3000, "origin": "Mythological fountain of Venus."},
-  {"name": "Elysium Planitia", "lat": 3.0, "lon": 154.7, "type": "Planitia", "body": "mars", "diameterKm": 3000, "origin": "Elysian Fields in Greek mythology; InSight lander site."},
-  {"name": "Noctis Labyrinthus", "lat": -7.0, "lon": 259.0, "type": "Chaos", "body": "mars", "diameterKm": 1190, "origin": "Labyrinth of the night; complex valley network at western Valles Marineris."},
-  {"name": "Aram Chaos", "lat": 2.6, "lon": 338.5, "type": "Chaos", "body": "mars", "diameterKm": 280, "origin": "Biblical region; collapsed chaotic terrain rich in hematite."},
-  {"name": "Gorgonum Chaos", "lat": -37.5, "lon": 189.1, "type": "Chaos", "body": "mars", "diameterKm": 150, "origin": "Mythological Gorgons; source of recent gullies."},
-  {"name": "Hebes Chasma", "lat": 1.1, "lon": 283.8, "type": "Chasma", "body": "mars", "diameterKm": 315, "origin": "Hebes, Greek goddess of youth; closed canyon depression."},
-  {"name": "Melas Chasma", "lat": -9.8, "lon": 283.6, "type": "Chasma", "body": "mars", "diameterKm": 547, "origin": "Greek for dark; central and deepest segment of Valles Marineris."},
-  {"name": "Planum Boreum", "lat": 88.0, "lon": 0.0, "type": "Planum", "body": "mars", "diameterKm": 1100, "origin": "Northern plain; Martian north polar ice cap."},
-  {"name": "Planum Australe", "lat": -85.0, "lon": 0.0, "type": "Planum", "body": "mars", "diameterKm": 1450, "origin": "Southern plain; Martian south polar ice cap."},
-  {"name": "Cerberus Fossae", "lat": 11.28, "lon": 166.37, "type": "Fossa", "body": "mars", "diameterKm": 1235, "origin": "Cerberus from Greek mythology; seismically active fissures detected by InSight."},
-
-  {"name": "Tycho Crater", "lat": -43.31, "lon": -11.36, "type": "Crater", "body": "moon", "diameterKm": 85, "origin": "Tycho Brahe, Danish astronomer; prominent lunar ray crater."},
-  {"name": "Copernicus Crater", "lat": 9.62, "lon": -20.08, "type": "Crater", "body": "moon", "diameterKm": 93, "origin": "Nicolaus Copernicus, Polish astronomer."},
-  {"name": "Aristarchus Crater", "lat": 23.73, "lon": -47.49, "type": "Crater", "body": "moon", "diameterKm": 40, "origin": "Aristarchus of Samos; brightest feature on the lunar surface."},
-  {"name": "Kepler Crater", "lat": 8.12, "lon": -38.01, "type": "Crater", "body": "moon", "diameterKm": 31, "origin": "Johannes Kepler, German astronomer."},
-  {"name": "Shackleton Crater", "lat": -89.67, "lon": 129.78, "type": "Crater", "body": "moon", "diameterKm": 21, "origin": "Ernest Shackleton, Antarctic explorer; lunar south pole with permanently shadowed regions."},
-  {"name": "Clavius Crater", "lat": -58.4, "lon": -14.4, "type": "Crater", "body": "moon", "diameterKm": 225, "origin": "Christopher Clavius, Jesuit mathematician; one of the largest lunar craters."},
-  {"name": "Mare Tranquillitatis", "lat": 8.5, "lon": 31.4, "type": "Planitia", "body": "moon", "diameterKm": 873, "origin": "Sea of Tranquility; Apollo 11 landing site."},
-  {"name": "Mare Imbrium", "lat": 32.8, "lon": -15.6, "type": "Planitia", "body": "moon", "diameterKm": 1123, "origin": "Sea of Showers; vast lava-flooded impact basin."},
-  {"name": "Mare Serenitatis", "lat": 28.0, "lon": 17.5, "type": "Planitia", "body": "moon", "diameterKm": 707, "origin": "Sea of Serenity; Apollo 17 landing site nearby."},
-  {"name": "Oceanus Procellarum", "lat": 18.4, "lon": -57.4, "type": "Planitia", "body": "moon", "diameterKm": 2568, "origin": "Ocean of Storms; largest lunar mare."},
-  {"name": "Montes Apenninus", "lat": 18.9, "lon": -3.7, "type": "Mons", "body": "moon", "diameterKm": 600, "origin": "Apennine Mountains; border of Mare Imbrium; Apollo 15 landing site."},
-
-  {"name": "Conamara Chaos", "lat": -9.0, "lon": -87.0, "type": "Chaos", "body": "europa", "diameterKm": 140, "origin": "Celtic mythical region; disrupted matrix of floating ice rafts and chaotic matrix terrain."},
-  {"name": "Pwyll Crater", "lat": -25.2, "lon": -88.6, "type": "Crater", "body": "europa", "diameterKm": 45, "origin": "Welsh Celtic god of the underworld; geologically youthful impact crater with bright rays."},
-  {"name": "Cilix Crater", "lat": 2.6, "lon": -178.1, "type": "Crater", "body": "europa", "diameterKm": 18, "origin": "Brother of Europa in Greek mythology; sharp central-peak crater."},
-  {"name": "Tyre Impact Structure", "lat": 34.2, "lon": 146.5, "type": "Crater", "body": "europa", "diameterKm": 140, "origin": "Ancient Phoenician city where Europa was born; concentric multi-ring impact basin formed in thin ice."},
-  {"name": "Callanish Impact Structure", "lat": -16.5, "lon": -25.5, "type": "Crater", "body": "europa", "diameterKm": 107, "origin": "Place in Scotland known for megalithic stone circle; multi-ring concentric fracture zone."},
-  {"name": "Agenor Linea", "lat": -42.0, "lon": 140.0, "type": "Linea", "body": "europa", "diameterKm": 1500, "origin": "Father of Europa; prominent bright linear ridge system shaped by diurnal tidal flexing."},
-  {"name": "Astypalaea Linea", "lat": -65.0, "lon": -167.0, "type": "Linea", "body": "europa", "diameterKm": 810, "origin": "Sister of Europa; prominent strike-slip transform fault cutting through south polar ice."},
-  {"name": "Thera Macula", "lat": -47.0, "lon": -179.0, "type": "Macula", "body": "europa", "diameterKm": 95, "origin": "Greek island of Santorini; low-albedo disrupted chaos depression likely overlying a liquid water lens."},
-  {"name": "Thrace Macula", "lat": -46.0, "lon": 172.0, "type": "Macula", "body": "europa", "diameterKm": 75, "origin": "Historical region in southeast Europe; dark fracture and chaos terrain."},
-  {"name": "Tara Corona", "lat": -10.0, "lon": -20.0, "type": "Corona", "body": "europa", "diameterKm": 340, "origin": "Ancient seat of Irish High Kings; circular volcano-tectonic depression."},
-  {"name": "Rhadamanthys Linea", "lat": 17.0, "lon": -160.0, "type": "Linea", "body": "europa", "diameterKm": 1100, "origin": "Son of Europa and Zeus; prominent cycloidal double-ridge lineament."}
+  {
+    "name": "Olympus Mons",
+    "lat": 18.65,
+    "lon": 226.2,
+    "type": "Mons",
+    "body": "mars",
+    "diameterKm": 624,
+    "origin": "Mount Olympus, home of Greek gods; tallest planetary volcano."
+  },
+  {
+    "name": "Ascraeus Mons",
+    "lat": 11.92,
+    "lon": 255.92,
+    "type": "Mons",
+    "body": "mars",
+    "diameterKm": 462,
+    "origin": "Northernmost of the Tharsis Montes."
+  },
+  {
+    "name": "Pavonis Mons",
+    "lat": 0.79,
+    "lon": 246.96,
+    "type": "Mons",
+    "body": "mars",
+    "diameterKm": 375,
+    "origin": "Central shield volcano of Tharsis Montes."
+  },
+  {
+    "name": "Arsia Mons",
+    "lat": -8.4,
+    "lon": 239.05,
+    "type": "Mons",
+    "body": "mars",
+    "diameterKm": 435,
+    "origin": "Southernmost of the Tharsis Montes."
+  },
+  {
+    "name": "Elysium Mons",
+    "lat": 24.8,
+    "lon": 147.2,
+    "type": "Mons",
+    "body": "mars",
+    "diameterKm": 240,
+    "origin": "Volcanic peak in Elysium Planitia."
+  },
+  {
+    "name": "Alba Mons",
+    "lat": 40.5,
+    "lon": 250.1,
+    "type": "Mons",
+    "body": "mars",
+    "diameterKm": 1600,
+    "origin": "Broadest volcanic shield on Mars."
+  },
+  {
+    "name": "Valles Marineris",
+    "lat": -13.9,
+    "lon": 300.8,
+    "type": "Valles",
+    "body": "mars",
+    "diameterKm": 4000,
+    "origin": "Grand canyon system of Mars; Mariner 9 mission."
+  },
+  {
+    "name": "Kasei Valles",
+    "lat": 24.6,
+    "lon": 295.0,
+    "type": "Valles",
+    "body": "mars",
+    "diameterKm": 1780,
+    "origin": "Japanese word for Mars; giant outflow channel."
+  },
+  {
+    "name": "Ares Vallis",
+    "lat": 10.4,
+    "lon": 334.2,
+    "type": "Valles",
+    "body": "mars",
+    "diameterKm": 1700,
+    "origin": "Greek god of war; Pathfinder landing site."
+  },
+  {
+    "name": "Mawrth Vallis",
+    "lat": 23.99,
+    "lon": 341.04,
+    "type": "Valles",
+    "body": "mars",
+    "diameterKm": 636,
+    "origin": "Welsh word for Mars; clay-rich ancient outflow."
+  },
+  {
+    "name": "Gale Crater",
+    "lat": -5.4,
+    "lon": 137.8,
+    "type": "Crater",
+    "body": "mars",
+    "diameterKm": 154,
+    "origin": "Walter F. Gale, Australian astronomer; MSL Curiosity site."
+  },
+  {
+    "name": "Jezero Crater",
+    "lat": 18.38,
+    "lon": 77.58,
+    "type": "Crater",
+    "body": "mars",
+    "diameterKm": 49,
+    "origin": "Town in Bosnia and Herzegovina; Mars 2020 Perseverance site."
+  },
+  {
+    "name": "Gusev Crater",
+    "lat": -14.6,
+    "lon": 175.4,
+    "type": "Crater",
+    "body": "mars",
+    "diameterKm": 166,
+    "origin": "Matvey Gusev, Russian astronomer; MER Spirit site."
+  },
+  {
+    "name": "Victoria Crater",
+    "lat": -2.05,
+    "lon": 354.5,
+    "type": "Crater",
+    "body": "mars",
+    "diameterKm": 0.8,
+    "origin": "Magellan's ship; explored by Opportunity rover."
+  },
+  {
+    "name": "Endeavour Crater",
+    "lat": -2.28,
+    "lon": 354.77,
+    "type": "Crater",
+    "body": "mars",
+    "diameterKm": 22,
+    "origin": "HMS Endeavour; Opportunity rover destination."
+  },
+  {
+    "name": "Korolev Crater",
+    "lat": 72.77,
+    "lon": 164.58,
+    "type": "Crater",
+    "body": "mars",
+    "diameterKm": 81,
+    "origin": "Sergei Korolev, Soviet rocket engineer; filled with permanent water ice."
+  },
+  {
+    "name": "Schiaparelli Crater",
+    "lat": -2.71,
+    "lon": 16.78,
+    "type": "Crater",
+    "body": "mars",
+    "diameterKm": 471,
+    "origin": "Giovanni Schiaparelli, Italian astronomer."
+  },
+  {
+    "name": "Hellas Planitia",
+    "lat": -42.4,
+    "lon": 70.5,
+    "type": "Planitia",
+    "body": "mars",
+    "diameterKm": 2300,
+    "origin": "Classical name for Greece; deepest impact basin on Mars."
+  },
+  {
+    "name": "Argyre Planitia",
+    "lat": -49.7,
+    "lon": 316.0,
+    "type": "Planitia",
+    "body": "mars",
+    "diameterKm": 800,
+    "origin": "Mythical silver island in the Indian Ocean."
+  },
+  {
+    "name": "Isidis Planitia",
+    "lat": 12.9,
+    "lon": 87.0,
+    "type": "Planitia",
+    "body": "mars",
+    "diameterKm": 1500,
+    "origin": "Egyptian goddess Isis."
+  },
+  {
+    "name": "Utopia Planitia",
+    "lat": 46.7,
+    "lon": 117.5,
+    "type": "Planitia",
+    "body": "mars",
+    "diameterKm": 3300,
+    "origin": "Nowhere Land; Viking 2 and Zhurong landing site."
+  },
+  {
+    "name": "Acidalia Planitia",
+    "lat": 49.8,
+    "lon": 339.3,
+    "type": "Planitia",
+    "body": "mars",
+    "diameterKm": 3000,
+    "origin": "Mythological fountain of Venus."
+  },
+  {
+    "name": "Elysium Planitia",
+    "lat": 3.0,
+    "lon": 154.7,
+    "type": "Planitia",
+    "body": "mars",
+    "diameterKm": 3000,
+    "origin": "Elysian Fields in Greek mythology; InSight lander site."
+  },
+  {
+    "name": "Noctis Labyrinthus",
+    "lat": -7.0,
+    "lon": 259.0,
+    "type": "Chaos",
+    "body": "mars",
+    "diameterKm": 1190,
+    "origin": "Labyrinth of the night; complex valley network at western Valles Marineris."
+  },
+  {
+    "name": "Aram Chaos",
+    "lat": 2.6,
+    "lon": 338.5,
+    "type": "Chaos",
+    "body": "mars",
+    "diameterKm": 280,
+    "origin": "Biblical region; collapsed chaotic terrain rich in hematite."
+  },
+  {
+    "name": "Gorgonum Chaos",
+    "lat": -37.5,
+    "lon": 189.1,
+    "type": "Chaos",
+    "body": "mars",
+    "diameterKm": 150,
+    "origin": "Mythological Gorgons; source of recent gullies."
+  },
+  {
+    "name": "Hebes Chasma",
+    "lat": 1.1,
+    "lon": 283.8,
+    "type": "Chasma",
+    "body": "mars",
+    "diameterKm": 315,
+    "origin": "Hebes, Greek goddess of youth; closed canyon depression."
+  },
+  {
+    "name": "Melas Chasma",
+    "lat": -9.8,
+    "lon": 283.6,
+    "type": "Chasma",
+    "body": "mars",
+    "diameterKm": 547,
+    "origin": "Greek for dark; central and deepest segment of Valles Marineris."
+  },
+  {
+    "name": "Planum Boreum",
+    "lat": 88.0,
+    "lon": 0.0,
+    "type": "Planum",
+    "body": "mars",
+    "diameterKm": 1100,
+    "origin": "Northern plain; Martian north polar ice cap."
+  },
+  {
+    "name": "Planum Australe",
+    "lat": -85.0,
+    "lon": 0.0,
+    "type": "Planum",
+    "body": "mars",
+    "diameterKm": 1450,
+    "origin": "Southern plain; Martian south polar ice cap."
+  },
+  {
+    "name": "Cerberus Fossae",
+    "lat": 11.28,
+    "lon": 166.37,
+    "type": "Fossa",
+    "body": "mars",
+    "diameterKm": 1235,
+    "origin": "Cerberus from Greek mythology; seismically active fissures detected by InSight."
+  },
+  {
+    "name": "Tycho Crater",
+    "lat": -43.31,
+    "lon": -11.36,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 85,
+    "origin": "Tycho Brahe, Danish astronomer; prominent lunar ray crater."
+  },
+  {
+    "name": "Copernicus Crater",
+    "lat": 9.62,
+    "lon": -20.08,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 93,
+    "origin": "Nicolaus Copernicus, Polish astronomer."
+  },
+  {
+    "name": "Aristarchus Crater",
+    "lat": 23.73,
+    "lon": -47.49,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 40,
+    "origin": "Aristarchus of Samos; brightest feature on the lunar surface."
+  },
+  {
+    "name": "Kepler Crater",
+    "lat": 8.12,
+    "lon": -38.01,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 31,
+    "origin": "Johannes Kepler, German astronomer."
+  },
+  {
+    "name": "Shackleton Crater",
+    "lat": -89.67,
+    "lon": 129.78,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 21,
+    "origin": "Ernest Shackleton, Antarctic explorer; lunar south pole with permanently shadowed regions."
+  },
+  {
+    "name": "Clavius Crater",
+    "lat": -58.4,
+    "lon": -14.4,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 225,
+    "origin": "Christopher Clavius, Jesuit mathematician; one of the largest lunar craters."
+  },
+  {
+    "name": "Mare Tranquillitatis",
+    "lat": 8.5,
+    "lon": 31.4,
+    "type": "Planitia",
+    "body": "moon",
+    "diameterKm": 873,
+    "origin": "Sea of Tranquility; Apollo 11 landing site."
+  },
+  {
+    "name": "Mare Imbrium",
+    "lat": 32.8,
+    "lon": -15.6,
+    "type": "Planitia",
+    "body": "moon",
+    "diameterKm": 1123,
+    "origin": "Sea of Showers; vast lava-flooded impact basin."
+  },
+  {
+    "name": "Mare Serenitatis",
+    "lat": 28.0,
+    "lon": 17.5,
+    "type": "Planitia",
+    "body": "moon",
+    "diameterKm": 707,
+    "origin": "Sea of Serenity; Apollo 17 landing site nearby."
+  },
+  {
+    "name": "Oceanus Procellarum",
+    "lat": 18.4,
+    "lon": -57.4,
+    "type": "Planitia",
+    "body": "moon",
+    "diameterKm": 2568,
+    "origin": "Ocean of Storms; largest lunar mare."
+  },
+  {
+    "name": "Montes Apenninus",
+    "lat": 18.9,
+    "lon": -3.7,
+    "type": "Mons",
+    "body": "moon",
+    "diameterKm": 600,
+    "origin": "Apennine Mountains; border of Mare Imbrium; Apollo 15 landing site."
+  },
+  {
+    "name": "Conamara Chaos",
+    "lat": -9.0,
+    "lon": -87.0,
+    "type": "Chaos",
+    "body": "europa",
+    "diameterKm": 140,
+    "origin": "Celtic mythical region; disrupted matrix of floating ice rafts and chaotic matrix terrain."
+  },
+  {
+    "name": "Pwyll Crater",
+    "lat": -25.2,
+    "lon": -88.6,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 45,
+    "origin": "Welsh Celtic god of the underworld; geologically youthful impact crater with bright rays."
+  },
+  {
+    "name": "Cilix Crater",
+    "lat": 2.6,
+    "lon": -178.1,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 18,
+    "origin": "Brother of Europa in Greek mythology; sharp central-peak crater."
+  },
+  {
+    "name": "Tyre Impact Structure",
+    "lat": 34.2,
+    "lon": 146.5,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 140,
+    "origin": "Ancient Phoenician city where Europa was born; concentric multi-ring impact basin formed in thin ice."
+  },
+  {
+    "name": "Callanish Impact Structure",
+    "lat": -16.5,
+    "lon": -25.5,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 107,
+    "origin": "Place in Scotland known for megalithic stone circle; multi-ring concentric fracture zone."
+  },
+  {
+    "name": "Agenor Linea",
+    "lat": -42.0,
+    "lon": 140.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 1500,
+    "origin": "Father of Europa; prominent bright linear ridge system shaped by diurnal tidal flexing."
+  },
+  {
+    "name": "Astypalaea Linea",
+    "lat": -65.0,
+    "lon": -167.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 810,
+    "origin": "Sister of Europa; prominent strike-slip transform fault cutting through south polar ice."
+  },
+  {
+    "name": "Thera Macula",
+    "lat": -47.0,
+    "lon": -179.0,
+    "type": "Macula",
+    "body": "europa",
+    "diameterKm": 95,
+    "origin": "Greek island of Santorini; low-albedo disrupted chaos depression likely overlying a liquid water lens."
+  },
+  {
+    "name": "Thrace Macula",
+    "lat": -46.0,
+    "lon": 172.0,
+    "type": "Macula",
+    "body": "europa",
+    "diameterKm": 75,
+    "origin": "Historical region in southeast Europe; dark fracture and chaos terrain."
+  },
+  {
+    "name": "Tara Corona",
+    "lat": -10.0,
+    "lon": -20.0,
+    "type": "Corona",
+    "body": "europa",
+    "diameterKm": 340,
+    "origin": "Ancient seat of Irish High Kings; circular volcano-tectonic depression."
+  },
+  {
+    "name": "Rhadamanthys Linea",
+    "lat": 17.0,
+    "lon": -160.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 1100,
+    "origin": "Son of Europa and Zeus; prominent cycloidal double-ridge lineament."
+  },
+  {
+    "name": "Mannann\u00e1n Crater",
+    "lat": 3.1,
+    "lon": -119.8,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 22,
+    "origin": "Irish sea god; young central-peak crater with distinct albedo asymmetry."
+  },
+  {
+    "name": "Tegid Crater",
+    "lat": -0.8,
+    "lon": -164.4,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 28,
+    "origin": "Welsh mythological figure; prominent impact basin on Europa leading hemisphere."
+  },
+  {
+    "name": "Taliesin Crater",
+    "lat": -22.8,
+    "lon": -138.0,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 24,
+    "origin": "Welsh Celtic bard; rayed crater with dark ejecta blanket."
+  },
+  {
+    "name": "Morvran Crater",
+    "lat": 4.9,
+    "lon": -152.6,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 15,
+    "origin": "Celtic mythology, son of Tegid; sharp fresh impact crater."
+  },
+  {
+    "name": "Govannan Crater",
+    "lat": 37.3,
+    "lon": -57.2,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 11,
+    "origin": "Welsh god of metalworking; bright rayed impact crater."
+  },
+  {
+    "name": "Maeve Crater",
+    "lat": 58.8,
+    "lon": -81.7,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 21,
+    "origin": "Irish queen of Connacht; northern high-latitude impact depression."
+  },
+  {
+    "name": "Grannos Crater",
+    "lat": -1.2,
+    "lon": -108.5,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 40,
+    "origin": "Celtic god of healing springs; degraded impact basin."
+  },
+  {
+    "name": "Balor Crater",
+    "lat": 52.8,
+    "lon": -97.8,
+    "type": "Crater",
+    "body": "europa",
+    "diameterKm": 18,
+    "origin": "Celtic deity with the venomous eye; northern hemisphere crater."
+  },
+  {
+    "name": "Belus Linea",
+    "lat": -2.0,
+    "lon": -135.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 850,
+    "origin": "Brother of Agenor; dark reddish-brown tectonic lineament with double ridge morphology."
+  },
+  {
+    "name": "Minos Linea",
+    "lat": 45.0,
+    "lon": -166.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 1200,
+    "origin": "Son of Europa and Zeus, King of Crete; northern cycloidal lineament."
+  },
+  {
+    "name": "Cadmus Linea",
+    "lat": -27.0,
+    "lon": -142.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 700,
+    "origin": "Brother of Europa, founder of Thebes; prominent strike-slip ridge system."
+  },
+  {
+    "name": "Delphi Linea",
+    "lat": -58.0,
+    "lon": 165.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 980,
+    "origin": "Ancient Greek sacred site; high-latitude cycloidal flexure."
+  },
+  {
+    "name": "Pelops Linea",
+    "lat": 15.0,
+    "lon": -130.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 920,
+    "origin": "Greek mythological hero; intersecting ridge complex."
+  },
+  {
+    "name": "Libya Linea",
+    "lat": -55.0,
+    "lon": 175.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 1150,
+    "origin": "Daughter of Epaphus and mother of Agenor; prominent polar ridge."
+  },
+  {
+    "name": "Hippolytus Linea",
+    "lat": -12.0,
+    "lon": -50.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 800,
+    "origin": "Greek mythological son of Theseus; curved tidal lineament."
+  },
+  {
+    "name": "Udun Linea",
+    "lat": 28.0,
+    "lon": -140.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 650,
+    "origin": "Norse mythological subterranean place; bright tectonic ridge."
+  },
+  {
+    "name": "Tynia Linea",
+    "lat": 34.0,
+    "lon": -85.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 720,
+    "origin": "Etruscan supreme god of the sky; intersecting ridge system."
+  },
+  {
+    "name": "Murias Chaos",
+    "lat": -22.4,
+    "lon": -83.8,
+    "type": "Chaos",
+    "body": "europa",
+    "diameterKm": 115,
+    "origin": "City of the Tuatha De Danann; extensive disrupted ice-raft terrain."
+  },
+  {
+    "name": "Rathmore Chaos",
+    "lat": -25.4,
+    "lon": -75.0,
+    "type": "Chaos",
+    "body": "europa",
+    "diameterKm": 130,
+    "origin": "Irish mythological settlement; thermal disruption matrix."
+  },
+  {
+    "name": "Narberth Chaos",
+    "lat": -26.0,
+    "lon": -80.0,
+    "type": "Chaos",
+    "body": "europa",
+    "diameterKm": 90,
+    "origin": "Chief residence of Pwyll in the Mabinogion; ice raft matrix."
+  },
+  {
+    "name": "Castalia Macula",
+    "lat": 1.6,
+    "lon": -100.0,
+    "type": "Macula",
+    "body": "europa",
+    "diameterKm": 35,
+    "origin": "Nymph of the Delphic spring; localized brine upwelling feature."
+  },
+  {
+    "name": "Cyclades Macula",
+    "lat": -7.0,
+    "lon": -169.0,
+    "type": "Macula",
+    "body": "europa",
+    "diameterKm": 105,
+    "origin": "Greek island group; dark albedo cryo-thermal patch."
+  },
+  {
+    "name": "Annwn Regio",
+    "lat": 20.0,
+    "lon": -40.0,
+    "type": "Other",
+    "body": "europa",
+    "diameterKm": 2300,
+    "origin": "Welsh underworld realm; vast leading-hemisphere bright ice terrain."
+  },
+  {
+    "name": "Argadnel Regio",
+    "lat": -14.0,
+    "lon": -145.0,
+    "type": "Other",
+    "body": "europa",
+    "diameterKm": 1900,
+    "origin": "Celtic otherworld earthly paradise; ridged plains terrain."
+  },
+  {
+    "name": "Tara Regio",
+    "lat": -10.0,
+    "lon": -15.0,
+    "type": "Other",
+    "body": "europa",
+    "diameterKm": 1600,
+    "origin": "Seat of Celtic High Kings; extensive trailing-hemisphere disrupted province."
+  },
+  {
+    "name": "Powys Regio",
+    "lat": -40.0,
+    "lon": -140.0,
+    "type": "Other",
+    "body": "europa",
+    "diameterKm": 2000,
+    "origin": "Ancient Welsh kingdom; heavily fractured southern ice plain."
+  },
+  {
+    "name": "Sidon Flexus",
+    "lat": -36.0,
+    "lon": 178.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 580,
+    "origin": "Ancient Phoenician city; prominent cycloidal curved cusp formed by diurnal tidal flexing."
+  },
+  {
+    "name": "Delphi Flexus",
+    "lat": -60.0,
+    "lon": -160.0,
+    "type": "Linea",
+    "body": "europa",
+    "diameterKm": 490,
+    "origin": "Sanctuary of Apollo; high-latitude tidal cusp fracture."
+  }
 ]

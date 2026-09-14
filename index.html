@@ -742,16 +742,27 @@
     const placesManager = new PlacesManager(jmars.map);
 
     // -- NEW: MiniMap Overview --
-    const miniMapUrl = JMARS_CONFIG.bodies[jmars.currentBody]?.layers?.[0]?.url || JMARS_CONFIG.services.mars_basemap;
-    const miniMap = new MiniMap(jmars.map, miniMapUrl);
+    const getMiniMapLayerConfig = (bodyKey) => {
+      const key = (bodyKey || 'mars').toLowerCase();
+      const bodyConfig = JMARS_CONFIG.bodies[key];
+      if (!bodyConfig?.layers || bodyConfig.layers.length === 0) return null;
+      const defId = bodyConfig.defaultLayer;
+      return bodyConfig.layers.find(l => l.id === defId) || bodyConfig.layers[0];
+    };
+
+    const initialMiniLayerConfig = getMiniMapLayerConfig(jmars.currentBody) || {
+      type: 'xyz',
+      url: JMARS_CONFIG.services.mars_basemap
+    };
+    const miniMap = new MiniMap(jmars.map, initialMiniLayerConfig);
     miniMap.activate();
+
     // Update minimap when body changes
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
       const body = e?.detail?.body;
-      const bodyConfig = JMARS_CONFIG.bodies[body];
-      // Use the first layer's URL as the minimap basemap
-      if (bodyConfig?.layers?.[0]?.url) {
-        miniMap.updateBaseMap(bodyConfig.layers[0].url);
+      const layerConfig = getMiniMapLayerConfig(body);
+      if (layerConfig) {
+        miniMap.updateBaseMap(layerConfig);
       }
     });
 
