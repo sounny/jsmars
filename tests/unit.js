@@ -11,6 +11,7 @@ import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
 import { GridLayer } from '../src/features/grid/GridLayer.js';
 import { PlanetaryScaleBar } from '../src/ui/PlanetaryScaleBar.js';
 import { RadarSounderEngine } from '../src/features/radar/RadarSounderEngine.js';
+import { RadarPanel } from '../src/features/radar/RadarPanel.js';
 import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
@@ -17285,6 +17286,104 @@ describe('LayerManager & Layer Ordering', () => {
         expect(mockMap.zIndices['layer_base']).to.equal(3);
     });
 });
+
+describe('Europa NASA Trek Layers & Regional Mosaics (JMARS_CONFIG)', () => {
+    it('should configure Europa NASA Trek global color and high-resolution regional layers', () => {
+        const europa = JMARS_CONFIG.bodies.europa;
+        expect(europa).to.exist;
+        expect(europa.layers).to.be.an('array');
+
+        const layerIds = europa.layers.map(l => l.id);
+        expect(layerIds).to.include('europa_galileo_voyager');
+        expect(layerIds).to.include('europa_trek_global_color');
+        expect(layerIds).to.include('europa_conamara_chaos');
+        expect(layerIds).to.include('europa_pwyll_crater');
+        expect(layerIds).to.include('europa_tyre_basin');
+
+        const trekGlobal = europa.layers.find(l => l.id === 'europa_trek_global_color');
+        expect(trekGlobal.type).to.equal('xyz');
+        expect(trekGlobal.url).to.include('trek.nasa.gov');
+        expect(trekGlobal.options.maxZoom).to.equal(5);
+
+        const conamara = europa.layers.find(l => l.id === 'europa_conamara_chaos');
+        expect(conamara.options.maxZoom).to.equal(9);
+        expect(conamara.url).to.include('12ESCHAOS_01');
+    });
+
+    it('should configure Europa regional mosaic catalog entries', () => {
+        const mosaics = JMARS_CONFIG.mosaics.europa;
+        expect(mosaics).to.be.an('array');
+        const mosaicIds = mosaics.map(m => m.id);
+        expect(mosaicIds).to.include('europa_galileo_voyager_mosaic');
+        expect(mosaicIds).to.include('europa_trek_color_mosaic');
+        expect(mosaicIds).to.include('europa_conamara_mosaic');
+        expect(mosaicIds).to.include('europa_pwyll_mosaic');
+        expect(mosaicIds).to.include('europa_tyre_mosaic');
+    });
+});
+
+describe('Europa Subsurface Radar Sounder & Provenance (RadarSounderEngine & RadarPanel)', () => {
+    it('should provide calibrated presets for Europa ice shell and ocean interfaces', () => {
+        const presets = RadarSounderEngine.PRESETS;
+        expect(presets.europa_thera).to.exist;
+        expect(presets.europa_conamara).to.exist;
+        expect(presets.europa_trailing).to.exist;
+
+        // Verify body tags
+        expect(presets.europa_thera.body).to.equal('europa');
+        expect(presets.europa_conamara.body).to.equal('europa');
+        expect(presets.europa_trailing.body).to.equal('europa');
+        expect(presets.boreum.body).to.equal('mars');
+
+        // Verify physical dielectric constant for cryogenic ice shell
+        expect(presets.europa_thera.dielectricConstant).to.be.closeTo(3.12, 0.05);
+        expect(presets.europa_thera.iceThickness).to.equal(18000); // 18 km
+        expect(presets.europa_conamara.iceThickness).to.equal(15000); // 15 km
+        expect(presets.europa_trailing.iceThickness).to.equal(22000); // 22 km
+
+        // Verify high-reflectivity dielectric contrasts (brine lens and basal ocean contact)
+        const theraOcean = presets.europa_thera.layers.find(l => l.name.includes('Ocean'));
+        expect(theraOcean).to.exist;
+        expect(theraOcean.reflectionCoeff).to.be.greaterThan(0.7);
+    });
+
+    it('should simulate deep cryogenic ice shell radargrams with long tracks', () => {
+        const radargram = RadarSounderEngine.simulateRadargram('europa_conamara', 150, 40);
+        expect(radargram.preset.body).to.equal('europa');
+        expect(radargram.distances.length).to.equal(40);
+        expect(radargram.depths.length).to.be.greaterThan(50);
+        // Max simulated depth should reach at least 15 km ice thickness
+        const maxDepth = Math.max(...radargram.depths);
+        expect(maxDepth).to.be.greaterThan(15000);
+    });
+
+    it('should switch presets and display instrument provenance when body changes', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const mockMap = { flyTo: () => {} };
+
+        jmarsState.set('body', 'mars');
+        const panel = new RadarPanel(container, mockMap);
+
+        expect(panel.currentPreset).to.equal('boreum');
+        expect(panel.instrumentLabel.textContent).to.include('SHARAD');
+
+        // Switch body to Europa
+        panel.setBody('europa');
+        expect(panel.currentBody).to.equal('europa');
+        expect(panel.currentPreset).to.equal('europa_thera');
+        expect(panel.instrumentLabel.textContent).to.include('REASON');
+
+        // Switch body back to Mars
+        panel.setBody('mars');
+        expect(panel.currentBody).to.equal('mars');
+        expect(panel.currentPreset).to.equal('boreum');
+        expect(panel.instrumentLabel.textContent).to.include('SHARAD');
+
+        container.remove();
+    });
+});
+
 
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();

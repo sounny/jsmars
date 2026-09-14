@@ -150,6 +150,50 @@ export const JMARS_CONFIG = {
             transparent: true,
             attribution: "USGS Astrogeology / NASA / JPL"
           }
+        },
+        {
+          id: "europa_trek_global_color",
+          name: "Europa Global Color Blend 270m (NASA Trek)",
+          type: "xyz",
+          url: "https://trek.nasa.gov/tiles/Europa/EQ/20150218_europa_global_map_20000x10000/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+          options: {
+            attribution: "NASA / JPL / DLR / Europa Trek",
+            maxZoom: 5,
+            tms: false
+          }
+        },
+        {
+          id: "europa_conamara_chaos",
+          name: "Conamara Chaos 9m/px (Galileo SSI)",
+          type: "xyz",
+          url: "https://trek.nasa.gov/tiles/Europa/EQ/12ESCHAOS_01_GalileoSSI_Equi/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+          options: {
+            attribution: "NASA / JPL / Galileo SSI / Europa Trek",
+            maxZoom: 9,
+            tms: false
+          }
+        },
+        {
+          id: "europa_pwyll_crater",
+          name: "Pwyll Crater 55m/px (Galileo SSI)",
+          type: "xyz",
+          url: "https://trek.nasa.gov/tiles/Europa/EQ/GLL_SSI_Mosaic_55mpp_Pwyll/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+          options: {
+            attribution: "NASA / JPL / Galileo SSI / Europa Trek",
+            maxZoom: 9,
+            tms: false
+          }
+        },
+        {
+          id: "europa_tyre_basin",
+          name: "Tyre Multi-Ring Structure 35m/px (Galileo SSI)",
+          type: "xyz",
+          url: "https://trek.nasa.gov/tiles/Europa/EQ/GLL_SSI_Mosaic_35mpp_Tyre/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+          options: {
+            attribution: "NASA / JPL / Galileo SSI / Europa Trek",
+            maxZoom: 9,
+            tms: false
+          }
         }
       ]
     }
@@ -212,6 +256,54 @@ export const JMARS_CONFIG = {
           format: "image/png",
           transparent: true,
           attribution: "USGS Astrogeology / NASA / JPL"
+        },
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
+      },
+      {
+        id: "europa_trek_color_mosaic",
+        name: "Europa Global Color Blend (NASA Trek 270m)",
+        description: "USGS/NASA Voyager and Galileo SSI global color blend mosaic at 270 m/px.",
+        type: "xyz",
+        url: "https://trek.nasa.gov/tiles/Europa/EQ/20150218_europa_global_map_20000x10000/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+        options: {
+          attribution: "NASA / JPL / DLR / Europa Trek",
+          maxZoom: 5
+        },
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
+      },
+      {
+        id: "europa_conamara_mosaic",
+        name: "Conamara Chaos High-Res Mosaic (9m)",
+        description: "Galileo SSI targeted flyby mosaic over Conamara Chaos fractured ice rafts at 9 m/px.",
+        type: "xyz",
+        url: "https://trek.nasa.gov/tiles/Europa/EQ/12ESCHAOS_01_GalileoSSI_Equi/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+        options: {
+          attribution: "NASA / JPL / Galileo SSI / Europa Trek",
+          maxZoom: 9
+        },
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
+      },
+      {
+        id: "europa_pwyll_mosaic",
+        name: "Pwyll Crater High-Res Mosaic (55m)",
+        description: "Galileo SSI mosaic of young impact crater Pwyll showing bright ray deposits at 55 m/px.",
+        type: "xyz",
+        url: "https://trek.nasa.gov/tiles/Europa/EQ/GLL_SSI_Mosaic_55mpp_Pwyll/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+        options: {
+          attribution: "NASA / JPL / Galileo SSI / Europa Trek",
+          maxZoom: 9
+        },
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
+      },
+      {
+        id: "europa_tyre_mosaic",
+        name: "Tyre Multi-Ring Basin High-Res (35m)",
+        description: "Galileo SSI mosaic of Tyre impact structure revealing sub-crustal impact excavation at 35 m/px.",
+        type: "xyz",
+        url: "https://trek.nasa.gov/tiles/Europa/EQ/GLL_SSI_Mosaic_35mpp_Tyre/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+        options: {
+          attribution: "NASA / JPL / Galileo SSI / Europa Trek",
+          maxZoom: 9
         },
         thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
       }

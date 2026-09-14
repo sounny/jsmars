@@ -12,6 +12,7 @@ export class RadarSounderEngine {
   // Preset subsurface exploration regions
   static PRESETS = {
     'boreum': {
+      body: 'mars',
       name: 'Planum Boreum (North Polar Layered Deposits)',
       lat: 84.5,
       lon: 135.0,
@@ -28,6 +29,7 @@ export class RadarSounderEngine {
       ]
     },
     'australe': {
+      body: 'mars',
       name: 'Planum Australe (South Polar CO2/H2O Cap)',
       lat: -85.2,
       lon: 15.0,
@@ -44,6 +46,7 @@ export class RadarSounderEngine {
       ]
     },
     'medusae': {
+      body: 'mars',
       name: 'Medusae Fossae Formation (Porous/Volcanic Dust)',
       lat: 1.5,
       lon: 195.0,
@@ -59,6 +62,7 @@ export class RadarSounderEngine {
       ]
     },
     'utopia': {
+      body: 'mars',
       name: 'Utopia Planitia Subsurface Ice Sheet',
       lat: 42.0,
       lon: 115.0,
@@ -71,6 +75,58 @@ export class RadarSounderEngine {
         { name: 'Top of Pure Ice Sheet', depth: 10, deltaEpsilon: 0.65, reflectionCoeff: 0.18 },
         { name: 'Ice Sheet Subsurface Bulk', depth: 95, deltaEpsilon: 0.2, reflectionCoeff: 0.06 },
         { name: 'Basal Floor Contact', depth: 170, deltaEpsilon: 2.5, reflectionCoeff: 0.32 }
+      ]
+    },
+    'europa_thera': {
+      body: 'europa',
+      name: 'Thera Macula (Perched Brine Sill & Fractured Shell)',
+      lat: -46.7,
+      lon: 181.2,
+      surfaceElevation: 0,
+      iceThickness: 18000,    // 18 km ice shell
+      dielectricConstant: 3.12, // Pure cryogenic ice (T ~ 100-130 K)
+      lossTangent: 0.0004,     // Very low loss at cryogenic ice temperatures
+      layers: [
+        { name: 'Cryogenic Porous Regolith Lid', depth: 0, deltaEpsilon: 1.8, reflectionCoeff: 0.26 },
+        { name: 'Tectonic Fracture Horizon', depth: 850, deltaEpsilon: 0.45, reflectionCoeff: 0.12 },
+        { name: 'Perched Brine Lens Sill', depth: 2200, deltaEpsilon: 72.0, reflectionCoeff: 0.78 },
+        { name: 'Brine Sub-sill Basal Interface', depth: 3100, deltaEpsilon: 68.0, reflectionCoeff: 0.74 },
+        { name: 'Warm Convective Ice Boundary', depth: 11500, deltaEpsilon: 0.85, reflectionCoeff: 0.18 },
+        { name: 'Basal Ice-Ocean Interface', depth: 18000, deltaEpsilon: 76.0, reflectionCoeff: 0.82 }
+      ]
+    },
+    'europa_conamara': {
+      body: 'europa',
+      name: 'Conamara Chaos (Ice Rafts & Diapiric Upwelling)',
+      lat: 15.8,
+      lon: 272.4,
+      surfaceElevation: 0,
+      iceThickness: 15000,    // 15 km ice shell
+      dielectricConstant: 3.15,
+      lossTangent: 0.0005,
+      layers: [
+        { name: 'Chaos Matrix Surface Rubble', depth: 0, deltaEpsilon: 1.9, reflectionCoeff: 0.27 },
+        { name: 'Displaced Ice Raft Keel Base', depth: 1600, deltaEpsilon: 0.55, reflectionCoeff: 0.15 },
+        { name: 'Warm Diapiric Thermal Plume Top', depth: 4500, deltaEpsilon: 1.1, reflectionCoeff: 0.22 },
+        { name: 'Ductile Convective Layer', depth: 9000, deltaEpsilon: 0.7, reflectionCoeff: 0.16 },
+        { name: 'Basal Ice-Ocean Boundary', depth: 15000, deltaEpsilon: 76.0, reflectionCoeff: 0.82 }
+      ]
+    },
+    'europa_trailing': {
+      body: 'europa',
+      name: 'Trailing Hemisphere (Rigid Shell & Global Ocean)',
+      lat: 0.0,
+      lon: 270.0,
+      surfaceElevation: 0,
+      iceThickness: 22000,    // 22 km thick shell
+      dielectricConstant: 3.10,
+      lossTangent: 0.0003,
+      layers: [
+        { name: 'Cryogenic Cold Brittle Lid', depth: 0, deltaEpsilon: 2.1, reflectionCoeff: 0.28 },
+        { name: 'Cross-cutting Lineae Fault Floor', depth: 1200, deltaEpsilon: 0.4, reflectionCoeff: 0.11 },
+        { name: 'Brittle-Ductile Transition (BDT)', depth: 7500, deltaEpsilon: 0.6, reflectionCoeff: 0.14 },
+        { name: 'Warm Saline Ice Boundary', depth: 16000, deltaEpsilon: 1.4, reflectionCoeff: 0.25 },
+        { name: 'Global Subsurface Ocean Contact', depth: 22000, deltaEpsilon: 77.0, reflectionCoeff: 0.83 }
       ]
     }
   };
