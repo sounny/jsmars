@@ -1,8 +1,8 @@
 /**
  * @module RadarSounderEngine
- * @description Mars subsurface radar sounding simulation engine (SHARAD / MARSIS).
- * Computes radar wave propagation, two-way travel time (TWT), dielectric interfaces,
- * attenuation in ice/regolith mixtures, and synthetic radargram profiles.
+ * @description Client-side subsurface radar sounding simulation (SHARAD / MARSIS analog on
+ * Mars; REASON / RIME analog on Europa). Presets are illustrative dielectric stacks, not
+ * observed PDS radargrams. Computes TWT, interfaces, attenuation, and synthetic profiles.
  */
 
 export class RadarSounderEngine {

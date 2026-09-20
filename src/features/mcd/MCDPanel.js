@@ -2,10 +2,17 @@ import { MCDEngine } from './MCDEngine.js';
 import { MCDChart } from './MCDChart.js';
 import { EventBus } from '../../core/EventBus.js';
 import { EVENTS } from '../../constants.js';
+import {
+  PROVENANCE_KIND,
+  SCIENCE_ARCHIVES,
+  applyProvenanceKind,
+  provenanceBannerHTML
+} from '../../ui/ScienceProvenance.js';
 
 /**
  * @module MCDPanel
- * @description UI control panel for Mars Climate Database (MCD) atmospheric profiling.
+ * @description UI for Mars Climate Database profiling: explicit 1D analytical model
+ * vs live LMD MCD v6.1 GCM, with labeled offline fallback (never silent).
  */
 export class MCDPanel {
   /**
@@ -27,11 +34,22 @@ export class MCDPanel {
   init() {
     this.container.innerHTML = `
       <div style="padding: 10px; font-size: 12px; color: #f8fafc;">
-        <div style="margin-bottom: 8px;">
-          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Model Engine & Data Source</label>
+        ${provenanceBannerHTML({
+          kind: PROVENANCE_KIND.MODEL,
+          titleId: 'mcd-provenance-title',
+          title: 'Mars Climate Database profiler',
+          bodyId: 'mcd-disclaimer',
+          body: 'Choose a 1D analytical physics model (offline) or live LMD MCD v6.1 GCM. Live fetch is a climate model, not a single spacecraft profile. Failures fall back to the analytical model and are labeled Offline Fallback.',
+          sourceId: 'mcd-mode-source',
+          source: 'Selected source: 1D analytical physics model',
+          links: [SCIENCE_ARCHIVES.LMD_MCD]
+        })}
+
+        <div style="margin: 8px 0;">
+          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;" for="mcd-input-source">Model engine & data source</label>
           <select id="mcd-input-source" class="tool-select" style="width: 100%; box-sizing: border-box; font-size: 11px; background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
-            <option value="analytical" selected>🧪 1D Analytical Physics Model (Instant / Offline)</option>
-            <option value="lmd_live">📡 LMD MCD v6.1 (Live GCM / Remote Server)</option>
+            <option value="analytical" selected>1D Analytical Physics Model (instant / offline)</option>
+            <option value="lmd_live">LMD MCD v6.1 Live GCM (remote climate model)</option>
           </select>
         </div>
 
@@ -110,6 +128,8 @@ export class MCDPanel {
     this.portalLink = this.container.querySelector('#mcd-portal-link');
     this.summaryCard = this.container.querySelector('#mcd-summary-card');
     this.sourceBadge = this.container.querySelector('#mcd-source-badge');
+    this.modeSourceEl = this.container.querySelector('#mcd-mode-source');
+    this.provenanceRoot = this.container.querySelector('.science-provenance');
 
     this.chart = new MCDChart(this.container.querySelector('#mcd-chart-container'));
 
@@ -124,6 +144,10 @@ export class MCDPanel {
 
   bindEvents() {
     this.runBtn.addEventListener('click', () => this.runProfile());
+
+    this.sourceInput.addEventListener('change', () => {
+      this.syncSelectedSourceLabel();
+    });
 
     this.pickBtn.addEventListener('click', () => {
       this.isPicking = !this.isPicking;
@@ -201,7 +225,7 @@ export class MCDPanel {
     this.lastProfile = profile;
 
     this.summaryCard.style.display = 'block';
-    this.sourceBadge.innerText = profile.source || 'LMD MCD v6.1 (CNRS/ESA)';
+    this.applyResultProvenance(profile.source || 'LMD MCD v6.1 (CNRS/ESA)');
     this.container.querySelector('#mcd-res-p').innerText = `${profile.surface.pressurePa} Pa`;
     this.container.querySelector('#mcd-res-t').innerText = `${profile.surface.temperatureK} K`;
     this.container.querySelector('#mcd-res-h').innerText = `${profile.surface.scaleHeightKm} km`;
@@ -214,6 +238,47 @@ export class MCDPanel {
     this.chart.setProfile(profile);
 
     EventBus.emit(EVENTS.MCD_RESULT, profile);
+  }
+
+  /**
+   * Keep the banner badge/source string aligned with the selected or returned engine.
+   * @param {string} [profileSource]
+   */
+  applyResultProvenance(profileSource) {
+    const sourceText = profileSource || '';
+    const isFallback = /fallback/i.test(sourceText);
+    const isLive = /lmd|live gcm/i.test(sourceText);
+    let kind = PROVENANCE_KIND.MODEL;
+    let badgeLabel = 'Model';
+    if (isFallback) {
+      kind = PROVENANCE_KIND.FALLBACK;
+      badgeLabel = 'Offline Fallback';
+    } else if (isLive) {
+      kind = PROVENANCE_KIND.LIVE;
+      badgeLabel = 'Live GCM';
+    }
+    applyProvenanceKind(this.provenanceRoot, kind, badgeLabel);
+    if (this.modeSourceEl && sourceText) {
+      this.modeSourceEl.textContent = `Source: ${sourceText}`;
+    }
+    if (this.sourceBadge && sourceText) {
+      this.sourceBadge.textContent = sourceText;
+    }
+  }
+
+  syncSelectedSourceLabel() {
+    const selected = this.sourceInput?.value || 'analytical';
+    if (selected === 'lmd_live') {
+      applyProvenanceKind(this.provenanceRoot, PROVENANCE_KIND.LIVE, 'Live GCM');
+      if (this.modeSourceEl) {
+        this.modeSourceEl.textContent = 'Selected source: LMD MCD v6.1 live GCM (climate model, not a spacecraft profile)';
+      }
+    } else {
+      applyProvenanceKind(this.provenanceRoot, PROVENANCE_KIND.MODEL, 'Model');
+      if (this.modeSourceEl) {
+        this.modeSourceEl.textContent = 'Selected source: 1D analytical physics model';
+      }
+    }
   }
 
   exportCSV() {

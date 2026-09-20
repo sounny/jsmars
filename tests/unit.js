@@ -8,10 +8,20 @@ import { CSFDEngine } from '../src/features/crater-counting/CSFDEngine.js';
 import { CraterTable } from '../src/features/crater-counting/CraterTable.js';
 import { StampLayer } from '../src/features/stamp/StampLayer.js';
 import { BandMathEngine } from '../src/features/bands/BandMathEngine.js';
+import { BandMathPanel } from '../src/features/bands/BandMathPanel.js';
 import { GridLayer } from '../src/features/grid/GridLayer.js';
 import { PlanetaryScaleBar } from '../src/ui/PlanetaryScaleBar.js';
 import { RadarSounderEngine } from '../src/features/radar/RadarSounderEngine.js';
 import { RadarPanel } from '../src/features/radar/RadarPanel.js';
+import { KRCPanel } from '../src/features/krc/KRCPanel.js';
+import { MCDPanel } from '../src/features/mcd/MCDPanel.js';
+import {
+    PROVENANCE_KIND,
+    SCIENCE_ARCHIVES,
+    escapeProvenanceText,
+    provenanceBannerHTML,
+    applyProvenanceKind
+} from '../src/ui/ScienceProvenance.js';
 import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
@@ -17367,12 +17377,21 @@ describe('Europa Subsurface Radar Sounder & Provenance (RadarSounderEngine & Rad
 
         expect(panel.currentPreset).to.equal('boreum');
         expect(panel.instrumentLabel.textContent).to.include('SHARAD');
+        expect(panel.container.textContent).to.include('NOT observed');
+        expect(panel.container.textContent).to.include('illustrative');
+        expect(panel.container.querySelector('.science-provenance__badge').textContent).to.equal('Model');
+        const hrefs = Array.from(panel.container.querySelectorAll('.science-provenance__link')).map(a => a.href);
+        expect(hrefs.some(h => h.includes('sharad'))).to.be.true;
+        expect(hrefs.some(h => h.includes('marsis'))).to.be.true;
+        expect(panel.runBtn.textContent).to.include('Synthesize Radargram');
+        expect(panel.container.querySelector('#radar-chart-title').textContent.toLowerCase()).to.include('synthetic');
 
         // Switch body to Europa
         panel.setBody('europa');
         expect(panel.currentBody).to.equal('europa');
         expect(panel.currentPreset).to.equal('europa_thera');
         expect(panel.instrumentLabel.textContent).to.include('REASON');
+        expect(panel.disclaimerEl.textContent).to.include('NOT observed');
 
         // Switch body back to Mars
         panel.setBody('mars');
@@ -17380,6 +17399,86 @@ describe('Europa Subsurface Radar Sounder & Provenance (RadarSounderEngine & Rad
         expect(panel.currentPreset).to.equal('boreum');
         expect(panel.instrumentLabel.textContent).to.include('SHARAD');
 
+        container.remove();
+    });
+});
+
+function mockLeafletMap() {
+    return {
+        flyTo: () => {},
+        on: () => {},
+        getContainer: () => document.createElement('div'),
+        hasLayer: () => false,
+        addLayer: () => {},
+        removeLayer: () => {}
+    };
+}
+
+describe('Science Provenance Honesty (AGENTS.md §9.D)', () => {
+    it('should escape markup in provenance banners and expose Model vs Live badges as text', () => {
+        const html = provenanceBannerHTML({
+            kind: PROVENANCE_KIND.MODEL,
+            title: '<script>alert(1)</script>',
+            body: 'NOT observed radargrams',
+            links: [SCIENCE_ARCHIVES.SHARAD]
+        });
+        expect(html).to.include('&lt;script&gt;');
+        expect(escapeProvenanceText('<b>x</b>')).to.equal('&lt;b&gt;x&lt;/b&gt;');
+        expect(html).to.not.include('<script>alert');
+        expect(html).to.include('Model');
+        expect(html).to.include('NOT observed radargrams');
+        expect(html).to.include(SCIENCE_ARCHIVES.SHARAD.href);
+
+        const host = document.createElement('div');
+        host.innerHTML = provenanceBannerHTML({
+            kind: PROVENANCE_KIND.MODEL,
+            title: 'MCD',
+            body: 'analytical'
+        });
+        applyProvenanceKind(host, PROVENANCE_KIND.FALLBACK);
+        expect(host.querySelector('.science-provenance').getAttribute('data-provenance')).to.equal('fallback');
+        expect(host.querySelector('.science-provenance__badge').textContent).to.equal('Offline Fallback');
+    });
+
+    it('should label band math as an educational Model overlay, not a measured cube', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const panel = new BandMathPanel(container, mockLeafletMap());
+        const text = container.textContent;
+        expect(text).to.include('Educational mineral-index visualizer');
+        expect(text).to.include('Not real per-pixel');
+        expect(text.toLowerCase()).to.include('not measured');
+        expect(container.querySelector('.science-provenance__badge').textContent).to.equal('Model');
+        const hrefs = Array.from(container.querySelectorAll('.science-provenance__link')).map(a => a.href);
+        expect(hrefs.some(h => h.includes('crism'))).to.be.true;
+        expect(panel.applyBtn.textContent).to.include('Educational Overlay');
+        container.remove();
+    });
+
+    it('should keep KRC labeled as a thermal simulation Model', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const panel = new KRCPanel(container, mockLeafletMap());
+        expect(container.textContent).to.include('simulated temperatures');
+        expect(container.textContent).to.include('not TES');
+        expect(container.querySelector('.science-provenance__badge').textContent).to.equal('Model');
+        expect(panel.runBtn.textContent).to.include('Run Simulation');
+        container.remove();
+    });
+
+    it('should keep MCD analytical vs live GCM choice and labeled fallback language', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const panel = new MCDPanel(container, mockLeafletMap());
+        expect(panel.sourceInput.querySelector('option[value="analytical"]')).to.exist;
+        expect(panel.sourceInput.querySelector('option[value="lmd_live"]')).to.exist;
+        expect(container.textContent).to.include('Offline Fallback');
+        expect(container.textContent).to.include('not a single spacecraft profile');
+        expect(container.querySelector('.science-provenance__badge').textContent).to.equal('Model');
+        panel.applyResultProvenance('LMD/CNRS/ESA Mars Climate Database v6.1 (Live GCM)');
+        expect(container.querySelector('.science-provenance__badge').textContent).to.equal('Live GCM');
+        panel.applyResultProvenance('1D Analytical Physics Model (Offline Fallback)');
+        expect(container.querySelector('.science-provenance__badge').textContent).to.equal('Offline Fallback');
         container.remove();
     });
 });

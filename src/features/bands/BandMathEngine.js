@@ -1,7 +1,7 @@
 /**
  * @module BandMathEngine
- * @description Multi-spectral band arithmetic, mineral indices, and colormap generator.
- * Supports CRISM, THEMIS, and OMEGA standard Mars mineral parameter indices and custom formulas.
+ * @description Educational mineral-index formulas and colormaps (CRISM-style band depths).
+ * Operates on caller-supplied band values or illustrative overlays — not live multi-band cubes.
  */
 export class BandMathEngine {
   /** Standard Martian spectral mineral parameter presets */

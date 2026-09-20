@@ -1,6 +1,7 @@
 /**
  * @module RadarChart
- * @description Renders interactive Mars subsurface radargrams and A-scope echo power curves.
+ * @description Renders synthetic (model) B-scan radargrams and A-scope echo power curves.
+ * These plots are simulations, not observed SHARAD/MARSIS/REASON products.
  */
 
 export class RadarChart {
@@ -23,7 +24,7 @@ export class RadarChart {
     this.container.innerHTML = `
       <div class="radar-chart-wrap" style="display:flex; flex-direction:column; gap:6px; background:#0b1329; border:1px solid #1e293b; border-radius:4px; padding:6px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:11px; font-weight:bold; color:#38bdf8;">SHARAD / MARSIS Radargram</span>
+          <span id="radar-chart-title" style="font-size:11px; font-weight:bold; color:#38bdf8;">Synthetic radargram (model)</span>
           <div style="display:flex; gap:4px;">
             <button id="radar-mode-2d" class="crater-action-btn" style="background:#0284c7; padding:2px 6px; font-size:10px;">2D Radargram</button>
             <button id="radar-mode-1d" class="crater-action-btn" style="background:#334155; padding:2px 6px; font-size:10px;">1D Echo Trace</button>
@@ -61,6 +62,12 @@ export class RadarChart {
 
   setData(data) {
     this.data = data;
+    const titleEl = this.container && this.container.querySelector('#radar-chart-title');
+    if (titleEl) {
+      titleEl.textContent = (data && data.modelLabel)
+        ? data.modelLabel
+        : 'Synthetic radargram (model)';
+    }
     if (data?.depths?.length > 0) {
       const maxZ = Math.round(data.depths[data.depths.length - 1]);
       if (this.maxDepthEl) {

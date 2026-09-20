@@ -1,5 +1,16 @@
 # JSMARS Release Notes
 
+## v0.9.1 - Science Honesty & Docs Alignment
+**Date:** 2026-09-20
+
+### Trust / provenance
+- **Radar sounder:** Visible **Model** badge, source string, and explicit disclaimer that results are a physically-based simulation with illustrative presets, not observed SHARAD/MARSIS/REASON radargrams. PDS Geosciences SHARAD and MARSIS archive links are in the panel. Chart title and CSV export use "synthetic" language.
+- **Mineral index visualizer:** Relabeled from hyperspectral/CRISM band math to an educational / approximate overlay. **Model** badge states that overlays are not per-pixel CRISM/THEMIS cubes, with PDS CRISM/THEMIS archive links.
+- **KRC / MCD:** Strengthened simulation vs live language. KRC remains an unambiguous client-side thermal **Model**. MCD keeps analytical vs live LMD GCM choice and now shows Model / Live GCM / Offline Fallback badges (no silent fallback).
+
+### Docs
+- README body list now includes Europa (Mars / Moon / Earth / Europa). Phase 9 matches the documentation-portal roadmap; Titan/Venus are noted as future work, not as an unchecked Europa expansion.
+
 ## v0.9.0 - Europa Planetary Body Integration
 **Date:** 2026-09-13
 

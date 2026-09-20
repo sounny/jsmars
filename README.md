@@ -27,7 +27,7 @@ For decades, planetary GIS required downloading 2GB desktop installers, configur
 - 📱 **Planetary GIS in Your Pocket:** Fully responsive, touch-first mobile UX with a collapsible bottom sheet for smartphones and tablets.
 - 📲 **1-Click PWA Install:** Install JSMARS as a standalone native app on macOS, Windows, Linux, iOS, and Android with automatic background updates.
 - 🛠️ **Zero-Build Architecture:** No Webpack, no Vite, 0 npm dependencies in production. Native browser ES Modules (`import`/`export`).
-- 🪐 **True Multi-Body Support:** Seamlessly switch between Mars, the Moon, and Earth with live WMS/XYZ feeds from USGS Astrogeology and NASA GIBS.
+- 🪐 **True Multi-Body Support:** Seamlessly switch between Mars, the Moon, Earth, and Europa with live WMS/XYZ feeds from USGS Astrogeology, NASA Trek, and NASA GIBS. Titan and Venus are not yet available.
 
 ---
 
@@ -37,7 +37,8 @@ For decades, planetary GIS required downloading 2GB desktop installers, configur
 * **Mars:** OpenPlanetary Viking basemap, USGS Viking MDIM 2.1 WMS, THEMIS Daytime IR, and global MOLA shaded relief.
 * **The Moon:** High-resolution LROC basemaps, LOLA digital elevation models, and **interactive Apollo (11–17), Luna, and Surveyor landing sites** with full mission metadata.
 * **Earth:** NASA GIBS Blue Marble Next Generation and Blue Marble Shaded Relief.
-* **IAU Nomenclature:** Searchable database of official planetary landmarks (craters, *mons*, *valles*, *planitia*, *maria*).
+* **Europa:** USGS Galileo/Voyager global mosaic plus NASA Trek color and regional mosaics, icy-world IAU nomenclature, and radius-calibrated scale.
+* **IAU Nomenclature:** Searchable database of official planetary landmarks (craters, *mons*, *valles*, *planitia*, *maria*, *lineae*).
 
 ### 🏔️ 2. 3D Terrain & MOLA Topography
 * **WebGL 3D Terrain:** Interactive 3D mesh displacement powered by MOLA DEM data.
@@ -45,10 +46,11 @@ For decades, planetary GIS required downloading 2GB desktop installers, configur
 * **Elevation Transects:** Linear and radial cross-section elevation profiles across crater rims, volcanoes, and canyon floors.
 
 ### 🔬 3. Scientific Research & Modeling Suite
-* **KRC 1D Subsurface Thermal Model:** Simulate diurnal and seasonal surface/subsurface temperature curves, regolith thermal inertia, and $\text{CO}_2$ frost condensation.
-* **MCD Atmospheric Profiler:** Extract vertical profiles of temperature, pressure, atmospheric density, dust optical depth, and zonal/meridional winds up to 50 km.
+* **KRC 1D Subsurface Thermal Model:** Client-side simulation of diurnal and seasonal surface/subsurface temperature curves, regolith thermal inertia, and $\text{CO}_2$ frost condensation (not TES/THEMIS measurements).
+* **MCD Atmospheric Profiler:** Explicit choice of a 1D analytical physics model (offline) or live LMD MCD v6.1 GCM, with labeled fallback if the live fetch fails.
 * **Crater Counting & CSFD Isochron Dating:** Interactive crater digitization with real-time log-log CSFD plots and Hartmann & Neukum production functions to estimate surface model ages.
-* **Hyperspectral Band Math:** CRISM and THEMIS spectral mineral indices (BD530, BD1500, BD1900, D2300, Olivine index) with real-time colormap stretching.
+* **Educational mineral-index visualizer:** Approximate CRISM-style band-depth formulas (BD530, BD1500, BD1900, D2300, olivine index) as illustrative overlays — not per-pixel CRISM/THEMIS cubes. Labeled **Model** in the UI.
+* **Subsurface radar sounder (simulation):** Physically-based synthetic radargrams with illustrative SHARAD/MARSIS-analog presets — not observed PDS radargrams. Archive links are in the panel.
 * **Mars Time & Solar Longitude ($L_s$):** Real-time calculation of Solar Longitude ($L_s$), Mars Sol Date (MSD), Mars Year (MY), and interactive orbital time scrubbing.
 
 ### 🛰️ 4. Mission Footprints & Spacecraft Tracking
@@ -123,9 +125,9 @@ Open `http://localhost:8000` in your browser.
 - [x] **Phase 4**: Crater Counting, Elevation Profiles, Measurements & IAU Nomenclature
 - [x] **Phase 5**: Location Search, Bookmarks, Area Sampling & Session Persistence
 - [x] **Phase 6**: USGS ODE Stamp Footprints, Shape Digitizer, Landing Sites & Map Export
-- [x] **Phase 7**: KRC 1D Thermal Model, Mars Time & $L_s$ Slider, 3D WebGL Terrain, MCD Atmospheric Profiler, CSFD Isochrons & Band Math
+- [x] **Phase 7**: KRC 1D Thermal Model, Mars Time & $L_s$ Slider, 3D WebGL Terrain, MCD Atmospheric Profiler, CSFD Isochrons & educational mineral-index visualizer
 - [x] **Phase 8**: Touch-First Mobile UX & Progressive Web App (PWA) 1-Click Install
-- [ ] **Phase 9 (Upcoming)**: Outer Solar System Expansion (Europa, Titan, Venus WMS feeds)
+- [ ] **Phase 9 (Active)**: Documentation portal (`docs/index.html`) — tool docs shipped; interactive sandboxes and JSDoc API refs remain. *Europa already ships as a fourth body; Titan and Venus are future work, not Phase 9.*
 
 See [docs/jsmars-roadmap.md](docs/jsmars-roadmap.md) for detailed development plans.
 

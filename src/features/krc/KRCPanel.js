@@ -2,10 +2,15 @@ import { KRCEngine } from './KRCEngine.js';
 import { KRCChart } from './KRCChart.js';
 import { EventBus } from '../../core/EventBus.js';
 import { EVENTS } from '../../constants.js';
+import {
+  PROVENANCE_KIND,
+  provenanceBannerHTML
+} from '../../ui/ScienceProvenance.js';
 
 /**
  * @module KRCPanel
- * @description UI control panel for KRC 1D Mars Thermal Model simulation.
+ * @description UI control panel for a client-side Kieffer-style KRC 1D thermal simulation.
+ * Output is a physics model, not TES/THEMIS or in-situ measured temperatures.
  */
 export class KRCPanel {
   /**
@@ -28,7 +33,17 @@ export class KRCPanel {
   init() {
     this.container.innerHTML = `
       <div style="padding: 10px; font-size: 12px; color: #e2e8f0;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+        ${provenanceBannerHTML({
+          kind: PROVENANCE_KIND.MODEL,
+          titleId: 'krc-provenance-title',
+          title: 'KRC 1D thermal simulation',
+          bodyId: 'krc-disclaimer',
+          body: 'Client-side Kieffer-style heat-conduction model. Results are simulated temperatures, not TES, THEMIS, or lander measurements.',
+          sourceId: 'krc-source-string',
+          source: 'Source: 1D analytical / numerical thermal model (simulation)'
+        })}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0;">
           <div>
             <label style="font-size: 10px; color: #94a3b8; display: block;">Latitude (°)</label>
             <input type="number" id="krc-input-lat" class="tool-select" style="width: 100%; box-sizing: border-box;" value="0" min="-90" max="90" step="1">
@@ -57,10 +72,11 @@ export class KRCPanel {
 
         <div style="display: flex; gap: 6px; margin-bottom: 10px;">
           <button id="krc-pick-btn" class="tool-btn" style="flex: 1; font-size: 11px; background: #334155;">📍 Pick Location</button>
-          <button id="krc-run-btn" class="tool-btn" style="flex: 1; font-size: 11px; background: #ea580c; font-weight: 600;">Calculate</button>
+          <button id="krc-run-btn" class="tool-btn" style="flex: 1; font-size: 11px; background: #ea580c; font-weight: 600;">Run Simulation</button>
         </div>
 
         <div id="krc-summary-card" style="display: none; background: #0f172a; border: 1px solid #1e293b; border-radius: 4px; padding: 6px 8px; margin-bottom: 10px; font-size: 10px;">
+          <div id="krc-result-source" class="science-provenance__source" style="margin-bottom: 4px;">Source: 1D KRC thermal model (simulation)</div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
             <div>T<sub>max</sub>: <b id="krc-res-max" style="color: #f87171;">--</b></div>
             <div>T<sub>min</sub>: <b id="krc-res-min" style="color: #60a5fa;">--</b></div>
