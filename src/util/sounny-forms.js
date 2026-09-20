@@ -5,7 +5,7 @@
  * offline submission queueing, and glassmorphic UI state management.
  *
  * Usage:
- *   <script src="sounny-forms.js" data-endpoint="https://sounny-forms.web.app/api/submit"></script>
+ *   <script src="sounny-forms.js" data-endpoint="https://forms.sounny.com/f/jsmars_institutional?email=jsmars@sounny.com"></script>
  *
  *   <form data-sounnyform="services_inquiry">
  *     <input type="text" name="name" required>
@@ -21,7 +21,7 @@
   const STORAGE_QUEUE_KEY = "sounnyforms_offline_queue";
 
   const SounnyForms = {
-    defaultEndpoint: "https://sounny-forms.web.app/api/submit",
+    defaultEndpoint: "https://forms.sounny.com/f/jsmars_institutional?email=jsmars@sounny.com",
 
     /**
      * Initializes all forms on the page marked with [data-sounnyform]
