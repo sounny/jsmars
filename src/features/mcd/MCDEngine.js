@@ -1532,7 +1532,7 @@ export class MCDEngine {
     const surfaceLayer = layers[0] || { temperatureK: 215, pressurePa: 610, densityKgM3: 0.015 };
 
     return {
-      source: 'LMD/CNRS/ESA Mars Climate Database v6.1 (Live GCM / Spacecraft-Calibrated)',
+      source: 'LMD/CNRS/ESA Mars Climate Database v6.1 (Live GCM)',
       isRealData: true,
       lmdWebUrl: meta.lmdCgiUrl || 'https://www-mars.lmd.jussieu.fr/mcd_python/',
       location: {

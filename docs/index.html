@@ -292,6 +292,7 @@
         .badge-cyan { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
         .badge-orange { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
         .badge-green { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+        .badge-model { background: rgba(14, 116, 144, 0.25); color: #67e8f9; }
 
         /* Tables */
         table {
@@ -426,7 +427,7 @@
             <a class="nav-item" href="#time-slider">Mars Time Slider & Ephemeris</a>
             <a class="nav-item" href="#mcd-profiler">MCD Atmospheric Profiler</a>
             <a class="nav-item" href="#crater-counting">Crater Counting & CSFD Dating</a>
-            <a class="nav-item" href="#band-math">Spectral Band Math & CRISM</a>
+            <a class="nav-item" href="#band-math">Mineral Index Visualizer</a>
             <a class="nav-item" href="#threed-globe">3D Terrain & Globe Viewer</a>
             <a class="nav-item" href="#radar-sounder">Subsurface Radar Sounder</a>
             <a class="nav-item" href="#trajectories">Astrodynamics & Trajectories</a>
@@ -472,7 +473,7 @@
             <!-- Introduction Section -->
             <section id="intro">
                 <h2>📖 Introduction & Architecture</h2>
-                <p>JSMARS is an open-source, client-side web application providing high-performance geospatial data visualization, orbital tracking, planetary climatology, and geophysical modeling for Mars, the Moon, and Earth.</p>
+                <p>JSMARS is an open-source, client-side web application providing high-performance geospatial data visualization, orbital tracking, planetary climatology, and geophysical modeling for Mars, the Moon, Earth, and Europa.</p>
                 
                 <div class="card-grid">
                     <div class="card">
@@ -531,7 +532,8 @@
             <section id="krc-thermal">
                 <h2>🌡️ 1D KRC Mars Thermal Simulation Model</h2>
                 <span class="badge badge-orange">Physics Engine</span>
-                <p>The KRC engine solves the 1D transient heat diffusion equation in the Martian regolith coupled with surface radiative energy balance and atmospheric downward thermal infrared flux (Hugh Kieffer KRC formulation).</p>
+                <span class="badge badge-model">Model</span>
+                <p>The KRC engine is a <strong>client-side simulation</strong> (Hugh Kieffer KRC analog). It solves the 1D transient heat diffusion equation in Martian regolith coupled with surface radiative energy balance. Output is modeled temperature, not TES, THEMIS, or lander measurements.</p>
                 
                 <div class="formula-box">
                     rho * c_p * (dT/dt) = d/dz [ k(z, P) * (dT/dz) ]<br>
@@ -562,8 +564,9 @@
             <!-- MCD Atmospheric Profiler -->
             <section id="mcd-profiler">
                 <h2>💨 Mars Climate Database (MCD) Profiler</h2>
-                <span class="badge badge-green">Atmospheric Sounder</span>
-                <p>Generates vertical atmospheric soundings from surface datum to 120 km altitude, modeling hydrostatic scale height, dry adiabatic lapse rates ($4.5\text{ K/km}$), Conrath dust vertical distribution ($\nu = 0.007$), boundary layer friction velocity ($u_*$), and potential temperature ($\theta$).</p>
+                <span class="badge badge-green">Atmosphere</span>
+                <span class="badge badge-model">Model or Live GCM</span>
+                <p>Offers an explicit choice of a <strong>1D analytical physics model</strong> (offline) or <strong>live LMD MCD v6.1 GCM</strong> (climate model, not a spacecraft profile). If the live fetch fails, the analytical model is used and labeled <strong>Offline Fallback</strong>.</p>
             </section>
 
             <!-- Crater Counting CSFD -->
@@ -579,9 +582,10 @@
 
             <!-- Spectral Band Math -->
             <section id="band-math">
-                <h2>💎 Hyperspectral Band Math & Mineralogy</h2>
+                <h2>💎 Educational Mineral-Index Visualizer</h2>
                 <span class="badge badge-cyan">Spectroscopy</span>
-                <p>Calculates CRISM summary parameters including ferric iron (BD530), hydration (BD1900), water ice (BD1500), smectite clays (D2300), sulfates (BD2100), and carbonates (BD2500/BD3900), plus Olivine Forsterite $\text{Fo\#}$ estimation from $1\ \mu\text{m}$ absorption center minimums.</p>
+                <span class="badge badge-model">Model / Educational</span>
+                <p>Approximate, client-side CRISM-style band-depth formulas (BD530 ferric iron, BD1900 hydration, BD1500 water ice, D2300 smectite, olivine index) rendered as illustrative overlays. <strong>Does not ingest per-pixel CRISM, OMEGA, or THEMIS cubes.</strong> Treat as a teaching visualizer until real multi-band rasters are wired in. Measured products: PDS CRISM and THEMIS archives.</p>
             </section>
 
             <!-- 3D Terrain Viewer -->
@@ -593,9 +597,10 @@
 
             <!-- Subsurface Radar Sounder -->
             <section id="radar-sounder">
-                <h2>📡 Subsurface Radar Sounder (SHARAD / MARSIS)</h2>
+                <h2>📡 Subsurface Radar Sounder (simulation)</h2>
                 <span class="badge badge-orange">Geophysics</span>
-                <p>Simulates synthetic 2D B-scope radargrams and 1D A-scope power traces for subsurface orbital radar sounding across polar ice caps and sedimentary deposits with dielectric mixing laws (Looyenga, Birchak, Lichtenecker) and two-way travel time dielectric depth conversion ($z = \frac{c \Delta t}{2 \sqrt{\epsilon_r}}$).</p>
+                <span class="badge badge-model">Model</span>
+                <p>Physically-based <strong>synthetic</strong> 2D B-scope radargrams and 1D A-scope traces using illustrative dielectric presets (Planum Boreum, Planum Australe, Medusae Fossae, Utopia Planitia, Europa ice-shell analogs). <strong>Not observed SHARAD, MARSIS, REASON, or RIME radargrams.</strong> Two-way travel time conversion $z = \frac{c \Delta t}{2 \sqrt{\epsilon_r}}$ is a model. For measured data see the PDS Geosciences Node <a href="https://pds-geosciences.wustl.edu/missions/mro/sharad.htm">SHARAD</a> and <a href="https://pds-geosciences.wustl.edu/missions/mars_express/marsis.htm">MARSIS</a> archives.</p>
             </section>
 
             <!-- Astrodynamics & Trajectories -->

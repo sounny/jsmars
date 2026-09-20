@@ -99,14 +99,16 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **Spectral Band Math & Mineralogy**:
     - [x] Mineral parameter presets (BD530 Ferric iron, BD1900 Hydrated minerals, BD1500 Water ice, D2300 Smectite, Olivine).
     - [x] Colormaps (Viridis, Magma, Coolwarm, Jet, Rainbow).
+    - [x] UI labeled as an **educational / approximate mineral-index visualizer** (illustrative overlays, not per-pixel CRISM cubes).
 - [x] **Map Projections & Polar Views**:
     - [x] Global Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) viewpoints.
 
 ## Phase 7: Subsurface Geophysics & Advanced Cartography (Completed)
-- [x] **Subsurface Radar Sounder (SHARAD / MARSIS)**:
+- [x] **Subsurface Radar Sounder (SHARAD / MARSIS analog)**:
     - [x] 1D A-scope power trace and 2D B-scope radargram simulations.
     - [x] Polar ice stratigraphy and dielectric interface detection.
     - [x] Radargram CSV export and track camera fly-to.
+    - [x] UI Model badge, illustrative-preset disclaimer, and PDS SHARAD/MARSIS archive links (not observed radargrams).
 - [x] **Planetary Graticule Grid Layer**:
     - [x] Adaptive zoom spacing ($30^\circ \to 0.05^\circ$), major/minor subdivisions, edge labels.
     - [x] Multi-format coordinate labeling ($0^\circ-360^\circ\text{ E}$, $\pm 180^\circ$, $0^\circ-360^\circ\text{ W}$).
@@ -147,6 +149,8 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] Mathematical equations, scientific background, and physical formulas for planetary science engines.
     - [x] Step-by-step user tutorials, workflows, and parameter references.
     - [x] Keyboard shortcuts cheat sheet and GIS export format specifications.
+- [x] **Shipped planetary bodies (as of v0.9)**: Mars, Moon, Earth, and Europa.
+- [ ] Titan and Venus WMS bodies remain future work (not part of Phase 9).
 - [ ] **Interactive Code & Live Tool Sandboxes**:
     - [ ] Embedded interactive calculation widgets for KRC, MCD, CSFD, and Astrodynamics in the docs portal.
 - [ ] **Automated Doc Generator & API References**:

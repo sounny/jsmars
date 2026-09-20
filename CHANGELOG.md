@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.9.1] - 2026-09-20
+
+### Changed
+- Radar, mineral-index, KRC, and MCD panels now show explicit **Model** / **Live GCM** / **Offline Fallback** provenance (text badges, not color-only) so synthetic output cannot be mistaken for measured SHARAD/MARSIS/CRISM products.
+- README and docs Phase 9 aligned with the documentation portal; shipped bodies are Mars, Moon, Earth, and Europa (Titan/Venus remain future work).
+
 ## [0.8.0] - 2026-08-24
 
 ### Added

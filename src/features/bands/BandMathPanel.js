@@ -2,10 +2,17 @@ import { BandMathEngine } from "./BandMathEngine.js";
 import { BandMathLayer } from "./BandMathLayer.js";
 import { EventBus } from "../../core/EventBus.js";
 import { EVENTS } from "../../constants.js";
+import {
+  PROVENANCE_KIND,
+  SCIENCE_ARCHIVES,
+  provenanceBannerHTML
+} from "../../ui/ScienceProvenance.js";
 
 /**
  * @module BandMathPanel
- * @description UI control panel for Spectral Band Math, Mineral Indices, and False-Color Ratios.
+ * @description Educational / approximate mineral-index visualizer. Renders
+ * CRISM-style band-depth formulas as illustrative overlays — not per-pixel
+ * multi-band cubes (CRISM, OMEGA, THEMIS).
  */
 export class BandMathPanel {
   /**
@@ -27,8 +34,19 @@ export class BandMathPanel {
   init() {
     this.container.innerHTML = `
       <div style="padding: 10px; font-size: 12px; color: #f8fafc;">
-        <div style="margin-bottom: 8px;">
-          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Mineral Index Preset</label>
+        ${provenanceBannerHTML({
+          kind: PROVENANCE_KIND.MODEL,
+          titleId: "bm-provenance-title",
+          title: "Educational mineral-index visualizer",
+          bodyId: "bm-disclaimer",
+          body: "Approximate CRISM-style band-depth formulas over illustrative map overlays. Not real per-pixel multi-band cubes (CRISM / OMEGA / THEMIS). Treat mineral hits as teaching aids until cube tiles exist.",
+          sourceId: "bm-source-string",
+          source: "Source: client-side model · single-band mosaic approximation · not measured spectra",
+          links: [SCIENCE_ARCHIVES.CRISM, SCIENCE_ARCHIVES.THEMIS]
+        })}
+
+        <div style="margin-bottom: 8px; margin-top: 8px;">
+          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;" for="bm-preset-select">Educational index preset (CRISM-style formula)</label>
           <select id="bm-preset-select" class="tool-select" style="width: 100%; box-sizing: border-box; background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
             ${BandMathEngine.MINERAL_PRESETS.map(p => `<option value="${p.id}">${p.name}</option>`).join("")}
             <option value="custom">-- Custom Band Math Formula --</option>
@@ -36,16 +54,16 @@ export class BandMathPanel {
         </div>
 
         <div id="bm-formula-group" style="margin-bottom: 8px;">
-          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Spectral Formula</label>
+          <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;" for="bm-formula-input">Approximate spectral formula</label>
           <input type="text" id="bm-formula-input" class="tool-select" style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 11px; background: #1e293b; color: #f8fafc; border: 1px solid #475569;" value="1.0 - (B530 / (0.5 * (B440 + B600)))">
           <div id="bm-desc-text" style="font-size: 11px; color: #94a3b8; margin-top: 3px; line-height: 1.4;">
-            Band depth at 530 nm diagnostic of crystalline ferric oxides.
+            Band depth at 530 nm diagnostic of crystalline ferric oxides (educational overlay).
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
           <div>
-            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;">Colormap</label>
+            <label style="font-size: 11px; color: #cbd5e1; font-weight: 500; display: block; margin-bottom: 3px;" for="bm-colormap-select">Colormap</label>
             <select id="bm-colormap-select" class="tool-select" style="width: 100%; background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
               <option value="magma">Magma</option>
               <option value="viridis">Viridis</option>
@@ -69,19 +87,19 @@ export class BandMathPanel {
             <span>Overlay Opacity</span>
             <span id="bm-opacity-val" style="color: #38bdf8; font-weight: 600;">65%</span>
           </div>
-          <input type="range" id="bm-opacity-slider" min="10" max="100" value="65" style="width: 100%; cursor: pointer;">
+          <input type="range" id="bm-opacity-slider" min="10" max="100" value="65" style="width: 100%; cursor: pointer;" aria-label="Overlay opacity">
         </div>
 
         <div style="margin-bottom: 8px; text-align: center;">
           <canvas id="bm-preview-canvas" width="220" height="50" style="border-radius: 4px; border: 1px solid #334155; background: #0f172a; width: 100%; height: 50px; display: block;"></canvas>
         </div>
 
-        <div id="bm-status-banner" style="display: none; padding: 6px 8px; margin-bottom: 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; font-size: 11px; color: #6ee7b7; text-align: center;">
-          ● Active Mineral Colormap Overlay
+        <div id="bm-status-banner" style="display: none; padding: 6px 8px; margin-bottom: 8px; border-radius: 4px; background: rgba(14, 116, 144, 0.2); border: 1px solid #0e7490; font-size: 11px; color: #a5f3fc; text-align: center;">
+          ● Educational overlay (not a measured cube)
         </div>
 
         <div style="display: flex; gap: 6px;">
-          <button id="bm-apply-btn" class="tool-btn" style="flex: 1; font-size: 11px; background: #0284c7; font-weight: 600;">Apply Color Stretch</button>
+          <button id="bm-apply-btn" class="tool-btn" style="flex: 1; font-size: 11px; background: #0284c7; font-weight: 600;">Apply Educational Overlay</button>
           <button id="bm-clear-btn" class="tool-btn" style="display: none; width: 70px; font-size: 11px; background: #475569;">Clear</button>
         </div>
       </div>
@@ -109,7 +127,7 @@ export class BandMathPanel {
     this.presetSelect.addEventListener("change", (e) => {
       const presetId = e.target.value;
       if (presetId === "custom") {
-        this.descText.innerText = "Custom band arithmetic: use standard band labels (e.g. B1, B2) and math operators.";
+        this.descText.innerText = "Custom band arithmetic over an illustrative overlay — not a measured spectral cube.";
       } else {
         const preset = BandMathEngine.MINERAL_PRESETS.find(p => p.id === presetId);
         if (preset) {
@@ -176,26 +194,25 @@ export class BandMathPanel {
       opacity: opacity
     };
 
-    console.log(`%c[JSMARS:BandMath] %cApplying mineral index: %c${presetName} %c(colormap: ${colormap}, min: ${detail.min}, max: ${detail.max}, opacity: ${opacity})`, 'color: #10b981; font-weight: bold;', 'color: #f8fafc;', 'color: #38bdf8; font-weight: bold;', 'color: #94a3b8;', detail);
+    console.log(`%c[JSMARS:BandMath] %cApplying educational mineral-index overlay: %c${presetName} %c(colormap: ${colormap}, min: ${detail.min}, max: ${detail.max}, opacity: ${opacity})`, 'color: #10b981; font-weight: bold;', 'color: #f8fafc;', 'color: #38bdf8; font-weight: bold;', 'color: #94a3b8;', detail);
 
     this.layer.setParams(detail);
     this.layer.activate();
 
-    // Update UI state
     this.statusBanner.style.display = "block";
-    this.statusBanner.innerText = `● Active: ${presetName.split(" ")[0]} (${colormap.toUpperCase()})`;
-    this.applyBtn.innerText = "✓ Update Stretch";
-    this.applyBtn.style.background = "#059669";
+    this.statusBanner.textContent = `● Educational overlay: ${presetName.split(" ")[0]} (${colormap.toUpperCase()}) — not a measured cube`;
+    this.applyBtn.innerText = "✓ Update Overlay";
+    this.applyBtn.style.background = "#0e7490";
     this.clearBtn.style.display = "block";
 
     EventBus.emit(EVENTS.BAND_MATH_APPLIED, detail);
   }
 
   clearLayer() {
-    console.log('%c[JSMARS:BandMath] %cCleared mineral colormap overlay from map', 'color: #ef4444; font-weight: bold;', 'color: #f8fafc;');
+    console.log('%c[JSMARS:BandMath] %cCleared educational mineral-index overlay from map', 'color: #ef4444; font-weight: bold;', 'color: #f8fafc;');
     this.layer.deactivate();
     this.statusBanner.style.display = "none";
-    this.applyBtn.innerText = "Apply Color Stretch";
+    this.applyBtn.innerText = "Apply Educational Overlay";
     this.applyBtn.style.background = "#0284c7";
     this.clearBtn.style.display = "none";
   }

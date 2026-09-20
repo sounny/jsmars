@@ -458,7 +458,7 @@
           <!-- KRC Thermal Model -->
           <div class="layer-section">
             <div class="layer-section-header"
-              data-tool-info="Run the KRC 1D thermal model for Mars surface and subsurface diurnal/seasonal temperatures.">
+              data-tool-info="Run a client-side KRC 1D thermal simulation (not TES/THEMIS measured temperatures).">
               <span class="layer-title">KRC Thermal Model</span>
               <span class="icon">+</span>
             </div>
@@ -482,7 +482,7 @@
           <!-- Mars Climate Database (MCD) -->
           <div class="layer-section">
             <div class="layer-section-header"
-              data-tool-info="Vertical atmospheric profiler: temperature, pressure, density, dust, and wind up to 50 km.">
+              data-tool-info="Atmospheric profiler: 1D analytical model or live LMD MCD v6.1 GCM, with labeled offline fallback.">
               <span class="layer-title">MCD Atmospheric Profiler</span>
               <span class="icon">+</span>
             </div>
@@ -491,11 +491,11 @@
             </div>
           </div>
 
-          <!-- Spectral Band Math -->
+          <!-- Educational mineral-index visualizer -->
           <div class="layer-section">
             <div class="layer-section-header"
-              data-tool-info="Compute spectral mineral parameter indices (BD530, BD1900, BD1500, D2300) and custom band ratios.">
-              <span class="layer-title">Spectral Band Math</span>
+              data-tool-info="Educational mineral-index overlay using CRISM-style formulas. Not real per-pixel CRISM/THEMIS cubes.">
+              <span class="layer-title">Mineral Index Visualizer</span>
               <span class="icon">+</span>
             </div>
             <div class="layer-section-content" style="display:none;">
@@ -503,10 +503,10 @@
             </div>
           </div>
 
-          <!-- Subsurface Radar Sounder (SHARAD / MARSIS / REASON / RIME) -->
+          <!-- Subsurface Radar Sounder (synthetic SHARAD / MARSIS analog) -->
           <div class="layer-section">
             <div class="layer-section-header"
-              data-tool-info="Simulate and visualize planetary subsurface radar sounding radargrams, ice stratigraphy, and dielectric interfaces (Mars SHARAD / MARSIS & Europa Clipper REASON / JUICE RIME).">
+              data-tool-info="Physically-based synthetic radargrams with illustrative presets — not observed SHARAD/MARSIS/REASON returns.">
               <span class="layer-title">Subsurface Radar Sounder</span>
               <span class="icon">+</span>
             </div>
@@ -832,12 +832,12 @@
       document.getElementById('mcd-panel-container'), jmars.map
     );
 
-    // -- NEW: Spectral Band Math & Mineralogy Panel --
+    // Educational mineral-index visualizer (not CRISM cubes)
     const bandMathPanel = new BandMathPanel(
       document.getElementById('bandmath-panel-container'), jmars.map
     );
 
-    // -- NEW: Subsurface Radar Sounder (SHARAD / MARSIS) --
+    // Subsurface radar sounder (synthetic / illustrative presets)
     const radarPanel = new RadarPanel(
       document.getElementById('radar-panel-container'), jmars.map
     );

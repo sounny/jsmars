@@ -1,8 +1,7 @@
 /**
  * @module BandMathLayer
- * @description Generates real-time hyperspectral mineral index & false-color colormap raster overlays for Leaflet.
- * Uses fast offscreen canvas rasterization and continuous L.imageOverlay with transparent backgrounds
- * and true planetary deposit coordinates with no artificial checkerboard artifacts.
+ * @description Educational mineral-index colormap overlay for Leaflet.
+ * Renders illustrative Gaussian deposit footprints, not per-pixel CRISM/THEMIS cubes.
  */
 import { BandMathEngine } from './BandMathEngine.js';
 
@@ -177,7 +176,7 @@ export class BandMathLayer {
     this.layerGroup.addLayer(wrapEast);
     this.layerGroup.addLayer(wrapWest);
 
-    console.log(`%c[JSMARS:BandMathLayer] %cRendered clean mineral raster overlay (${this.preset}, colormap: ${colormap})`, 'color: #10b981; font-weight: bold;', 'color: #f8fafc;');
+    console.log(`%c[JSMARS:BandMathLayer] %cRendered educational mineral-index overlay (${this.preset}, colormap: ${colormap})`, 'color: #10b981; font-weight: bold;', 'color: #f8fafc;');
   }
 
   _getMineralDeposits(preset) {

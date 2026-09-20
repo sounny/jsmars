@@ -2,11 +2,22 @@ import { RadarSounderEngine } from './RadarSounderEngine.js';
 import { RadarChart } from './RadarChart.js';
 import { EVENTS } from '../../constants.js';
 import { jmarsState } from '../../jmars-state.js';
+import {
+  PROVENANCE_KIND,
+  SCIENCE_ARCHIVES,
+  provenanceBannerHTML
+} from '../../ui/ScienceProvenance.js';
+
+const MARS_DISCLAIMER = 'Physically-based simulation using illustrative dielectric presets, NOT observed SHARAD or MARSIS radargrams. Horizons are hand-authored analog parameters, not measured reflectors.';
+const EUROPA_DISCLAIMER = 'Physically-based simulation using illustrative ice-shell presets, NOT observed REASON or RIME radargrams. Clipper/JUICE sounding products are not ingested here.';
+const MARS_SOURCE = 'Source: client-side physics model · illustrative SHARAD/MARSIS analog parameters';
+const EUROPA_SOURCE = 'Source: client-side physics model · illustrative REASON/RIME analog parameters';
 
 /**
  * @class RadarPanel
- * @description UI panel for probing subsurface ice layers, stratigraphy, and radar reflections
- * across planetary bodies (Mars SHARAD / MARSIS, Europa REASON / JUICE RIME).
+ * @description UI panel for a physically-based subsurface radar simulation
+ * (SHARAD/MARSIS analog on Mars; REASON/RIME analog on Europa). Results are
+ * synthetic radargrams, not PDS-measured returns.
  */
 export class RadarPanel {
   /**
@@ -30,37 +41,35 @@ export class RadarPanel {
   }
 
   init() {
+    const isEuropa = this.currentBody === 'europa';
     this.container.innerHTML = `
       <div class="radar-panel" style="padding:8px; display:flex; flex-direction:column; gap:8px;">
-        <!-- Scientific Data Provenance & Simulation Notice (AGENTS.md Rule 9.D) -->
-        <div style="background:rgba(15, 23, 42, 0.7); border:1px solid #334155; border-radius:4px; padding:6px; font-size:10px; line-height:1.4;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
-            <span style="font-weight:600; color:#38bdf8; display:flex; align-items:center; gap:4px;">
-              📡 <span id="radar-instrument-label">SHARAD / MARSIS Model</span>
-            </span>
-            <span style="font-size:9px; background:#0369a1; color:#fff; padding:1px 4px; border-radius:2px; text-transform:uppercase; letter-spacing:0.5px;">Simulation</span>
-          </div>
-          <p style="color:#94a3b8; margin:0 0 4px 0;">
-            Physically-based synthetic radargram using electrodynamic dielectric horizons, two-way travel time, and attenuation.
-          </p>
-          <div style="display:flex; gap:8px;">
-            <a href="https://pds-geosciences.wustl.edu/missions/mro/sharad.htm" target="_blank" rel="noopener" style="color:#38bdf8; text-decoration:none; font-size:9px;">↗ PDS SHARAD Archive</a>
-            <a href="https://trek.nasa.gov/europa" target="_blank" rel="noopener" style="color:#38bdf8; text-decoration:none; font-size:9px;">↗ Europa Trek</a>
-          </div>
-        </div>
+        ${provenanceBannerHTML({
+          kind: PROVENANCE_KIND.MODEL,
+          titleId: 'radar-instrument-label',
+          title: isEuropa
+            ? 'Europa radar simulation (REASON / RIME analog)'
+            : 'Mars radar simulation (SHARAD / MARSIS analog)',
+          bodyId: 'radar-disclaimer',
+          body: isEuropa ? EUROPA_DISCLAIMER : MARS_DISCLAIMER,
+          sourceId: 'radar-source-string',
+          source: isEuropa ? EUROPA_SOURCE : MARS_SOURCE,
+          linksId: 'radar-archive-links',
+          links: this.archiveLinksForBody(this.currentBody)
+        })}
 
-        <label style="font-size:11px; color:#cbd5e1;">Subsurface Ground Track Region</label>
+        <label style="font-size:11px; color:#cbd5e1;" for="radar-preset-select">Illustrative ground-track region (not a measured orbit track)</label>
         <select id="radar-preset-select" class="stamp-select" style="padding:4px; background:#0f172a; color:#fff; border:1px solid #334155;">
           ${this.renderPresetOptions()}
         </select>
 
         <div style="display:flex; justify-content:space-between; gap:6px;">
           <div style="flex:1;">
-            <label style="font-size:10px; color:#94a3b8;">Dielectric (ε_r)</label>
+            <label style="font-size:10px; color:#94a3b8;" for="radar-eps-input">Dielectric (ε_r)</label>
             <input type="number" id="radar-eps-input" value="3.15" step="0.05" min="1.0" max="90.0" style="width:100%; padding:3px; font-size:11px; background:#0f172a; color:#fff; border:1px solid #334155; border-radius:3px;">
           </div>
           <div style="flex:1;">
-            <label style="font-size:10px; color:#94a3b8;">Loss Tangent (tan δ)</label>
+            <label style="font-size:10px; color:#94a3b8;" for="radar-loss-input">Loss Tangent (tan δ)</label>
             <input type="number" id="radar-loss-input" value="0.001" step="0.0001" min="0.0001" max="0.05" style="width:100%; padding:3px; font-size:11px; background:#0f172a; color:#fff; border:1px solid #334155; border-radius:3px;">
           </div>
         </div>
@@ -73,7 +82,7 @@ export class RadarPanel {
         <div id="radar-chart-container" style="margin-top:4px;"></div>
 
         <div style="display:flex; justify-content:space-between; gap:4px;">
-          <button id="radar-export-btn" class="crater-action-btn" style="background:#1e293b; font-size:10px; flex:1;">Export Radar CSV</button>
+          <button id="radar-export-btn" class="crater-action-btn" style="background:#1e293b; font-size:10px; flex:1;">Export Synthetic Radar CSV</button>
         </div>
       </div>
     `;
@@ -81,6 +90,9 @@ export class RadarPanel {
     this.chart = new RadarChart(this.container.querySelector('#radar-chart-container'));
 
     this.instrumentLabel = this.container.querySelector('#radar-instrument-label');
+    this.disclaimerEl = this.container.querySelector('#radar-disclaimer');
+    this.sourceEl = this.container.querySelector('#radar-source-string');
+    this.archiveLinksEl = this.container.querySelector('#radar-archive-links');
     this.presetSelect = this.container.querySelector('#radar-preset-select');
     this.epsInput = this.container.querySelector('#radar-eps-input');
     this.lossInput = this.container.querySelector('#radar-loss-input');
@@ -115,17 +127,24 @@ export class RadarPanel {
     this.runSimulation();
   }
 
+  archiveLinksForBody(body) {
+    if (body === 'europa') {
+      return [SCIENCE_ARCHIVES.EUROPA_REASON, SCIENCE_ARCHIVES.SHARAD, SCIENCE_ARCHIVES.MARSIS];
+    }
+    return [SCIENCE_ARCHIVES.SHARAD, SCIENCE_ARCHIVES.MARSIS];
+  }
+
   renderPresetOptions() {
     const marsPresets = Object.entries(RadarSounderEngine.PRESETS).filter(([_, v]) => !v.body || v.body === 'mars');
     const europaPresets = Object.entries(RadarSounderEngine.PRESETS).filter(([_, v]) => v.body === 'europa');
 
     return `
-      <optgroup label="Mars (SHARAD / MARSIS)">
+      <optgroup label="Mars (illustrative SHARAD / MARSIS analog presets)">
         ${marsPresets.map(([k, v]) =>
           `<option value="${k}" ${k === this.currentPreset ? 'selected' : ''}>${v.name}</option>`
         ).join('')}
       </optgroup>
-      <optgroup label="Europa (REASON / JUICE RIME)">
+      <optgroup label="Europa (illustrative REASON / RIME analog presets)">
         ${europaPresets.map(([k, v]) =>
           `<option value="${k}" ${k === this.currentPreset ? 'selected' : ''}>${v.name}</option>`
         ).join('')}
@@ -135,16 +154,34 @@ export class RadarPanel {
 
   setBody(body) {
     this.currentBody = body;
-    if (body === 'europa') {
+    const isEuropa = body === 'europa';
+    if (isEuropa) {
       this.currentPreset = 'europa_thera';
       if (this.instrumentLabel) {
-        this.instrumentLabel.textContent = 'Europa Clipper REASON / JUICE RIME Model';
+        this.instrumentLabel.textContent = 'Europa radar simulation (REASON / RIME analog)';
       }
+      if (this.disclaimerEl) this.disclaimerEl.textContent = EUROPA_DISCLAIMER;
+      if (this.sourceEl) this.sourceEl.textContent = EUROPA_SOURCE;
     } else {
       this.currentPreset = 'boreum';
       if (this.instrumentLabel) {
-        this.instrumentLabel.textContent = 'SHARAD / MARSIS Model';
+        this.instrumentLabel.textContent = 'Mars radar simulation (SHARAD / MARSIS analog)';
       }
+      if (this.disclaimerEl) this.disclaimerEl.textContent = MARS_DISCLAIMER;
+      if (this.sourceEl) this.sourceEl.textContent = MARS_SOURCE;
+    }
+
+    if (this.archiveLinksEl) {
+      this.archiveLinksEl.replaceChildren();
+      this.archiveLinksForBody(body).forEach((link) => {
+        const a = document.createElement('a');
+        a.className = 'science-provenance__link';
+        a.href = link.href;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = link.label;
+        this.archiveLinksEl.appendChild(a);
+      });
     }
 
     if (this.presetSelect) {
@@ -163,14 +200,14 @@ export class RadarPanel {
   }
 
   runSimulation() {
-    const epsR = parseFloat(this.epsInput.value) || 3.15;
-    const lossTangent = parseFloat(this.lossInput.value) || 0.001;
-
     const preset = RadarSounderEngine.PRESETS[this.currentPreset] || RadarSounderEngine.PRESETS.boreum;
     // Adapt track length and trace count: for Europa ice shell (15-22 km thick), use 150 km track
     const trackKm = preset.body === 'europa' ? 150 : 120;
 
     const data = RadarSounderEngine.simulateRadargram(this.currentPreset, trackKm, 60);
+    data.modelLabel = preset.body === 'europa'
+      ? 'Synthetic radargram (REASON / RIME analog model)'
+      : 'Synthetic radargram (SHARAD / MARSIS analog model)';
     this.lastData = data;
     this.chart.setData(data);
   }
@@ -196,13 +233,16 @@ export class RadarPanel {
       rows.push([r, twt[r].toFixed(4), depths[r].toFixed(1), ...colPowers].join(','));
     }
 
-    const csvContent = [header, ...rows].join('\n');
+    const csvContent = [
+      '# JSMARS synthetic radargram (physics model, illustrative parameters — not observed SHARAD/MARSIS/REASON returns)',
+      header,
+      ...rows
+    ].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const prefix = (RadarSounderEngine.PRESETS[this.currentPreset]?.body === 'europa') ? 'reason_radargram' : 'sharad_radargram';
-    a.download = `${prefix}_${this.currentPreset}_${Date.now()}.csv`;
+    a.download = `synthetic_radargram_${this.currentPreset}_${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

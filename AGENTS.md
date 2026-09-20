@@ -383,30 +383,19 @@ profile" doesn't match the authoritative source.
   health/latency in the UI.
 - **Radar sounder (`src/features/radar/RadarSounderEngine.js`,
   `RadarPanel.js`)**: Fully synthetic. `RadarSounderEngine.PRESETS` are
-  hand-authored plausible layer/dielectric values for four named regions
-  (Planum Boreum, Planum Australe, Medusae Fossae, Utopia Planitia); there is
-  no fetch of real SHARAD/MARSIS radargram data anywhere. The panel button
-  already says "Synthesize Radargram" (reasonably honest), but nothing in the
-  UI states these are illustrative preset parameters rather than measured
-  reflectors. **Required follow-up**: either (a) clearly label the panel/
-  results as "physically-based simulation using illustrative parameters, not
-  observed radar returns," including a visible disclaimer and a link to the
-  real PDS Geosciences Node SHARAD/MARSIS archives for the same regions, or
-  (b) integrate real data — e.g. fetch actual SHARAD RGRAM browse
-  products/quicklook images from the PDS Geosciences Node
-  (`https://pds-geosciences.wustl.edu/missions/mro/sharad.htm`) or the
-  MARSIS archive for the selected ground track and display them alongside
-  (not instead of) the synthetic model, clearly attributed. Do not present
-  (b) as a replacement for the physics model — both have value, but they
-  must never be visually or textually conflated.
+  hand-authored plausible layer/dielectric values for named regions
+  (Planum Boreum, Planum Australe, Medusae Fossae, Utopia Planitia, plus
+  Europa ice-shell analogs); there is no fetch of real SHARAD/MARSIS
+  radargram data. **UI honesty (2026-09-20):** Model badge, source string,
+  "Synthesize Radargram" language, explicit "illustrative parameters / NOT
+  observed radargrams" disclaimer, and PDS SHARAD + MARSIS archive links.
+  Optional follow-up (out of scope unless requested): display real PDS
+  RGRAM browse products *alongside* the synthetic model, never conflated.
 - **Band math / spectral tools (`src/features/bands/BandMathEngine.js`)**:
-  Currently keys off single-band mosaic imagery approximations, not real
-  per-pixel, multi-band raster or spectral-cube data (e.g. CRISM cubes).
-  There is no image-cube ingestion path. Required follow-up before claiming
-  spectral analysis parity: either source real per-band raster tiles (WMS
-  band-selectable layers or COG/cube tiles) so band math operates on actual
-  DN values, or explicitly relabel the feature as an educational/approximate
-  mineral-index visualizer until real per-pixel data is wired in.
+  Keys off illustrative overlays and CRISM-style formulas, not real
+  per-pixel multi-band cubes. **UI honesty (2026-09-20):** relabeled as an
+  educational / approximate mineral-index visualizer with a Model badge.
+  Real CRISM/THEMIS cube ingestion remains a future data-integration task.
 
 ### General rule for any tool producing modeled/synthetic scientific output
 

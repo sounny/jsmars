@@ -31,7 +31,7 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 1. Open the **KRC Thermal Model** section under Tools.
 2. Click **📍 Pick Location** and click on any point on Mars (or type latitude/elevation).
 3. Adjust Thermal Inertia ($J\cdot m^{-2}\cdot K^{-1}\cdot s^{-1/2}$), Albedo, and Dust Opacity ($\tau$).
-4. Click **Calculate** to solve the 1D heat diffusion equation.
+4. Click **Run Simulation** to solve the 1D heat diffusion equation. The panel is labeled **Model** — output is a client-side Kieffer-style simulation, not TES/THEMIS measurements.
 5. Toggle between **Diurnal** temperature curves ($T(t)$), **Depth** subsurface profiles ($T(z)$), and **Seasonal** curves ($T(L_s)$).
 6. Export simulation tables via **Export CSV** or save charts via **PNG**.
 
@@ -44,9 +44,10 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 
 ### Mars Climate Database (MCD) Profiler
 1. Open the **MCD Atmospheric Profiler** section under Tools.
-2. Pick a location or specify coordinates, elevation, and local solar hour.
-3. Click **Calculate Profile** to generate vertical profiles up to 50 km altitude.
-4. Toggle between **Temp** $T(z)$, **Pressure** $P(z)$ (log scale), and **Wind** speed curves.
+2. Choose **1D Analytical Physics Model** (offline) or **LMD MCD v6.1 Live GCM**. Live fetch is a climate model, not a spacecraft profile; failures are labeled **Offline Fallback**.
+3. Pick a location or specify coordinates, elevation, and local solar hour.
+4. Click **Calculate Profile** to generate vertical profiles up to 50 km altitude.
+5. Toggle between **Temp** $T(z)$, **Pressure** $P(z)$ (log scale), and **Wind** speed curves.
 
 ### Crater Counting & CSFD Isochron Dating
 1. Under **Crater Counting**, click **Start Crater Counting**.
@@ -54,18 +55,18 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 3. The integrated **CSFD Chart** plots cumulative size-frequency distribution ($N(>D)/\text{km}^2$) against Hartmann & Neukum isochron models ($10\text{ Ma} - 4.3\text{ Ga}$).
 4. The system calculates model surface age and geological epoch (Amazonian / Hesperian / Noachian).
 
-### Spectral Band Math & Mineralogy
-1. Open the **Spectral Band Math** section under Tools.
-2. Select a preset (e.g. **BD530 Ferric Iron**, **BD1900 Hydrated Clays**, **BD1500 Water Ice**, **THEMIS Olivine**) or enter a custom formula.
+### Educational Mineral-Index Visualizer
+1. Open the **Mineral Index Visualizer** section under Tools.
+2. Select a preset (e.g. **BD530 Ferric Iron**, **BD1900 Hydrated Clays**, **BD1500 Water Ice**, **THEMIS Olivine**) or enter a custom formula. These are CRISM-style teaching formulas over illustrative overlays — **not** per-pixel CRISM/THEMIS cubes.
 3. Choose a colormap (**Viridis**, **Magma**, **Coolwarm**, **Jet**, **Rainbow**) and adjust color stretch.
-4. Click **Apply Color Stretch** to evaluate mineral indices on the active layer.
+4. Click **Apply Educational Overlay**. The panel is labeled **Model**.
 
-### Subsurface Radar Sounder (SHARAD / MARSIS)
-1. Open the **Subsurface Radar Sounder** section under Tools.
-2. Choose a sounder ground track across Planum Boreum, Planum Australe, Medusae Fossae, or Utopia Planitia.
+### Subsurface Radar Sounder (simulation)
+1. Open the **Subsurface Radar Sounder** section under Tools. The panel is labeled **Model**.
+2. Choose an *illustrative* ground-track region (Planum Boreum, Planum Australe, Medusae Fossae, Utopia Planitia, or Europa ice-shell presets). These are not measured SHARAD/MARSIS/REASON radargrams.
 3. Configure target dielectric permittivity ($\varepsilon_r$) and loss tangent ($\tan\delta$).
-4. Toggle between the **2D B-Scope Radargram** cross-section and the **1D A-Scope Power Trace** to detect subsurface interfaces and ice stratigraphy.
-5. Export radargram data tables via **Export Radargram CSV**.
+4. Click **Synthesize Radargram** and toggle between the **2D B-Scope** and **1D A-Scope**. Use the PDS SHARAD/MARSIS archive links in the panel for observed data.
+5. Export synthetic radargram tables via **Export Synthetic Radar CSV**.
 
 ### Interplanetary Trajectory & Astrodynamics Planner
 1. Open the **Interplanetary Trajectory** section under Tools.
