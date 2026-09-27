@@ -24,6 +24,17 @@ import {
 } from '../src/ui/ScienceProvenance.js';
 import { BookmarksTool } from '../src/features/bookmarks/BookmarksTool.js';
 import { ThreeDEngine } from '../src/features/threed/ThreeDEngine.js';
+import {
+    CESIUM_VERSION,
+    BODY_ELLIPSOIDS,
+    TWO_D_ONLY_TOOL_IDS,
+    zoomToCameraHeightMeters,
+    cameraHeightToZoom,
+    describeImageryLayer,
+    describeActiveImagery,
+    formatGlobeProvenance,
+    isCesiumCdnUrl
+} from '../src/features/globe/globeViewModel.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
 import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js';
@@ -17483,6 +17494,93 @@ describe('Science Provenance Honesty (AGENTS.md §9.D)', () => {
     });
 });
 
+
+describe('Cesium globe view model', () => {
+    it('pins a Cesium release that includes Ellipsoid.MARS', () => {
+        const [major, minor] = CESIUM_VERSION.split('.').map(Number);
+        expect(major).to.equal(1);
+        expect(minor).to.be.at.least(133);
+        expect(BODY_ELLIPSOIDS.mars.cesiumName).to.equal('MARS');
+        expect(BODY_ELLIPSOIDS.moon.cesiumName).to.equal('MOON');
+        expect(BODY_ELLIPSOIDS.mars.radii[0]).to.equal(3396190);
+        expect(BODY_ELLIPSOIDS.mars.radii[2]).to.equal(3376200);
+        expect(BODY_ELLIPSOIDS.moon.radii[0]).to.equal(1737400);
+        expect(BODY_ELLIPSOIDS.europa.radii[0]).to.equal(1564130);
+        expect(BODY_ELLIPSOIDS.europa.radii[2]).to.equal(1557400);
+        expect(BODY_ELLIPSOIDS.earth.cesiumName).to.equal('WGS84');
+    });
+
+    it('maps Leaflet zoom to a camera height and back', () => {
+        const marsOpts = { body: 'mars', viewportHeightPx: 800 };
+        const moonOpts = { body: 'moon', viewportHeightPx: 800 };
+        const earthOpts = { body: 'earth', viewportHeightPx: 800 };
+        const z2 = zoomToCameraHeightMeters(2, marsOpts);
+        const z5 = zoomToCameraHeightMeters(5, marsOpts);
+        expect(z5).to.be.below(z2);
+        expect(z2).to.be.above(1000);
+        expect(z2).to.be.below(BODY_ELLIPSOIDS.mars.radii[0] * 20);
+        expect(zoomToCameraHeightMeters(2, moonOpts)).to.be.below(z2);
+        expect(zoomToCameraHeightMeters(2, earthOpts)).to.be.above(z2);
+        expect(cameraHeightToZoom(z5, marsOpts)).to.be.closeTo(5, 0.02);
+        expect(cameraHeightToZoom(zoomToCameraHeightMeters(3, moonOpts), moonOpts)).to.be.closeTo(3, 0.02);
+    });
+
+    it('describes WMS and XYZ imagery and skips hidden or unknown layers', () => {
+        const wms = describeImageryLayer({
+            id: 'mars_wms_viking',
+            name: 'Mars Viking MDIM2.1 (USGS WMS)',
+            type: 'wms',
+            url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
+            options: { layers: 'MDIM21', format: 'image/png', attribution: 'USGS Astrogeology' }
+        });
+        expect(wms.scheme).to.equal('geographic');
+        expect(wms.layers).to.equal('MDIM21');
+
+        const xyz = describeImageryLayer({
+            id: 'moon_opm_basemap',
+            name: 'Moon Basemap',
+            type: 'xyz',
+            url: 'https://example.test/moon/{z}/{x}/{y}.png',
+            options: { attribution: 'OpenPlanetary', maxZoom: 10 }
+        });
+        expect(xyz.scheme).to.equal('webmercator');
+        expect(xyz.maxZoom).to.equal(10);
+
+        expect(describeImageryLayer({ id: 'notes', type: 'geojson', url: 'x' })).to.equal(null);
+        expect(describeImageryLayer({ id: 'empty', type: 'wms', url: 'https://example.test', options: {} })).to.equal(null);
+
+        const stack = describeActiveImagery(
+            [
+                { id: 'mars_viking', opacity: 1, visible: true },
+                { id: 'mars_wms_viking', opacity: 0.4, visible: true },
+                { id: 'hidden', opacity: 1, visible: false }
+            ],
+            [
+                { id: 'mars_viking', name: 'Viking', type: 'xyz', url: 'https://example.test/{z}/{x}/{y}.png', options: { attribution: 'OpenPlanetary' } },
+                { id: 'mars_wms_viking', name: 'MDIM', type: 'wms', url: 'https://example.test/wms', options: { layers: 'MDIM21', attribution: 'USGS Astrogeology' } },
+                { id: 'hidden', name: 'Hidden', type: 'xyz', url: 'https://example.test/h/{z}/{x}/{y}.png', options: {} }
+            ]
+        );
+        expect(stack.map((layer) => layer.id)).to.deep.equal(['mars_viking', 'mars_wms_viking']);
+        expect(stack[1].opacity).to.equal(0.4);
+    });
+
+    it('states that elevation terrain is not loaded', () => {
+        const text = formatGlobeProvenance('mars', [{ attribution: 'USGS Astrogeology' }]);
+        expect(text).to.match(/Elevation terrain is not loaded/);
+        expect(text).to.match(/USGS Astrogeology/);
+        expect(text).to.match(/Ellipsoid\.MARS/);
+        expect(text).to.not.match(/3D MOLA terrain/i);
+    });
+
+    it('keeps Cesium off the precache list and names the 2D-only tools', () => {
+        expect(isCesiumCdnUrl('https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js')).to.equal(true);
+        expect(isCesiumCdnUrl('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js')).to.equal(false);
+        ['crater-counting', 'measurement', 'shapes', 'profiles', 'stamps'].forEach((id) => {
+            expect(TWO_D_ONLY_TOOL_IDS).to.include(id);
+        });
+    });
+});
 
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();

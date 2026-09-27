@@ -1,5 +1,24 @@
 # JSMARS Release Notes
 
+## v0.10.0 - 2D | 3D Cesium Globe
+**Date:** 2026-09-27
+
+### 3D globe
+- A **2D | 3D** control on the map switches between the existing Leaflet map and a full-size CesiumJS globe. CesiumJS 1.145.0 (Apache-2.0, © Cesium GS, Inc.) is loaded from jsDelivr only on the first switch to 3D. It is not part of the initial page and is not precached by the service worker.
+- Mars uses `Ellipsoid.MARS`, the Moon uses `Ellipsoid.MOON`, Earth uses WGS84, and Europa uses the IAU radii already in JSMARS. The active WMS/XYZ basemap is draped on that ellipsoid. There is no Cesium ion token and no Earth imagery on other bodies.
+- Entering 3D frames the current 2D center. Returning to 2D restores the 3D look point and a zoom matched to the camera height. Switching body while in 3D follows the map's body change.
+- Drawing, measuring, crater counting, profiles, stamps, shapes, and other Leaflet tools are disabled in 3D, with a note in the Tools panel. The service worker does not cache the Cesium bundle.
+
+### Honesty
+- The removed sidebar viewer was a three.js globe with a procedural texture and a synthetic regional mesh. It did not sample MOLA or LOLA elevation. This release does not add elevation terrain either. The globe is the reference ellipsoid plus published imagery. Copy that said "3D MOLA terrain" now says imagery on the ellipsoid, with elevation terrain planned.
+- 2D elevation profiles still query the USGS MOLA 128 ppd Cloud-Optimized GeoTIFF.
+
+### Not carried over from the sidebar panel
+- Procedural "photorealistic" textures (replaced by real WMS/XYZ imagery).
+- Synthetic terrain mesh, vertical exaggeration, and wireframe (they were not a DEM).
+- Decorative limb-glow atmosphere on Mars. Earth can still use Cesium's sky atmosphere. Other bodies do not get an Earth-blue atmosphere.
+- A separate "focus the thumbnail on the 2D map" control. The 3D view is the map, and returning to 2D keeps the 3D camera position.
+
 ## v0.9.1 - Science Honesty & Docs Alignment
 **Date:** 2026-09-20
 
@@ -97,6 +116,7 @@
 - Global event synchronization (`jmars:time-changed`) driving thermal, atmospheric, and 3D lighting models.
 
 #### 3D Terrain & Globe Viewer (WebGL)
+- Correction (2026-09-27): the mesh was procedural, not MOLA elevation. See v0.10.0.
 - Real-time 3D planetary mesh displaced by MOLA DEM topography.
 - Solar illumination angle computed from active $L_s$ and local solar time.
 - Orbit camera controls (drag to rotate, wheel to zoom).

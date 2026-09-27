@@ -1,5 +1,14 @@
 # Change Log
 
+## [0.10.0] - 2026-09-27
+
+### Added
+- **2D | 3D view toggle:** 2D remains the Leaflet map. 3D is a full-size CesiumJS 1.145 globe (Apache-2.0) loaded on first use, with Mars, Moon, Earth, and Europa ellipsoids and the active WMS/XYZ imagery draped on them. Camera position syncs both ways. Map drawing tools are disabled in 3D with a short note.
+
+### Changed
+- Removed the sidebar three.js "3D Terrain & Globe" panel and the three.js script tag. That panel drew a procedural texture and a synthetic heightfield. It did not load MOLA elevation.
+- Index, README, and in-app copy no longer say "3D MOLA terrain." The globe is labeled as imagery on the reference ellipsoid. Elevation terrain is planned. 2D profiles still sample the USGS MOLA 128 ppd DEM.
+
 ## [0.9.1] - 2026-09-20
 
 ### Changed

@@ -35,12 +35,12 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 5. Toggle between **Diurnal** temperature curves ($T(t)$), **Depth** subsurface profiles ($T(z)$), and **Seasonal** curves ($T(L_s)$).
 6. Export simulation tables via **Export CSV** or save charts via **PNG**.
 
-### 3D Terrain & Globe Viewer
-1. Open the **3D Terrain & Globe** section under Tools.
-2. Switch between **3D Terrain** (regional mesh elevated by MOLA DEM) and **3D Globe**.
-3. Drag to rotate and pitch the 3D camera; scroll to zoom in and out.
-4. Adjust the **Vertical Exaggeration** slider ($1\times - 20\times$) to accentuate topographic relief.
-5. Use the **Sun Hour Angle** slider to simulate changing shadow and illumination angles.
+### 3D Globe
+1. Use the **2D | 3D** control at the top of the map. 2D is the flat Leaflet map. 3D replaces it with a CesiumJS globe of the active body.
+2. The globe uses the body's reference ellipsoid and drapes the imagery layer you have turned on (USGS, OpenPlanetary, NASA GIBS, or NASA Trek). **Elevation terrain is not loaded** — Olympus Mons will not stand above the surrounding plains. That is planned. The on-globe line names the imagery and the ellipsoid.
+3. Drag to orbit, scroll or use **+ / −** to zoom, and **Spin** to rotate. **Grid** draws a latitude/longitude overlay. **Light** is a visual terminator (local hour), not a measured ephemeris. **Reset** returns to the body's overview.
+4. Switch back to **2D** to restore the place you were looking at in 3D.
+5. Drawing, measuring, crater counting, profiles, and the other map tools stay in 2D. They are greyed out while 3D is open.
 
 ### Mars Climate Database (MCD) Profiler
 1. Open the **MCD Atmospheric Profiler** section under Tools.

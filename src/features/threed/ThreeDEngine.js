@@ -1,7 +1,10 @@
 /**
  * @module ThreeDEngine
- * @description Planetary 3D geometry, terrain displacement mesh synthesis,
- * and solar terminator ray vector computations.
+ * @description Planetary geometry, photometry, and solar-geometry helpers.
+ *
+ * The interactive three.js sidebar globe that used to call this module has
+ * been replaced by the Cesium view in src/features/globe/. synthesizeTerrainElevation
+ * builds a procedural mesh for tests; it is not sampled MOLA/LOLA elevation.
  */
 
 export class ThreeDEngine {
