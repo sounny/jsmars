@@ -2683,3 +2683,190 @@ html {
   color: #38bdf8;
 }
 
+/* ==========================================================================
+   32. 2D | 3D view toggle and Cesium globe
+   ========================================================================== */
+
+.view-mode-toggle {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2500;
+  display: flex;
+  gap: 0;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.view-mode-btn {
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-mode-btn + .view-mode-btn {
+  border-left: 1px solid #334155;
+}
+
+.view-mode-btn.is-active {
+  background: #0284c7;
+  color: #fff;
+}
+
+.view-mode-btn:focus-visible,
+.globe-chrome-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.globe-load-error {
+  position: absolute;
+  top: calc(60px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2500;
+  margin: 0;
+  max-width: min(420px, calc(100% - 24px));
+  padding: 8px 12px;
+  background: #7f1d1d;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.globe-view {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 32px;
+  z-index: 400;
+  background: #000;
+}
+
+.globe-view.is-open {
+  display: block;
+}
+
+.cesium-container {
+  position: absolute;
+  inset: 0;
+}
+
+#map.is-under-globe {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.globe-chrome {
+  position: absolute;
+  top: calc(62px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(560px, calc(100% - 24px));
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+.globe-chrome-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.globe-chrome-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.globe-chrome-btn[aria-pressed="true"] {
+  background: #0369a1;
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+.globe-hour {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.globe-hour input[type="range"] {
+  flex: 1;
+  min-height: 44px;
+  accent-color: #facc15;
+}
+
+.globe-provenance,
+.globe-coords,
+.globe-credit {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #94a3b8;
+}
+
+.globe-coords {
+  font-family: ui-monospace, monospace;
+  color: #7dd3fc;
+  min-height: 1em;
+}
+
+.view-3d-tool-note {
+  margin: 8px 10px;
+  padding: 8px 10px;
+  background: rgba(3, 105, 161, 0.2);
+  border: 1px solid #0369a1;
+  border-radius: 6px;
+  color: #e0f2fe;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body.view-3d [data-requires-2d] {
+  opacity: 0.55;
+}
+
+.cesium-viewer .cesium-widget-credits {
+  font-size: 11px;
+}
+
+@media (max-width: 768px) {
+  .globe-view {
+    bottom: 0;
+  }
+
+  .globe-chrome {
+    top: auto;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    max-height: 38vh;
+    overflow: auto;
+  }
+}
+

@@ -1,17 +1,18 @@
 /**
  * JSMARS - Service Worker (Application Shell & Offline Cache)
- * Version: jsmars-shell-v1.4.8
+ * Version: jsmars-shell-v1.5.0
  * 
  * Rules:
  * 1. Cache-first strategy for versioned owned local application shell assets.
  * 2. Navigation fallback to app shell (index.html) for any client route with query parameters.
- * 3. Stale-while-revalidate for CDN dependencies (Leaflet, Three.js, GeoTIFF).
- * 4. Network-first with graceful transparent tile / offline fallback for remote WMS tiles & APIs.
- * 5. Never precache unconstrained scientific rasters or gigabytes of tiles.
- * 6. User-prompted update flow via SKIP_WAITING to avoid interrupting active workflows.
+ * 3. Stale-while-revalidate for small CDN dependencies (Leaflet, GeoTIFF).
+ * 4. Network-only for CesiumJS. Do not precache or runtime-cache the multi-MB bundle, workers, or assets.
+ * 5. Network-first with graceful transparent tile / offline fallback for remote WMS tiles & APIs.
+ * 6. Never precache unconstrained scientific rasters or gigabytes of tiles.
+ * 7. User-prompted update flow via SKIP_WAITING to avoid interrupting active workflows.
  */
 
-const CACHE_NAME = 'jsmars-shell-v1.4.8';
+const CACHE_NAME = 'jsmars-shell-v1.5.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -89,7 +90,10 @@ const PRECACHE_ASSETS = [
   './src/features/slider/MarsTime.js',
   './src/features/slider/TimeSlider.js',
   './src/features/stamp/StampQueryPanel.js',
-  './src/features/threed/ThreeDPanel.js',
+  './src/features/globe/cesiumLoader.js',
+  './src/features/globe/globeViewModel.js',
+  './src/features/globe/CesiumGlobe.js',
+  './src/features/globe/ViewModeToggle.js',
   './src/util/InteractionLogger.js',
   './src/util/URLStateEngine.js',
   './src/util/geo.js',
@@ -223,6 +227,13 @@ self.addEventListener('fetch', (event) => {
         });
       })
     );
+    return;
+  }
+
+  // CesiumJS is opt-in and multi-megabyte (script, workers, skybox assets).
+  // Network only — never write it into the app-shell cache.
+  if (/cesium@/i.test(url.pathname) || /\/cesium\//i.test(url.pathname) || url.hostname.includes('cesium.com')) {
+    event.respondWith(fetch(request));
     return;
   }
 

@@ -75,7 +75,7 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **Ground Track**:
     - [x] Visualize spacecraft orbits (MRO, ODY, MAVEN, MEX, MGS).
 - [x] **Time Awareness**: Time slider for temporal WMS layers and astronomical state.
-- [x] **3D Visualization**: WebGL 3D terrain and globe exploration.
+- [x] **3D Visualization**: Replaced by the Cesium globe view (v0.10.0). The earlier sidebar widget was a procedural three.js globe, not MOLA terrain.
 - [x] **Production Hardening**: Tile caching, debouncing, comprehensive test suite.
 
 ## Phase 6: Planetary Science & Parity Push (Completed)
@@ -88,9 +88,8 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] Conversion between Earth UTC, Mars Sol Date (MSD), Mars Year (MY), and Solar Longitude ($L_s$).
     - [x] Interactive scrubbing slider and playback engine.
 - [x] **3D Terrain & Globe Viewer (WebGL)**:
-    - [x] 3D mesh displaced by MOLA DEM topography.
-    - [x] Solar lighting based on solar declination and local time.
-    - [x] Orbit camera controls and vertical exaggeration slider.
+    - [x] Sidebar three.js globe. Correction: the texture and heightfield were procedural, not a MOLA DEM. Removed in v0.10.0.
+    - [x] Replaced by a full-view CesiumJS globe (see below).
 - [x] **Mars Climate Database (MCD) Atmospheric Profiler**:
     - [x] Vertical profiles of temperature, pressure, density, dust, and wind up to 50 km.
 - [x] **Crater Counting CSFD & Isochron Age Dating**:
@@ -102,6 +101,12 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] UI labeled as an **educational / approximate mineral-index visualizer** (illustrative overlays, not per-pixel CRISM cubes).
 - [x] **Map Projections & Polar Views**:
     - [x] Global Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) viewpoints.
+
+## 3D globe view (CesiumJS, v0.10.0)
+- [x] **2D | 3D toggle.** 2D is the Leaflet map. 3D is a full-size CesiumJS globe, loaded from a pinned CDN release on first use.
+- [x] **Ellipsoids:** `Ellipsoid.MARS`, `Ellipsoid.MOON`, WGS84, and an IAU Europa ellipsoid. No Cesium ion token and no Earth basemap on other bodies.
+- [x] **Imagery drape** of the active WMS/XYZ layer. Camera syncs into 3D and back to 2D.
+- [ ] **Elevation terrain** (MOLA / LOLA) is not implemented. The globe is the reference ellipsoid.
 
 ## Phase 7: Subsurface Geophysics & Advanced Cartography (Completed)
 - [x] **Subsurface Radar Sounder (SHARAD / MARSIS analog)**:

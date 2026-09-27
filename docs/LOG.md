@@ -852,6 +852,10 @@ TEST FAILURE: Unit test suite failed (1 failures):
     at n.<anonymous> (unit.js:15458:43)
 
 
+## 2026-09-27 — Cesium 2D | 3D globe
+- Replaced the sidebar three.js globe. That viewer used a procedural texture and a synthetic heightfield; it did not load MOLA elevation, despite earlier notes in this log.
+- 3D is now an opt-in CesiumJS globe (pinned 1.145.0, Apache-2.0) draped with the active WMS/XYZ imagery on the body ellipsoid. Elevation terrain is still planned. 2D MOLA point sampling for profiles is unchanged.
+
 ### Automated 4-Hour Check Alert [2026-08-30 08:53:04 UTC]
 TEST FAILURE: Browser console errors encountered during UI interaction:
 [pageerror] molaDem.getElevation is not a function

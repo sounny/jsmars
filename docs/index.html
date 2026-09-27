@@ -428,7 +428,7 @@
             <a class="nav-item" href="#mcd-profiler">MCD Atmospheric Profiler</a>
             <a class="nav-item" href="#crater-counting">Crater Counting & CSFD Dating</a>
             <a class="nav-item" href="#band-math">Mineral Index Visualizer</a>
-            <a class="nav-item" href="#threed-globe">3D Terrain & Globe Viewer</a>
+            <a class="nav-item" href="#threed-globe">3D Globe</a>
             <a class="nav-item" href="#radar-sounder">Subsurface Radar Sounder</a>
             <a class="nav-item" href="#trajectories">Astrodynamics & Trajectories</a>
             <a class="nav-item" href="#contour-slopes">Contour & Slope Hazards</a>
@@ -478,7 +478,7 @@
                 <div class="card-grid">
                     <div class="card">
                         <h4>⚡ Zero Build Step</h4>
-                        <p>Written in standard Vanilla JavaScript (ES6+ Modules), Leaflet, HTML5 Canvas, and WebGL Three.js. No Webpack, Vite, or npm compilation required.</p>
+                        <p>Written in standard Vanilla JavaScript (ES6+ Modules), Leaflet, and HTML5 Canvas. The 3D globe loads CesiumJS (Apache-2.0) only when you switch to 3D. No Webpack, Vite, or npm compilation required.</p>
                     </div>
                     <div class="card">
                         <h4>🔬 Desktop Parity (~91%)</h4>
@@ -590,9 +590,11 @@
 
             <!-- 3D Terrain Viewer -->
             <section id="threed-globe">
-                <h2>🌐 3D Terrain & Globe Viewer (WebGL)</h2>
+                <h2>🌐 3D Globe (CesiumJS)</h2>
                 <span class="badge badge-green">3D Graphics</span>
-                <p>Renders regional elevation displacement meshes and 3D planetary globes with dynamic vertical exaggeration scaling ($1\times - 20\times$), real-time solar terminator illumination, Lambertian/Lommel-Seeliger/Minnaert photometric models, camera FOV ground swath width footprint ($W = 2 h \tan(\text{FOV}/2)$), and facet normals.</p>
+                <span class="badge badge-cyan">Imagery</span>
+                <p>The <strong>2D | 3D</strong> control keeps the Leaflet map for 2D and replaces it with a CesiumJS globe for 3D. CesiumJS 1.145 (Apache-2.0) loads on the first switch. Mars and the Moon use Cesium's built-in ellipsoids; Europa uses JSMARS IAU radii. The active USGS / OpenPlanetary / NASA imagery layer is draped on that ellipsoid.</p>
+                <p><strong>Elevation terrain is not loaded.</strong> The surface is the reference ellipsoid, not a MOLA or LOLA DEM. Point elevation profiles in the 2D map still sample the USGS MOLA 128 ppd dataset. Drawing, measuring, and crater counting stay in 2D.</p>
             </section>
 
             <!-- Subsurface Radar Sounder -->
