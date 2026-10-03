@@ -148,7 +148,8 @@ export const JMARS_CONFIG = {
             layers: "GALILEO_VOYAGER",
             format: "image/png",
             transparent: true,
-            attribution: "USGS Astrogeology / NASA / JPL"
+            attribution: "USGS Astrogeology / NASA / JPL",
+            maxNativeZoom: 5
           }
         },
         {
@@ -255,7 +256,8 @@ export const JMARS_CONFIG = {
           layers: "GALILEO_VOYAGER",
           format: "image/png",
           transparent: true,
-          attribution: "USGS Astrogeology / NASA / JPL"
+          attribution: "USGS Astrogeology / NASA / JPL",
+          maxNativeZoom: 5
         },
         thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
       },
