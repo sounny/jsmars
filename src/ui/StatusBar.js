@@ -247,6 +247,45 @@ export class StatusBar {
     this.failedTiles = 0;
     this._statusDebounce = null;
     this._trackedLayers = new Set();
+    // Tiles Leaflet drops before they finish (zoom settle, pan) never fire
+    // tileload or tileerror. Count only tiles still in flight.
+    this._inflightTiles = new Set();
+
+    const tileKey = (layer, ev) => {
+      const id = layer && layer._leaflet_id != null ? layer._leaflet_id : 'layer';
+      const c = ev && ev.coords;
+      if (!c || !Number.isFinite(c.z) || !Number.isFinite(c.x) || !Number.isFinite(c.y)) return null;
+      return `${id}:${c.z}:${c.x}:${c.y}`;
+    };
+
+    const syncPending = () => {
+      this.pendingTiles = this._inflightTiles.size;
+      this.renderLoadStatus();
+    };
+
+    const noteStart = (layer, ev) => {
+      const key = tileKey(layer, ev);
+      if (!key || this._inflightTiles.has(key)) return;
+      this._inflightTiles.add(key);
+      syncPending();
+    };
+
+    const noteDone = (layer, ev, failed) => {
+      const key = tileKey(layer, ev);
+      if (!key || !this._inflightTiles.has(key)) return;
+      this._inflightTiles.delete(key);
+      if (failed) this.failedTiles++;
+      syncPending();
+    };
+
+    const dropLayer = (layer) => {
+      const id = layer && layer._leaflet_id;
+      if (id == null) return;
+      const prefix = `${id}:`;
+      for (const key of Array.from(this._inflightTiles)) {
+        if (key.startsWith(prefix)) this._inflightTiles.delete(key);
+      }
+    };
 
     const trackLayer = (layer) => {
       if (!layer || typeof layer.on !== 'function' || this._trackedLayers.has(layer)) return;
@@ -258,24 +297,14 @@ export class StatusBar {
 
       this._trackedLayers.add(layer);
 
-      layer.on('tileloadstart', () => {
-        this.pendingTiles++;
-        this.renderLoadStatus();
-      });
-
-      layer.on('tileload', () => {
-        this.pendingTiles = Math.max(0, this.pendingTiles - 1);
-        this.renderLoadStatus();
-      });
-
-      layer.on('tileerror', () => {
-        this.pendingTiles = Math.max(0, this.pendingTiles - 1);
-        this.failedTiles++;
-        this.renderLoadStatus();
-      });
+      layer.on('tileloadstart', (ev) => noteStart(layer, ev));
+      layer.on('tileload', (ev) => noteDone(layer, ev, false));
+      layer.on('tileerror', (ev) => noteDone(layer, ev, true));
+      // Vendored Leaflet fires these when a tile is aborted mid-request or removed.
+      layer.on('tileabort', (ev) => noteDone(layer, ev, false));
+      layer.on('tileunload', (ev) => noteDone(layer, ev, false));
 
       layer.on('load', () => {
-        // When layer fires 'load', clear pending count if layer has completed
         this.renderLoadStatus();
       });
     };
@@ -293,10 +322,9 @@ export class StatusBar {
       if (this._trackedLayers.has(e.layer)) {
         this._trackedLayers.delete(e.layer);
       }
-      if (this._trackedLayers.size === 0) {
-        this.pendingTiles = 0;
-        this.renderLoadStatus();
-      }
+      dropLayer(e.layer);
+      this.pendingTiles = this._inflightTiles.size;
+      this.renderLoadStatus();
     });
 
     // When body changes, reset failed tiles and show body transition
