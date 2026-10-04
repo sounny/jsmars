@@ -95,7 +95,15 @@ export class ThreeDViewer {
     this.coordBadge.innerText = 'Mars 3D Globe';
     this.container.appendChild(this.coordBadge);
 
-    this.setupThree();
+    try {
+      this.setupThree();
+    } catch (err) {
+      // A missing WebGL context must not escape. This viewer is constructed
+      // during page boot, and an uncaught throw skips every tool wired after it.
+      this.renderer = null;
+      if (this.coordBadge) this.coordBadge.innerText = '3D view unavailable (no WebGL)';
+      console.warn('JSMARS 3D view did not start:', err);
+    }
     this.bindEvents();
     this.render();
   }
@@ -116,12 +124,19 @@ export class ThreeDViewer {
       this.camera.position.set(0, 0, 75);
       this.camera.lookAt(0, 0, 0);
 
-      this.renderer = new THREE.WebGLRenderer({
-        canvas: this.canvas,
-        antialias: true,
-        alpha: false,
-        powerPreference: 'high-performance'
-      });
+      try {
+        this.renderer = new THREE.WebGLRenderer({
+          canvas: this.canvas,
+          antialias: true,
+          alpha: false,
+          powerPreference: 'high-performance'
+        });
+      } catch (err) {
+        this.renderer = null;
+        if (this.coordBadge) this.coordBadge.innerText = '3D view unavailable (no WebGL)';
+        console.warn('JSMARS 3D view did not start:', err);
+        return;
+      }
       this.renderer.setSize(width, height);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
@@ -627,6 +642,7 @@ export class ThreeDViewer {
       this.ctx.fillText('3D WebGL Globe & Terrain Loading...', w / 2, h / 2);
     }
 
+    if (!this.renderer && !this.ctx) return;
     this.animId = requestAnimationFrame(() => this.render());
   }
 
