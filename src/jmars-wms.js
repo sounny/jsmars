@@ -93,13 +93,16 @@ export class JMARSWMS {
         if (nodeName === 'Abstract') abstract = child.textContent;
       }
 
-      // Only include layers that have both a Name (renderable) and Title (display label)
+      // Only include layers that have both a Name (renderable) and Title (display label).
+      // WMS defaults queryable to 0 when the attribute is absent, including the
+      // root container layer that MapServer names but will not identify.
       if (name && title) {
         validLayers.push({
           name,
           title,
           abstract,
-          crs: 'EPSG:4326' // Simplified; could be parsed from <CRS> elements
+          crs: 'EPSG:4326', // Simplified; could be parsed from <CRS> elements
+          queryable: node.getAttribute('queryable') === '1'
         });
       }
     });

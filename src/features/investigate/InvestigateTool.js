@@ -95,8 +95,8 @@ export class InvestigateTool {
         this.loadDiagnostics(lat, displayLng360, body);
 
         // 2. Query WMS Layers
-        const results = await this.queryLayers(e.latlng, e.containerPoint);
-        this.updatePopup(results);
+        const query = await this.queryLayers(e.latlng, e.containerPoint);
+        this.updatePopup(query);
     }
 
     /**
@@ -177,6 +177,9 @@ export class InvestigateTool {
         // Let's try all visible WMS layers.
         
         const results = [];
+        let sawWms = false;
+        let sawQueryable = false;
+        let sawRejected = false;
         const size = this.map.getSize();
         const bounds = this.map.getBounds();
         // Leaflet bounds: SouthWest, NorthEast.
@@ -194,7 +197,7 @@ export class InvestigateTool {
         // In `index.html`, we exposed `window.jmars`.
         
         const availableLayers = window.jmars ? window.jmars.availableLayers : [];
-        if (availableLayers.length === 0) return [];
+        if (availableLayers.length === 0) return { results: [], emptyReason: 'no-wms' };
 
         for (let i = activeState.length - 1; i >= 0; i--) {
             const layerState = activeState[i];
@@ -202,6 +205,11 @@ export class InvestigateTool {
 
             const config = availableLayers.find(l => l.id === layerState.id);
             if (!config || config.type !== 'wms') continue;
+            sawWms = true;
+            // USGS marks these mosaics queryable="0". Asking anyway returns a
+            // MapServer error, which is not a measurement.
+            if (config.queryable === false) continue;
+            sawQueryable = true;
 
             try {
                 const url = JMARSWMS.getFeatureInfoUrl(config.url, {
@@ -226,9 +234,13 @@ export class InvestigateTool {
                 const response = await fetch(url);
                 if (response.ok) {
                     const text = await response.text();
+                    if (/ServiceException|msWMSFeatureInfo|WMS server error|not offered by the service/i.test(text)) {
+                        sawRejected = true;
+                        continue;
+                    }
                     // Simple cleanup of HTML
                     const cleanText = this.parseFeatureInfo(text);
-                    if (cleanText) {
+                    if (cleanText && cleanText.trim()) {
                         results.push({ name: config.name, value: cleanText });
                     }
                 }
@@ -237,7 +249,13 @@ export class InvestigateTool {
             }
         }
         
-        return results;
+        let emptyReason = null;
+        if (results.length === 0) {
+            if (!sawWms) emptyReason = 'no-wms';
+            else if (!sawQueryable || sawRejected) emptyReason = 'not-queryable';
+            else emptyReason = 'empty';
+        }
+        return { results, emptyReason };
     }
 
     /**
@@ -258,7 +276,9 @@ export class InvestigateTool {
      * Update the investigate popup with query results.
      * @param {Array<object>} results - Array of { name, value }.
      */
-    updatePopup(results) {
+    updatePopup(query) {
+        const results = Array.isArray(query) ? query : (query?.results || []);
+        const emptyReason = Array.isArray(query) ? null : query?.emptyReason;
         const loadingEl = document.getElementById('investigate-loading');
         const resultsEl = document.getElementById('investigate-results');
         
@@ -267,7 +287,13 @@ export class InvestigateTool {
         if (!resultsEl) return; // Popup closed
 
         if (results.length === 0) {
-            resultsEl.innerHTML = '<em>No data found.</em>';
+            if (emptyReason === 'not-queryable') {
+                resultsEl.innerHTML = '<em>This imagery has no point attributes.</em>';
+            } else if (emptyReason === 'no-wms') {
+                resultsEl.innerHTML = '';
+            } else {
+                resultsEl.innerHTML = '<em>No data found.</em>';
+            }
             return;
         }
 
