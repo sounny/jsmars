@@ -32,16 +32,7 @@ export class ExportTool {
 
     const mapEl = this.map.getContainer();
     try {
-      const canvas = await html2canvas(mapEl, {
-        useCORS: true,
-        scale: scale,
-        backgroundColor: '#000',
-        logging: false,
-        // Ignore Leaflet controls
-        ignoreElements: (el) => {
-          return el.classList?.contains('leaflet-control-container');
-        }
-      });
+      const canvas = await html2canvas(mapEl, this._captureOptions(scale, '#000'));
 
       // Add attribution text
       this._addAttribution(canvas);
@@ -77,12 +68,7 @@ export class ExportTool {
 
     const mapEl = this.map.getContainer();
     try {
-      const canvas = await html2canvas(mapEl, {
-        useCORS: true,
-        scale: options.scale || 1,
-        backgroundColor: '#000',
-        logging: false
-      });
+      const canvas = await html2canvas(mapEl, this._captureOptions(options.scale || 1, '#000'));
 
       canvas.toBlob(blob => {
         if (blob) {
@@ -186,13 +172,7 @@ export class ExportTool {
     await this._ensureHtml2Canvas();
 
     const mapEl = this.map.getContainer();
-    const rawCanvas = await html2canvas(mapEl, {
-      useCORS: true,
-      scale: scale,
-      backgroundColor: '#050505',
-      logging: false,
-      ignoreElements: (el) => el.classList?.contains('leaflet-control-container')
-    });
+    const rawCanvas = await html2canvas(mapEl, this._captureOptions(scale, '#050505'));
 
     const borderPad = 40 * scale;
     const headerHeight = 50 * scale;
@@ -269,6 +249,29 @@ export class ExportTool {
         URL.revokeObjectURL(url);
       }
     }, 'image/png');
+  }
+
+
+  /**
+   * html2canvas options shared by PNG, JPEG, and the cartographic print.
+   * Canvas tiles (hillshade, contours) are left out: on 2026-10-04 an export
+   * with those layers on wrote a solid 512×512 black rectangle over a map that
+   * was fully drawn on screen. The same view with the canvas layers off had no
+   * black pixels. Vector overlays are not canvases, so they still export.
+   * @param {number} scale
+   * @param {string} backgroundColor
+   */
+  _captureOptions(scale, backgroundColor) {
+    return {
+      useCORS: true,
+      scale: scale,
+      backgroundColor: backgroundColor,
+      logging: false,
+      ignoreElements: (el) => {
+        if (el.classList?.contains('leaflet-control-container')) return true;
+        return el.tagName === 'CANVAS';
+      }
+    };
   }
 
   /**
