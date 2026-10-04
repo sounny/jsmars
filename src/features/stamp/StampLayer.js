@@ -21,15 +21,17 @@ export class StampLayer {
     this.maxResults = 500;
 
     // ODE REST API base URL (CORS-friendly)
-    this.baseUrl = 'https://oderest.rsl.wustl.edu/live2';
+    this.baseUrl = 'https://oderest.rsl.wustl.edu/live2/';
 
     // Instrument configurations for ODE queries
+    // Product types are ODE pt codes (oderest query=iipt), not invented names.
+    // Verified 2026-10-04: each returns Status Success with footprints near lon 0.
     this.instruments = {
-      'THEMIS': { target: 'mars', host: 'ODY', instrument: 'THEMIS', productType: 'THMIR_IR_GEO' },
-      'CTX': { target: 'mars', host: 'MRO', instrument: 'CTX', productType: 'CTX_EDR' },
-      'HiRISE': { target: 'mars', host: 'MRO', instrument: 'HIRISE', productType: 'HIRISE_RDRV11' },
-      'MOC-NA': { target: 'mars', host: 'MGS', instrument: 'MOC', productType: 'MOC_AB_NA_EDR' },
-      'CRISM': { target: 'mars', host: 'MRO', instrument: 'CRISM', productType: 'CRISM_MRDR_TER' }
+      'THEMIS': { target: 'mars', host: 'ODY', instrument: 'THEMIS', productType: 'IRGEO2' },
+      'CTX': { target: 'mars', host: 'MRO', instrument: 'CTX', productType: 'EDR' },
+      'HiRISE': { target: 'mars', host: 'MRO', instrument: 'HIRISE', productType: 'RDRV11' },
+      'MOC-NA': { target: 'mars', host: 'MGS', instrument: 'MOC-NA/WA', productType: 'NASDP' },
+      'CRISM': { target: 'mars', host: 'MRO', instrument: 'CRISM', productType: 'TER' }
     };
   }
 
@@ -84,6 +86,10 @@ export class StampLayer {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`ODE API error: ${response.status}`);
       const data = await response.json();
+      const odeResponse = data?.ODEResults;
+      if (odeResponse && (odeResponse.Status === 'ERROR' || odeResponse.Error)) {
+        throw new Error(String(odeResponse.Error || 'ODE query failed'));
+      }
 
       // Parse ODE response
       this.results = this._parseODEResponse(data);
@@ -144,8 +150,13 @@ export class StampLayer {
           footprint: null
         };
 
-        // Parse footprint polygon
-        const fp = product.Footprint_geometry || product.Footprints_cross_meridian;
+        // C0 is one polygon in a continuous longitude frame. Footprint_geometry
+        // is often a GEOMETRYCOLLECTION split at lon 0, and the first ring alone
+        // is only a sliver. Footprints_cross_meridian is a boolean, not geometry.
+        const c0 = product.Footprint_C0_geometry;
+        const geom = product.Footprint_geometry;
+        const usable = (value) => typeof value === 'string' && /POLYGON/i.test(value) && !/EMPTY/i.test(value);
+        const fp = usable(c0) ? c0 : (usable(geom) ? geom : null);
         if (fp) {
           p.footprint = this._parseFootprintGeometry(fp);
         } else {
@@ -415,7 +426,7 @@ export class StampLayer {
    * @returns {string} Fully qualified ODE query URL
    */
   static buildODEQueryURL(options = {}) {
-    const baseUrl = 'https://oderest.rsl.wustl.edu/live2';
+    const baseUrl = 'https://oderest.rsl.wustl.edu/live2/';
     const params = new URLSearchParams({
       query: 'product',
       results: 'fmpc',
@@ -423,7 +434,7 @@ export class StampLayer {
       target: options.target || 'mars',
       ihid: options.host || 'MRO',
       iid: options.instrument || 'CTX',
-      pt: options.productType || 'CTX_EDR',
+      pt: options.productType || 'EDR',
       minlat: (options.minLat ?? -10).toFixed(4),
       maxlat: (options.maxLat ?? 10).toFixed(4),
       westernlon: (options.westLon ?? 0).toFixed(4),
