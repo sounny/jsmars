@@ -1,7 +1,7 @@
 /**
  * @module KRCChart
  * @description Multi-mode 2D Canvas chart renderer for KRC Mars thermal model results.
- * Supports Diurnal curve (0-24h LTST), Subsurface Depth profile (0-1m), and Seasonal curve (Ls 0-360°).
+ * Supports Diurnal curve (0-24h LTST), subsurface depth profile, and Seasonal curve (Ls 0-360°).
  */
 export class KRCChart {
   /**
@@ -262,9 +262,13 @@ export class KRCChart {
     ctx.fillText(`${minT}K`, pad, h - 8);
     ctx.fillText(`${maxT}K`, w - padR, h - 8);
 
+    const maxDepthCm = Math.max(...profile.map(p => p.depthCm));
+    const depthLabel = maxDepthCm >= 100
+      ? `0-${(maxDepthCm / 100).toFixed(1)}m`
+      : `0-${Math.round(maxDepthCm)}cm`;
     ctx.fillStyle = '#a855f7';
     ctx.textAlign = 'left';
-    ctx.fillText('Subsurface Depth Profile (0-1m)', pad + 4, padT - 4);
+    ctx.fillText(`Subsurface Depth Profile (${depthLabel})`, pad + 4, padT - 4);
   }
 
   drawSeasonal() {
