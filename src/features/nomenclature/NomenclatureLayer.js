@@ -1,5 +1,5 @@
 import { EVENTS } from '../../constants.js';
-import { to180 } from '../../util/geo.js';
+import { BODIES, to180 } from '../../util/geo.js';
 import { jmarsState } from '../../jmars-state.js';
 
 /**
@@ -84,7 +84,77 @@ export class NomenclatureLayer {
 
   setSearchQuery(query) {
     this.searchQuery = (query || '').trim().toLowerCase();
+    if (!this.searchQuery) this._lastFlyKey = '';
     this.render();
+  }
+
+  /**
+   * A feature matches when the query is a substring of its name, type, or origin,
+   * or when every word of at least 3 letters appears somewhere in those fields.
+   * @param {object} feature
+   * @param {string} query
+   * @returns {boolean}
+   */
+  featureMatchesQuery(feature, query) {
+    const name = (feature.name || '').toLowerCase();
+    const type = (feature.type || '').toLowerCase();
+    const origin = (feature.origin || '').toLowerCase();
+    const blob = `${name} ${type} ${origin}`;
+    if (blob.includes(query)) return true;
+    const tokens = query.split(/\s+/).filter(token => token.length >= 3);
+    return tokens.length > 1 && tokens.every(token => blob.includes(token));
+  }
+
+  /**
+   * Fly only for an exact name, or when a query of 3+ characters leaves one feature.
+   * A broad query such as "Mons" keeps filtering and does not move the map.
+   * @param {Array<object>} filtered
+   * @returns {object|null}
+   */
+  pickFlyTarget(filtered) {
+    const query = this.searchQuery;
+    if (!query || query.length < 3 || !filtered.length) return null;
+    const exact = filtered.filter(feature => (feature.name || '').toLowerCase() === query);
+    if (exact.length === 1) return exact[0];
+    if (filtered.length === 1) return filtered[0];
+    return null;
+  }
+
+  /**
+   * Zoom so the feature spans roughly 220 px, staying between 3 and 7.
+   * @param {object} feature
+   * @returns {number}
+   */
+  zoomForFeature(feature) {
+    const body = (feature.body || this.currentBody || 'mars').toLowerCase();
+    const radius = BODIES[body]?.meanRadius || BODIES.mars.meanRadius;
+    const diameterKm = Math.max(feature.diameterKm || 20, 5);
+    const degrees = diameterKm / (Math.PI * radius / 180);
+    const zoom = Math.log2((220 / degrees) * (360 / 256));
+    return Math.max(3, Math.min(7, Math.round(zoom)));
+  }
+
+  /**
+   * Center the map on a search hit and open its popup. Repeated renders of the
+   * same hit do not fly again.
+   * @param {object|null} feature
+   * @param {L.Marker|null} marker
+   */
+  flyToFeature(feature, marker) {
+    if (!feature || !this.map) return;
+    const key = `${feature.body || this.currentBody}|${feature.name}|${feature.lat}|${feature.lon}`;
+    if (this._lastFlyKey === key) return;
+    this._lastFlyKey = key;
+    const lon = to180(feature.lon);
+    const zoom = this.zoomForFeature(feature);
+    this.map.flyTo([feature.lat, lon], zoom, { duration: 0.6 });
+    if (marker) {
+      const open = () => marker.openPopup();
+      this.map.once('moveend', open);
+      window.setTimeout(() => {
+        if (!marker.isPopupOpen()) marker.openPopup();
+      }, 800);
+    }
   }
 
   toggle(isActive) {
@@ -114,16 +184,13 @@ export class NomenclatureLayer {
       const type = this.visibleTypes[l.type] !== undefined ? l.type : 'Other';
       if (!this.visibleTypes[type]) return false;
 
-      // Text search filter
-      if (this.searchQuery) {
-        const matchName = l.name.toLowerCase().includes(this.searchQuery);
-        const matchType = (l.type || '').toLowerCase().includes(this.searchQuery);
-        const matchOrigin = (l.origin || '').toLowerCase().includes(this.searchQuery);
-        if (!matchName && !matchType && !matchOrigin) return false;
-      }
+      if (this.searchQuery && !this.featureMatchesQuery(l, this.searchQuery)) return false;
 
       return true;
     });
+
+    const flyTarget = this.pickFlyTarget(filtered);
+    let flyMarker = null;
 
     filtered.forEach(l => {
       const lon = to180(l.lon);
@@ -162,6 +229,9 @@ export class NomenclatureLayer {
       });
 
       this.layerGroup.addLayer(marker);
+      if (flyTarget && l === flyTarget) flyMarker = marker;
     });
+
+    this.flyToFeature(flyTarget, flyMarker);
   }
 }
