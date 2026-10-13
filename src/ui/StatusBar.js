@@ -2,6 +2,7 @@ import { EVENTS } from '../constants.js';
 import { formatLatLon } from '../util/geo.js';
 import { molaDem } from '../util/mola-dem.js';
 import { jmarsState } from '../jmars-state.js';
+import { PlanetaryScaleBar } from './PlanetaryScaleBar.js';
 
 /**
  * @module StatusBar
@@ -54,7 +55,7 @@ export class StatusBar {
   }
 
   /**
-   * Build the status bar DOM elements, attach on-map HUD, and attach the Leaflet scale control.
+   * Build the status bar DOM elements, attach the on-map HUD, and draw a body-scaled bar.
    * @private
    */
   initUI() {
@@ -98,20 +99,33 @@ export class StatusBar {
       existingHud.remove();
     }
 
-    // Leaflet Scale Control
-    this.scaleControl = L.control.scale({
-      position: 'bottomleft',
-      maxWidth: 200,
-      metric: true,
-      imperial: false
-    });
+    // Body-scaled readout. Leaflet's own scale uses an Earth radius, so on the
+    // Moon it reported 3000 km beside the 1000 km lunar bar.
+    this.scaleEl.innerHTML = `
+      <div style="display:flex; align-items:center; gap:6px; font-family:monospace; font-size:11px; color:#e2e8f0;">
+        <div id="status-scale-bar" style="height:4px; background:#e2e8f0; border-radius:1px;"></div>
+        <span id="status-scale-label"></span>
+      </div>`;
+    this.scaleBarEl = this.scaleEl.querySelector('#status-scale-bar');
+    this.scaleLabelEl = this.scaleEl.querySelector('#status-scale-label');
+    this.updateScale();
+  }
 
-    this.scaleControl.addTo(this.map);
-    const scaleContainer = this.scaleControl.getContainer();
-    this.scaleEl.appendChild(scaleContainer);
-
-    scaleContainer.classList.remove('leaflet-bottom', 'leaflet-left', 'leaflet-control');
-    scaleContainer.style.margin = '0';
+  /**
+   * Draw the status-bar scale for the active body, using the same radius
+   * as the on-map planetary scale.
+   */
+  updateScale() {
+    if (!this.map || !this.scaleBarEl || !this.scaleLabelEl) return;
+    const body = (this.currentBody || 'mars').toLowerCase();
+    const maxWidth = 160;
+    const metersPerPx = PlanetaryScaleBar.getMetersPerPixel(this.map.getCenter().lat, this.map.getZoom(), body);
+    if (!Number.isFinite(metersPerPx) || metersPerPx <= 0) return;
+    const friendly = PlanetaryScaleBar.getFriendlyDistance(metersPerPx * maxWidth);
+    const pixelWidth = Math.max(Math.round(friendly.meters / metersPerPx), 20);
+    const bodyDisplay = body.charAt(0).toUpperCase() + body.slice(1);
+    this.scaleLabelEl.textContent = `${friendly.text} (${bodyDisplay})`;
+    this.scaleBarEl.style.width = `${pixelWidth}px`;
   }
 
   /**
@@ -136,7 +150,8 @@ export class StatusBar {
       }
     });
 
-    this.map.on('zoomend', () => this.updateZoom());
+    this.map.on('zoomend', () => { this.updateZoom(); this.updateScale(); });
+    this.map.on('moveend', () => this.updateScale());
 
     // Click on status coordinates to copy
     this.coordsEl.addEventListener('click', () => {
@@ -167,6 +182,7 @@ export class StatusBar {
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
       this.currentBody = e?.detail?.body || 'mars';
       this.updateCoords(this.map.getCenter());
+      this.updateScale();
     });
 
     // Listen for coordinate format changes from ProjectionManager
@@ -236,6 +252,7 @@ export class StatusBar {
   update() {
     this.updateZoom();
     this.updateCoords(this.map.getCenter(), true);
+    this.updateScale();
   }
 
   /**
