@@ -24,8 +24,8 @@ export class KRCEngine {
    * @param {number} [params.thermalInertia=250] - Thermal inertia in J m^-2 K^-1 s^-1/2 (SI units)
    * @param {number} [params.albedo=0.25] - Bolometric surface albedo (0.05 to 0.40)
    * @param {number} [params.tau=0.3] - Dust optical depth (0.1 to 3.0)
-   * @param {number} [params.numLayers=20] - Number of subsurface layers
-   * @param {number} [params.maxDepth=1.0] - Depth of simulation in meters
+   * @param {number} [params.numLayers=24] - Maximum number of subsurface layers
+   * @param {number} [params.maxDepth=1.2] - Depth of the column in meters
    * @returns {object} Simulation results including diurnal curve, depth profiles, and summary metrics.
    */
   static simulateDiurnal(params = {}) {
@@ -54,18 +54,27 @@ export class KRCEngine {
     const surfacePressure = 610 * Math.exp(-elevation / 11100);
     const atmEmissionFactor = 0.12 + 0.20 * (1 - Math.exp(-tau)) + 0.05 * Math.min(1.0, surfacePressure / 610);
 
-    // Discretize depth grid (geometric progression focused near surface)
-    const z = new Float64Array(numLayers);
-    const dz = new Float64Array(numLayers);
+    // Geometric grid: 3 mm at the surface, growing by 1.25, stopped at maxDepth.
+    const zParts = [];
+    const dzParts = [];
     let currentZ = 0;
-    let baseDz = 0.003; // 3 mm first layer
+    const baseDz = 0.003; // 3 mm first layer
     const growth = 1.25;
 
     for (let i = 0; i < numLayers; i++) {
-      dz[i] = baseDz * Math.pow(growth, i);
-      currentZ += dz[i];
-      z[i] = currentZ;
+      let layerDz = baseDz * Math.pow(growth, i);
+      if (currentZ + layerDz > maxDepth) {
+        layerDz = maxDepth - currentZ;
+        if (layerDz < baseDz * 0.25) break;
+      }
+      dzParts.push(layerDz);
+      currentZ += layerDz;
+      zParts.push(currentZ);
+      if (currentZ >= maxDepth - 1e-9) break;
     }
+    const z = Float64Array.from(zParts);
+    const dz = Float64Array.from(dzParts);
+    const layerCount = z.length;
 
     // Time discretization (120 time steps per sol)
     const stepsPerSol = 120;
@@ -79,8 +88,21 @@ export class KRCEngine {
     if (!Number.isFinite(T_mean) || T_mean < 100) T_mean = 210;
 
     // Temperature array across layers
-    let T = new Float64Array(numLayers).fill(T_mean);
+    let T = new Float64Array(layerCount).fill(T_mean);
     let T_surf = T_mean;
+
+    const layerNear = (depths, targetMeters) => {
+      let best = 0;
+      let bestDiff = Infinity;
+      for (let i = 0; i < depths.length; i++) {
+        const diff = Math.abs(depths[i] - targetMeters);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          best = i;
+        }
+      }
+      return best;
+    };
 
     // Spin-up solver for 6 sols to reach dynamic thermal equilibrium
     const totalSols = 6;
@@ -126,14 +148,14 @@ export class KRCEngine {
         T_surf = T_s;
 
         // Subsurface diffusion step (explicit finite difference with stability cap)
-        const nextT = new Float64Array(numLayers);
-        for (let i = 0; i < numLayers; i++) {
+        const nextT = new Float64Array(layerCount);
+        for (let i = 0; i < layerCount; i++) {
           const T_prev = (i === 0) ? T_surf : T[i - 1];
           const T_curr = T[i];
-          const T_next = (i === numLayers - 1) ? T[i] : T[i + 1];
+          const T_next = (i === layerCount - 1) ? T[i] : T[i + 1];
 
           const dz_prev = (i === 0) ? dz[0] : (dz[i - 1] + dz[i]) * 0.5;
-          const dz_next = (i === numLayers - 1) ? dz[i] : (dz[i] + dz[i + 1]) * 0.5;
+          const dz_next = (i === layerCount - 1) ? dz[i] : (dz[i] + dz[i + 1]) * 0.5;
 
           const flux_in = k_cond * (T_prev - T_curr) / dz_prev;
           const flux_out = k_cond * (T_curr - T_next) / dz_next;
@@ -148,8 +170,8 @@ export class KRCEngine {
           diurnalCurve.push({
             hour: parseFloat(localHour.toFixed(2)),
             surfaceTemp: parseFloat(T_surf.toFixed(2)),
-            subsurface10cm: parseFloat(T[3]?.toFixed(2) ?? T_surf.toFixed(2)),
-            subsurface50cm: parseFloat(T[10]?.toFixed(2) ?? T_surf.toFixed(2)),
+            subsurface10cm: parseFloat(T[layerNear(z, 0.10)]?.toFixed(2) ?? T_surf.toFixed(2)),
+            subsurface50cm: parseFloat(T[layerNear(z, 0.50)]?.toFixed(2) ?? T_surf.toFixed(2)),
             solarFlux: parseFloat(solarFlux.toFixed(1)),
             isCO2Frost
           });
@@ -164,10 +186,7 @@ export class KRCEngine {
     const meanTemp = temps.reduce((a, b) => a + b, 0) / temps.length;
     const diurnalRange = maxTemp - minTemp;
 
-    // Construct depth profile snapshot at local noon and midnight
-    const noonIdx = Math.floor(stepsPerSol * 0.5);
-    const midnightIdx = 0;
-
+    // Layer temperatures at the end of the spun-up sol.
     const depthProfile = Array.from(z).map((depthMeters, i) => ({
       depthCm: parseFloat((depthMeters * 100).toFixed(1)),
       temp: parseFloat(T[i].toFixed(2))
