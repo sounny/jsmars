@@ -9,7 +9,7 @@ export class URLStateEngine {
   /**
    * Serialize active session state to a compact query string.
    * @param {Object} state - State options
-   * @param {string} [state.body='mars'] - Planetary body key ('mars', 'moon', 'earth')
+   * @param {string} [state.body='mars'] - Planetary body key ('mars', 'moon', 'earth', 'europa')
    * @param {number} [state.lat=0] - Center latitude in degrees
    * @param {number} [state.lon=0] - Center longitude in degrees
    * @param {number} [state.zoom=2] - Map zoom level
@@ -99,7 +99,7 @@ export class URLStateEngine {
     let body = null;
     if (params.has('body')) {
       const b = params.get('body').toLowerCase();
-      if (['mars', 'moon', 'earth'].includes(b)) {
+      if (['mars', 'moon', 'earth', 'europa'].includes(b)) {
         body = b;
         hasState = true;
       }
