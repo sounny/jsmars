@@ -38,7 +38,12 @@ export class EnhancedProfileTool {
                 }
             ],
             moon: [
-                // No elevation source available yet; disabled in UI.
+                {
+                    id: 'lola_dem',
+                    name: 'LOLA Topography (USGS WMS)',
+                    url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map',
+                    layer: 'LOLA_bw'
+                }
             ]
         };
         this.currentSourceId = molaDem.SOURCE_ID;

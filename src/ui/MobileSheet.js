@@ -39,7 +39,9 @@ export class MobileSheet {
     const handleWrap = document.createElement('div');
     handleWrap.className = 'mobile-sheet-handle-wrap';
     handleWrap.setAttribute('role', 'button');
-    handleWrap.setAttribute('aria-label', 'Drag to open/close menu');
+    handleWrap.setAttribute('tabindex', '0');
+    handleWrap.setAttribute('aria-expanded', 'false');
+    handleWrap.setAttribute('aria-label', 'Toggle menu and tools sheet');
     handleWrap.innerHTML = `
       <div class="mobile-sheet-pill"></div>
       <div class="mobile-sheet-peek-summary">
@@ -47,6 +49,14 @@ export class MobileSheet {
         <span class="mobile-sheet-chevron">&#9650;</span>
       </div>
     `;
+
+    handleWrap.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleSheet();
+      }
+    });
 
     handleWrap.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -90,7 +100,7 @@ export class MobileSheet {
       }
     }, { passive: true });
 
-    window.addEventListener('touchend', (e) => {
+    const finishTouch = () => {
       if (!this.isDragging || window.innerWidth > 768) return;
       this.isDragging = false;
       this.controlsEl.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
@@ -108,7 +118,10 @@ export class MobileSheet {
           this.collapseSheet();
         }
       }
-    });
+    };
+
+    window.addEventListener('touchend', finishTouch);
+    window.addEventListener('touchcancel', finishTouch);
   }
 
   toggleSheet() {
@@ -124,6 +137,8 @@ export class MobileSheet {
     this.controlsEl.classList.add('mobile-sheet-expanded');
     this.controlsEl.classList.remove('mobile-sheet-peek');
     this.controlsEl.style.transform = '';
+    const handleWrap = this.controlsEl.querySelector('.mobile-sheet-handle-wrap');
+    if (handleWrap) handleWrap.setAttribute('aria-expanded', 'true');
     const chevron = this.controlsEl.querySelector('.mobile-sheet-chevron');
     if (chevron) chevron.innerHTML = '&#9660;';
   }
@@ -133,6 +148,8 @@ export class MobileSheet {
     this.controlsEl.classList.remove('mobile-sheet-expanded');
     this.controlsEl.classList.add('mobile-sheet-peek');
     this.controlsEl.style.transform = '';
+    const handleWrap = this.controlsEl.querySelector('.mobile-sheet-handle-wrap');
+    if (handleWrap) handleWrap.setAttribute('aria-expanded', 'false');
     const chevron = this.controlsEl.querySelector('.mobile-sheet-chevron');
     if (chevron) chevron.innerHTML = '&#9650;';
   }

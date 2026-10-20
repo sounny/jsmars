@@ -1,5 +1,39 @@
 # JSMARS Release Notes
 
+## v0.11.0 - Core Hardening, Geodesy Unification & Accessibility Milestone
+**Date:** 2026-10-13
+
+### Highlights
+- **Universal Multi-Body Planetary Radius**: Centralized all planetary geodesic radii in `src/util/geo.js` with `getPlanetaryRadius(body, type)` supporting Mars, Moon, Earth, and Europa ($R_{\text{mean}}$, $R_{\text{eq}}$, $R_{\text{pol}}$). Completely eliminated hardcoded Mars fallbacks across `RadialProfileTool`, `LandingSitesLayer`, `InvestigateTool` (gravity anomalies, dipole fields), `ThreeDEngine`, `NomenclatureTool`, and `SamplingTool`.
+- **Reproducible Spatial Sampling**: Replaced non-deterministic sampling with Mulberry32 seeded pseudo-random coordinate generation keyed to feature bounding boxes.
+- **Service Worker Hardening (v1.5.2)**: Resolved critical navigation cache collision where opening secondary pages overwritten the cached root shell. Precached all owned application assets across `src/`, `assets/icons/`, `assets/lunar-south-pole/manifest.json`, and `vendor/`.
+- **NASA Artemis III October 2024 Alignment**: Updated lunar landing candidate database to NASA's refined candidate exploration regions (including Peak near Cabeus B, Haworth, Malapert Massif, Mons Mouton, Mons Mouton Plateau, Nobile Rim 1, Nobile Rim 2, de Gerlache Rim 2, Slater Plain), updated target launch date to NET 2027+, and removed cancelled VIPER rover references.
+- **Information Architecture**: Reorganized sidebar from a flat list of 23 tools into 5 structured semantic categories:
+  1. Measure & Inspect
+  2. Cartography & Geology
+  3. Planetary Data & Orbital Layers
+  4. Physical Models & Simulations [Modeled]
+  5. Mission Planning & 3D Visualization
+- **WCAG 2.1 AA Accessibility & Ergonomics**:
+  - Full keyboard support (Enter and Space) and ARIA attributes (`role="button"`, `tabindex="0"`, `aria-expanded`, `aria-controls`) across all sidebar collapsible headers in `CollapsibleGroup.js` and `MobileSheet.js`.
+  - Welcome dialog focus trapping, Escape key dismiss, and focus restoration.
+  - Minimum 44x44px touch targets on info popover buttons (`.tool-info-btn`).
+  - Screen reader accessible toast notifications (`role="status"` and `aria-live="polite"`).
+  - PWA lifecycle check for waiting service workers and safe `controllerchange` update reloads.
+- **Scientific Provenance Badges**: Explicit badges distinguishing procedural/illustrative textures in 3D viewer and multispectral ratio proxies in Band Math from raw spacecraft observations.
+- **Automated Verification Harness**: Added `scripts/run_tests.py` providing a headless Playwright runner executing all unit tests with 100% pass rate.
+
+### New Features
+- **Lunar Base Site Planner** (`src/features/lunar-site/`): full-screen south polar workspace built on real LOLA data. Ten PGDA landing-site DEMs (Barker et al. 2021, 5 m slope resampled to 20 m), regional 120 m DEM (PDS GDR), and Mazarico et al. (2011) solar visibility, Earth visibility and PSR maps.
+- Slope hazard classes with user thresholds, roughness proxy, distance to PSR, flat-area finder, corridor elevation profiles, landing pads with user-defined blast buffers, geometric horizon / Sun-path analysis.
+- DXF and SVG site plan import with per-polygon slope / sun / PSR checks.
+- Exports: terrain OBJ (Z-up or Y-up), elevation and max-slope GeoTIFF, site plan DXF in the same local frame, corridor CSV, plan JSON save/load. Optional live read of the USGS-hosted LOLA 5 m COG.
+- Data package build script `scripts/build_lunar_south_pole_assets.py` with a provenance manifest.
+- Service worker (`jsmars-shell-v1.5.2`) never caches `.tif` rasters.
+
+### Known limitations
+- No longest-continuous-darkness layer (not a published raster), no boulder density, no bundled blast radii. See `docs/lunar-site-planner.md`.
+
 ## v0.9.1 - Science Honesty & Docs Alignment
 **Date:** 2026-09-20
 

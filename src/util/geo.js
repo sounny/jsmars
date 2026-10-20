@@ -37,6 +37,21 @@ export const BODIES = {
 };
 
 /**
+ * Retrieve authoritative planetary radius for any supported celestial body.
+ * @param {string} [body='mars'] - Planetary body key ('mars', 'moon', 'earth', 'europa').
+ * @param {'mean'|'equatorial'|'polar'|'meters'} [type='mean'] - Desired radius type.
+ * @returns {number} Radius in km (or meters if type === 'meters').
+ */
+export function getPlanetaryRadius(body = 'mars', type = 'mean') {
+  const key = (body || 'mars').toLowerCase();
+  const b = BODIES[key] || BODIES.mars;
+  if (type === 'equatorial') return b.equatorialRadius;
+  if (type === 'polar') return b.polarRadius;
+  if (type === 'meters') return b.meanRadius * 1000.0;
+  return b.meanRadius;
+}
+
+/**
  * Normalize a longitude to the [0, 360) range.
  * @param {number} lon - Longitude in degrees.
  * @returns {number} - Normalized longitude.

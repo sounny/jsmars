@@ -23,8 +23,21 @@ try:
             const statsText = document.querySelector('#mocha-stats')?.innerText || '';
             return { passes, failures, statsText };
         }""")
+        failures_detail = page.evaluate("""() => {
+            const fails = Array.from(document.querySelectorAll('.test.fail'));
+            return fails.map(f => ({
+                title: f.querySelector('h2')?.innerText || '',
+                error: f.querySelector('.error')?.innerText || ''
+            }));
+        }""")
         print(f"Mocha Test Run: {stats['passes']} passed, {stats['failures']} failed.")
         print(stats['statsText'])
+        if failures_detail:
+            print("FAILURES:")
+            for fd in failures_detail:
+                clean_title = fd['title'].encode('ascii', errors='replace').decode('ascii')
+                clean_err = fd['error'].encode('ascii', errors='replace').decode('ascii')
+                print(f"  - {clean_title}: {clean_err}")
         assert stats['failures'] == 0, f"Found {stats['failures']} failing tests!"
         browser.close()
         print("ALL UNIT TESTS PASSED!")

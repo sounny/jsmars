@@ -1,6 +1,6 @@
 /**
  * JSMARS - Service Worker (Application Shell & Offline Cache)
- * Version: jsmars-shell-v1.4.8
+ * Version: jsmars-shell-v1.5.2
  * 
  * Rules:
  * 1. Cache-first strategy for versioned owned local application shell assets.
@@ -11,90 +11,143 @@
  * 6. User-prompted update flow via SKIP_WAITING to avoid interrupting active workflows.
  */
 
-const CACHE_NAME = 'jsmars-shell-v1.4.8';
+const CACHE_NAME = 'jsmars-shell-v1.5.2';
 
 const PRECACHE_ASSETS = [
   './',
-  './index.html',
   './about.html',
-  './services.html',
-  './manifest.webmanifest',
-  './style.css',
-  './vendor/leaflet/leaflet.css',
-  './vendor/leaflet/leaflet.js',
-  './vendor/leaflet/images/marker-icon.png',
-  './vendor/leaflet/images/marker-icon-2x.png',
-  './vendor/leaflet/images/marker-shadow.png',
-  './vendor/leaflet/images/layers.png',
-  './vendor/leaflet/images/layers-2x.png',
-  './vendor/leaflet-draw/leaflet.draw.css',
-  './vendor/leaflet-draw/leaflet.draw.js',
-  './vendor/leaflet-draw/images/spritesheet.png',
-  './vendor/leaflet-draw/images/spritesheet-2x.png',
-  './vendor/leaflet-draw/images/spritesheet.svg',
-  './jsmars_logo.svg',
-  './og-image.png',
-  './assets/og-image.png',
-  './assets/icons/icon.svg',
+  './assets/icons/apple-touch-icon.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable-192.png',
   './assets/icons/icon-maskable-512.png',
-  './assets/icons/apple-touch-icon.png',
+  './assets/icons/icon.svg',
+  './assets/lunar-south-pole/manifest.json',
+  './index.html',
+  './jsmars_logo.svg',
+  './manifest.webmanifest',
+  './og-image.png',
+  './services.html',
   './src/constants.js',
+  './src/core/EventBus.js',
+  './src/core/PluginRegistry.js',
+  './src/core/ToolManager.js',
+  './src/data/landing-sites.json',
+  './src/data/landmarks.json',
+  './src/features/bands/BandMathEngine.js',
+  './src/features/bands/BandMathLayer.js',
+  './src/features/bands/BandMathPanel.js',
+  './src/features/bookmarks/BookmarksTool.js',
+  './src/features/contour/ContourLayer.js',
+  './src/features/contour/ContourPanel.js',
+  './src/features/crater-counting/CSFDChart.js',
+  './src/features/crater-counting/CSFDEngine.js',
+  './src/features/crater-counting/CraterLayer.js',
+  './src/features/crater-counting/CraterTable.js',
+  './src/features/custom-map/CustomMapManager.js',
+  './src/features/export/ExportTool.js',
+  './src/features/grid/GridLayer.js',
+  './src/features/grid/GridPanel.js',
+  './src/features/groundtrack/GroundTrackLayer.js',
+  './src/features/groundtrack/GroundTrackPanel.js',
+  './src/features/hillshade/HillshadeLayer.js',
+  './src/features/hillshade/HillshadePanel.js',
+  './src/features/investigate/InvestigateTool.js',
+  './src/features/krc/KRCChart.js',
+  './src/features/krc/KRCEngine.js',
+  './src/features/krc/KRCPanel.js',
+  './src/features/landing/LandingSitesLayer.js',
+  './src/features/lunar-site/CadImport.js',
+  './src/features/lunar-site/Exporters.js',
+  './src/features/lunar-site/LunarSitePlanner.js',
+  './src/features/lunar-site/PlannerCad.js',
+  './src/features/lunar-site/PlannerCadExport.js',
+  './src/features/lunar-site/PlannerCharts.js',
+  './src/features/lunar-site/PlannerExport.js',
+  './src/features/lunar-site/PlannerRenderers.js',
+  './src/features/lunar-site/PlannerTools.js',
+  './src/features/lunar-site/PolarGrid.js',
+  './src/features/lunar-site/TerrainAnalysis.js',
+  './src/features/lunar-site/lunar-site.css',
+  './src/features/mcd/MCDChart.js',
+  './src/features/mcd/MCDEngine.js',
+  './src/features/mcd/MCDPanel.js',
+  './src/features/measure/MeasureTool.js',
+  './src/features/measure/MeasurementTable.js',
+  './src/features/nomenclature/NomenclatureLayer.js',
+  './src/features/nomenclature/NomenclatureTool.js',
+  './src/features/orbit/TrajectoryEngine.js',
+  './src/features/orbit/TrajectoryPanel.js',
+  './src/features/places/PlacesManager.js',
+  './src/features/profile/EnhancedProfileTool.js',
+  './src/features/profile/ProfileChart.js',
+  './src/features/profile/RadialProfileTool.js',
+  './src/features/projections/ProjectionManager.js',
+  './src/features/radar/RadarChart.js',
+  './src/features/radar/RadarPanel.js',
+  './src/features/radar/RadarSounderEngine.js',
+  './src/features/sampling/SampleTable.js',
+  './src/features/sampling/SamplingTool.js',
+  './src/features/shapes/ShapeIO.js',
+  './src/features/shapes/ShapeLayer.js',
+  './src/features/shapes/ShapeTable.js',
+  './src/features/shapes/StyleEditor.js',
+  './src/features/slider/MarsTime.js',
+  './src/features/slider/TimeSlider.js',
+  './src/features/stamp/StampLayer.js',
+  './src/features/stamp/StampQueryPanel.js',
+  './src/features/threed/ThreeDEngine.js',
+  './src/features/threed/ThreeDPanel.js',
+  './src/features/threed/ThreeDViewer.js',
   './src/jmars-config.js',
   './src/jmars-map.js',
   './src/jmars-state.js',
   './src/jmars-vectors.js',
   './src/jmars-wms.js',
+  './src/layers/GraticuleLayer.js',
+  './src/layers/index.js',
   './src/pwa/PWAManager.js',
   './src/ui/Accordion.js',
   './src/ui/BodySelector.js',
   './src/ui/CollapsibleGroup.js',
   './src/ui/ColorStretchControl.js',
   './src/ui/FixedOverlays.js',
+  './src/ui/InfoPanel.js',
   './src/ui/KeyboardShortcuts.js',
+  './src/ui/MiniMap.js',
   './src/ui/MobileSheet.js',
+  './src/ui/MosaicCatalog.js',
+  './src/ui/NorthArrow.js',
+  './src/ui/Panner.js',
   './src/ui/PlanetaryScaleBar.js',
+  './src/ui/QuickActions.js',
+  './src/ui/ResetViewControl.js',
   './src/ui/SearchBar.js',
   './src/ui/SessionManager.js',
   './src/ui/ScienceProvenance.js',
   './src/ui/Sidebar.js',
   './src/ui/StatusBar.js',
   './src/ui/layer-manager.js',
-  './src/features/bands/BandMathEngine.js',
-  './src/features/bands/BandMathPanel.js',
-  './src/features/bookmarks/BookmarksTool.js',
-  './src/features/crater-counting/CSFDEngine.js',
-  './src/features/crater-counting/CraterLayer.js',
-  './src/features/crater-counting/CraterTable.js',
-  './src/features/export/ExportTool.js',
-  './src/features/grid/GridLayer.js',
-  './src/features/grid/GridPanel.js',
-  './src/features/investigate/InvestigateTool.js',
-  './src/features/krc/KRCEngine.js',
-  './src/features/krc/KRCPanel.js',
-  './src/features/mcd/MCDEngine.js',
-  './src/features/mcd/MCDPanel.js',
-  './src/features/measure/MeasureTool.js',
-  './src/features/orbit/TrajectoryEngine.js',
-  './src/features/orbit/TrajectoryPanel.js',
-  './src/features/profile/EnhancedProfileTool.js',
-  './src/features/profile/RadialProfileTool.js',
-  './src/features/projections/ProjectionManager.js',
-  './src/features/radar/RadarPanel.js',
-  './src/features/radar/RadarSounderEngine.js',
-  './src/features/sampling/SamplingTool.js',
-  './src/features/shapes/ShapeLayer.js',
-  './src/features/slider/MarsTime.js',
-  './src/features/slider/TimeSlider.js',
-  './src/features/stamp/StampQueryPanel.js',
-  './src/features/threed/ThreeDPanel.js',
+  './src/util/ColorRampEngine.js',
   './src/util/InteractionLogger.js',
   './src/util/URLStateEngine.js',
+  './src/util/body.js',
   './src/util/geo.js',
-  './src/data/landing-sites.json',
-  './src/data/landmarks.json'
+  './src/util/mola-dem.js',
+  './src/util/sounny-forms.js',
+  './style.css',
+  './vendor/leaflet-draw/images/spritesheet-2x.png',
+  './vendor/leaflet-draw/images/spritesheet.png',
+  './vendor/leaflet-draw/images/spritesheet.svg',
+  './vendor/leaflet-draw/leaflet.draw.css',
+  './vendor/leaflet-draw/leaflet.draw.js',
+  './vendor/leaflet/images/layers-2x.png',
+  './vendor/leaflet/images/layers.png',
+  './vendor/leaflet/images/marker-icon-2x.png',
+  './vendor/leaflet/images/marker-icon.png',
+  './vendor/leaflet/images/marker-shadow.png',
+  './vendor/leaflet/leaflet.css',
+  './vendor/leaflet/leaflet.js'
 ];
 
 // 1x1 transparent PNG fallback for missing offline tiles
@@ -152,41 +205,67 @@ self.addEventListener('fetch', (event) => {
   if (url.origin === location.origin) {
     // Navigation requests (HTML documents with or without query strings)
     if (request.mode === 'navigate' || request.destination === 'document') {
-      let targetShell = './index.html';
-      if (url.pathname.endsWith('/about.html') || url.pathname.endsWith('about.html')) {
-        targetShell = './about.html';
-      } else if (url.pathname.endsWith('/services.html') || url.pathname.endsWith('services.html')) {
-        targetShell = './services.html';
+      const pathname = url.pathname;
+      const isRoot = pathname === '/' || pathname.endsWith('/index.html') || pathname.endsWith('index.html');
+      const isAbout = pathname.endsWith('/about.html') || pathname.endsWith('about.html');
+      const isServices = pathname.endsWith('/services.html') || pathname.endsWith('services.html');
+
+      let targetShell = null;
+      if (isRoot) targetShell = './index.html';
+      else if (isAbout) targetShell = './about.html';
+      else if (isServices) targetShell = './services.html';
+
+      if (targetShell) {
+        event.respondWith(
+          caches.match(targetShell).then((cached) => {
+            if (cached) {
+              // Return cached application shell immediately; revalidate in background if online
+              fetch(request).then((networkResponse) => {
+                if (networkResponse && networkResponse.status === 200) {
+                  caches.open(CACHE_NAME).then((cache) => cache.put(targetShell, networkResponse));
+                }
+              }).catch(() => {/* offline or cancelled, silent */});
+              return cached;
+            }
+
+            // Not in cache: fetch from network
+            return fetch(request).then((networkResponse) => {
+              if (networkResponse && networkResponse.status === 200) {
+                const clone = networkResponse.clone();
+                caches.open(CACHE_NAME).then((cache) => cache.put(targetShell, clone));
+              }
+              return networkResponse;
+            }).catch(() => {
+              return caches.match('./index.html').then((fallback) => {
+                if (fallback) return fallback;
+                return caches.match('./');
+              });
+            });
+          })
+        );
+        return;
       }
 
+      // For all other HTML documents (docs, tests, guides): Network-first with isolated caching
       event.respondWith(
-        caches.match(targetShell).then((cached) => {
-          if (cached) {
-            // Return cached application shell immediately; revalidate in background if online
-            fetch(request).then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                caches.open(CACHE_NAME).then((cache) => cache.put(targetShell, networkResponse));
-              }
-            }).catch(() => {/* offline or cancelled, silent */});
-            return cached;
+        fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
-
-          // Not in cache: fetch from network
-          return fetch(request).then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              const clone = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(targetShell, clone));
-            }
-            return networkResponse;
-          }).catch(() => {
-            // Network failure fallback
-            return caches.match('./index.html').then((fallback) => {
-              if (fallback) return fallback;
-              return caches.match('./');
-            });
+          return networkResponse;
+        }).catch(() => {
+          return caches.match(request).then((cached) => {
+            if (cached) return cached;
+            return caches.match('./index.html');
           });
         })
       );
+      return;
+    }
+
+    // Large scientific rasters (any .tif / .tiff): network only, never cached in app shell.
+    if (/\.tiff?$/i.test(url.pathname)) {
       return;
     }
 
@@ -223,6 +302,11 @@ self.addEventListener('fetch', (event) => {
         });
       })
     );
+    return;
+  }
+
+  // Remote Cloud-Optimized GeoTIFF range reads (e.g. USGS LOLA 5 m COG): bypass entirely.
+  if (/\.tiff?$/i.test(url.pathname)) {
     return;
   }
 

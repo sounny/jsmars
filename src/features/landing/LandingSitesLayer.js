@@ -1,5 +1,5 @@
 import { EVENTS } from '../../constants.js';
-import { computeEllipsePolygon } from '../../util/geo.js';
+import { computeEllipsePolygon, getPlanetaryRadius } from '../../util/geo.js';
 import { jmarsState } from '../../jmars-state.js';
 
 /**
@@ -15,6 +15,7 @@ export class LandingSitesLayer {
     this.showEllipses = true;
     this.sites = [];
     this._onBodyChanged = this._onBodyChanged.bind(this);
+    document.addEventListener(EVENTS.BODY_CHANGED, this._onBodyChanged);
     this._loadData();
   }
 
@@ -38,8 +39,8 @@ export class LandingSitesLayer {
   activate() {
     if (this.isActive) return;
     this.isActive = true;
+    this.currentBody = (jmarsState.get('body') || this.currentBody || 'mars').toLowerCase();
     this.markerGroup.addTo(this.map);
-    document.addEventListener(EVENTS.BODY_CHANGED, this._onBodyChanged);
     this._render();
   }
 
@@ -50,7 +51,6 @@ export class LandingSitesLayer {
     if (!this.isActive) return;
     this.isActive = false;
     this.map.removeLayer(this.markerGroup);
-    document.removeEventListener(EVENTS.BODY_CHANGED, this._onBodyChanged);
   }
 
   /**
@@ -74,7 +74,9 @@ export class LandingSitesLayer {
     const body = e?.detail?.body?.toLowerCase();
     if (body) {
       this.currentBody = body;
-      this._render();
+      if (this.isActive) {
+        this._render();
+      }
     }
   }
 
@@ -84,7 +86,8 @@ export class LandingSitesLayer {
   _render() {
     this.markerGroup.clearLayers();
 
-    const filtered = this.sites.filter(s => s.body === this.currentBody);
+    const targetBody = (this.currentBody || jmarsState.get('body') || 'mars').toLowerCase();
+    const filtered = this.sites.filter(s => (s.body || '').toLowerCase() === targetBody);
     if (filtered.length === 0) return;
 
     // Agency colors
@@ -203,7 +206,7 @@ export class LandingSitesLayer {
 
     filtered.forEach(s => {
       // Haversine distance
-      const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+      const R = getPlanetaryRadius(body, 'mean');
       const dLat = (s.lat - lat) * Math.PI / 180;
       const dLon = (s.lon - lon) * Math.PI / 180;
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -329,12 +332,13 @@ export class LandingSitesLayer {
    * @param {number} aKm - Semi-major axis in km
    * @param {number} bKm - Semi-minor axis in km
    * @param {number} [azimuthDeg=0] - Ellipse major axis azimuth in degrees from North
+   * @param {string} [body='mars'] - Planetary body key
    * @returns {boolean} True if point lies inside ellipse
    */
-  static isPointInsideEllipse(lat, lon, centerLat, centerLon, aKm, bKm, azimuthDeg = 0) {
-    const R_MARS = 3389.5;
-    const dLatKm = (lat - centerLat) * (Math.PI / 180.0) * R_MARS;
-    const dLonKm = (lon - centerLon) * (Math.PI / 180.0) * R_MARS * Math.cos(centerLat * Math.PI / 180.0);
+  static isPointInsideEllipse(lat, lon, centerLat, centerLon, aKm, bKm, azimuthDeg = 0, body = 'mars') {
+    const R = getPlanetaryRadius(body, 'mean');
+    const dLatKm = (lat - centerLat) * (Math.PI / 180.0) * R;
+    const dLonKm = (lon - centerLon) * (Math.PI / 180.0) * R * Math.cos(centerLat * Math.PI / 180.0);
 
     // Rotate into ellipse coordinate system
     const thetaRad = -azimuthDeg * Math.PI / 180.0;

@@ -324,6 +324,69 @@
     "origin": "Ernest Shackleton, Antarctic explorer; lunar south pole with permanently shadowed regions."
   },
   {
+    "name": "Connecting Ridge",
+    "lat": -89.44,
+    "lon": -137.5,
+    "type": "Mons",
+    "body": "moon",
+    "diameterKm": 15,
+    "origin": "High topographic ridge connecting Shackleton and de Gerlache; prime Artemis landing and solar base site."
+  },
+  {
+    "name": "Malapert Massif",
+    "lat": -86.04,
+    "lon": 0.0,
+    "type": "Mons",
+    "body": "moon",
+    "diameterKm": 45,
+    "origin": "5,000m high lunar mountain; premier site for lunar base communication and solar power with Earth visibility."
+  },
+  {
+    "name": "Haworth Crater",
+    "lat": -87.87,
+    "lon": -5.0,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 51,
+    "origin": "Walter Haworth, British chemist; polar crater hosting extensive cryogenic volatile cold traps."
+  },
+  {
+    "name": "Faustini Crater",
+    "lat": -87.21,
+    "lon": 67.0,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 39,
+    "origin": "Arnaldo Faustini, Italian geographer; high rim illumination adjacent to ice-rich PSRs."
+  },
+  {
+    "name": "de Gerlache Crater",
+    "lat": -88.48,
+    "lon": -88.34,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 32,
+    "origin": "Adrien de Gerlache, Belgian polar explorer; deep polar crater near Shackleton."
+  },
+  {
+    "name": "Nobile Crater",
+    "lat": -85.25,
+    "lon": 53.0,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 73,
+    "origin": "Umberto Nobile, Italian aeronautical engineer; target exploration site for lunar water-ice."
+  },
+  {
+    "name": "Amundsen Crater",
+    "lat": -84.50,
+    "lon": 82.8,
+    "type": "Crater",
+    "body": "moon",
+    "diameterKm": 105,
+    "origin": "Roald Amundsen, Norwegian polar explorer; large complex impact crater near South Pole."
+  },
+  {
     "name": "Clavius Crater",
     "lat": -58.4,
     "lon": -14.4,

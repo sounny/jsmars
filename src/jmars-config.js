@@ -45,7 +45,7 @@ export const JMARS_CONFIG = {
     // USGS Astrogeology Mars WMS
     mars_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
     // USGS Astrogeology Moon WMS
-    moon_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/moon/moon_simp_cyl.map',
+    moon_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map',
     // NASA GIBS Earth WMS
     earth_wms: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
     // USGS Astrogeology Europa WMS
@@ -119,8 +119,19 @@ export const JMARS_CONFIG = {
       name: "Moon",
       center: [0, 0],
       zoom: 2,
-      defaultLayer: 'moon_opm_basemap',
+      defaultLayer: 'moon_lro_wac',
       layers: [
+        {
+          id: "moon_lro_wac",
+          name: "LRO WAC Global Mosaic 100m (NASA Trek)",
+          type: "xyz",
+          url: "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+          options: {
+            attribution: "NASA / GSFC / ASU / Moon Trek",
+            maxZoom: 8,
+            tms: false
+          }
+        },
         {
           id: "moon_opm_basemap",
           name: "Moon Basemap (OpenPlanetary)",
@@ -129,6 +140,54 @@ export const JMARS_CONFIG = {
           options: {
             attribution: "OpenPlanetary",
             maxZoom: 10
+          }
+        },
+        {
+          id: "moon_lola_color",
+          name: "LOLA Elevation Color Relief (USGS WMS)",
+          type: "wms",
+          url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map",
+          options: {
+            layers: "LOLA_color",
+            format: "image/png",
+            transparent: true,
+            attribution: "USGS Astrogeology / NASA / GSFC"
+          }
+        },
+        {
+          id: "moon_lola_bw",
+          name: "LOLA Shaded Relief Grayscale (USGS WMS)",
+          type: "wms",
+          url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map",
+          options: {
+            layers: "LOLA_bw",
+            format: "image/png",
+            transparent: true,
+            attribution: "USGS Astrogeology / NASA / GSFC"
+          }
+        },
+        {
+          id: "moon_kaguya_tc",
+          name: "Kaguya TC Orthomosaic 10m (USGS WMS)",
+          type: "wms",
+          url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map",
+          options: {
+            layers: "KaguyaTC_Ortho",
+            format: "image/png",
+            transparent: true,
+            attribution: "USGS Astrogeology / JAXA / SELENE"
+          }
+        },
+        {
+          id: "moon_clementine_uvvis",
+          name: "Clementine UVVIS Ratio (USGS WMS)",
+          type: "wms",
+          url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map",
+          options: {
+            layers: "uv_v2",
+            format: "image/png",
+            transparent: true,
+            attribution: "USGS Astrogeology / NRL / BMDO"
           }
         }
       ]
@@ -306,6 +365,48 @@ export const JMARS_CONFIG = {
         options: {
           attribution: "NASA / JPL / Galileo SSI / Europa Trek",
           maxZoom: 9
+        },
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
+      }
+    ],
+    moon: [
+      {
+        id: "moon_lro_wac_mosaic",
+        name: "LRO WAC Global Mosaic (100m)",
+        description: "Lunar Reconnaissance Orbiter Camera (LROC) Wide Angle Camera global monochrome mosaic at 303 pixels/degree (~100m/pixel).",
+        type: "xyz",
+        url: "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+        options: {
+          attribution: "NASA / GSFC / ASU / Moon Trek",
+          maxZoom: 8
+        },
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
+      },
+      {
+        id: "moon_lola_color_mosaic",
+        name: "LOLA Topographic Elevation (Color)",
+        description: "Lunar Orbiter Laser Altimeter (LOLA) global color-coded digital elevation model showing absolute surface elevations.",
+        type: "wms",
+        url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map",
+        options: {
+          layers: "LOLA_color",
+          format: "image/png",
+          transparent: true,
+          attribution: "USGS Astrogeology / NASA / GSFC"
+        },
+        thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
+      },
+      {
+        id: "moon_kaguya_tc_mosaic",
+        name: "Kaguya TC Orthomosaic (10m)",
+        description: "JAXA SELENE (Kaguya) Terrain Camera high-resolution 10 m/pixel seamless global orthomosaic.",
+        type: "wms",
+        url: "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map",
+        options: {
+          layers: "KaguyaTC_Ortho",
+          format: "image/png",
+          transparent: true,
+          attribution: "USGS Astrogeology / JAXA / SELENE"
         },
         thumbnail: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YpK4n8AAAAASUVORK5CYII="
       }

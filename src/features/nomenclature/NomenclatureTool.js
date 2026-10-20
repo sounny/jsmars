@@ -5,6 +5,7 @@
 import { NomenclatureLayer } from './NomenclatureLayer.js';
 import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
+import { getPlanetaryRadius } from '../../util/geo.js';
 
 /**
  * @class NomenclatureTool
@@ -212,7 +213,7 @@ export class NomenclatureTool {
    * @returns {{south: number, west: number, north: number, east: number}}
    */
   static computeFeatureBoundingBox(feature, body = 'mars') {
-    const R = (body.toLowerCase() === 'moon') ? 1737.4 : 3389.5;
+    const R = getPlanetaryRadius(body, 'mean');
     const lat = feature.lat != null ? feature.lat : (feature.latitude || 0);
     const lon = feature.lon != null ? feature.lon : (feature.lng || feature.longitude || 0);
     const diam = Math.max(1, feature.diameter || feature.diameterKm || 10);

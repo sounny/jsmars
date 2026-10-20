@@ -1,3 +1,4 @@
+import { getPlanetaryRadius } from '../../util/geo.js';
 /**
  * @module ThreeDEngine
  * @description Planetary 3D geometry, terrain displacement mesh synthesis,
@@ -195,9 +196,8 @@ export class ThreeDEngine {
    * @returns {{x: number, y: number, z: number, radiusKm: number}}
    */
   static geographicToCartesian(latDeg, lonDeg, altKm = 0, body = 'mars') {
-    const isMars = body.toLowerCase() === 'mars';
-    const a = isMars ? 3396.19 : (body.toLowerCase() === 'moon' ? 1737.4 : 6378.14);
-    const b = isMars ? 3376.20 : (body.toLowerCase() === 'moon' ? 1737.4 : 6356.75);
+    const a = getPlanetaryRadius(body, 'equatorial');
+    const b = getPlanetaryRadius(body, 'polar');
 
     const f = (a - b) / a;
     const e2 = 2 * f - f * f;
@@ -234,9 +234,8 @@ export class ThreeDEngine {
    * @returns {{lat: number, lon: number, altKm: number}}
    */
   static cartesianToGeographic(x, y, z, body = 'mars') {
-    const isMars = body.toLowerCase() === 'mars';
-    const a = isMars ? 3396.19 : (body.toLowerCase() === 'moon' ? 1737.4 : 6378.14);
-    const b = isMars ? 3376.20 : (body.toLowerCase() === 'moon' ? 1737.4 : 6356.75);
+    const a = getPlanetaryRadius(body, 'equatorial');
+    const b = getPlanetaryRadius(body, 'polar');
 
     const f = (a - b) / a;
     const e2 = 2 * f - f * f;
@@ -296,7 +295,7 @@ export class ThreeDEngine {
    * @returns {{horizonDist1Km: number, horizonDist2Km: number, maxIntervisibleDistKm: number}}
    */
   static computeLineOfSightHorizon(h1Km, h2Km = 0, body = 'mars') {
-    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const R = getPlanetaryRadius(body, 'mean');
     const h1 = Math.max(0, h1Km);
     const h2 = Math.max(0, h2Km);
 
@@ -354,9 +353,9 @@ export class ThreeDEngine {
    */
   static testRayEllipsoidIntersection(rayOrigin, rayDir, body = 'mars') {
     const isMars = body.toLowerCase() === 'mars';
-    const a = isMars ? 3396.19 : 1737.4;
-    const b = isMars ? 3396.19 : 1737.4;
-    const c = isMars ? 3376.20 : 1737.4;
+    const a = getPlanetaryRadius(body, 'equatorial');
+    const b = a;
+    const c = getPlanetaryRadius(body, 'polar');
 
     const ox = rayOrigin.x, oy = rayOrigin.y, oz = rayOrigin.z;
     const dx = rayDir.x, dy = rayDir.y, dz = rayDir.z;
@@ -453,7 +452,7 @@ export class ThreeDEngine {
    * @returns {{precessionDegPerDay: number, isSunSynchronous: boolean}}
    */
   static computeOrbitalPrecessionRate(semiMajorAxisKm = 3790, eccentricity = 0.001, inclinationDeg = 92.8, body = 'mars') {
-    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3396.19; // km
+    const R = getPlanetaryRadius(body, 'mean');
     const GM = body.toLowerCase() === 'moon' ? 4902.8 : 42828.37; // km^3/s^2
     const J2 = body.toLowerCase() === 'moon' ? 2.03e-4 : 1.96045e-3; // Mars J2 harmonic
 
@@ -640,7 +639,7 @@ export class ThreeDEngine {
    * @returns {{tangentAltitudeKm: number, isGrazingAtmosphere: boolean, isHittingGround: boolean}}
    */
   static computeAtmosphericLimbTangentHeight(spacecraftAltitudeKm = 300, offNadirAngleDeg = 65, body = 'mars') {
-    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const R = getPlanetaryRadius(body, 'mean');
     const rCraft = R + Math.max(0, spacecraftAltitudeKm);
     const thetaRad = offNadirAngleDeg * Math.PI / 180.0;
 
@@ -694,7 +693,7 @@ export class ThreeDEngine {
    * @returns {{isOccluded: boolean, maxVisibleAngularArcDeg: number}}
    */
   static computeHorizonOcclusionCulling(cameraAltitudeKm, featureAltitudeKm, angularSeparationDeg, body = 'mars') {
-    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const R = getPlanetaryRadius(body, 'mean');
     const hCam = Math.max(0, cameraAltitudeKm);
     const hFeat = Math.max(0, featureAltitudeKm);
 
@@ -747,7 +746,7 @@ export class ThreeDEngine {
    * @returns {{dipAngleDeg: number, visibleCapAreaKm2: number, planetFractionPercent: number}}
    */
   static computePlanetaryDipHorizonViewingAngle(altitudeKm, body = 'mars') {
-    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const R = getPlanetaryRadius(body, 'mean');
     const H = Math.max(0, altitudeKm);
 
     const cosDip = R / (R + H);
@@ -875,7 +874,7 @@ export class ThreeDEngine {
    * @returns {{horizonDistanceKm: number, horizonDistanceMeters: number, surfaceArcKm: number}}
    */
   static computeGeometricHorizonDistance(altitudeMeters, body = 'mars') {
-    const R = (body.toLowerCase() === 'moon' ? 1737.4 : 3389.5) * 1000.0; // in meters
+    const R = getPlanetaryRadius(body, 'meters');
     const h = Math.max(0, altitudeMeters);
 
     const dMeters = Math.sqrt(2.0 * R * h + h * h);
@@ -991,7 +990,7 @@ export class ThreeDEngine {
    * @returns {{angularRadiusDeg: number, angularRadiusRad: number, apparentDiameterDeg: number}}
    */
   static computeApparentGlobeAngularRadius(altitudeKm, body = 'mars') {
-    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const R = getPlanetaryRadius(body, 'mean');
     const h = Math.max(0, altitudeKm);
 
     const sinTheta = R / (R + h);
@@ -1071,7 +1070,7 @@ export class ThreeDEngine {
    * @returns {{depressionAngleDeg: number, depressionAngleRad: number}}
    */
   static computeHorizonDepressionAngle(spacecraftAltitudeKm, body = 'mars') {
-    const R = body.toLowerCase() === 'moon' ? 1737.4 : 3389.5;
+    const R = getPlanetaryRadius(body, 'mean');
     const H = Math.max(0, spacecraftAltitudeKm);
 
     const cosDip = R / (R + H);

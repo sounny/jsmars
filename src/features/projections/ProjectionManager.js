@@ -1,6 +1,7 @@
 import { EventBus } from '../../core/EventBus.js';
 import { EVENTS } from '../../constants.js';
 import { BODIES, to180 } from '../../util/geo.js';
+import { jmarsState } from '../../jmars-state.js';
 
 /**
  * @module ProjectionManager
@@ -162,10 +163,14 @@ export class ProjectionManager {
         { name: 'Valles', lat: -14.0, lon: 300.8 }
       ],
       moon: [
-        { name: 'Apollo 11', lat: 0.67, lon: 23.47 },
-        { name: 'Tycho', lat: -43.31, lon: 348.64 },
         { name: 'Shackleton', lat: -89.67, lon: 129.78 },
-        { name: 'Copernicus', lat: 9.62, lon: 339.92 }
+        { name: 'Connecting Ridge', lat: -89.44, lon: 222.5 },
+        { name: 'Malapert Massif', lat: -86.04, lon: 0.0 },
+        { name: 'Haworth', lat: -87.87, lon: 355.0 },
+        { name: 'Faustini Rim', lat: -87.21, lon: 67.0 },
+        { name: 'Apollo 11', lat: 0.67, lon: 23.47 },
+        { name: 'Chang\'e 6', lat: -41.64, lon: 206.01 },
+        { name: 'Tycho', lat: -43.31, lon: 348.64 }
       ],
       earth: [
         { name: 'Greenwich', lat: 51.48, lon: 0.0 },
@@ -225,7 +230,15 @@ export class ProjectionManager {
 
     this.btnSouth?.addEventListener('click', () => {
       this.setProjection('south_polar');
-      if (this.map) this.map.setView([-85, 0], 5);
+      const body = (jmarsState?.get('body') || window.jmars?.currentBody || '').toLowerCase();
+      const isMoon = (body === 'moon');
+      if (this.map) {
+        if (isMoon) {
+          this.map.setView([-89.5, 0], 6);
+        } else {
+          this.map.setView([-85, 0], 5);
+        }
+      }
     });
 
     this.latSelect?.addEventListener('change', (e) => {

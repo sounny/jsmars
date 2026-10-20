@@ -237,10 +237,11 @@ export class RadarSounderEngine {
    * @param {string} presetKey
    * @param {number} [trackLengthKm=100]
    * @param {number} [numTraces=60]
+   * @param {object} [overrides={}] - Optional overrides for dielectricConstant and lossTangent
    * @returns {{traces: number[][], depths: number[], distances: number[]}}
    */
-  static simulateRadargram(presetKey = 'boreum', trackLengthKm = 100, numTraces = 60) {
-    const trace0 = RadarSounderEngine.simulateTrace(presetKey);
+  static simulateRadargram(presetKey = 'boreum', trackLengthKm = 100, numTraces = 60, overrides = {}) {
+    const trace0 = RadarSounderEngine.simulateTrace(presetKey, overrides);
     const numSamples = trace0.depth.length;
     const grid = [];
     const distances = [];

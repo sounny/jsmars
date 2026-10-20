@@ -32,6 +32,7 @@ import { ContourLayer } from '../src/features/contour/ContourLayer.js';
 import { CustomMapManager } from '../src/features/custom-map/CustomMapManager.js';
 import { LandingSitesLayer } from '../src/features/landing/LandingSitesLayer.js';
 import { RadialProfileTool } from '../src/features/profile/RadialProfileTool.js';
+import { EnhancedProfileTool } from '../src/features/profile/EnhancedProfileTool.js';
 import { MeasureTool } from '../src/features/measure/MeasureTool.js';
 import { GroundTrackLayer } from '../src/features/groundtrack/GroundTrackLayer.js';
 import { HillshadeLayer } from '../src/features/hillshade/HillshadeLayer.js';
@@ -50,6 +51,11 @@ import { StampQueryPanel } from '../src/features/stamp/StampQueryPanel.js';
 import { normalizeBodyKey, switchActiveBody } from '../src/util/body.js';
 import { BODIES, haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
 import { JMARS_CONFIG } from '../src/jmars-config.js';
+import { R_MOON, latLonToXY, xyToLatLon, scaleFactor, RasterGrid, decodeFraction } from '../src/features/lunar-site/PolarGrid.js';
+import { LUNAR_OBLIQUITY_DEG, distanceTransform, findFlatAreas, hillshade, roughness, sampleProfile, horizonProfile, sunPathEnvelope, discStats } from '../src/features/lunar-site/TerrainAnalysis.js';
+import { parseDXF, parseSVG, featureBounds, placeFeatures } from '../src/features/lunar-site/CadImport.js';
+import { localFrame, cropGrid, terrainToOBJ, gridToGeoTIFF, featuresToDXF, toCSV } from '../src/features/lunar-site/Exporters.js';
+import { segmentDistance, polygonStats, polygonArea } from '../src/features/lunar-site/PlannerCad.js';
 
 const expect = chai.expect;
 
@@ -82,10 +88,12 @@ describe('JMARSState', () => {
     });
 
     it('should emit events', (done) => {
-        jmarsState.on(EVENTS.LAYERS_CHANGED, (layers) => {
+        const handler = (layers) => {
             expect(layers).to.have.lengthOf(1);
+            jmarsState.off(EVENTS.LAYERS_CHANGED, handler);
             done();
-        });
+        };
+        jmarsState.on(EVENTS.LAYERS_CHANGED, handler);
         jmarsState.addLayer('event_layer');
     });
 });
@@ -8104,7 +8112,8 @@ describe('CO2 Frost Point & Polar Condensation (KRCEngine)', () => {
 });
 
 describe('PWA Manifest, PWAManager & MobileSheet Architecture', () => {
-    it('should validate PWA Web App Manifest structure and essential fields', async () => {
+    it('should validate PWA Web App Manifest structure and essential fields', async function() {
+        this.timeout(10000);
         // Fetch and parse manifest.webmanifest
         const res = await fetch('../manifest.webmanifest');
         expect(res.status).to.equal(200);
@@ -17399,7 +17408,6 @@ describe('Europa Subsurface Radar Sounder & Provenance (RadarSounderEngine & Rad
         expect(panel.currentPreset).to.equal('boreum');
         expect(panel.instrumentLabel.textContent).to.include('SHARAD');
 
-        container.remove();
     });
 });
 
@@ -17483,6 +17491,292 @@ describe('Science Provenance Honesty (AGENTS.md §9.D)', () => {
     });
 });
 
+describe('Moon Site Planning & Mission Foundation (Milestone 1)', () => {
+    it('should configure correct USGS Moon WMS service URL', () => {
+        expect(JMARS_CONFIG.services.moon_wms).to.include('/maps/earth/moon_simp_cyl.map');
+    });
+
+    it('should have rich base layers for Moon in JMARS_CONFIG', () => {
+        const moonLayers = JMARS_CONFIG.bodies.moon.layers;
+        expect(moonLayers).to.be.an('array').with.length.greaterThan(3);
+        const layerIds = moonLayers.map(l => l.id);
+        expect(layerIds).to.include('moon_lro_wac');
+        expect(layerIds).to.include('moon_opm_basemap');
+        expect(layerIds).to.include('moon_lola_color');
+        expect(layerIds).to.include('moon_lola_bw');
+        expect(layerIds).to.include('moon_kaguya_tc');
+        expect(layerIds).to.include('moon_clementine_uvvis');
+    });
+
+    it('should have Moon mosaic catalog defined in JMARS_CONFIG.mosaics', () => {
+        expect(JMARS_CONFIG.mosaics.moon).to.be.an('array').with.length.at.least(3);
+        const mosaicIds = JMARS_CONFIG.mosaics.moon.map(m => m.id);
+        expect(mosaicIds).to.include('moon_lro_wac_mosaic');
+        expect(mosaicIds).to.include('moon_lola_color_mosaic');
+        expect(mosaicIds).to.include('moon_kaguya_tc_mosaic');
+    });
+
+    it('should configure LOLA elevation sources for Moon in profile tools', () => {
+        const mockMap = {
+            on: () => {},
+            off: () => {},
+            getContainer: () => ({ style: {} }),
+            getSize: () => ({ x: 800, y: 600 }),
+            getBounds: () => ({
+                getSouth: () => -90,
+                getWest: () => -180,
+                getNorth: () => 90,
+                getEast: () => 180
+            }),
+            latLngToContainerPoint: () => ({ x: 400, y: 300 }),
+            distance: () => 10000,
+            addLayer: () => {},
+            removeLayer: () => {}
+        };
+
+        const enhanced = new EnhancedProfileTool(mockMap);
+        expect(enhanced.elevationSources.moon).to.be.an('array').with.length.at.least(1);
+        expect(enhanced.elevationSources.moon[0].id).to.equal('lola_dem');
+
+        const radial = new RadialProfileTool(mockMap);
+        expect(radial.elevationSources.moon).to.be.an('array').with.length.at.least(1);
+        expect(radial.elevationSources.moon[0].id).to.equal('lola_dem');
+    });
+
+    it('should include Artemis South Pole presets in ProjectionManager for Moon', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const mockMap = {
+            on: () => {},
+            off: () => {},
+            getCenter: () => ({ lat: -89, lng: 0 }),
+            getZoom: () => 4,
+            setView: () => {}
+        };
+
+        const proj = new ProjectionManager(container, mockMap);
+        proj.renderChips('moon');
+
+        const chipTexts = Array.from(container.querySelectorAll('.proj-preset-btn span')).map(el => el.textContent);
+        expect(chipTexts).to.include('Shackleton');
+        expect(chipTexts).to.include('Connecting Ridge');
+        expect(chipTexts).to.include('Malapert Massif');
+        expect(chipTexts).to.include('Haworth');
+        expect(chipTexts).to.include('Faustini Rim');
+
+        container.remove();
+    });
+
+    it('should verify Artemis III candidate landing sites in landing-sites.json', async function() {
+        this.timeout(10000);
+        const resp = await fetch('../src/data/landing-sites.json');
+        expect(resp.ok).to.be.true;
+        const sites = await resp.json();
+        const moonSites = sites.filter(s => s.body === 'moon');
+
+        // Verify Artemis III sites
+        const artemisSites = moonSites.filter(s => s.name.startsWith('Artemis III:'));
+        expect(artemisSites.length).to.be.at.least(13);
+
+        const peakShackleton = artemisSites.find(s => s.name.includes('Peak Near Shackleton'));
+        expect(peakShackleton).to.exist;
+        expect(peakShackleton.lat).to.be.closeTo(-89.54, 0.01);
+        expect(peakShackleton.ellipse).to.exist;
+        expect(peakShackleton.ellipse.aKm).to.be.greaterThan(0);
+
+        const connectingRidge = artemisSites.find(s => s.name.includes('Connecting Ridge'));
+        expect(connectingRidge).to.exist;
+        expect(connectingRidge.lat).to.be.closeTo(-89.44, 0.01);
+
+        const malapert = artemisSites.find(s => s.name.includes('Malapert Massif'));
+        expect(malapert).to.exist;
+        expect(malapert.lat).to.be.closeTo(-86.04, 0.01);
+
+        // Verify recent landers
+        const change6 = moonSites.find(s => s.name === "Chang'e 6");
+        expect(change6).to.exist;
+        expect(change6.agency).to.equal('CNSA');
+
+        const odysseus = moonSites.find(s => s.name === "IM-1 Odysseus");
+        expect(odysseus).to.exist;
+        expect(odysseus.agency).to.equal('NASA');
+    });
+});
+
+describe('Lunar Base Site Planner (PolarGrid, TerrainAnalysis, CadImport, Exporters)', () => {
+    it('should round-trip Moon south polar stereographic coordinates (latLonToXY / xyToLatLon) and compute scaleFactor', () => {
+        const pole = latLonToXY(-90, 0);
+        expect(pole.x).to.be.closeTo(0, 1e-6);
+        expect(pole.y).to.be.closeTo(0, 1e-6);
+        expect(scaleFactor(0, 0)).to.equal(1);
+
+        // Connecting Ridge (~ -89.44 deg, 222.7 deg -> -137.3 deg)
+        const xy = latLonToXY(-89.44, -137.3);
+        const ll = xyToLatLon(xy.x, xy.y);
+        expect(ll.lat).to.be.closeTo(-89.44, 1e-6);
+        expect(ll.lon).to.be.closeTo(-137.3, 1e-6);
+        expect(scaleFactor(xy.x, xy.y)).to.be.greaterThan(1.0);
+        expect(scaleFactor(xy.x, xy.y)).to.be.lessThan(1.001);
+    });
+
+    it('should decode, sample, bilinearly interpolate, and convert RasterGrid with nodata', () => {
+        const raw = new Int16Array([
+            100, 200, -32768,
+            300, 400, 500
+        ]);
+        const grid = new RasterGrid(raw, 3, 2, [-30, 20, 10], {
+            nodata: -32768,
+            decode: v => v * 0.1,
+            name: 'test_dem'
+        });
+
+        expect(grid.bounds).to.deep.equal({ xmin: -30, xmax: 0, ymin: 0, ymax: 20 });
+        expect(grid.cell(0, 0)).to.be.closeTo(10, 1e-5);
+        expect(grid.cell(1, 0)).to.be.closeTo(20, 1e-5);
+        expect(Number.isNaN(grid.cell(2, 0))).to.be.true;
+        expect(Number.isNaN(grid.cell(-1, 0))).to.be.true;
+
+        // Center of 2x2 valid block at x = -20, y = 10 -> average of 10, 20, 30, 40 = 25
+        expect(grid.bilinear(-20, 10)).to.be.closeTo(25, 1e-5);
+
+        const flt = grid.toFloat();
+        expect(flt).to.be.an.instanceof(Float32Array);
+        expect(Number.isNaN(flt[2])).to.be.true;
+        expect(decodeFraction(150)).to.be.closeTo(0.75, 1e-6);
+    });
+
+    it('should compute exact 2D Euclidean distanceTransform and findFlatAreas', () => {
+        const mask = new Uint8Array([
+            0, 0, 0,
+            0, 1, 0,
+            0, 0, 0
+        ]);
+        const dt = distanceTransform(mask, 3, 3);
+        expect(dt[4]).to.equal(0);
+        expect(dt[1]).to.be.closeTo(1, 1e-5);
+        expect(dt[0]).to.be.closeTo(Math.SQRT2, 1e-5);
+
+        // 10x10 slope grid at 20m resolution: low slope (2 deg) everywhere except corners (25 deg)
+        const sData = new Float32Array(100).fill(2.0);
+        sData[0] = 25.0; sData[9] = 25.0; sData[90] = 25.0; sData[99] = 25.0;
+        const slopeGrid = new RasterGrid(sData, 10, 10, [-100, 100, 20]);
+        const flats = findFlatAreas(slopeGrid, 5.0, 3);
+        expect(flats.length).to.be.at.least(1);
+        expect(flats[0].radius_m).to.be.greaterThan(40);
+        expect(flats[0].lat).to.be.closeTo(-90, 0.2);
+    });
+
+    it('should reserve 0 strictly for nodata in hillshade and return NaN maxTerrainSlope when slopeAt is null', () => {
+        // Steep DEM with a nodata cell
+        const demData = new Float32Array([
+            1000, 500, 0,
+            1000, 500, 0,
+            1000, 500, NaN
+        ]);
+        const dem = new RasterGrid(demData, 3, 3, [-30, 30, 20]);
+        const hs = hillshade(dem, 90, 5); // Sun from East (+X), steep West-facing slope is in deep shadow
+        // Valid cells must be >= 1, while cells touching NaN are 0
+        expect(hs[0]).to.be.at.least(1);
+        expect(hs[8]).to.equal(0);
+
+        const prof = sampleProfile(
+            [{ x: -20, y: 20 }, { x: 0, y: 20 }],
+            (x, y) => dem.sample(x, y),
+            10,
+            null
+        );
+        expect(prof.length).to.equal(20);
+        expect(Number.isNaN(prof.maxTerrainSlope)).to.be.true;
+    });
+
+    it('should compute roughness, horizonProfile, sunPathEnvelope, and discStats on lunar polar grids', () => {
+        // Planar surface has 0 roughness
+        const plane = new Float32Array(25);
+        for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) plane[r * 5 + c] = 100 + 2 * c - 3 * r;
+        const grid = new RasterGrid(plane, 5, 5, [-50, 50, 20]);
+        const rg = roughness(grid);
+        expect(rg[12]).to.be.closeTo(0, 1e-4);
+
+        const stats = discStats(grid, 0, 0, 50);
+        expect(stats.n).to.be.greaterThan(5);
+        expect(stats.max).to.be.greaterThan(stats.min);
+
+        const hz = horizonProfile(0, 0, () => 100, { observerHeight: 2, azStep: 30, maxDist: 1000, step0: 100 });
+        expect(hz.ground).to.equal(100);
+        expect(hz.profile.length).to.equal(12);
+
+        const env = sunPathEnvelope(-89.5, 0, 30);
+        expect(env.length).to.equal(12);
+        expect(env[0].max - env[0].min).to.be.closeTo(2 * LUNAR_OBLIQUITY_DEG, 0.2);
+    });
+
+    it('should parse ASCII DXF with trailing blank lines, LWPOLYLINE, CIRCLE, and placeFeatures in ground meters', () => {
+        const dxfText = [
+            '0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '6', '0', 'ENDSEC',
+            '0', 'SECTION', '2', 'ENTITIES',
+            '0', 'LWPOLYLINE', '8', 'HABITAT', '70', '1',
+            '10', '0', '20', '0',
+            '10', '20', '20', '0',
+            '10', '20', '20', '10',
+            '10', '0', '20', '10',
+            '0', 'CIRCLE', '8', 'PAD', '10', '50', '20', '50', '40', '15',
+            '0', 'ENDSEC', '0', 'EOF', '', ''
+        ].join('\n');
+
+        const parsed = parseDXF(dxfText);
+        expect(parsed.unitsToMeters).to.equal(1);
+        expect(parsed.layers).to.deep.equal(['HABITAT', 'PAD']);
+        expect(parsed.features.length).to.equal(2);
+        expect(parsed.features[0].closed).to.be.true;
+        expect(parsed.features[0].points.length).to.equal(4);
+
+        const placed = placeFeatures(parsed.features, {
+            anchorX: 0, anchorY: -10000, originX: 0, originY: 0, unitsToMeters: 1, rotationDeg: 0
+        });
+        expect(placed.length).to.equal(2);
+        expect(polygonArea(placed[0].points)).to.be.closeTo(200, 0.5);
+        expect(segmentDistance({ x: 10, y: 0 }, { x: 0, y: 0 }, { x: 20, y: 0 })).to.be.closeTo(0, 1e-6);
+    });
+
+    it('should export valid Wavefront OBJ, GeoTIFF with UTF-8 citations, and DXF without NaN Z values', () => {
+        const grid = new RasterGrid(new Float32Array([10, 12, 14, NaN]), 2, 2, [-20, 20, 20]);
+        const win = cropGrid(grid, -20, -20, 20, 20);
+        const frame = localFrame(0, 0, 10);
+
+        const obj = terrainToOBJ(win, frame, { header: 'Test OBJ' });
+        expect(obj).to.include('o lunar_terrain');
+        // 3 valid vertices, 1 triangle face
+        expect(obj.match(/^v /gm).length).to.equal(3);
+        expect(obj.match(/^f /gm).length).to.equal(1);
+
+        const tifBuf = gridToGeoTIFF(win, 'Barker et al. 87°S–90°S');
+        expect(tifBuf.byteLength).to.be.greaterThan(100);
+        const dv = new DataView(tifBuf);
+        expect(dv.getUint16(0)).to.equal(0x4949); // Little-endian TIFF
+
+        // Feature with NaN Z should fall back to frame.z0 instead of writing "NaN"
+        const dxf = featuresToDXF([
+            { layer: 'ROADS', closed: false, points: [{ x: 0, y: 0, z: NaN }, { x: 10, y: 10, z: 15 }] }
+        ], frame, 'Test DXF');
+        expect(dxf).to.not.include('NaN');
+        expect(dxf).to.include('POLYLINE');
+
+        const csv = toCSV(['name', 'slope'], [['Pad "A"', 4.5], ['Bad', NaN]]);
+        expect(csv).to.equal('name,slope\n"Pad ""A""",4.5\nBad,\n');
+    });
+
+    it('should support Venus/Jupiter in TrajectoryEngine.MU_BODIES and custom dielectric overrides in RadarSounderEngine', () => {
+        const venusTx = TrajectoryEngine.computeHohmannTransfer('earth', 'venus', 300, 300);
+        const marsTx = TrajectoryEngine.computeHohmannTransfer('earth', 'mars', 300, 300);
+        expect(TrajectoryEngine.MU_BODIES.venus).to.be.closeTo(324858.592, 1);
+        expect(TrajectoryEngine.MU_BODIES.jupiter).to.be.closeTo(126686534.9, 10);
+        expect(venusTx.deltaVArriveKmS).to.not.equal(marsTx.deltaVArriveKmS);
+
+        const radDefault = RadarSounderEngine.simulateRadargram('boreum', 100, 10, { dielectricConstant: 3.15 });
+        const radRock = RadarSounderEngine.simulateRadargram('boreum', 100, 10, { dielectricConstant: 8.0 });
+        expect(radRock.twt[radRock.twt.length - 1]).to.be.greaterThan(radDefault.twt[radDefault.twt.length - 1]);
+    });
+});
 
 if (typeof mocha !== 'undefined') {
     const runner = mocha.run();

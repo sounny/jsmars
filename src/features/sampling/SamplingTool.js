@@ -1,6 +1,18 @@
 import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
+import { getPlanetaryRadius } from '../../util/geo.js';
+
+/** Simple Mulberry32 seeded pseudo-random number generator for reproducible sampling */
+function createSeededRandom(seed = 123456789) {
+    let s = Math.floor(Math.abs(seed)) || 123456789;
+    return function() {
+        s |= 0; s = s + 0x6D2B79F5 | 0;
+        let t = Math.imul(s ^ s >>> 15, 1 | s);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
 
 /**
  * @module SamplingTool
@@ -88,14 +100,12 @@ export class SamplingTool {
         
         const bounds = layer.getBounds();
         const points = [];
+        const rng = createSeededRandom(bounds.getSouth() * 10000 + bounds.getWest() * 10000);
         
-        // Try 10 attempts to find 5 points
+        // Try 10 attempts to find 5 points (deterministic and reproducible)
         for (let i = 0; i < 10 && points.length < 5; i++) {
-            const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-            const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-            // Check intersection (Leaflet doesn't have native point-in-poly without plugin)
-            // Basic bbox check is done by generation.
-            // Let's assume all valid for prototype or use center.
+            const lat = bounds.getSouth() + rng() * (bounds.getNorth() - bounds.getSouth());
+            const lng = bounds.getWest() + rng() * (bounds.getEast() - bounds.getWest());
             points.push(L.latLng(lat, lng));
         }
         
@@ -346,7 +356,7 @@ export class SamplingTool {
      * @returns {Array<[number, number]>} Array of [lat, lon] points
      */
     static generateRegularGridPoints(bbox, stepKm = 50, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const kmPerDegLat = (Math.PI * R) / 180;
         const dLat = Math.max(0.1, stepKm / kmPerDegLat);
 

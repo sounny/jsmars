@@ -75,9 +75,10 @@
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="src/features/lunar-site/lunar-site.css">
   <script defer src="vendor/leaflet/leaflet.js"></script>
   <script defer src="vendor/leaflet-draw/leaflet.draw.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -88,7 +89,7 @@
   <div id="status-bar"></div>
 
   <!-- PWA Update Notification Toast -->
-  <div id="pwa-update-toast">
+  <div id="pwa-update-toast" role="status" aria-live="polite">
     <span>✨ New JSMARS version available!</span>
     <button class="pwa-reload-btn">Reload to update</button>
   </div>
@@ -157,7 +158,7 @@
           <button id="session-load-btn" class="tool-btn" style="flex: 1;">Load Session</button>
         </div>
         <button id="share-link-btn" class="tool-btn" style="background: #1d4ed8; color: #fff; font-weight: 500; margin-top: 4px;">🔗 Copy Share Link</button>
-        <div id="share-toast" style="display: none; font-size: 11px; color: #4ade80; text-align: center; margin-top: 2px;">Link copied to clipboard!</div>
+        <div id="share-toast" role="status" aria-live="polite" style="display: none; font-size: 11px; color: #4ade80; text-align: center; margin-top: 2px;">Link copied to clipboard!</div>
       </div>
     </div>
 
@@ -179,28 +180,43 @@
       <div class="accordion-header">Tools</div>
       <div class="accordion-content">
         <div id="tools-list">
-          <!-- Mars Solar Time & Ephemeris -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Adjust Martian season (Solar Longitude Ls), Sol dates, orbital parameters, and local mean/true solar time.">
-              <span class="layer-title">Mars Solar Time & Ephemeris</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none; padding: 8px;">
-              <div id="time-slider-container" style="text-align: left;"></div>
-            </div>
+          <!-- CATEGORY 1: MEASURE & INSPECT -->
+          <div class="tool-category-header">
+            <span>📐 Measure &amp; Inspect</span>
           </div>
 
-          <!-- Crater Counting -->
+          <!-- Investigate -->
           <div class="layer-section">
             <div class="layer-section-header"
-              data-tool-info="Draw craters by sizing the preview circle and clicking to log locations and diameters.">
-              <span class="layer-title">Crater Counting</span>
+              data-tool-info="Click the map to query active WMS layers and see returned feature info at that location.">
+              <span class="layer-title">Investigate</span>
               <span class="icon">+</span>
             </div>
             <div class="layer-section-content" style="display:none;">
-              <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
-              <div id="crater-table-container"></div>
+              <button id="investigate-tool-btn" class="tool-btn">Investigate Point</button>
+            </div>
+          </div>
+
+          <!-- Measurement -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Measure distances or areas with draw tools; results are listed for review and can be exported.">
+              <span class="layer-title">Measurement</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button id="measure-dist-btn" class="tool-btn" style="flex: 1;">Distance</button>
+                <button id="measure-area-btn" class="tool-btn" style="flex: 1;">Area</button>
+              </div>
+              <div id="measure-table-container" class="crater-table-container" style="margin-bottom: 10px;"></div>
+              <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                <button id="measure-export-json-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export
+                  GeoJSON</button>
+                <button id="measure-export-csv-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export
+                  CSV</button>
+              </div>
+              <button id="measure-clear-btn" class="tool-btn" style="background: #442222;">Clear Measurements</button>
             </div>
           </div>
 
@@ -233,66 +249,6 @@
             </div>
           </div>
 
-          <!-- Measurement -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Measure distances or areas with draw tools; results are listed for review and can be exported.">
-              <span class="layer-title">Measurement</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-                <button id="measure-dist-btn" class="tool-btn" style="flex: 1;">Distance</button>
-                <button id="measure-area-btn" class="tool-btn" style="flex: 1;">Area</button>
-              </div>
-              <div id="measure-table-container" class="crater-table-container" style="margin-bottom: 10px;"></div>
-              <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                <button id="measure-export-json-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export
-                  GeoJSON</button>
-                <button id="measure-export-csv-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export
-                  CSV</button>
-              </div>
-              <button id="measure-clear-btn" class="tool-btn" style="background: #442222;">Clear Measurements</button>
-            </div>
-          </div>
-
-          <!-- Nomenclature -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Show named planetary surface features with quick filters for crater, mons, valles, and planitia labels.">
-              <span class="layer-title">Nomenclature</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <div id="nomenclature-tool-container"></div>
-            </div>
-          </div>
-
-          <!-- Lat/Lon Graticule Grid -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Overlay planetary latitude/longitude graticule lines with adaptive spacing and coordinate labels.">
-              <span class="layer-title">Lat/Lon Grid</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <div id="grid-panel-container"></div>
-            </div>
-          </div>
-
-          <!-- Investigate -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Click the map to query active WMS layers and see returned feature info at that location.">
-              <span class="layer-title">Investigate</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <button id="investigate-tool-btn" class="tool-btn">Investigate Point</button>
-            </div>
-          </div>
-
-          <!-- Bookmarks -->
           <!-- Sampling -->
           <div class="layer-section">
             <div class="layer-section-header"
@@ -314,15 +270,85 @@
             </div>
           </div>
 
-          <!-- Stamp Layer (Footprint Browser) -->
+          <!-- Lat/Lon Graticule Grid -->
           <div class="layer-section">
             <div class="layer-section-header"
-              data-tool-info="Search for instrument footprints (THEMIS, CTX, HiRISE, MOC, CRISM) in the current map view using the USGS ODE REST API.">
-              <span class="layer-title">Stamp (Footprints)</span>
+              data-tool-info="Overlay planetary latitude/longitude graticule lines with adaptive spacing and coordinate labels.">
+              <span class="layer-title">Lat/Lon Grid</span>
               <span class="icon">+</span>
             </div>
             <div class="layer-section-content" style="display:none;">
-              <div id="stamp-panel-container"></div>
+              <div id="grid-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- CATEGORY 2: GEOLOGY & CARTOGRAPHY -->
+          <div class="tool-category-header">
+            <span>🌋 Cartography &amp; Geology</span>
+          </div>
+
+          <!-- Crater Counting -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Draw craters by sizing the preview circle and clicking to log locations and diameters.">
+              <span class="layer-title">Crater Counting</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
+              <div id="crater-table-container"></div>
+            </div>
+          </div>
+
+          <!-- Nomenclature -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Show named planetary surface features with quick filters for crater, mons, valles, and planitia labels.">
+              <span class="layer-title">Nomenclature</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="nomenclature-tool-container"></div>
+            </div>
+          </div>
+
+          <!-- Contour Lines -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Generate elevation contour lines from MOLA DEM data.">
+              <span class="layer-title">Contour Lines</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="contour-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Hillshade -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Generate real-time hillshade relief shading from MOLA DEM with configurable light direction.">
+              <span class="layer-title">Hillshade</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="hillshade-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Custom Map Upload -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Load a local GeoTIFF file as a map layer (processed entirely in your browser).">
+              <span class="layer-title">Custom GeoTIFF</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none; padding:10px;">
+              <div style="font-size:12px; color:#aaa; margin-bottom:8px">
+                Select a local GeoTIFF file to display it on the map.
+              </div>
+              <input type="file" id="custom-geotiff-input" accept=".tif,.tiff" style="display:none" aria-label="Choose GeoTIFF file">
+              <button id="custom-geotiff-btn" class="tool-btn">Choose File</button>
             </div>
           </div>
 
@@ -359,6 +385,11 @@
             </div>
           </div>
 
+          <!-- CATEGORY 3: PLANETARY DATA & ORBITAL LAYERS -->
+          <div class="tool-category-header">
+            <span>🛰️ Planetary Data &amp; Orbital Layers</span>
+          </div>
+
           <!-- Landing Sites -->
           <div class="layer-section">
             <div class="layer-section-header"
@@ -370,6 +401,18 @@
               <div style="padding:10px">
                 <button id="landing-sites-btn" class="tool-btn">Show Landing Sites</button>
               </div>
+            </div>
+          </div>
+
+          <!-- Stamp Layer (Footprint Browser) -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Search for instrument footprints (THEMIS, CTX, HiRISE, MOC, CRISM) in the current map view using the USGS ODE REST API.">
+              <span class="layer-title">Stamp (Footprints)</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="stamp-panel-container"></div>
             </div>
           </div>
 
@@ -397,62 +440,9 @@
             </div>
           </div>
 
-          <!-- Map Export -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Export the current map view as PNG, JPEG, publication cartographic print, or georeferenced world file.">
-              <span class="layer-title">Export Map</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <div style="padding:10px; display:flex; flex-direction:column; gap:5px">
-                <input type="text" id="export-title-input" placeholder="Map Title (e.g. Mars Exploration Map)" style="padding:4px; font-size:11px; background:#222; color:#fff; border:1px solid #444; border-radius:3px; margin-bottom:2px;">
-                <button id="export-pub-btn" class="tool-btn" style="background:#0284c7;">🗺️ Cartographic Print (2x)</button>
-                <button id="export-png-btn" class="tool-btn">Export PNG</button>
-                <button id="export-jpeg-btn" class="tool-btn">Export JPEG</button>
-                <button id="export-world-btn" class="tool-btn" style="font-size:11px">Export World File (.pgw)</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Hillshade -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Generate real-time hillshade relief shading from MOLA DEM with configurable light direction.">
-              <span class="layer-title">Hillshade</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <div id="hillshade-panel-container"></div>
-            </div>
-          </div>
-
-          <!-- Contour Lines -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Generate elevation contour lines from MOLA DEM data.">
-              <span class="layer-title">Contour Lines</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <div id="contour-panel-container"></div>
-            </div>
-          </div>
-
-          <!-- Custom Map Upload -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="Load a local GeoTIFF file as a map layer (processed entirely in your browser).">
-              <span class="layer-title">Custom GeoTIFF</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none; padding:10px;">
-              <div style="font-size:12px; color:#aaa; margin-bottom:8px">
-                Select a local GeoTIFF file to display it on the map.
-              </div>
-              <input type="file" id="custom-geotiff-input" accept=".tif,.tiff" style="display:none" aria-label="Choose GeoTIFF file">
-              <button id="custom-geotiff-btn" class="tool-btn">Choose File</button>
-            </div>
+          <!-- CATEGORY 4: PHYSICAL MODELS & SIMULATIONS -->
+          <div class="tool-category-header">
+            <span>🔬 Physical Models &amp; Simulations [Modeled]</span>
           </div>
 
           <!-- KRC Thermal Model -->
@@ -464,18 +454,6 @@
             </div>
             <div class="layer-section-content" style="display:none;">
               <div id="krc-panel-container"></div>
-            </div>
-          </div>
-
-          <!-- 3D Terrain & Globe -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="View 3D terrain mesh displaced by MOLA DEM elevation and 3D globe with solar lighting.">
-              <span class="layer-title">3D Terrain & Globe</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <div id="threed-panel-container"></div>
             </div>
           </div>
 
@@ -491,6 +469,18 @@
             </div>
           </div>
 
+          <!-- Subsurface Radar Sounder (synthetic SHARAD / MARSIS analog) -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Physically-based synthetic radargrams with illustrative presets — not observed SHARAD/MARSIS/REASON returns.">
+              <span class="layer-title">Subsurface Radar Sounder</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="radar-panel-container"></div>
+            </div>
+          </div>
+
           <!-- Educational mineral-index visualizer -->
           <div class="layer-section">
             <div class="layer-section-header"
@@ -503,15 +493,62 @@
             </div>
           </div>
 
-          <!-- Subsurface Radar Sounder (synthetic SHARAD / MARSIS analog) -->
+          <!-- CATEGORY 5: MISSION PLANNING & 3D -->
+          <div class="tool-category-header">
+            <span>🚀 Mission Planning &amp; 3D Visualization</span>
+          </div>
+
+          <!-- Lunar Base Site Planner (LOLA south pole) -->
           <div class="layer-section">
             <div class="layer-section-header"
-              data-tool-info="Physically-based synthetic radargrams with illustrative presets — not observed SHARAD/MARSIS/REASON returns.">
-              <span class="layer-title">Subsurface Radar Sounder</span>
+              data-tool-info="Plan lunar south pole base sites with LOLA terrain, slope, illumination, Earth visibility and PSR data; import DXF/SVG site plans; export OBJ/GeoTIFF/DXF.">
+              <span class="layer-title">Lunar Base Site Planner</span>
               <span class="icon">+</span>
             </div>
             <div class="layer-section-content" style="display:none;">
-              <div id="radar-panel-container"></div>
+              <div id="lunar-site-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- 3D Terrain & Globe -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="View 3D terrain mesh displaced by MOLA DEM elevation and 3D globe with solar lighting.">
+              <span class="layer-title">3D Terrain & Globe</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="threed-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- Mars Solar Time & Ephemeris -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Adjust Martian season (Solar Longitude Ls), Sol dates, orbital parameters, and local mean/true solar time.">
+              <span class="layer-title">Mars Solar Time & Ephemeris</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none; padding: 8px;">
+              <div id="time-slider-container" style="text-align: left;"></div>
+            </div>
+          </div>
+
+          <!-- Map Export -->
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Export the current map view as PNG, JPEG, publication cartographic print, or georeferenced world file.">
+              <span class="layer-title">Export Map</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="padding:10px; display:flex; flex-direction:column; gap:5px">
+                <input type="text" id="export-title-input" placeholder="Map Title (e.g. Mars Exploration Map)" style="padding:4px; font-size:11px; background:#222; color:#fff; border:1px solid #444; border-radius:3px; margin-bottom:2px;">
+                <button id="export-pub-btn" class="tool-btn" style="background:#0284c7;">🗺️ Cartographic Print (2x)</button>
+                <button id="export-png-btn" class="tool-btn">Export PNG</button>
+                <button id="export-jpeg-btn" class="tool-btn">Export JPEG</button>
+                <button id="export-world-btn" class="tool-btn" style="font-size:11px">Export World File (.pgw)</button>
+              </div>
             </div>
           </div>
         </div>
@@ -574,6 +611,7 @@
     import { GridPanel } from './src/features/grid/GridPanel.js';
     import { PlanetaryScaleBar } from './src/ui/PlanetaryScaleBar.js';
     import { RadarPanel } from './src/features/radar/RadarPanel.js';
+    import { LunarSitePlanner } from './src/features/lunar-site/LunarSitePlanner.js';
     import { TrajectoryPanel } from './src/features/orbit/TrajectoryPanel.js';
     import { PWAManager } from './src/pwa/PWAManager.js';
     import { MobileSheet } from './src/ui/MobileSheet.js';
@@ -607,16 +645,49 @@
     // Welcome modal (one-time per session)
     const welcomeBackdrop = document.getElementById('welcome-modal');
     const welcomeDismiss = document.getElementById('welcome-dismiss');
-    if (!sessionStorage.getItem('jsmars_welcome_shown')) {
+    let previousActiveElement = null;
+
+    const openWelcome = () => {
+      previousActiveElement = document.activeElement;
       welcomeBackdrop.style.display = 'flex';
-    }
+      welcomeDismiss?.focus();
+    };
+
     const closeWelcome = () => {
       welcomeBackdrop.style.display = 'none';
       sessionStorage.setItem('jsmars_welcome_shown', '1');
+      if (previousActiveElement && previousActiveElement.focus) {
+        previousActiveElement.focus();
+      }
     };
+
+    if (!sessionStorage.getItem('jsmars_welcome_shown')) {
+      openWelcome();
+    }
     welcomeDismiss.addEventListener('click', closeWelcome);
     welcomeBackdrop.addEventListener('click', (e) => {
       if (e.target === welcomeBackdrop) closeWelcome();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (welcomeBackdrop.style.display === 'flex') {
+        if (e.key === 'Escape') {
+          closeWelcome();
+        } else if (e.key === 'Tab') {
+          const focusable = welcomeBackdrop.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+          if (focusable.length > 0) {
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        }
+      }
     });
 
     // Initialize UI Components
@@ -636,7 +707,9 @@
       sections.forEach((section) => {
         const header = section.querySelector('.accordion-header');
         if (!header) return;
-        section.classList.toggle('expanded', header.textContent.trim().toLowerCase() === sectionTitle.toLowerCase());
+        const isMatch = header.textContent.trim().toLowerCase() === sectionTitle.toLowerCase();
+        section.classList.toggle('expanded', isMatch);
+        header.setAttribute('aria-expanded', isMatch ? 'true' : 'false');
       });
     };
 
@@ -841,6 +914,13 @@
     const radarPanel = new RadarPanel(
       document.getElementById('radar-panel-container'), jmars.map
     );
+
+    // -- Lunar Base Site Planner (LOLA south pole, real PGDA/PDS data) --
+    try {
+      new LunarSitePlanner(document.getElementById('lunar-site-panel-container'));
+    } catch (err) {
+      console.error('Lunar Site Planner failed to initialise', err);
+    }
 
     const resetProfileButtons = () => {
       profileBtn.textContent = 'Radial Profile';

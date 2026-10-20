@@ -1,4 +1,5 @@
 import { EVENTS } from '../../constants.js';
+import { getPlanetaryRadius } from '../../util/geo.js';
 
 /**
  * PlacesManager manages bookmarked and recent places.
@@ -132,7 +133,7 @@ export class PlacesManager {
   static findNearestFeatures(lat, lon, features = [], maxRadiusKm = 5000, body = 'mars') {
     if (!features || !Array.isArray(features)) return [];
 
-    const R = body === 'moon' ? 1737.4 : 3389.5;
+    const R = getPlanetaryRadius(body, 'mean');
     const results = [];
 
     features.forEach(f => {

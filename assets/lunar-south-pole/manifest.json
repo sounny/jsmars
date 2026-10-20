@@ -1,0 +1,676 @@
+{
+ "schema": 1,
+ "built": "2026-10-12T19:47:00+00:00",
+ "projection": {
+  "name": "Moon2000 south polar stereographic",
+  "radius_m": 1737400.0,
+  "lat0": -90,
+  "lon0": 0,
+  "formula": "x = rho*sin(lon), y = rho*cos(lon), rho = 2R*tan(pi/4 + lat/2)"
+ },
+ "encoding": {
+  "uint8_fraction": "value/200 = fraction (0..1); 255 = nodata"
+ },
+ "regional": {
+  "dem": {
+   "file": "regional_dem_120m.tif",
+   "geo": [
+    -151680.0,
+    151680.0,
+    120.0
+   ],
+   "shape": [
+    2528,
+    2528
+   ],
+   "units": "m",
+   "nodata": -32768,
+   "sha256": "e5870e9db814b7fe50711d24e1b0bc6de50b3400c4595ba322d732ecdf920eed",
+   "source": "https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_85S_40M.IMG",
+   "citation": "Smith, D.E., et al. (2010), LRO LOLA Gridded Data Records (LRO-L-LOLA-4-GDR-V1.0), NASA PDS",
+   "method": "3x3 block mean of 40 m LDEM, rounded to 1 m"
+  },
+  "illumination": {
+   "file": "regional_illumination_120m.tif",
+   "geo": [
+    -151740.0,
+    151740.0,
+    120.0
+   ],
+   "shape": [
+    2529,
+    2529
+   ],
+   "bands": [
+    "sun",
+    "earth",
+    "psr"
+   ],
+   "sha256": "da8633fc0bbefe92e91d635d44dc2859ce6c29164ea70eff0974c137dab19d46",
+   "sources": [
+    "https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_85S_060M_201608.TIF",
+    "https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_85S_060M_201608_EARTH.TIF",
+    "https://pgda.gsfc.nasa.gov/data/MoonIllumination/LPSR_85S_060M_201608.TIF"
+   ],
+   "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030",
+   "method": "2x2 block mean of 60 m products; averages over 18.6-yr nutation cycle, hourly steps"
+  }
+ },
+ "sites": [
+  {
+   "id": "Site01",
+   "name": "Connecting ridge",
+   "bounds": [
+    -19000.0,
+    -20000.0,
+    -3000.0,
+    -4000.0
+   ],
+   "center": {
+    "x": -11000.0,
+    "y": -12000.0,
+    "lat": -89.4632,
+    "lon": -137.4896
+   },
+   "terrain": {
+    "file": "Site01_terrain_20m.tif",
+    "geo": [
+     -19000.0,
+     -4000.0,
+     20.0
+    ],
+    "shape": [
+     800,
+     800
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "331948cd9c7409ceb2481abbd3cd72744fee6db79328fca5781efc9b41a06aed",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site01/Site01_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site01/Site01_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "Site01_illumination_60m.tif",
+    "geo": [
+     -19020.0,
+     -3960.0,
+     60.0
+    ],
+    "shape": [
+     268,
+     267
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "a46dbc2b335f88aef54300fefee639bb5318af7a7fc94492b13c6ea9c03d3ec0",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "Site04",
+   "name": "Shackleton rim",
+   "bounds": [
+    -9000.0,
+    -15000.0,
+    7000.0,
+    1000.0
+   ],
+   "center": {
+    "x": -1000.0,
+    "y": -7000.0,
+    "lat": -89.7668,
+    "lon": -171.8699
+   },
+   "terrain": {
+    "file": "Site04_terrain_20m.tif",
+    "geo": [
+     -9000.0,
+     1000.0,
+     20.0
+    ],
+    "shape": [
+     800,
+     800
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "1727806fa45601804ae334da03063d9726f858f767193061508aee1132658389",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site04/Site04_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site04/Site04_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "Site04_illumination_60m.tif",
+    "geo": [
+     -9000.0,
+     1020.0,
+     60.0
+    ],
+    "shape": [
+     267,
+     267
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "b7fa341740636e8c632519cab61477340e9fbd5701f347eb859d275eb51457f0",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "Site06",
+   "name": "Nobile rim 1",
+   "bounds": [
+    74000.0,
+    100000.0,
+    94000.0,
+    120000.0
+   ],
+   "center": {
+    "x": 84000.0,
+    "y": 110000.0,
+    "lat": -85.4381,
+    "lon": 37.3667
+   },
+   "terrain": {
+    "file": "Site06_terrain_20m.tif",
+    "geo": [
+     74000.0,
+     120000.0,
+     20.0
+    ],
+    "shape": [
+     1000,
+     1000
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "51b675c34d65946de51800072b6a29f15a30921dfc6e735b76a0cce3c131f3be",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site06/Site06_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site06/Site06_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "Site06_illumination_60m.tif",
+    "geo": [
+     73980.0,
+     120000.0,
+     60.0
+    ],
+    "shape": [
+     334,
+     334
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "1844ee477b4c7b7f781020bb17d0fceab77b336719e9630c778e153af19a6792",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "Site07",
+   "name": "Peak near Shackleton",
+   "bounds": [
+    22000.0,
+    -28000.0,
+    38000.0,
+    -12000.0
+   ],
+   "center": {
+    "x": 30000.0,
+    "y": -20000.0,
+    "lat": -88.811,
+    "lon": 123.6901
+   },
+   "terrain": {
+    "file": "Site07_terrain_20m.tif",
+    "geo": [
+     22000.0,
+     -12000.0,
+     20.0
+    ],
+    "shape": [
+     800,
+     800
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "ecbd189f470b6a7e2923999ee86fa6ded646c150cc3c992f7c050a6b08d08042",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site07/Site07_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site07/Site07_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "Site07_illumination_60m.tif",
+    "geo": [
+     21960.0,
+     -12000.0,
+     60.0
+    ],
+    "shape": [
+     267,
+     268
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "11f47a4380d470e3fe0768cb964b4da1f31099791232fef77b35b73d8e294797",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "Site11",
+   "name": "de Gerlache rim",
+   "bounds": [
+    -45000.0,
+    7000.0,
+    -29000.0,
+    23000.0
+   ],
+   "center": {
+    "x": -37000.0,
+    "y": 15000.0,
+    "lat": -88.6834,
+    "lon": -67.9321
+   },
+   "terrain": {
+    "file": "Site11_terrain_20m.tif",
+    "geo": [
+     -45000.0,
+     23000.0,
+     20.0
+    ],
+    "shape": [
+     800,
+     800
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "1cf16725abf848eddff52b1c25c9e9c64b3b157e2cab00c10d434bdde0a98ef0",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site11/Site11_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site11/Site11_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "Site11_illumination_60m.tif",
+    "geo": [
+     -45000.0,
+     23040.0,
+     60.0
+    ],
+    "shape": [
+     268,
+     267
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "e2ad832543cf4e418565916789da47bb3135692c4c1be29c14263c0f9ca41c68",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "Site23",
+   "name": "Malapert massif",
+   "bounds": [
+    -11000.0,
+    111000.0,
+    10000.0,
+    132000.0
+   ],
+   "center": {
+    "x": -500.0,
+    "y": 121500.0,
+    "lat": -85.9948,
+    "lon": -0.2358
+   },
+   "terrain": {
+    "file": "Site23_terrain_20m.tif",
+    "geo": [
+     -11000.0,
+     132000.0,
+     20.0
+    ],
+    "shape": [
+     1050,
+     1050
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "b870235da23d612fe6b4338e0b8de73b577fd6a0101e3d7369692cbcc5435594",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site23/Site23_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site23/Site23_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "Site23_illumination_60m.tif",
+    "geo": [
+     -11040.0,
+     132000.0,
+     60.0
+    ],
+    "shape": [
+     350,
+     351
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "fdc342a387e64e977bb08693f609c10f6f04eaae0d4e7b7d67aa96bbc562f017",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "Site42",
+   "name": "de Gerlache-Kocher massif",
+   "bounds": [
+    -123400.0,
+    -66100.0,
+    -103400.0,
+    -46100.0
+   ],
+   "center": {
+    "x": -113400.0,
+    "y": -56100.0,
+    "lat": -85.8296,
+    "lon": -116.322
+   },
+   "terrain": {
+    "file": "Site42_terrain_20m.tif",
+    "geo": [
+     -123400.0,
+     -46100.0,
+     20.0
+    ],
+    "shape": [
+     1000,
+     1000
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "00407701e1db5ca4ea9883b0fa6f846f1f236a77af4399245a79045304d42f40",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site42/Site42_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site42/Site42_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "Site42_illumination_60m.tif",
+    "geo": [
+     -123420.0,
+     -46080.0,
+     60.0
+    ],
+    "shape": [
+     334,
+     334
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "5fb97fb182b554f7d81b9cf401df71ff61330328ac5170279df440790deea0b2",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "SL2",
+   "name": "de Gerlache rim (SL2)",
+   "bounds": [
+    -58500.0,
+    13000.0,
+    -38500.0,
+    33000.0
+   ],
+   "center": {
+    "x": -48500.0,
+    "y": 23000.0,
+    "lat": -88.23,
+    "lon": -64.6284
+   },
+   "terrain": {
+    "file": "SL2_terrain_20m.tif",
+    "geo": [
+     -58500.0,
+     33000.0,
+     20.0
+    ],
+    "shape": [
+     1000,
+     1000
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "567bbf89c8b89fb2abecc600b1a9e9eb21da68edae61c8284a0bcf9da208dcbc",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/SL2/SL2_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/SL2/SL2_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "SL2_illumination_60m.tif",
+    "geo": [
+     -58500.0,
+     33000.0,
+     60.0
+    ],
+    "shape": [
+     334,
+     334
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "5b4175f7bc2c7b1d298a92aa1c9322957dbaf3b9cd5b4d999482154687bd83eb",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "SL3",
+   "name": "Connecting ridge extension",
+   "bounds": [
+    -38700.0,
+    -16100.0,
+    -18700.0,
+    3900.0
+   ],
+   "center": {
+    "x": -28700.0,
+    "y": -6100.0,
+    "lat": -89.0324,
+    "lon": -101.9993
+   },
+   "terrain": {
+    "file": "SL3_terrain_20m.tif",
+    "geo": [
+     -38700.0,
+     3900.0,
+     20.0
+    ],
+    "shape": [
+     1000,
+     1000
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "f07f12dd70c90fc8b2aebaadb8eb83c1e23381a71cdced154cef7dcf9ab2f111",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/SL3/SL3_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/SL3/SL3_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "SL3_illumination_60m.tif",
+    "geo": [
+     -38700.0,
+     3900.0,
+     60.0
+    ],
+    "shape": [
+     334,
+     334
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "61a1d17baab1d18bb662d68a34adb0d7a0a3d4232ef50fe9545a09ea89b12f18",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  },
+  {
+   "id": "DM2",
+   "name": "Nobile rim 2",
+   "bounds": [
+    147000.0,
+    85000.0,
+    167000.0,
+    105000.0
+   ],
+   "center": {
+    "x": 157000.0,
+    "y": 95000.0,
+    "lat": -83.954,
+    "lon": 58.8221
+   },
+   "terrain": {
+    "file": "DM2_terrain_20m.tif",
+    "geo": [
+     147000.0,
+     105000.0,
+     20.0
+    ],
+    "shape": [
+     1000,
+     1000
+    ],
+    "bands": [
+     "elevation_m",
+     "slope_max_deg",
+     "slope_mean_deg"
+    ],
+    "scale": 0.01,
+    "nodata": -2147483648,
+    "sha256": "81f8abf4111897790ee6b9bcbf5659a94a076d7ad600ac0560d9398dcbcff6ec",
+    "sources": [
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/DM2/DM2_final_adj_5mpp_surf.tif",
+     "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/DM2/DM2_final_adj_5mpp_slp.tif"
+    ],
+    "citation": "Barker, M.K., et al. (2021), Improved LOLA elevation maps for south pole landing sites: Error estimates and their impact on illumination conditions, Planet. Space Sci. 203, 105119, doi:10.1016/j.pss.2020.105119",
+    "method": "4x4 block mean (elevation, mean slope) and block max (slope) of 5 m products"
+   },
+   "illumination": {
+    "file": "DM2_illumination_60m.tif",
+    "geo": [
+     147000.0,
+     105000.0,
+     60.0
+    ],
+    "shape": [
+     334,
+     79
+    ],
+    "bands": [
+     "sun",
+     "earth",
+     "psr"
+    ],
+    "sha256": "363c50c19420184768bae1b424b31cc64a6df476576050b3507493140d813715",
+    "citation": "Mazarico, E., et al. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, doi:10.1016/j.icarus.2010.10.030"
+   }
+  }
+ ],
+ "limitations": [
+  "Longest continuous dark period is not a published LOLA raster product and is not included.",
+  "Boulder density is not included; the planner offers a DEM-derived roughness proxy only.",
+  "Illumination/Earth visibility are long-term averages at the surface (Mazarico et al. 2011), not at mast height."
+ ]
+}

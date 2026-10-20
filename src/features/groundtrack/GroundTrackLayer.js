@@ -1,4 +1,5 @@
 import { EVENTS } from '../../constants.js';
+import { getPlanetaryRadius } from '../../util/geo.js';
 
 /**
  * GroundTrackLayer visualizes spacecraft ground tracks on the map.
@@ -256,8 +257,8 @@ export class GroundTrackLayer {
    */
   static computeOrbitalPeriod(altitudeKm, body = 'mars') {
     const bodyLow = body.toLowerCase();
-    const R = bodyLow === 'moon' ? 1737.4 : bodyLow === 'earth' ? 6371.0 : 3389.5;
-    const mu = bodyLow === 'moon' ? 4902.8 : bodyLow === 'earth' ? 398600.44 : 42828.37; // km^3/s^2
+    const R = getPlanetaryRadius(body, 'mean');
+    const mu = bodyLow === 'moon' ? 4902.8 : bodyLow === 'earth' ? 398600.44 : bodyLow === 'europa' ? 3202.73 : 42828.37; // km^3/s^2
 
     const a = R + Math.max(0, altitudeKm);
     const periodSec = 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / mu);
@@ -280,9 +281,9 @@ export class GroundTrackLayer {
    */
   static computeJ2NodalPrecession(altitudeKm, inclinationDeg, body = 'mars') {
     const bodyLow = body.toLowerCase();
-    const R = bodyLow === 'moon' ? 1737.4 : bodyLow === 'earth' ? 6371.0 : 3389.5;
-    const mu = bodyLow === 'moon' ? 4902.8 : bodyLow === 'earth' ? 398600.44 : 42828.37;
-    const J2 = bodyLow === 'moon' ? 0.000203 : bodyLow === 'earth' ? 0.00108263 : 0.00196045;
+    const R = getPlanetaryRadius(body, 'mean');
+    const mu = bodyLow === 'moon' ? 4902.8 : bodyLow === 'earth' ? 398600.44 : bodyLow === 'europa' ? 3202.73 : 42828.37;
+    const J2 = bodyLow === 'moon' ? 0.000203 : bodyLow === 'earth' ? 0.00108263 : bodyLow === 'europa' ? 0.000438 : 0.00196045;
 
     const a = R + altitudeKm;
     const n = Math.sqrt(mu / Math.pow(a, 3)); // mean motion in rad/s
@@ -311,8 +312,8 @@ export class GroundTrackLayer {
    */
   static computeGroundTrackRepeatCycle(periodMinutes, body = 'mars') {
     const bodyLow = body.toLowerCase();
-    const R = bodyLow === 'moon' ? 1737.4 : bodyLow === 'earth' ? 6371.0 : 3389.5;
-    const solMinutes = bodyLow === 'moon' ? 27.32 * 1440 : bodyLow === 'earth' ? 1440.0 : (24.6229 * 60);
+    const R = getPlanetaryRadius(body, 'mean');
+    const solMinutes = bodyLow === 'moon' ? 27.32 * 1440 : bodyLow === 'earth' ? 1440.0 : bodyLow === 'europa' ? 5113.7 : (24.6229 * 60);
 
     const orbitsPerSol = solMinutes / periodMinutes;
     const driftDegPerOrbit = (periodMinutes / solMinutes) * 360;

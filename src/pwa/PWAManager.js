@@ -57,6 +57,11 @@ export class PWAManager {
       });
       console.log('[PWA] Service Worker registered with scope:', this.registration.scope);
 
+      // Check if there is already a waiting service worker
+      if (this.registration.waiting && navigator.serviceWorker.controller) {
+        this._showUpdatePrompt(this.registration.waiting);
+      }
+
       // Check for updates
       this.registration.addEventListener('updatefound', () => {
         const newWorker = this.registration.installing;
@@ -164,9 +169,13 @@ export class PWAManager {
     if (reloadBtn) {
       reloadBtn.onclick = () => {
         if (waitingWorker) {
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+          }, { once: true });
           waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+        } else {
+          window.location.reload();
         }
-        window.location.reload();
       };
     }
   }

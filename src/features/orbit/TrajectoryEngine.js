@@ -15,6 +15,8 @@ export class TrajectoryEngine {
     earth: 398600.4418,
     mars: 42828.3752,
     moon: 4902.8000,
+    venus: 324858.592,
+    jupiter: 126686534.9,
     sun: 1.32712440018e11
   };
 
@@ -97,7 +99,8 @@ export class TrajectoryEngine {
     // Synodic period between origin and target (days)
     const p1 = origin.periodDays;
     const p2 = target.periodDays;
-    const synodicPeriodDays = Math.abs(1.0 / (1.0 / p1 - 1.0 / p2));
+    const freqDiff = Math.abs(1.0 / p1 - 1.0 / p2);
+    const synodicPeriodDays = freqDiff > 1e-12 ? 1.0 / freqDiff : 0;
 
     return {
       fromBody,

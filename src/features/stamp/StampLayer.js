@@ -136,7 +136,7 @@ export class StampLayer {
           instrument: product.iid || '',
           productType: product.pt || '',
           centerLat: parseFloat(product.Center_latitude) || 0,
-          centerLon: parseFloat(product.Center_longitude) || 0,
+          centerLon: this._to180(parseFloat(product.Center_longitude) || 0),
           westLon: parseFloat(product.Westernmost_longitude) || 0,
           eastLon: parseFloat(product.Easternmost_longitude) || 0,
           minLat: parseFloat(product.Minimum_latitude) || 0,

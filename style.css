@@ -1200,6 +1200,7 @@ html {
    ========================================================================== */
 
 .tool-info-btn {
+  position: relative;
   background: transparent;
   border: 1px solid #555;
   color: #ddd;
@@ -1213,6 +1214,16 @@ html {
   justify-content: center;
   margin-right: 4px;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.tool-info-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .tool-info-btn:hover {
@@ -2681,5 +2692,26 @@ html {
 .modern-search-item.selected {
   background: rgba(56, 189, 248, 0.15);
   color: #38bdf8;
+}
+
+/* ==========================================================================
+   Tool Categories in Sidebar
+   ========================================================================== */
+.tool-category-header {
+  padding: 10px 8px 4px 8px;
+  margin-top: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-category-header:first-of-type {
+  margin-top: 2px;
 }
 

@@ -5,7 +5,7 @@ import { molaDem } from '../../util/mola-dem.js';
 import { MarsTime } from '../slider/MarsTime.js';
 import { KRCEngine } from '../krc/KRCEngine.js';
 import { MCDEngine } from '../mcd/MCDEngine.js';
-import { formatLatLon } from '../../util/geo.js';
+import { formatLatLon, getPlanetaryRadius } from '../../util/geo.js';
 
 /**
  * @module InvestigateTool
@@ -393,8 +393,8 @@ export class InvestigateTool {
      */
     static computeLocalGravity(elevationMeters, body = 'mars') {
         const bodyLow = body.toLowerCase();
-        const g0 = bodyLow === 'moon' ? 1.62 : bodyLow === 'earth' ? 9.80665 : 3.72076;
-        const R = (bodyLow === 'moon' ? 1737.4 : bodyLow === 'earth' ? 6371.0 : 3389.5) * 1000;
+        const g0 = bodyLow === 'moon' ? 1.62 : bodyLow === 'earth' ? 9.80665 : bodyLow === 'europa' ? 1.315 : 3.72076;
+        const R = getPlanetaryRadius(body, 'meters');
         const rRatio = R / (R + elevationMeters);
         const g = g0 * (rRatio * rRatio);
         return parseFloat(g.toFixed(4));
@@ -568,7 +568,7 @@ export class InvestigateTool {
      * @returns {{Br_nT: number, Btheta_nT: number, Btotal_nT: number, inclinationDeg: number}}
      */
     static computeDipoleMagneticField(magneticLatitudeDeg, altitudeKm, dipoleMomentAm2 = 1e20, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon' ? 1737.4 : 3389.5) * 1000.0; // meters
+        const R = getPlanetaryRadius(body, 'meters');
         const r = R + Math.max(0, altitudeKm * 1000.0);
         const mu0 = 4.0 * Math.PI * 1e-7; // T m / A
 
@@ -670,7 +670,7 @@ export class InvestigateTool {
      */
     static computeBouguerGravityAnomaly(observedGravityMs2, theoreticalGravityMs2, elevationMeters, crustDensityKgM3 = 2900, body = 'mars') {
         const G = 6.67430e-11; // m^3 / (kg s^2)
-        const R = (body.toLowerCase() === 'moon' ? 1737.4 : 3389.5) * 1000.0;
+        const R = getPlanetaryRadius(body, 'meters');
         const g0 = theoreticalGravityMs2;
         const h = elevationMeters;
 
@@ -777,7 +777,7 @@ export class InvestigateTool {
      * @returns {number} Free-air gravity anomaly in mGal
      */
     static computeFreeAirGravityAnomaly(observedGravityMs2, theoreticalGravityMs2, elevationMeters, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon' ? 1737.4 : 3389.5) * 1000.0;
+        const R = getPlanetaryRadius(body, 'meters');
         const freeAirGrad = (2.0 * theoreticalGravityMs2) / R;
         const deltaFA_ms2 = freeAirGrad * elevationMeters;
 

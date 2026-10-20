@@ -181,6 +181,16 @@ export class JMARSState {
   }
 
   /**
+   * Unregister an internal event listener.
+   * @param {string} event - The event name.
+   * @param {Function} callback - The callback function to remove.
+   */
+  off(event, callback) {
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+  }
+
+  /**
    * Emit an event to both internal listeners and the DOM.
    *
    * Internal listeners receive the exact event name passed here.
@@ -209,16 +219,16 @@ export class JMARSState {
 
   /**
    * Reset state to defaults.
-   * WARNING: This clears ALL internal listeners. Modules that registered
-   * via on() will silently stop receiving events and must re-register.
+   * @param {boolean} [clearListeners=true] - Whether to also clear internal listeners.
    */
-  reset() {
+  reset(clearListeners = true) {
     this.state = {
       body: 'mars',
       activeLayers: [],
       overlays: {
         graticule: false,
         panner: false,
+        labels: false,
         scalebar: true,
         northArrow: false
       },
@@ -228,7 +238,9 @@ export class JMARSState {
         zoom: 2
       }
     };
-    this.listeners = {};
+    if (clearListeners) {
+      this.listeners = {};
+    }
   }
 }
 

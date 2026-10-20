@@ -203,8 +203,13 @@ export class RadarPanel {
     const preset = RadarSounderEngine.PRESETS[this.currentPreset] || RadarSounderEngine.PRESETS.boreum;
     // Adapt track length and trace count: for Europa ice shell (15-22 km thick), use 150 km track
     const trackKm = preset.body === 'europa' ? 150 : 120;
+    const epsR = parseFloat(this.epsInput?.value) || preset.dielectricConstant || 3.15;
+    const lossTangent = parseFloat(this.lossInput?.value) || preset.lossTangent || 0.001;
 
-    const data = RadarSounderEngine.simulateRadargram(this.currentPreset, trackKm, 60);
+    const data = RadarSounderEngine.simulateRadargram(this.currentPreset, trackKm, 60, {
+      dielectricConstant: epsR,
+      lossTangent
+    });
     data.modelLabel = preset.body === 'europa'
       ? 'Synthetic radargram (REASON / RIME analog model)'
       : 'Synthetic radargram (SHARAD / MARSIS analog model)';

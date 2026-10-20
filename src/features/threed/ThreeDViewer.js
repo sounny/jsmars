@@ -95,6 +95,25 @@ export class ThreeDViewer {
     this.coordBadge.innerText = 'Mars 3D Globe';
     this.container.appendChild(this.coordBadge);
 
+    // Provenance badge (Illustrative / Procedural Texture notice)
+    this.provenanceBadge = document.createElement('div');
+    this.provenanceBadge.className = 'threed-provenance-badge';
+    this.provenanceBadge.style.position = 'absolute';
+    this.provenanceBadge.style.top = '8px';
+    this.provenanceBadge.style.right = '8px';
+    this.provenanceBadge.style.background = 'rgba(15, 23, 42, 0.85)';
+    this.provenanceBadge.style.backdropFilter = 'blur(6px)';
+    this.provenanceBadge.style.border = '1px solid rgba(245, 158, 11, 0.4)';
+    this.provenanceBadge.style.borderRadius = '4px';
+    this.provenanceBadge.style.padding = '2px 6px';
+    this.provenanceBadge.style.fontSize = '9px';
+    this.provenanceBadge.style.fontFamily = 'monospace';
+    this.provenanceBadge.style.color = '#fbbf24';
+    this.provenanceBadge.style.pointerEvents = 'none';
+    this.provenanceBadge.style.zIndex = '5';
+    this.provenanceBadge.innerText = 'Procedural Texture (Illustrative)';
+    this.container.appendChild(this.provenanceBadge);
+
     try {
       this.setupThree();
     } catch (err) {

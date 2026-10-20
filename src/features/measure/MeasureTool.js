@@ -1,6 +1,6 @@
 import { EVENTS } from '../../constants.js';
 import { jmarsState } from '../../jmars-state.js';
-import { haversineDistance, sphericalPolygonArea, BODIES } from '../../util/geo.js';
+import {haversineDistance, sphericalPolygonArea, BODIES, getPlanetaryRadius } from '../../util/geo.js';
 
 /**
  * @module MeasureTool
@@ -469,7 +469,7 @@ export class MeasureTool {
         const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
         if (coords.length < 2) return [];
 
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const segments = [];
         let cumDist = 0;
         let prevBearing = null;
@@ -536,7 +536,7 @@ export class MeasureTool {
         const centerLat = sumLat / coords.length;
         const centerLon = sumLon / coords.length;
 
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         let maxRadiusKm = 0;
 
         coords.forEach(p => {
@@ -598,7 +598,7 @@ export class MeasureTool {
         const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
         if (coords.length < 3) return { areaKm2: 0, areaM2: 0, sphericalExcessRad: 0 };
 
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         let excess = 0;
 
         // Sum of spherical triangle spherical excesses
@@ -640,7 +640,7 @@ export class MeasureTool {
      * @returns {{crossTrackKm: number, alongTrackKm: number}}
      */
     static computeCrossTrackDistance(lat, lon, startLat, startLon, endLat, endLon, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
 
         const phi1 = startLat * Math.PI / 180.0;
         const lam1 = startLon * Math.PI / 180.0;
@@ -795,7 +795,7 @@ export class MeasureTool {
      * @returns {{distanceKm: number, constantBearingDeg: number}}
      */
     static computeRhumbLineDistance(startLat, startLon, endLat, endLon, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
 
         const phi1 = startLat * Math.PI / 180.0;
         const phi2 = endLat * Math.PI / 180.0;
@@ -932,7 +932,7 @@ export class MeasureTool {
      * @returns {{destLat: number, destLon: number, finalBearingDeg: number}}
      */
     static computeDestinationPoint(startLat, startLon, initialBearingDeg, distanceKm, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const delta = Math.max(0, distanceKm) / R; // Angular distance in radians
         const theta = initialBearingDeg * Math.PI / 180.0;
 
@@ -976,7 +976,7 @@ export class MeasureTool {
      * @returns {{arcDistanceKm: number, chordDistanceKm: number, depthBelowSurfaceKm: number}}
      */
     static computeChordDistance(lat1, lon1, lat2, lon2, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
 
         const phi1 = lat1 * Math.PI / 180.0;
         const lam1 = lon1 * Math.PI / 180.0;
@@ -1012,9 +1012,8 @@ export class MeasureTool {
      * @returns {{ellipsoidalDistanceKm: number, sphericalDistanceKm: number, differenceKm: number}}
      */
     static computeEllipsoidalGeodeticDistance(lat1, lon1, lat2, lon2, body = 'mars') {
-        const isMars = body.toLowerCase() === 'mars';
-        const a = isMars ? 3396.19 : (body.toLowerCase() === 'moon' ? 1737.4 : 6378.14);
-        const b = isMars ? 3376.20 : (body.toLowerCase() === 'moon' ? 1737.4 : 6356.75);
+        const a = getPlanetaryRadius(body, 'equatorial');
+        const b = getPlanetaryRadius(body, 'polar');
         const f = (a - b) / a;
 
         const phi1 = lat1 * Math.PI / 180.0;
@@ -1118,7 +1117,7 @@ export class MeasureTool {
      * @returns {{destLat: number, destLon: number, finalBearingDeg: number}}
      */
     static computeDirectDestinationPoint(startLat, startLon, initialBearingDeg, distanceKm, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const phi1 = startLat * Math.PI / 180.0;
         const lam1 = startLon * Math.PI / 180.0;
         const theta = initialBearingDeg * Math.PI / 180.0;
@@ -1204,7 +1203,7 @@ export class MeasureTool {
         const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
         if (coords.length < 2) return { lengthKm: 0, widthKm: 0, aspectRatio: 1.0, areaBoundingBoxKm2: 0 };
 
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
 
         const lats = coords.map(p => p[0]);
         const lons = coords.map(p => p[1]);
@@ -1282,7 +1281,7 @@ export class MeasureTool {
      * @returns {{destLat: number, destLon: number, finalBearingDeg: number}}
      */
     static computeGeodesicDirectDestination(startLat, startLon, initialBearingDeg, distanceKm, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const phi1 = startLat * Math.PI / 180.0;
         const lam1 = startLon * Math.PI / 180.0;
         const theta = initialBearingDeg * Math.PI / 180.0;
@@ -1325,7 +1324,7 @@ export class MeasureTool {
         const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
         if (coords.length < 3) return { areaKm2: 0, sphericalExcessSteradians: 0 };
 
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const res = this.computeSphericalPolygonArea(coords, body);
 
         return {
@@ -1423,7 +1422,7 @@ export class MeasureTool {
         const coords = latlngs.map(p => Array.isArray(p) ? p : [p.lat, p.lng || p.lon]);
         if (coords.length < 2) return { perimeterKm: 0, perimeterMeters: 0, edgeCount: 0 };
 
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         let totalDist = 0;
 
         for (let i = 0; i < coords.length; i++) {
@@ -1463,7 +1462,7 @@ export class MeasureTool {
         const n = interiorAnglesDeg.length;
         if (n < 3) return { sphericalExcessRad: 0, areaKm2: 0, areaM2: 0 };
 
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const sumRad = interiorAnglesDeg.reduce((acc, deg) => acc + (deg * Math.PI / 180.0), 0);
         const excessRad = sumRad - (n - 2) * Math.PI;
 
@@ -1488,7 +1487,7 @@ export class MeasureTool {
      * @returns {{distanceKm: number, distanceMeters: number}}
      */
     static computeRhumbLineMeanLatDistance(lat1, lon1, lat2, lon2, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
 
         const phi1 = lat1 * Math.PI / 180.0;
         const phi2 = lat2 * Math.PI / 180.0;
@@ -1517,7 +1516,7 @@ export class MeasureTool {
      * @returns {{groundVelocityKmS: number, groundVelocityKmH: number, groundVelocityMs: number}}
      */
     static computeSubSatelliteGroundVelocity(orbitalSpeedKmS, altitudeKm, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const H = Math.max(0, altitudeKm);
         const vOrbit = Math.max(0, orbitalSpeedKmS);
 
@@ -1575,7 +1574,7 @@ export class MeasureTool {
      * @returns {{capAreaKm2: number, surfaceFractionPercent: number}}
      */
     static computeSpacecraftSphericalCapArea(altitudeKm, body = 'mars') {
-        const R = (body.toLowerCase() === 'moon') ? 1737.4 : (body.toLowerCase() === 'earth') ? 6371.0 : 3389.5;
+        const R = getPlanetaryRadius(body, 'mean');
         const H = Math.max(0, altitudeKm);
 
         const totalArea = 4.0 * Math.PI * R * R;

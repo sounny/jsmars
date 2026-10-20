@@ -156,11 +156,27 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [ ] **Automated Doc Generator & API References**:
     - [ ] JSDoc-compatible API reference extraction for all `src/` ES modules.
 
+## Phase 10: Core Hardening, Geodesy Unification & Accessibility (Completed, 2026-10-13)
+- [x] **Universal Geodesy**: Exported authoritative `getPlanetaryRadius(body, type)` in `src/util/geo.js` supporting Mars, Moon, Earth, Europa; eliminated hardcoded Mars radius fallbacks across profile tools, gravity inspection, landing site calculations, and 3D globe models.
+- [x] **Reproducible Spatial Sampling**: Replaced non-deterministic sampling with Mulberry32 seeded pseudo-random distribution keyed to polygon coordinates.
+- [x] **Service Worker Hardening (v1.5.1)**: Isolated root shell caching and precached all 132 active application files.
+- [x] **Artemis III Site Alignment**: Updated landing database to NASA's official October 2024 candidate exploration regions, updated launch date to NET 2027+, and purged cancelled VIPER references.
+- [x] **Information Architecture**: Reorganized sidebar into 5 semantic categories (Measure & Inspect, Cartography & Geology, Planetary Data & Orbital Layers, Physical Models & Simulations [Modeled], Mission Planning & 3D Visualization).
+- [x] **WCAG 2.1 AA Accessibility**: Full keyboard support (Enter/Space), ARIA buttons/controls, focus-trapped dialogs, 44x44px touch targets on info buttons, and screen-reader polite toasts.
+- [x] **Scientific Data Provenance**: Watermark/badge indicating illustrative procedural textures in 3D viewer and multispectral ratio proxies in Band Math.
+- [x] **Automated Test Runner**: Added `scripts/run_tests.py` verifying all 1,186 unit tests pass with 0 failures.
+
 ## Documentation & Process
 - [x] **Documentation Portal**: Live web portal in `docs/index.html`.
 - [x] **Release Notes**: Maintained in `docs/release-notes.md`.
 - [x] **User Guide**: Maintained in `docs/user-guide.md`.
 - [x] **Work Log**: Maintained in `docs/LOG.md`.
-- [x] **Automated CI/CD**: 218 automated unit tests verifying 100% test pass on every commit.
+- [x] **Automated CI/CD**: 1,186 automated unit tests verifying 100% test pass via `scripts/run_tests.py`.
 
-
+## Lunar Base Site Planner (v0.10.0, 2026-10-12)
+- [x] South pole LOLA site DEMs, slope, illumination, Earth visibility, PSR
+- [x] Slope thresholds, flat-area finder, corridor profiles, blast buffers, horizon analysis
+- [x] DXF/SVG import; OBJ/GeoTIFF/DXF/CSV/JSON export; live LOLA 5 m COG
+- [ ] Longest continuous darkness (needs PGDA product on request)
+- [ ] Boulder density (needs NAC-derived boulder maps)
+- [ ] First-party proxy for PGDA COGs so more sites can stream instead of being bundled

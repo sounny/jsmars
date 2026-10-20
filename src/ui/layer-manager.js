@@ -54,7 +54,9 @@ export class LayerManager {
     jmarsState.on(EVENTS.LAYERS_CHANGED, (activeLayers) => {
       console.debug('LayerManager received active layers change:', activeLayers);
       this.updateMapFromState(activeLayers);
-      this.render();
+      if (!this._isDraggingOpacity) {
+        this.render();
+      }
     });
 
     // 3. Bootstrap:
@@ -499,7 +501,15 @@ export class LayerManager {
     slider.style.flex = 1;
     slider.setAttribute('aria-label', `Opacity for ${name}`);
     slider.addEventListener('input', (e) => {
-      jmarsState.updateLayer(layerState.id, { opacity: parseFloat(e.target.value) });
+      this._isDraggingOpacity = true;
+      try {
+        jmarsState.updateLayer(layerState.id, { opacity: parseFloat(e.target.value) });
+      } finally {
+        this._isDraggingOpacity = false;
+      }
+    });
+    slider.addEventListener('change', () => {
+      this.render();
     });
 
     sliderContainer.appendChild(sliderLabel);

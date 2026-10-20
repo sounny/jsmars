@@ -13,17 +13,19 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 - **Settings:** Double-click an active layer, press **Enter/Space** when the layer item is focused, or use the **⚙ settings button** to open its settings panel with metadata, attribution, and a quick opacity control.
 
 
-## Keyboard Shortcuts & Navigation
-- **Zoom In / Out:** Press `+` or `-` (or use numeric keys `1` to `5` for quick zoom levels).
-- **Reset View:** Press `R` to return to the global overview.
-- **Go to Coordinates:** Press `Ctrl+G` to jump to any latitude/longitude coordinate.
-- **Save & Load Sessions:** Press `Ctrl+S` to save your active session to JSON, or `Ctrl+O` to load a saved session.
-- **Export Map:** Press `Ctrl+Shift+E` to download a high-resolution PNG export.
+## Tool Categories & Organization
+The sidebar organizes 23 tools into 5 structured, accessible categories:
+1. **📐 Measure & Inspect**: Point investigation, distance & area measurement, radial & linear elevation profiles, reproducible statistical sampling, and lat/lon coordinate grids.
+2. **🌋 Cartography & Geology**: Crater counting with CSFD isochron dating, IAU planetary nomenclature, contour lines, dynamic hillshade relief, custom GeoTIFF upload, and vector shapes.
+3. **🛰️ Planetary Data & Orbital Layers**: Spacecraft landing sites (including updated NASA Artemis III October 2024 candidate regions), USGS ODE instrument footprint browser (Stamp), Keplerian orbit ground tracks, and interplanetary transfer trajectory planning.
+4. **🔬 Physical Models & Simulations [Modeled]**: KRC 1D thermal conduction, MCD vertical atmospheric profiler, subsurface radar sounding, and multispectral mineral ratio proxies.
+5. **🚀 Mission Planning & 3D Visualization**: Full-screen Lunar Base Site Planner (LOLA South Pole DEMs, slope hazards, blast buffers, DXF/SVG CAD site imports), 3D interactive globe and terrain viewer, Mars solar time slider, and publication cartographic map export.
 
-## Mars Solar Time & Calendar ($L_s$)
-- The **Mars Solar Time** slider in the sidebar allows you to scrub through the Martian orbit ($L_s$ from 0° to 360°), Mars Sol Date (MSD), and Mars Year (MY).
-- Click **Play** to animate solar progression across seasons.
-- View real-time subsolar latitude, Mars-Sun distance (AU), and top-of-atmosphere solar insolation ($W/m^2$).
+## Accessibility & Keyboard Navigation
+- **Tool Accordions & Sections:** Every collapsible section header is fully keyboard accessible (`role="button"`). Press **Tab** to navigate and **Enter** or **Space** to toggle any tool panel open or closed.
+- **Dialogs & Modals:** The welcome modal and full-screen tools support **Escape** key dismissal and automated focus trapping.
+- **Touch-Friendly Controls:** Popover buttons and mobile sheet controls feature expanded 44x44px minimum touch targets.
+- **Screen Reader Notifications:** Status updates, PWA toasts, and copy-link confirmations announce politely via ARIA live regions.
 
 ## Planetary Science Tools
 
@@ -99,3 +101,8 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 ## Troubleshooting
 - **"Loading map data..." stuck?** The map server might be slow or down. Try refreshing the page.
 - **Missing Layers?** Check your internet connection; layers are fetched dynamically from USGS/OpenPlanetary.
+
+
+## Lunar Base Site Planner
+
+Open **Lunar Base Site Planner** in the sidebar and press **Open Site Planner**. Pick a south pole site, choose a thematic layer (slope hazard, solar or Earth visibility, PSR, roughness proxy, elevation), set your slope thresholds, and use the tool bar: Inspect, Corridor, Place pad, Horizon, Place CAD, Export window. Import DXF/SVG plans and export OBJ, GeoTIFF, DXF, CSV or a plan JSON. Press Esc or the close button to return to the main map. Full guide: [lunar-site-planner.md](lunar-site-planner.md).

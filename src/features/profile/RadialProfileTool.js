@@ -2,6 +2,7 @@ import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
 import { molaDem } from '../../util/mola-dem.js';
 import { EVENTS } from '../../constants.js';
+import { getPlanetaryRadius } from '../../util/geo.js';
 
 /**
  * @module RadialProfileTool
@@ -44,7 +45,12 @@ export class RadialProfileTool {
                 }
             ],
             moon: [
-                // no source yet
+                {
+                    id: 'lola_dem',
+                    name: 'LOLA Topography (USGS WMS)',
+                    url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map',
+                    layer: 'LOLA_bw'
+                }
             ]
         };
         this.currentSourceId = molaDem.SOURCE_ID;
@@ -187,7 +193,7 @@ export class RadialProfileTool {
             const angleDeg = (360 / this.numLines) * i;
             const angleRad = (angleDeg * Math.PI) / 180;
             const body = (jmarsState.get('body') || 'mars').toLowerCase();
-            const R = body === 'earth' ? 6371000 : 3396190; // approximate radii in meters
+            const R = getPlanetaryRadius(body, 'meters');
 
             // Calculate end point using simple approximation or proper geodesy
             // Leaflet has tools, but we can just use geometry for short distances or find a point.

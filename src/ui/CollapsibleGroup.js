@@ -76,6 +76,24 @@ export class CollapsibleGroup {
                 header.insertBefore(infoBtn, icon);
             }
 
+            header.setAttribute('role', 'button');
+            header.setAttribute('tabindex', '0');
+            header.setAttribute('aria-expanded', 'false');
+            if (content && !content.id) {
+                content.id = 'section-content-' + Math.random().toString(36).slice(2, 9);
+            }
+            if (content) {
+                header.setAttribute('aria-controls', content.id);
+            }
+
+            header.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    if (event.target.closest('.tool-info-btn')) return;
+                    event.preventDefault();
+                    this.toggleSection(content, icon, header);
+                }
+            });
+
             header.addEventListener('click', (event) => {
                 if (event.target.closest('.tool-info-btn')) return;
 
@@ -85,7 +103,7 @@ export class CollapsibleGroup {
                     return;
                 }
 
-                this.toggleSection(content, icon);
+                this.toggleSection(content, icon, header);
             });
 
             // Set initial state: all layer sections start collapsed by default
@@ -100,11 +118,13 @@ export class CollapsibleGroup {
      * Toggle a content section between collapsed and expanded.
      * @param {HTMLElement|null} content - The content panel to toggle
      * @param {HTMLElement|null} icon - The +/- icon element
+     * @param {HTMLElement|null} [header] - Optional header element for aria-expanded
      */
-    toggleSection(content, icon) {
+    toggleSection(content, icon, header) {
         if (!content) return;
 
         const isCollapsed = content.classList.contains('collapsed') || content.style.display === 'none';
+        const targetHeader = header || (content.previousElementSibling?.classList?.contains('layer-section-header') ? content.previousElementSibling : null);
 
         if (isCollapsed) {
             content.classList.remove('collapsed');
@@ -112,11 +132,17 @@ export class CollapsibleGroup {
             if (icon) {
                 icon.textContent = '-';
             }
+            if (targetHeader) {
+                targetHeader.setAttribute('aria-expanded', 'true');
+            }
         } else {
             content.classList.add('collapsed');
             content.style.display = 'none';
             if (icon) {
                 icon.textContent = '+';
+            }
+            if (targetHeader) {
+                targetHeader.setAttribute('aria-expanded', 'false');
             }
             this.hideInfo();
         }
