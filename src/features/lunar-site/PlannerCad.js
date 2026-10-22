@@ -111,6 +111,54 @@ export function attachCad(P) {
   };
   P.redrawCad = redraw;
 
+  const populateCadUI = (cadObj, opts = {}) => {
+    [...unitSel.querySelectorAll('option[value="file"]')].forEach(o => o.remove());
+    if (cadObj && cadObj.unitsFromFile) {
+      unitSel.prepend(el('option', { value: 'file', text: `from file (${cadObj.unitsFromFile} m/unit)` }));
+      unitSel.value = opts.unit || 'file';
+    } else if (opts.unit && UNIT_OPTIONS[opts.unit]) {
+      unitSel.value = opts.unit;
+    }
+    if (opts.scale != null && Number.isFinite(+opts.scale)) scale.value = String(+opts.scale);
+    if (opts.rotationDeg != null && Number.isFinite(+opts.rotationDeg)) rot.value = String(+opts.rotationDeg);
+    if (opts.originMode === 'origin' || opts.originMode === 'center') originSel.value = opts.originMode;
+    hidden.clear();
+    if (Array.isArray(opts.hiddenLayers)) opts.hiddenLayers.forEach(l => hidden.add(l));
+    const layers = cadObj ? (cadObj.layers || [...new Set((cadObj.features || []).map(f => f.layer))]) : [];
+    layersBox.replaceChildren(...layers.map(name => {
+      const cb = el('input', { type: 'checkbox' });
+      cb.checked = !hidden.has(name);
+      cb.addEventListener('change', () => { cb.checked ? hidden.delete(name) : hidden.add(name); redraw(); });
+      return el('label', { class: 'lsp-inline' }, cb, el('span', { text: ' ' + name }));
+    }));
+  };
+
+  P.getCadState = () => P.cad ? {
+    name: P.cad.name,
+    anchor: P.cadAnchor,
+    features: P.cad.features,
+    unitsFromFile: P.cad.unitsFromFile || null,
+    layers: P.cad.layers || [...new Set((P.cad.features || []).map(f => f.layer))],
+    unit: unitSel.value,
+    scale: +scale.value || 1,
+    rotationDeg: +rot.value || 0,
+    originMode: originSel.value,
+    hiddenLayers: [...hidden]
+  } : null;
+
+  P.restoreCad = (cadPlan) => {
+    if (!cadPlan || !Array.isArray(cadPlan.features) || !cadPlan.features.length) {
+      P.cad = null; P.cadAnchor = null; layersBox.replaceChildren(); info.textContent = ''; redraw(); return;
+    }
+    const layers = cadPlan.layers || [...new Set(cadPlan.features.map(f => f.layer))];
+    P.cad = { name: cadPlan.name || 'Imported CAD', features: cadPlan.features, unitsFromFile: cadPlan.unitsFromFile || null, layers };
+    P.cadAnchor = cadPlan.anchor || null;
+    populateCadUI(P.cad, cadPlan);
+    const b = featureBounds(P.cad.features);
+    info.textContent = `${P.cad.name}: ${P.cad.features.length} features, ${layers.length} layers, extent ${(b.xmax - b.xmin).toPrecision(4)} × ${(b.ymax - b.ymin).toPrecision(4)} units.`;
+    redraw();
+  };
+
   file.addEventListener('change', async () => {
     const f = file.files[0];
     if (!f) return;
@@ -119,18 +167,8 @@ export function attachCad(P) {
       const ext = f.name.split('.').pop().toLowerCase();
       const parsed = ext === 'svg' ? parseSVG(text) : parseDXF(text);
       if (!parsed.features.length) throw new Error('No supported geometry found');
-      P.cad = { name: f.name, features: parsed.features, unitsFromFile: parsed.unitsToMeters };
-      [...unitSel.querySelectorAll('option[value="file"]')].forEach(o => o.remove());
-      if (parsed.unitsToMeters) {
-        unitSel.prepend(el('option', { value: 'file', text: `from file (${parsed.unitsToMeters} m/unit)` }));
-        unitSel.value = 'file';
-      }
-      hidden.clear();
-      layersBox.replaceChildren(...parsed.layers.map(name => {
-        const cb = el('input', { type: 'checkbox', checked: '' });
-        cb.addEventListener('change', () => { cb.checked ? hidden.delete(name) : hidden.add(name); redraw(); });
-        return el('label', { class: 'lsp-inline' }, cb, el('span', { text: ' ' + name }));
-      }));
+      P.cad = { name: f.name, features: parsed.features, unitsFromFile: parsed.unitsToMeters, layers: parsed.layers };
+      populateCadUI(P.cad, { unit: parsed.unitsToMeters ? 'file' : unitSel.value });
       const b = featureBounds(parsed.features);
       info.textContent = `${f.name}: ${parsed.features.length} features, ${parsed.layers.length} layers, extent ${(b.xmax - b.xmin).toPrecision(4)} × ${(b.ymax - b.ymin).toPrecision(4)} units.` +
         (parsed.warnings.length ? ' Notes: ' + parsed.warnings.join('; ') : '') + ' Now choose Place CAD and click the anchor point.';

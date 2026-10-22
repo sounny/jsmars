@@ -1,4 +1,5 @@
 import { EVENTS } from '../constants.js';
+import { to180 } from '../util/geo.js';
 
 /**
  * @module KeyboardShortcuts
@@ -39,6 +40,8 @@ export class KeyboardShortcuts {
    * @param {KeyboardEvent} e
    */
   _onKeyDown(e) {
+    // Ignore when full-screen Lunar Base Site Planner modal is open
+    if (typeof document !== 'undefined' && document.body?.classList?.contains('lsp-open')) return;
     // Ignore if focus is in input/textarea/select
     const tag = e.target.tagName.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
@@ -132,8 +135,9 @@ export class KeyboardShortcuts {
     const match = cleaned.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
     if (match) {
       const lat = parseFloat(match[1]);
-      const lon = parseFloat(match[2]);
-      if (lat >= -90 && lat <= 90) {
+      const rawLon = parseFloat(match[2]);
+      if (lat >= -90 && lat <= 90 && rawLon >= -180 && rawLon <= 360) {
+        const lon = to180(rawLon);
         this.map.setView([lat, lon], Math.max(this.map.getZoom(), 6));
       }
     }

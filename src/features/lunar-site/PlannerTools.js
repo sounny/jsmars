@@ -103,7 +103,10 @@ export function attachTools(P) {
         [`Length steeper than ${t2}°`, `${over.toFixed(0)} m`]].flatMap(([a, b]) => [el('dt', { text: a }), el('dd', { text: b })])));
   };
   hooks.corridor = (p) => { P.state.corridor.push(p); redrawCorridor(); };
-  P.onThresholds = () => { if (P.state.corridor.length > 1) redrawCorridor(); };
+  P.onThresholds = () => {
+    if (P.state.corridor.length > 1) redrawCorridor();
+    P.redrawCad?.();
+  };
   const undo = el('button', { type: 'button', class: 'tool-btn', text: 'Undo point' });
   undo.addEventListener('click', () => { P.state.corridor.pop(); redrawCorridor(); });
   const clear = el('button', { type: 'button', class: 'tool-btn', text: 'Clear' });

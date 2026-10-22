@@ -56,6 +56,7 @@ import { LUNAR_OBLIQUITY_DEG, distanceTransform, findFlatAreas, hillshade, rough
 import { parseDXF, parseSVG, featureBounds, placeFeatures } from '../src/features/lunar-site/CadImport.js';
 import { localFrame, cropGrid, terrainToOBJ, gridToGeoTIFF, featuresToDXF, toCSV } from '../src/features/lunar-site/Exporters.js';
 import { segmentDistance, polygonStats, polygonArea } from '../src/features/lunar-site/PlannerCad.js';
+import { SearchBar } from '../src/ui/SearchBar.js';
 
 const expect = chai.expect;
 
@@ -17775,6 +17776,39 @@ describe('Lunar Base Site Planner (PolarGrid, TerrainAnalysis, CadImport, Export
         const radDefault = RadarSounderEngine.simulateRadargram('boreum', 100, 10, { dielectricConstant: 3.15 });
         const radRock = RadarSounderEngine.simulateRadargram('boreum', 100, 10, { dielectricConstant: 8.0 });
         expect(radRock.twt[radRock.twt.length - 1]).to.be.greaterThan(radDefault.twt[radDefault.twt.length - 1]);
+    });
+
+    it('should parse coordinate queries, rank fuzzy landmarks with active-body priority, and propagate WMS AbortError', async () => {
+        const c1 = SearchBar.parseCoordinateQuery('18.38N, 77.58E');
+        expect(c1).to.not.be.null;
+        expect(c1.lat).to.be.closeTo(18.38, 1e-4);
+        expect(c1.lon).to.be.closeTo(77.58, 1e-4);
+
+        const c2 = SearchBar.parseCoordinateQuery('18.65, 226.2E');
+        expect(c2).to.not.be.null;
+        expect(c2.lat).to.be.closeTo(18.65, 1e-4);
+        expect(c2.lon).to.be.closeTo(-133.8, 1e-4);
+
+        expect(SearchBar.levenshteinDistance('olympus', 'olymps')).to.equal(1);
+
+        const sampleLandmarks = [
+            { name: 'Tycho', type: 'Crater', lat: -43.3, lon: -11.2, body: 'moon' },
+            { name: 'Olympus Mons', type: 'Mons', lat: 18.65, lon: -133.8, body: 'mars' },
+            { name: 'Jezero', type: 'Crater', lat: 18.38, lon: 77.58, body: 'mars' }
+        ];
+        const fuzzyMars = SearchBar.rankLandmarks(sampleLandmarks, 'olymps mons', 'mars');
+        expect(fuzzyMars.length).to.be.at.least(1);
+        expect(fuzzyMars[0].name).to.equal('Olympus Mons');
+
+        const controller = new AbortController();
+        controller.abort();
+        let aborted = false;
+        try {
+            await JMARSWMS.fetchCapabilities('https://example.invalid/wms', { signal: controller.signal });
+        } catch (err) {
+            if (err && err.name === 'AbortError') aborted = true;
+        }
+        expect(aborted).to.be.true;
     });
 });
 

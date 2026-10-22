@@ -20,7 +20,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://jsmars.sounny.com/about.html">
     <meta property="og:title" content="About JSMARS — Planetary GIS in Your Browser">
-    <meta property="og:description" content="Discover JSMARS: An open-source, zero-install planetary GIS viewer for Mars and the solar system.">
+    <meta property="og:description" content="Discover JSMARS: An open-source, zero-install planetary GIS viewer for Mars, the Moon, Earth, and Europa.">
     <meta property="og:image" content="https://jsmars.sounny.com/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -32,15 +32,30 @@
     <meta name="twitter:site" content="@sounny">
     <meta name="twitter:creator" content="@sounny">
     <meta name="twitter:title" content="About JSMARS — Planetary GIS">
-    <meta name="twitter:description" content="Discover JSMARS: An open-source, zero-install planetary GIS viewer for Mars and the solar system.">
+    <meta name="twitter:description" content="Discover JSMARS: An open-source, zero-install planetary GIS viewer for Mars, the Moon, Earth, and Europa.">
     <meta name="twitter:image" content="https://jsmars.sounny.com/og-image.png">
     <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #151b2b;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-cyan: #38bdf8;
+            --accent-orange: #fb923c;
+            --border-color: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: #000;
-            color: #eee;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at top, #151b2b 0%, #0b0f19 75%);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 0;
+            padding: 32px 16px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -48,130 +63,181 @@
         }
 
         .container {
-            max-width: 800px;
-            padding: 40px;
+            max-width: 900px;
+            width: 100%;
+            padding: 40px 36px;
             text-align: center;
-            background: rgba(20, 20, 20, 0.9);
-            border-radius: 12px;
-            box-shadow: 0 0 20px rgba(200, 50, 50, 0.2);
-            border: 1px solid #333;
+            background: rgba(21, 27, 43, 0.92);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(12px);
         }
 
-        img {
-            max-width: 100%;
+        img.logo {
+            max-width: 240px;
             height: auto;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            color: #ff6b6b;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: #ccc;
+            border-radius: 10px;
             margin-bottom: 20px;
         }
 
+        h1 {
+            font-size: 2.1rem;
+            margin: 0 0 12px 0;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: var(--accent-cyan);
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 24px;
+        }
+
+        p {
+            font-size: 1.05rem;
+            line-height: 1.65;
+            color: #cbd5e1;
+            margin: 0 auto 18px auto;
+            max-width: 740px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin: 28px 0;
+            text-align: left;
+        }
+
+        .feature-card {
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .feature-card h3 {
+            margin: 0 0 6px 0;
+            font-size: 0.98rem;
+            color: #fff;
+        }
+
+        .feature-card p {
+            margin: 0;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
         .links {
-            margin-top: 40px;
+            margin-top: 32px;
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
-        a {
-            color: #4dabf7;
+        .btn-link {
+            color: var(--accent-cyan);
             text-decoration: none;
-            font-weight: bold;
-            padding: 10px 20px;
-            border: 1px solid #4dabf7;
-            border-radius: 4px;
-            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 0.92rem;
+            padding: 10px 18px;
+            border: 1px solid var(--accent-cyan);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            background: rgba(56, 189, 248, 0.08);
         }
 
-        a:hover {
-            background: #4dabf7;
-            color: #000;
+        .btn-link:hover {
+            background: var(--accent-cyan);
+            color: #0b0f19;
+        }
+
+        .btn-primary {
+            background: var(--accent-cyan);
+            color: #0b0f19;
+        }
+
+        .btn-primary:hover {
+            background: #7dd3fc;
         }
 
         p a {
-            color: #4dabf7;
+            color: var(--accent-cyan);
             text-decoration: underline;
             font-weight: 600;
-            padding: 0;
-            border: none;
-            display: inline;
         }
 
         p a:hover {
-            background: transparent;
-            color: #74c0fc;
-            text-decoration: underline;
+            color: #7dd3fc;
         }
 
         .footer {
-            margin-top: 50px;
+            margin-top: 36px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
             font-size: 0.9rem;
-            color: #888;
+            color: var(--text-secondary);
         }
 
         .heart {
-            color: #e03131;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-top: 30px;
-            color: #888;
-            text-decoration: underline;
-            cursor: pointer;
+            color: #ef4444;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <img src="jsmars_logo.svg" alt="JSMARS Logo">
+    <main class="container">
+        <img class="logo" src="jsmars_logo.svg" alt="JSMARS Logo">
+        <h1>JSMARS Planetary WebGIS</h1>
+        <div class="subtitle">JavaScript Mission-planning and Analysis for Remote Sensing</div>
 
         <p>
-            JSMARS is an acronym that stands for JavaScript Mission-planning and Analysis for Remote Sensing. It is a
-            geographic information system (GIS) developed by <a href="https://sounny.com" target="_blank" rel="noopener">Sounny</a>. JSMARS is a lightweight, browser-based GIS viewer
-            for planetary data.
-            It is designed to provide quick access to Mars imagery and tools without the need for heavy desktop
-            installations.
+            <strong>JSMARS</strong> is an open-source, browser-native planetary geographic information system (GIS) developed by
+            <a href="https://sounny.com" target="_blank" rel="noopener">Dr. M. Anwar Sounny-Slitine</a>.
+            Built with pure ES Modules and zero build step, it provides instant access to planetary cartography, elevation profiles,
+            3D WebGL terrain, and scientific modeling across <strong>Mars, the Moon, Earth, and Europa</strong> without heavy desktop installations.
         </p>
 
         <p>
-            Inspired by the powerful <a href="https://jmars.asu.edu/" target="_blank">JMARS</a> desktop application
-            developed by Arizona State University.
+            Inspired by the <a href="https://jmars.asu.edu/" target="_blank" rel="noopener">JMARS</a> desktop application developed by Arizona State University's Mars Space Flight Facility.
         </p>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>🪐 Multi-Body Exploration</h3>
+                <p>Live USGS Astrogeology, NASA Trek, OpenPlanetary, and NASA GIBS layers across Mars, the Moon, Earth, and Europa with fuzzy IAU landmark search.</p>
+            </div>
+            <div class="feature-card">
+                <h3>🛰️ Lunar Base Site Planner</h3>
+                <p>South-pole 20 m/px &amp; 100 m/px LRO LOLA DEM workbench with PSR overlays, Euclidean flat-area search, DXF/SVG CAD import, and OBJ/GeoTIFF/DXF export.</p>
+            </div>
+            <div class="feature-card">
+                <h3>🔬 Transparent Science Models</h3>
+                <p>1D KRC subsurface thermal solver, MCD v6.1 atmospheric profiler, Hartmann-Neukum CSFD crater dating, and clearly badged physical simulations.</p>
+            </div>
+        </div>
 
         <div class="links">
-            <a href="https://github.com/sounny/jsmars" target="_blank" rel="noopener">View on GitHub</a>
-            <a href="services.html" style="border-color: #fb923c; color: #fdba74;">💼 Services & Training</a>
-            <a href="mailto:jsmars@sounny.com" style="border-color: #38bdf8; color: #7dd3fc;">✉️ Contact: jsmars@sounny.com</a>
-            <a href="https://www.linkedin.com/company/jsmars" target="_blank" rel="noopener" style="border-color: #0a66c2; color: #70b5f9;">LinkedIn Page</a>
-            <a href="LICENSE" target="_blank" rel="noopener" style="border-color: #f08c00; color: #ffc078;">GPLv3 License</a>
-            <a href="https://sounny.com" target="_blank" rel="noopener">Sounny's Homepage</a>
-            <a href="https://jmars.asu.edu/" target="_blank" rel="noopener">Original JMARS</a>
+            <a href="index.html" class="btn-link btn-primary">🚀 Launch Live Map</a>
+            <a href="docs/index.html" class="btn-link">📖 Documentation &amp; Handbook</a>
+            <a href="services.html" class="btn-link" style="border-color: #fb923c; color: #fdba74;">💼 Services &amp; Training</a>
+            <a href="https://github.com/sounny/jsmars" target="_blank" rel="noopener" class="btn-link">GitHub Repository</a>
+            <a href="mailto:jsmars@sounny.com" class="btn-link">✉️ Contact: jsmars@sounny.com</a>
+            <a href="https://www.linkedin.com/company/jsmars" target="_blank" rel="noopener" class="btn-link">LinkedIn</a>
+            <a href="LICENSE" target="_blank" rel="noopener" class="btn-link" style="border-color: #f59e0b; color: #fcd34d;">GPLv3 License</a>
+            <a href="https://jmars.asu.edu/" target="_blank" rel="noopener" class="btn-link">Original ASU JMARS</a>
         </div>
 
         <div class="footer">
-            Made with <span class="heart">❤️</span> by <a href="https://sounny.com"
-                style="border:none; padding:0; color: #ccc;">Sounny</a>
+            Made with <span class="heart">❤️</span> by <a href="https://sounny.com" target="_blank" rel="noopener" style="color: #e2e8f0; text-decoration: underline;">Dr. M. Anwar Sounny-Slitine</a>
         </div>
-
-        <a href="index.html" class="back-link">Back to Map</a>
-    </div>
+    </main>
 </body>
 
 </html>

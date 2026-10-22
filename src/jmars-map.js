@@ -365,7 +365,7 @@ export class JMARSMap {
     console.debug(`Fetching capabilities from ${wmsUrl} for ${this.currentBody}...`);
 
     try {
-      const wmsLayers = await JMARSWMS.fetchCapabilities(wmsUrl);
+      const wmsLayers = await JMARSWMS.fetchCapabilities(wmsUrl, { signal: this._discoveryAbort.signal });
 
       // Guard: if body changed while we were fetching, discard results
       if (this.currentBody !== currentBody) {

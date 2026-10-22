@@ -31,20 +31,23 @@ export class JMARSWMS {
   /**
    * Fetch and parse WMS capabilities from a server.
    * @param {string} baseUrl - The base WMS service URL.
+   * @param {{signal?: AbortSignal}} [options] - Optional fetch options (e.g. AbortSignal).
    * @returns {Promise<Array<{name: string, title: string, abstract: string, crs: string}>>}
    *   Array of renderable layer metadata objects.
-   * @throws {Error} If the fetch fails or returns a non-OK status.
+   * @throws {Error} If the fetch is aborted via AbortSignal.
    */
-  static async fetchCapabilities(baseUrl) {
+  static async fetchCapabilities(baseUrl, options = {}) {
     const url = this.getCapabilitiesUrl(baseUrl);
     try {
-      const response = await fetch(url);
+      const fetchOpts = options && options.signal ? { signal: options.signal } : undefined;
+      const response = fetchOpts ? await fetch(url, fetchOpts) : await fetch(url);
       if (!response.ok) {
         throw new Error(`WMS fetch failed: ${response.statusText}`);
       }
       const xmlText = await response.text();
       return this.parseCapabilities(xmlText);
     } catch (error) {
+      if (error && error.name === 'AbortError') throw error;
       console.warn('WMS capabilities fetch notice:', error.message || error);
       return [];
     }

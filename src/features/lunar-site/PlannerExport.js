@@ -38,12 +38,21 @@ export function attachExport(P) {
   P.state.window = null;
   let firstCorner = null;
   const winInfo = el('p', { class: 'lsp-muted' });
+  const clearWinBtn = el('button', { type: 'button', class: 'tool-btn', text: 'Clear window', hidden: '' });
   const updateInfo = () => {
     const w = P.state.window;
+    clearWinBtn.hidden = !w;
     winInfo.textContent = w
       ? `Window ${((w.xmax - w.xmin) / 1000).toFixed(2)} × ${((w.ymax - w.ymin) / 1000).toFixed(2)} km (grid).`
       : 'No window: exports use the whole site. Choose Export window and click two corners to set one.';
   };
+  clearWinBtn.addEventListener('click', () => {
+    firstCorner = null;
+    P.state.window = null;
+    P.lastFrame = null;
+    winLayer.clearLayers();
+    updateInfo();
+  });
   P.toolHooks.window = (p) => {
     if (!firstCorner) { firstCorner = p; winInfo.textContent = 'Click the opposite corner.'; return; }
     const w = { xmin: Math.min(firstCorner.x, p.x), xmax: Math.max(firstCorner.x, p.x), ymin: Math.min(firstCorner.y, p.y), ymax: Math.max(firstCorner.y, p.y) };
@@ -135,7 +144,7 @@ export function attachExport(P) {
   const saveBtn = btn('Save plan (JSON)', async () => {
     const plan = { schema: 'jsmars-lunar-site-plan/1', saved: new Date().toISOString(), site: P.site?.id || null,
       thresholds: P.thresholds, corridor: P.state.corridor, pads: P.state.pads, window: P.state.window,
-      cad: P.cad ? { name: P.cad.name, anchor: P.cadAnchor, features: P.cad.features } : null,
+      cad: P.getCadState ? P.getCadState() : (P.cad ? { name: P.cad.name, anchor: P.cadAnchor, features: P.cad.features } : null),
       geojson: planGeoJSON(P) };
     download(JSON.stringify(plan, null, 1), `${baseName()}_plan.json`, 'application/json');
   });
@@ -147,6 +156,7 @@ export function attachExport(P) {
       const plan = JSON.parse(await file.text());
       if (plan.schema !== 'jsmars-lunar-site-plan/1') throw new Error('Not a JSMARS lunar site plan');
       if (plan.site !== (P.site?.id || null)) { P.siteSelect.value = plan.site || ''; await P.selectSite(plan.site || ''); }
+      if (plan.thresholds && P.setThresholds) P.setThresholds(plan.thresholds);
       P.state.corridor = plan.corridor || []; P.state.pads = plan.pads || []; P.state.window = plan.window || null;
       P.lastFrame = null;
       winLayer.clearLayers();
@@ -154,9 +164,16 @@ export function attachExport(P) {
         const w = P.state.window;
         L.rectangle([toLL(w.xmin, w.ymin), toLL(w.xmax, w.ymax)], { color: '#fff', weight: 1.5, dashArray: '3 3', fill: false }).addTo(winLayer);
       }
-      if (plan.cad) { P.cad = { name: plan.cad.name, features: plan.cad.features }; P.cadAnchor = plan.cad.anchor; }
-      else { P.cad = null; P.cadAnchor = null; }
-      P.redrawCorridor(); P.redrawPads(); P.redrawCad(); updateInfo();
+      if (P.restoreCad) {
+        P.restoreCad(plan.cad || null);
+      } else if (plan.cad) {
+        P.cad = { name: plan.cad.name, features: plan.cad.features };
+        P.cadAnchor = plan.cad.anchor;
+        P.redrawCad();
+      } else {
+        P.cad = null; P.cadAnchor = null; P.redrawCad();
+      }
+      P.redrawCorridor(); P.redrawPads(); updateInfo();
     } finally {
       loadInput.value = '';
     }
@@ -165,7 +182,7 @@ export function attachExport(P) {
   loadBtn.addEventListener('click', () => loadInput.click());
 
   P._section('Export (Rhino / Grasshopper / Isaac Sim / GIS)',
-    winInfo,
+    el('div', { class: 'lsp-row' }, winInfo, clearWinBtn),
     el('div', { class: 'lsp-row' }, el('label', {}, el('span', { text: 'Terrain source' }), src), el('label', {}, el('span', { text: 'Mesh density' }), stride)),
     el('label', { class: 'lsp-inline' }, yUp, el('span', { text: ' OBJ Y-up (default Z-up, metres)' })),
     el('div', { class: 'lsp-btns' }, objBtn, tifBtn, slopeBtn, dxfBtn, csvBtn, saveBtn, loadBtn, loadInput), out,

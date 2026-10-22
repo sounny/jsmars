@@ -87,7 +87,12 @@ export class LunarSitePlanner {
         el('label', { class: 'lsp-inline' }, el('span', { text: 'Site ' }), this.siteSelect),
         this.status, this.closeBtn),
       el('div', { class: 'lsp-body' }, this.mapEl, this.side));
-    this.root.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.close(); });
+    document.addEventListener('keydown', (e) => {
+      if (this.root && !this.root.hidden && e.key === 'Escape') {
+        e.stopPropagation();
+        this.close();
+      }
+    });
     document.body.append(this.root);
 
     this.map = L.map(this.mapEl, { crs: L.CRS.Simple, minZoom: -4, maxZoom: 10, zoomSnap: 0.25, attributionControl: true });
@@ -123,8 +128,24 @@ export class LunarSitePlanner {
     this.opacity = opacity;
     const t1 = el('input', { type: 'number', min: '0', max: '60', step: '0.5', value: '10', 'aria-label': 'Caution slope threshold' });
     const t2 = el('input', { type: 'number', min: '0', max: '60', step: '0.5', value: '20', 'aria-label': 'Limit slope threshold' });
-    const onT = () => { this.thresholds = { t1: +t1.value, t2: Math.max(+t1.value, +t2.value) }; this.renderThematic(); this.onThresholds?.(); };
+    this.t1Input = t1;
+    this.t2Input = t2;
+    const onT = () => {
+      const v1 = Number.isFinite(+t1.value) ? +t1.value : 10;
+      const v2 = Math.max(v1, Number.isFinite(+t2.value) ? +t2.value : 20);
+      t1.value = String(v1);
+      t2.value = String(v2);
+      this.thresholds = { t1: v1, t2: v2 };
+      this.renderThematic();
+      this.onThresholds?.();
+    };
     t1.addEventListener('change', onT); t2.addEventListener('change', onT);
+    this.setThresholds = (thr) => {
+      if (!thr) return;
+      if (Number.isFinite(+thr.t1)) t1.value = String(+thr.t1);
+      if (Number.isFinite(+thr.t2)) t2.value = String(+thr.t2);
+      onT();
+    };
     this.legend = el('div', { class: 'lsp-legend' });
     const sec = this._section('Layers & slope thresholds',
       el('label', {}, el('span', { text: 'Layer' }), themSel),

@@ -423,6 +423,7 @@
             <a class="nav-item" href="#keyboard-shortcuts">Keyboard Shortcuts</a>
 
             <div class="nav-category">Planetary Science Tools</div>
+            <a class="nav-item" href="#lunar-site-planner">Lunar Base Site Planner</a>
             <a class="nav-item" href="#krc-thermal">1D KRC Thermal Model</a>
             <a class="nav-item" href="#time-slider">Mars Time Slider & Ephemeris</a>
             <a class="nav-item" href="#mcd-profiler">MCD Atmospheric Profiler</a>
@@ -486,7 +487,7 @@
                     </div>
                     <div class="card">
                         <h4>🛡️ Continuous Automated CI</h4>
-                        <p>Covered by <strong>218 automated unit tests (100% passing)</strong> and automated headless browser verification pipelines ensuring 0 console errors.</p>
+                        <p>Covered by <strong>1,200+ automated unit tests (100% passing)</strong> and automated headless browser verification pipelines ensuring 0 console errors.</p>
                     </div>
                 </div>
             </section>
@@ -526,6 +527,28 @@
                         <tr><td><code>?</code></td><td>Show Keyboard Shortcuts Modal</td></tr>
                     </tbody>
                 </table>
+            </section>
+
+            <!-- Lunar Base Site Planner -->
+            <section id="lunar-site-planner">
+                <h2>🛰️ Lunar Base Site Planner (LRO LOLA South Pole)</h2>
+                <span class="badge badge-cyan">Artemis &amp; Lunar Architecture</span>
+                <span class="badge badge-green">Measured LRO LOLA DEM</span>
+                <p>Full-screen polar stereographic engineering workbench for siting lunar south-pole surface habitats, landing pads, solar arrays, and pressurized rover traverses on authentic <strong>NASA GSFC LRO LOLA</strong> digital elevation models (<a href="https://pgda.gsfc.nasa.gov/products/78" target="_blank" rel="noopener" style="color:var(--accent-cyan);">Barker et al. 2021</a>; <a href="https://pgda.gsfc.nasa.gov/products/61" target="_blank" rel="noopener" style="color:var(--accent-cyan);">Mazarico et al. 2011</a>).</p>
+
+                <div class="formula-box">
+                    Moon2000 South Polar Stereographic (R = 1,737,400 m):<br>
+                    r = 2 * R * tan((90 deg + lat) / 2),  x = r * sin(lon),  y = r * cos(lon)
+                </div>
+
+                <h3>Key Capabilities:</h3>
+                <ul>
+                    <li><strong>10 High-Resolution 20 m/px Site Windows + 100 m/px Regional Overview:</strong> Instant switching between the 85°S–90°S overview and 10 candidate sites (Shackleton Rim, Connecting Ridge, de Gerlache Rim, Faustini Rim, Haworth, Cabeus, Amundsen Rim, Malapert Massif, Nobile Rim 1, Slater Plain), plus user-supplied GeoTIFF DEM upload.</li>
+                    <li><strong>Co-Registered Environmental Overlays:</strong> Horn (1981) 3&times;3 slope &amp; aspect, dynamic hillshade, average solar illumination, average Earth visibility, and 795 Permanently Shadowed Region (PSR) polygons.</li>
+                    <li><strong>Flat-Area Finder &amp; Corridor Profiler:</strong> Exact 2D Euclidean Distance Transform (Felzenszwalb &amp; Huttenlocher 2012) ranks the largest contiguous circles with slope &le; threshold; multi-waypoint rover traverses compute cumulative grade and directional along-track slope vs. local terrain slope.</li>
+                    <li><strong>Landing Pad Blast Rings &amp; Horizon Sun-Path Envelope:</strong> Places landing pads with inner/outer ejecta safety rings and ray-marches the 360° topographic horizon against the $\pm 1.54^\circ$ lunar sub-solar declination band.</li>
+                    <li><strong>2D DXF/SVG CAD Overlay &amp; 3D Mesh Export:</strong> Import architectural footprints (ASCII DXF / SVG) with live unit, scale, rotation, and layer controls; audit per-footprint elevation &amp; slope limits; export terrain + draped CAD to Wavefront <code>.obj</code> (Rhino / Grasshopper / NVIDIA Isaac Sim), single-band Float32 GeoTIFF (<code>.tif</code>), 3D <code>.dxf</code>, and full JSON plans. See the <a href="lunar-site-planner.md" style="color:var(--accent-cyan);">Lunar Base Site Planner Guide</a>.</li>
+                </ul>
             </section>
 
             <!-- 1D KRC Thermal Model -->
@@ -628,7 +651,7 @@
             <section id="investigate-probe">
                 <h2>📍 Investigate Probe Tool & Potential Fields</h2>
                 <span class="badge badge-orange">Geophysics</span>
-                <p>Click anywhere on Mars or the Moon to probe MOLA DEM elevations, WMS layer attributes, Complete Bouguer gravity anomalies ($\Delta g_B$), Airy-Heiskanen isostatic crustal roots ($t_{\text{root}} = h \frac{\rho_c}{\rho_m - \rho_c}$), and thermal diffusivity ($\kappa = \frac{k}{\rho c_p}$).</p>
+                <p>Click anywhere on Mars, the Moon, Earth, or Europa to probe DEM elevations, WMS layer attributes, Complete Bouguer gravity anomalies ($\Delta g_B$), Airy-Heiskanen isostatic crustal roots ($t_{\text{root}} = h \frac{\rho_c}{\rho_m - \rho_c}$), and thermal diffusivity ($\kappa = \frac{k}{\rho c_p}$).</p>
             </section>
 
             <!-- Geodesy & Measurements -->
@@ -649,7 +672,7 @@
             <section id="nomenclature">
                 <h2>🏷️ Planetary Nomenclature & Gazetteer</h2>
                 <span class="badge badge-orange">Gazetteer</span>
-                <p>Search over thousands of IAU official planetary landmarks across Mars and the Moon, filter by morphological feature type (craters, mons, valles, chasmata, planitiae), and recenter the map with one click.</p>
+                <p>Search over official IAU planetary landmarks across Mars, the Moon, Europa, and Earth with typo-tolerant fuzzy matching, direct coordinate parsing, automatic cross-body switching, and morphological feature filtering (craters, mons, valles, chasmata, planitiae, maria, lineae).</p>
             </section>
 
             <!-- Layer Manager -->

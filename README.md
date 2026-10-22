@@ -35,7 +35,7 @@ For decades, planetary GIS required downloading 2GB desktop installers, configur
 
 ### 🪐 1. Multi-Body Planetary Maps
 * **Mars:** OpenPlanetary Viking basemap, USGS Viking MDIM 2.1 WMS, THEMIS Daytime IR, and global MOLA shaded relief.
-* **The Moon:** High-resolution LROC basemaps, LOLA digital elevation models, and **interactive Apollo (11–17), Luna, and Surveyor landing sites** with full mission metadata.
+* **The Moon:** High-resolution LROC basemaps, LOLA digital elevation models, **interactive Apollo (11–17), Luna, and Surveyor landing sites** with full mission metadata, and the **Lunar Base Site Planner** (LRO LOLA 20 m/px & 100 m/px south-pole DEMs, Mazarico et al. 2011 illumination/PSR overlays, flat-area Euclidean distance transform, corridor profiler, DXF/SVG CAD overlay, and OBJ/GeoTIFF/DXF export — see [docs/lunar-site-planner.md](docs/lunar-site-planner.md)).
 * **Earth:** NASA GIBS Blue Marble Next Generation and Blue Marble Shaded Relief.
 * **Europa:** USGS Galileo/Voyager global mosaic plus NASA Trek color and regional mosaics, icy-world IAU nomenclature, and radius-calibrated scale.
 * **IAU Nomenclature:** Searchable database of official planetary landmarks (craters, *mons*, *valles*, *planitia*, *maria*, *lineae*).

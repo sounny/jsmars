@@ -170,7 +170,7 @@ def run_tests():
             radar_header.first.click()
             page.wait_for_timeout(500)
 
-        band_header = page.locator(".layer-section-header", has_text="Spectral Band Math")
+        band_header = page.locator(".layer-section-header", has_text="Mineral Index Visualizer")
         if band_header.count() > 0:
             band_header.first.scroll_into_view_if_needed()
             band_header.first.click()

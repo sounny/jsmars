@@ -27,7 +27,9 @@
 - **Lunar Base Site Planner** (`src/features/lunar-site/`): full-screen south polar workspace built on real LOLA data. Ten PGDA landing-site DEMs (Barker et al. 2021, 5 m slope resampled to 20 m), regional 120 m DEM (PDS GDR), and Mazarico et al. (2011) solar visibility, Earth visibility and PSR maps.
 - Slope hazard classes with user thresholds, roughness proxy, distance to PSR, flat-area finder, corridor elevation profiles, landing pads with user-defined blast buffers, geometric horizon / Sun-path analysis.
 - DXF and SVG site plan import with per-polygon slope / sun / PSR checks.
-- Exports: terrain OBJ (Z-up or Y-up), elevation and max-slope GeoTIFF, site plan DXF in the same local frame, corridor CSV, plan JSON save/load. Optional live read of the USGS-hosted LOLA 5 m COG.
+- **Exports:** terrain OBJ (Z-up or Y-up), elevation and max-slope GeoTIFF, site plan DXF in the same local frame, corridor CSV, plan JSON save/load (preserving slope thresholds, CAD unit/scale/rotation/origin, and layer visibility checkboxes), and one-click export window reset. Optional live read of the USGS-hosted LOLA 5 m COG.
+- **Fuzzy Search, Direct Coordinates & Cross-Body Navigation**: Upgraded `SearchBar` with Levenshtein typo-tolerant landmark search, direct coordinate parsing (`18.38N, 77.58E`, `0–360°E` normalization), planetary body badges, automatic cross-body switching when selecting a landmark on another body, and keyboard/ARIA combobox navigation.
+- **WMS Discovery Cancellation & Modal Shortcut Isolation**: Wired `AbortSignal` into `JMARSWMS.fetchCapabilities()` to cancel in-flight WMS requests during rapid body switches, and isolated global keyboard shortcuts while the Lunar Base Site Planner modal (`body.lsp-open`) is active.
 - Data package build script `scripts/build_lunar_south_pole_assets.py` with a provenance manifest.
 - Service worker (`jsmars-shell-v1.5.2`) never caches `.tif` rasters.
 
