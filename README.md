@@ -40,10 +40,12 @@ For decades, planetary GIS required downloading 2GB desktop installers, configur
 * **Europa:** USGS Galileo/Voyager global mosaic plus NASA Trek color and regional mosaics, icy-world IAU nomenclature, and radius-calibrated scale.
 * **IAU Nomenclature:** Searchable database of official planetary landmarks (craters, *mons*, *valles*, *planitia*, *maria*, *lineae*).
 
-### 🏔️ 2. 3D Terrain & MOLA Topography
-* **WebGL 3D Terrain:** Interactive 3D mesh displacement powered by MOLA DEM data.
-* **Lighting & Exaggeration:** Dynamic solar angle illumination with adjustable vertical exaggeration ($1\times$ to $5\times$).
-* **Elevation Transects:** Linear and radial cross-section elevation profiles across crater rims, volcanoes, and canyon floors.
+### 🌍 2. 3D Globe
+* **2D | 3D toggle:** 2D stays the Leaflet map. 3D is a full-size [CesiumJS](https://cesium.com/platform/cesiumjs/) globe (Apache-2.0, © Cesium GS, Inc.) that replaces the map in place. Cesium is loaded from a pinned CDN release only after the first switch to 3D.
+* **Body ellipsoids:** Mars and the Moon use Cesium's `Ellipsoid.MARS` and `Ellipsoid.MOON`. Earth uses WGS84. Europa uses the same IAU equatorial and polar radii as the rest of JSMARS. No Cesium ion token, and no Earth basemap on other bodies.
+* **Published imagery:** The active WMS/XYZ layer (USGS Astrogeology, OpenPlanetary, NASA GIBS, NASA Trek) is draped on that ellipsoid.
+* **Elevation terrain is not loaded.** The globe is the reference ellipsoid. MOLA/LOLA terrain is planned. 2D elevation profiles still sample the USGS MOLA 128 ppd DEM on Mars.
+* **Elevation transects (2D):** Linear and radial cross-section profiles across crater rims, volcanoes, and canyon floors.
 
 ### 🔬 3. Scientific Research & Modeling Suite
 * **KRC 1D Subsurface Thermal Model:** Client-side simulation of diurnal and seasonal surface/subsurface temperature curves, regolith thermal inertia, and $\text{CO}_2$ frost condensation (not TES/THEMIS measurements).
@@ -87,7 +89,7 @@ JSMARS adheres to a strict **"No-Build"** philosophy designed for speed, longevi
 ```
 
 * **0 ms Build Time:** What you write in `/src` is what executes in the browser. Zero sourcemap lag in DevTools.
-* **0 Production npm Dependencies:** Uses standard browser ES Modules and lightweight CDN libraries (Leaflet.js, Three.js).
+* **0 Production npm Dependencies:** Uses standard browser ES Modules and CDN libraries (Leaflet.js, and CesiumJS only after switching to 3D).
 * **Decoupled EventBus:** Modules communicate entirely through typed `CustomEvent` triggers (`jmars:body-changed`, `layers-changed`, `jmars:shape-created`).
 
 ---

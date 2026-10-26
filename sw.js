@@ -5,10 +5,11 @@
  * Rules:
  * 1. Cache-first strategy for versioned owned local application shell assets.
  * 2. Navigation fallback to app shell (index.html) for any client route with query parameters.
- * 3. Stale-while-revalidate for CDN dependencies (Leaflet, Three.js, GeoTIFF).
- * 4. Network-first with graceful transparent tile / offline fallback for remote WMS tiles & APIs.
- * 5. Never precache unconstrained scientific rasters or gigabytes of tiles.
- * 6. User-prompted update flow via SKIP_WAITING to avoid interrupting active workflows.
+ * 3. Stale-while-revalidate for small CDN dependencies (Leaflet, GeoTIFF).
+ * 4. Network-only for CesiumJS. Do not precache or runtime-cache the multi-MB bundle, workers, or assets.
+ * 5. Network-first with graceful transparent tile / offline fallback for remote WMS tiles & APIs.
+ * 6. Never precache unconstrained scientific rasters or gigabytes of tiles.
+ * 7. User-prompted update flow via SKIP_WAITING to avoid interrupting active workflows.
  */
 
 const CACHE_NAME = 'jsmars-shell-v1.5.2';
@@ -46,6 +47,10 @@ const PRECACHE_ASSETS = [
   './src/features/crater-counting/CraterTable.js',
   './src/features/custom-map/CustomMapManager.js',
   './src/features/export/ExportTool.js',
+  './src/features/globe/CesiumGlobe.js',
+  './src/features/globe/ViewModeToggle.js',
+  './src/features/globe/cesiumLoader.js',
+  './src/features/globe/globeViewModel.js',
   './src/features/grid/GridLayer.js',
   './src/features/grid/GridPanel.js',
   './src/features/groundtrack/GroundTrackLayer.js',
@@ -97,8 +102,6 @@ const PRECACHE_ASSETS = [
   './src/features/stamp/StampLayer.js',
   './src/features/stamp/StampQueryPanel.js',
   './src/features/threed/ThreeDEngine.js',
-  './src/features/threed/ThreeDPanel.js',
-  './src/features/threed/ThreeDViewer.js',
   './src/jmars-config.js',
   './src/jmars-map.js',
   './src/jmars-state.js',
@@ -307,6 +310,13 @@ self.addEventListener('fetch', (event) => {
 
   // Remote Cloud-Optimized GeoTIFF range reads (e.g. USGS LOLA 5 m COG): bypass entirely.
   if (/\.tiff?$/i.test(url.pathname)) {
+    return;
+  }
+
+  // CesiumJS is opt-in and multi-megabyte (script, workers, skybox assets).
+  // Network only — never write it into the app-shell cache.
+  if (/cesium@/i.test(url.pathname) || /\/cesium\//i.test(url.pathname) || url.hostname.includes('cesium.com')) {
+    event.respondWith(fetch(request));
     return;
   }
 

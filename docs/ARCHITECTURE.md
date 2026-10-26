@@ -55,7 +55,8 @@ a browser-based planetary GIS application inspired by the JMARS Java desktop app
     shapes/                     # ShapeLayer, ShapeTable, ShapeIO, StyleEditor
     slider/                     # MarsTime, TimeSlider (Ls, MY, Sol Calendar)
     stamp/                      # StampLayer, StampQueryPanel (ODE API)
-    threed/                     # ThreeDViewer, ThreeDPanel (WebGL Terrain/Globe)
+    globe/                      # Cesium 2D|3D view (lazy CDN load, imagery on the body ellipsoid)
+    threed/                     # ThreeDEngine math helpers (photometry). The old three.js panel was removed.
   layers/
     index.js                    # Layer registry + createLeafletLayer()
     GraticuleLayer.js           # Lat/lon grid overlay

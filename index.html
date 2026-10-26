@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="JSMARS">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <title>JSMARS - Zero-Install Planetary GIS in Your Browser</title>
-  <meta name="description" content="JSMARS is a lightweight, zero-install, browser-based GIS viewer for Mars, the Moon, Earth, and Europa inspired by ASU JMARS. Explore 3D MOLA terrain, KRC thermal modeling, crater dating, and USGS/NASA WMS layers.">
+  <meta name="description" content="JSMARS is a lightweight, zero-install, browser-based GIS viewer for Mars, the Moon, Earth, and Europa inspired by ASU JMARS. Explore a 3D globe with USGS imagery (elevation terrain planned), KRC thermal modeling, crater dating, and USGS/NASA WMS layers.">
   <meta name="keywords" content="JMARS, JSMARS, planetary GIS, Mars map, Moon map, Europa map, MOLA elevation, WebGIS, USGS Astrogeology, crater counting, remote sensing">
   <meta name="author" content="Dr. M. Anwar Sounny-Slitine">
   <meta name="date" content="2025-01-15">
@@ -23,7 +23,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://jsmars.sounny.com/">
   <meta property="og:title" content="JSMARS - Zero-Install Planetary GIS in Your Browser">
-  <meta property="og:description" content="Explore Mars, the Moon, Earth, and Europa with 3D terrain, thermal modeling, crater dating, and USGS/NASA WMS feeds directly in your browser.">
+  <meta property="og:description" content="Explore Mars, the Moon, Earth, and Europa with a 3D globe and USGS imagery (elevation terrain planned), thermal modeling, crater dating, and USGS/NASA WMS feeds directly in your browser.">
   <meta property="og:image" content="https://jsmars.sounny.com/og-image.png">
   <meta property="og:image:secure_url" content="https://jsmars.sounny.com/og-image.png">
   <meta property="og:image:type" content="image/png">
@@ -42,7 +42,7 @@
   <meta name="twitter:site" content="@sounny">
   <meta name="twitter:creator" content="@sounny">
   <meta name="twitter:title" content="JSMARS - Zero-Install Planetary GIS in Your Browser">
-  <meta name="twitter:description" content="Explore Mars, the Moon, Earth, and Europa with 3D terrain, thermal modeling, crater dating, and USGS/NASA WMS layers in your browser.">
+  <meta name="twitter:description" content="Explore Mars, the Moon, Earth, and Europa with a 3D globe and USGS imagery (elevation terrain planned), thermal modeling, crater dating, and USGS/NASA WMS layers in your browser.">
   <meta name="twitter:image" content="https://jsmars.sounny.com/og-image.png">
   <meta name="twitter:image:alt" content="JSMARS - Zero-Install Planetary GIS">
 
@@ -78,12 +78,20 @@
   <link rel="stylesheet" href="src/features/lunar-site/lunar-site.css">
   <script defer src="vendor/leaflet/leaflet.js"></script>
   <script defer src="vendor/leaflet-draw/leaflet.draw.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous"></script>
 </head>
 
 <body>
   <!-- Map Container -->
   <div id="map"></div>
+
+  <div id="view-mode-toggle" class="view-mode-toggle" role="group" aria-label="Map view mode">
+    <button type="button" id="view-mode-2d" class="view-mode-btn is-active" aria-pressed="true">2D</button>
+    <button type="button" id="view-mode-3d" class="view-mode-btn" aria-pressed="false">3D</button>
+  </div>
+  <p id="globe-load-error" class="globe-load-error" hidden></p>
+  <div id="globe-view" class="globe-view" hidden>
+    <div id="cesium-container" class="cesium-container"></div>
+  </div>
 
   <!-- Status Bar -->
   <div id="status-bar"></div>
@@ -168,9 +176,9 @@
       <div class="accordion-content">
         <div class="map-options-container">
           <div id="search-bar-container"></div>
-          <div id="projection-panel-container"></div>
+          <div id="projection-panel-container" data-requires-2d="projection"></div>
           <div id="bookmarks-tool-container"></div>
-          <div id="fixed-overlays"></div>
+          <div id="fixed-overlays" data-requires-2d="overlays"></div>
         </div>
       </div>
     </div>
@@ -180,13 +188,17 @@
       <div class="accordion-header">Tools</div>
       <div class="accordion-content">
         <div id="tools-list">
+          <p id="view-3d-tool-note" class="view-3d-tool-note" hidden>
+            3D mode shows the imagery globe. Drawing, measuring, crater counting, profiles, stamps, shapes, hillshade, contours, and other map tools are available in 2D. KRC and MCD still run from typed values; picking a point on the map is a 2D action.
+          </p>
+
           <!-- CATEGORY 1: MEASURE & INSPECT -->
           <div class="tool-category-header">
             <span>📐 Measure &amp; Inspect</span>
           </div>
 
           <!-- Investigate -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="investigate">
             <div class="layer-section-header"
               data-tool-info="Click the map to query active WMS layers and see returned feature info at that location.">
               <span class="layer-title">Investigate</span>
@@ -198,7 +210,7 @@
           </div>
 
           <!-- Measurement -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="measurement">
             <div class="layer-section-header"
               data-tool-info="Measure distances or areas with draw tools; results are listed for review and can be exported.">
               <span class="layer-title">Measurement</span>
@@ -221,7 +233,7 @@
           </div>
 
           <!-- Profiles -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="profiles">
             <div class="layer-section-header"
               data-tool-info="Build radial or linear elevation profiles from the selected height source, then view or export the charted values.">
               <span class="layer-title">Profiles</span>
@@ -250,7 +262,7 @@
           </div>
 
           <!-- Sampling -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="sampling">
             <div class="layer-section-header"
               data-tool-info="Collect point or area samples, pull feature info from visible WMS layers, and review or export the results.">
               <span class="layer-title">Sampling</span>
@@ -271,7 +283,7 @@
           </div>
 
           <!-- Lat/Lon Graticule Grid -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="graticule">
             <div class="layer-section-header"
               data-tool-info="Overlay planetary latitude/longitude graticule lines with adaptive spacing and coordinate labels.">
               <span class="layer-title">Lat/Lon Grid</span>
@@ -288,7 +300,7 @@
           </div>
 
           <!-- Crater Counting -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="crater-counting">
             <div class="layer-section-header"
               data-tool-info="Draw craters by sizing the preview circle and clicking to log locations and diameters.">
               <span class="layer-title">Crater Counting</span>
@@ -301,7 +313,7 @@
           </div>
 
           <!-- Nomenclature -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="nomenclature">
             <div class="layer-section-header"
               data-tool-info="Show named planetary surface features with quick filters for crater, mons, valles, and planitia labels.">
               <span class="layer-title">Nomenclature</span>
@@ -313,7 +325,7 @@
           </div>
 
           <!-- Contour Lines -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="contours">
             <div class="layer-section-header"
               data-tool-info="Generate elevation contour lines from MOLA DEM data.">
               <span class="layer-title">Contour Lines</span>
@@ -325,7 +337,7 @@
           </div>
 
           <!-- Hillshade -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="hillshade">
             <div class="layer-section-header"
               data-tool-info="Generate real-time hillshade relief shading from MOLA DEM with configurable light direction.">
               <span class="layer-title">Hillshade</span>
@@ -337,7 +349,7 @@
           </div>
 
           <!-- Custom Map Upload -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="geotiff">
             <div class="layer-section-header"
               data-tool-info="Load a local GeoTIFF file as a map layer (processed entirely in your browser).">
               <span class="layer-title">Custom GeoTIFF</span>
@@ -353,7 +365,7 @@
           </div>
 
           <!-- Shapes (Draw / Edit / Import / Export) -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="shapes">
             <div class="layer-section-header"
               data-tool-info="Draw, edit, and style vector shapes. Import/export GeoJSON, CSV, or KML files.">
               <span class="layer-title">Shapes</span>
@@ -391,7 +403,7 @@
           </div>
 
           <!-- Landing Sites -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="landing-sites">
             <div class="layer-section-header"
               data-tool-info="Toggle display of spacecraft landing sites on the current planetary body.">
               <span class="layer-title">Landing Sites</span>
@@ -405,7 +417,7 @@
           </div>
 
           <!-- Stamp Layer (Footprint Browser) -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="stamps">
             <div class="layer-section-header"
               data-tool-info="Search for instrument footprints (THEMIS, CTX, HiRISE, MOC, CRISM) in the current map view using the USGS ODE REST API.">
               <span class="layer-title">Stamp (Footprints)</span>
@@ -417,7 +429,7 @@
           </div>
 
           <!-- Ground Track -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="ground-tracks">
             <div class="layer-section-header"
               data-tool-info="Visualize spacecraft orbit ground tracks. Approximate paths using Keplerian orbital elements.">
               <span class="layer-title">Ground Tracks</span>
@@ -482,7 +494,7 @@
           </div>
 
           <!-- Educational mineral-index visualizer -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="band-math">
             <div class="layer-section-header"
               data-tool-info="Educational mineral-index overlay using CRISM-style formulas. Not real per-pixel CRISM/THEMIS cubes.">
               <span class="layer-title">Mineral Index Visualizer</span>
@@ -510,23 +522,11 @@
             </div>
           </div>
 
-          <!-- 3D Terrain & Globe -->
-          <div class="layer-section">
-            <div class="layer-section-header"
-              data-tool-info="View 3D terrain mesh displaced by MOLA DEM elevation and 3D globe with solar lighting.">
-              <span class="layer-title">3D Terrain & Globe</span>
-              <span class="icon">+</span>
-            </div>
-            <div class="layer-section-content" style="display:none;">
-              <div id="threed-panel-container"></div>
-            </div>
-          </div>
-
           <!-- Mars Solar Time & Ephemeris -->
           <div class="layer-section">
             <div class="layer-section-header"
               data-tool-info="Adjust Martian season (Solar Longitude Ls), Sol dates, orbital parameters, and local mean/true solar time.">
-              <span class="layer-title">Mars Solar Time & Ephemeris</span>
+              <span class="layer-title">Mars Solar Time &amp; Ephemeris</span>
               <span class="icon">+</span>
             </div>
             <div class="layer-section-content" style="display:none; padding: 8px;">
@@ -535,7 +535,7 @@
           </div>
 
           <!-- Map Export -->
-          <div class="layer-section">
+          <div class="layer-section" data-requires-2d="export">
             <div class="layer-section-header"
               data-tool-info="Export the current map view as PNG, JPEG, publication cartographic print, or georeferenced world file.">
               <span class="layer-title">Export Map</span>
@@ -604,7 +604,7 @@
     import { TimeSlider } from './src/features/slider/TimeSlider.js';
     import { KRCPanel } from './src/features/krc/KRCPanel.js';
     import { MCDPanel } from './src/features/mcd/MCDPanel.js';
-    import { ThreeDPanel } from './src/features/threed/ThreeDPanel.js';
+    import { ViewModeToggle } from './src/features/globe/ViewModeToggle.js';
     import { BandMathPanel } from './src/features/bands/BandMathPanel.js';
     import { ProjectionManager } from './src/features/projections/ProjectionManager.js';
     import { GridLayer } from './src/features/grid/GridLayer.js';
@@ -895,10 +895,16 @@
       document.getElementById('krc-panel-container'), jmars.map
     );
 
-    // -- NEW: 3D Terrain & Globe Panel --
-    const threedPanel = new ThreeDPanel(
-      document.getElementById('threed-panel-container'), jmars.map
-    );
+    // 2D Leaflet map | 3D Cesium globe. Cesium loads on the first switch to 3D.
+    const viewModeToggle = new ViewModeToggle({
+      jmars,
+      toggleEl: document.getElementById('view-mode-toggle'),
+      globeEl: document.getElementById('globe-view'),
+      cesiumEl: document.getElementById('cesium-container'),
+      noteEl: document.getElementById('view-3d-tool-note'),
+      errorEl: document.getElementById('globe-load-error')
+    });
+    window.jsmarsView = viewModeToggle;
 
     // -- NEW: Mars Climate Database (MCD) Profiler --
     const mcdPanel = new MCDPanel(
@@ -948,6 +954,13 @@
       deactivateInvestigate();
       deactivateSampling();
     };
+
+    document.addEventListener(EVENTS.VIEW_MODE_CHANGED, (event) => {
+      if (event.detail?.mode === '3d') {
+        deactivateAllTools();
+        shapeLayer.stopDrawing();
+      }
+    });
 
     const samplingTool = new SamplingTool(jmars.map);
     const samplingPointBtn = document.getElementById('sampling-point-btn');

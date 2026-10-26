@@ -136,31 +136,23 @@ def run_tests():
         # Collapse Lunar Base Site Planner section
         lsp_header.first.click()
 
-        # 4. 3D Terrain & Globe Viewer Provenance
-        print("\nStep 4: Opening 3D Terrain & Globe...")
-        threed_header = page.locator(".layer-section-header", has_text="3D Terrain & Globe")
-        if threed_header.count() > 0:
-            threed_header.first.scroll_into_view_if_needed()
-            threed_header.first.click()
-            page.wait_for_timeout(800)
-            page.wait_for_selector("#threed-viewer-container", timeout=8000)
-            page.locator("#threed-viewer-container").scroll_into_view_if_needed()
-            page.wait_for_timeout(2000)
+        # 4. 2D | 3D Cesium Globe Toggle & Provenance
+        print("\nStep 4: Testing 2D | 3D Cesium Globe Toggle...")
+        toggle_3d = page.locator("#view-mode-3d")
+        toggle_2d = page.locator("#view-mode-2d")
+        if toggle_3d.count() == 0 or not toggle_3d.is_visible():
+            raise AssertionError("#view-mode-3d toggle button is not visible!")
+        toggle_3d.click()
+        page.wait_for_selector("#cesium-container .cesium-viewer", timeout=15000)
+        page.wait_for_timeout(4500)
 
-            # Verify badge presence
-            badge = page.locator(".threed-provenance-badge")
-            has_badge = badge.count() > 0 and badge.first.is_visible()
-            print(f"ThreeD provenance badge visible: {has_badge}")
-            if not has_badge:
-                raise AssertionError("ThreeD provenance badge is not visible!")
+        snap4 = os.path.join(SCREENSHOT_DIR, "04_3d_globe_provenance.png")
+        page.screenshot(path=snap4)
+        print(f"Captured: {snap4}")
 
-            snap4 = os.path.join(SCREENSHOT_DIR, "04_3d_globe_provenance.png")
-            page.screenshot(path=snap4)
-            print(f"Captured: {snap4}")
-
-            # Collapse 3D header
-            threed_header.first.click()
-            page.wait_for_timeout(400)
+        # Return to 2D mode
+        toggle_2d.click()
+        page.wait_for_timeout(600)
 
         # 5. Physical Models & Simulations Provenance
         print("\nStep 5: Testing Physical Models & Simulations...")

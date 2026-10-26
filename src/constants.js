@@ -120,7 +120,9 @@ export const EVENTS = Object.freeze({
   /** Fired when MCD atmospheric profile results are ready. */
   MCD_RESULT: 'jmars:mcd-result',
 
-  // ── 3D View (WebGL) ─────────────────────────────────────────
+  // ── 3D View ─────────────────────────────────────────────────
+  /** Fired when the map view mode changes. Payload: { mode: '2d'|'3d' }. */
+  VIEW_MODE_CHANGED: 'jmars:view-mode-changed',
   /** Fired when 3D terrain viewer is toggled. */
   THREED_TOGGLED: 'jmars:threed-toggled',
   /** Fired when 3D view camera/parameters change. */
