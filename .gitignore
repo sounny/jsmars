@@ -1,0 +1,14 @@
+# Firebase CLI cache & logs
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Local dev server & Python cache
+__pycache__/
+*.py[cod]
+server.log
+server.pid
+
+# OS metadata
+.DS_Store
+Thumbs.db

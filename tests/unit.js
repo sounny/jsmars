@@ -68,6 +68,12 @@ import { parseDXF, parseSVG, featureBounds, placeFeatures } from '../src/feature
 import { localFrame, cropGrid, terrainToOBJ, gridToGeoTIFF, featuresToDXF, toCSV } from '../src/features/lunar-site/Exporters.js';
 import { segmentDistance, polygonStats, polygonArea } from '../src/features/lunar-site/PlannerCad.js';
 import { SearchBar } from '../src/ui/SearchBar.js';
+import { ShapeLayer } from '../src/features/shapes/ShapeLayer.js';
+import { ShapeTable } from '../src/features/shapes/ShapeTable.js';
+import { GEOLOGIC_PATTERNS, applyGeologicPatternToLayer } from '../src/features/shapes/StyleEditor.js';
+import { MeasurementTable } from '../src/features/measure/MeasurementTable.js';
+import { QuickActions } from '../src/ui/QuickActions.js';
+import { Sidebar } from '../src/ui/Sidebar.js';
 
 const expect = chai.expect;
 
@@ -17907,6 +17913,327 @@ describe('Cesium globe view model', () => {
         ['crater-counting', 'measurement', 'shapes', 'profiles', 'stamps'].forEach((id) => {
             expect(TWO_D_ONLY_TOOL_IDS).to.include(id);
         });
+    });
+});
+
+describe('JMARS Parity v1.6: Shapes, Geologic Patterns, Shapefile Triad, Azimuth/Perimeter & Command Palette', () => {
+    let mapDiv;
+    let liveMap;
+
+    beforeEach(() => {
+        jmarsState.reset();
+        mapDiv = document.createElement('div');
+        mapDiv.style.cssText = 'width:400px; height:300px; position:absolute; left:-9999px; top:0;';
+        document.body.appendChild(mapDiv);
+        liveMap = L.map(mapDiv, { renderer: L.svg(), center: [0, 0], zoom: 3 });
+    });
+
+    afterEach(() => {
+        if (liveMap) {
+            liveMap.remove();
+            liveMap = null;
+        }
+        if (mapDiv && mapDiv.parentNode) {
+            mapDiv.parentNode.removeChild(mapDiv);
+        }
+        document.getElementById('quick-command-backdrop')?.remove();
+        document.body.classList.remove('sidebar-collapsed');
+    });
+
+    it('computes body-accurate ShapeTable measurements and geodesic buffers across Mars, Moon, Earth, and Europa', () => {
+        const shapeLayer = new ShapeLayer(liveMap);
+        shapeLayer.activate();
+        const tableHost = document.createElement('div');
+        document.body.appendChild(tableHost);
+        const shapeTable = new ShapeTable(tableHost, shapeLayer, liveMap);
+
+        shapeLayer.fromGeoJSON({
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature',
+                properties: { name: 'Unit A' },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]]
+                }
+            }]
+        });
+        expect(shapeLayer.shapes).to.have.lengthOf(1);
+        const polyShape = shapeLayer.shapes[0];
+
+        jmarsState.set('body', 'earth');
+        const earthMeas = parseFloat(shapeTable._getMeasurement(polyShape));
+        jmarsState.set('body', 'mars');
+        const marsMeas = parseFloat(shapeTable._getMeasurement(polyShape));
+        jmarsState.set('body', 'moon');
+        const moonMeas = parseFloat(shapeTable._getMeasurement(polyShape));
+        jmarsState.set('body', 'europa');
+        const europaMeas = parseFloat(shapeTable._getMeasurement(polyShape));
+
+        expect(earthMeas).to.be.greaterThan(marsMeas);
+        expect(marsMeas).to.be.greaterThan(moonMeas);
+        expect(moonMeas).to.be.greaterThan(europaMeas);
+
+        // Buffer 50 km around point on Mars vs Moon produces distinct angular span
+        shapeLayer.clearAll();
+        shapeLayer.fromGeoJSON({
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature',
+                properties: { name: 'Station' },
+                geometry: { type: 'Point', coordinates: [10, 0] }
+            }]
+        });
+        const ptId = shapeLayer.shapes[0].id;
+        const marsBuf = shapeLayer.createBuffer(ptId, 50, 'mars');
+        const moonBuf = shapeLayer.createBuffer(ptId, 50, 'moon');
+        expect(marsBuf).to.exist;
+        expect(moonBuf).to.exist;
+        const marsSpan = marsBuf.layer.getBounds().getNorth() - marsBuf.layer.getBounds().getSouth();
+        const moonSpan = moonBuf.layer.getBounds().getNorth() - moonBuf.layer.getBounds().getSouth();
+        // 50 km subtends a larger latitude angle on smaller Moon than Mars
+        expect(moonSpan).to.be.greaterThan(marsSpan * 1.8);
+
+        tableHost.remove();
+    });
+
+    it('renders dynamic custom attribute columns in ShapeTable safely with textContent', () => {
+        const shapeLayer = new ShapeLayer(liveMap);
+        shapeLayer.activate();
+        const tableHost = document.createElement('div');
+        document.body.appendChild(tableHost);
+        const shapeTable = new ShapeTable(tableHost, shapeLayer, liveMap);
+
+        shapeLayer.fromGeoJSON({
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature',
+                properties: {
+                    name: '<img src=x onerror=alert(1)>',
+                    lithology: 'Flood Basalt <script>bad()</script>'
+                },
+                geometry: { type: 'Point', coordinates: [25, 10] }
+            }]
+        });
+
+        shapeTable.addColumn('age_ga');
+        shapeLayer.updateAttributes(shapeLayer.shapes[0].id, { age_ga: '3.6 Ga' });
+        shapeTable.refresh();
+
+        const headers = Array.from(tableHost.querySelectorAll('thead th')).map(th => th.textContent);
+        expect(headers).to.include('lithology');
+        expect(headers).to.include('age_ga');
+        expect(tableHost.querySelectorAll('img').length).to.equal(0);
+        expect(tableHost.querySelectorAll('script').length).to.equal(0);
+        expect(tableHost.textContent).to.include('Flood Basalt <script>bad()</script>');
+        expect(tableHost.textContent).to.include('3.6 Ga');
+
+        tableHost.remove();
+    });
+
+    it('injects SVG geologic fill patterns and round-trips shapes through SessionManager', async () => {
+        expect(Object.keys(GEOLOGIC_PATTERNS)).to.include.members([
+            'ejecta', 'crater_material', 'volcanic_plains', 'fracture_zone', 'layered_deposits', 'chaos_breccia'
+        ]);
+
+        const shapeLayer = new ShapeLayer(liveMap);
+        shapeLayer.activate();
+        shapeLayer.fromGeoJSON({
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature',
+                properties: {
+                    name: 'Ejecta Unit',
+                    unit_code: 'Ahc',
+                    _style: { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.35, pattern: 'ejecta' }
+                },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [[[10, 5], [12, 5], [12, 7], [10, 7], [10, 5]]]
+                }
+            }]
+        });
+
+        const shape = shapeLayer.shapes[0];
+        applyGeologicPatternToLayer(shape.layer, 'ejecta', '#f59e0b');
+        const svgDefs = mapDiv.querySelectorAll('svg defs pattern');
+        expect(svgDefs.length).to.be.at.least(1);
+        expect(shape.layer._path.getAttribute('fill')).to.include('url(#jsmars-geopat-ejecta-');
+
+        // Round-trip through SessionManager
+        jmarsState.set('body', 'europa');
+        const sessionMgr = new SessionManager(null, null, null, null, shapeLayer);
+        const snap = sessionMgr.buildSessionObject();
+        expect(snap.shapes.features).to.have.lengthOf(1);
+        expect(snap.shapes.features[0].properties._style.pattern).to.equal('ejecta');
+        expect(snap.shapes.features[0].properties.unit_code).to.equal('Ahc');
+
+        shapeLayer.clearAll();
+        expect(shapeLayer.shapes).to.be.empty;
+        jmarsState.set('body', 'mars');
+
+        await sessionMgr.applySessionObject(snap);
+        expect(jmarsState.get('body')).to.equal('europa');
+        expect(shapeLayer.shapes).to.have.lengthOf(1);
+        expect(shapeLayer.shapes[0].style.pattern).to.equal('ejecta');
+        expect(shapeLayer.shapes[0].attributes.unit_code).to.equal('Ahc');
+    });
+
+    it('isolates MeasureTool drawings from ShapeLayer via _exclusiveDrawOwner and computes azimuth & perimeter', () => {
+        const shapeLayer = new ShapeLayer(liveMap);
+        shapeLayer.activate();
+        const measureTool = new MeasureTool(liveMap);
+        const measHost = document.createElement('div');
+        measHost.id = 'test-measure-table-host';
+        document.body.appendChild(measHost);
+        const measTable = new MeasurementTable('test-measure-table-host', measureTool);
+
+        jmarsState.set('body', 'mars');
+        measureTool.activate('distance');
+        expect(liveMap._exclusiveDrawOwner).to.equal('measure');
+
+        // Simulate Leaflet.Draw firing draw:created for a due-East polyline along equator
+        const lineLayer = L.polyline([[0, 0], [0, 5]]);
+        liveMap.fire('draw:created', { layerType: 'polyline', layer: lineLayer });
+
+        // ShapeLayer MUST NOT hijack the measurement polyline
+        expect(shapeLayer.shapes).to.be.empty;
+        expect(liveMap._exclusiveDrawOwner).to.be.null;
+        expect(measureTool.measurements).to.have.lengthOf(1);
+        expect(measureTool.measurements[0].azimuthDeg).to.be.closeTo(90.0, 0.2);
+        expect(measHost.textContent).to.include('Az 90.0°');
+
+        // Now measure a polygon area + perimeter
+        measureTool.activate('area');
+        const polyLayer = L.polygon([[0, 0], [0, 2], [2, 2], [2, 0]]);
+        liveMap.fire('draw:created', { layerType: 'polygon', layer: polyLayer });
+
+        expect(shapeLayer.shapes).to.be.empty;
+        expect(measureTool.measurements).to.have.lengthOf(2);
+        expect(measureTool.measurements[1].perimeterMeters).to.be.greaterThan(400000);
+        expect(measHost.textContent).to.include('Perim ');
+
+        // Delete first measurement via deleteMeasurement(id)
+        const firstId = measureTool.measurements[0].id;
+        expect(measureTool.deleteMeasurement(firstId)).to.be.true;
+        expect(measureTool.measurements).to.have.lengthOf(1);
+        expect(measTable.tbody.querySelectorAll('tr').length).to.equal(1);
+
+        measHost.remove();
+    });
+
+    it('round-trips binary ESRI Shapefile triads (.shp/.shx/.dbf) and multi-feature WKT losslessly', () => {
+        const shapeLayer = new ShapeLayer(liveMap);
+        shapeLayer.activate();
+        shapeLayer.fromGeoJSON({
+            type: 'FeatureCollection',
+            features: [
+                {
+                    type: 'Feature',
+                    properties: { name: 'Jezero Delta', unit: 'Nlf', _style: { pattern: 'layered_deposits' } },
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [[[77.4, 18.3], [77.7, 18.3], [77.7, 18.6], [77.4, 18.6], [77.4, 18.3]]]
+                    }
+                },
+                {
+                    type: 'Feature',
+                    properties: { name: 'Perseverance Traverse', sol: '100' },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [[77.45, 18.44], [77.50, 18.48], [77.55, 18.52]]
+                    }
+                },
+                {
+                    type: 'Feature',
+                    properties: { name: 'Sample Cache', tube: 'T1' },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [77.45, 18.44]
+                    }
+                }
+            ]
+        });
+
+        const bundles = ShapeIO.exportShapefileBundles(shapeLayer.shapes, 'mars');
+        expect(bundles).to.have.lengthOf(3);
+
+        for (const bundle of bundles) {
+            const shpView = new DataView(bundle.shpBuffer);
+            const shxView = new DataView(bundle.shxBuffer);
+            expect(shpView.getInt32(0, false)).to.equal(9994);
+            expect(shxView.getInt32(0, false)).to.equal(9994);
+            expect(bundle.shxBuffer.byteLength).to.equal(100 + bundle.recordCount * 8);
+
+            const parsed = ShapeIO.parseShapefileAuto(bundle.shpBuffer, bundle.dbfBuffer);
+            expect(parsed.type).to.equal('FeatureCollection');
+            expect(parsed.features).to.have.lengthOf(1);
+            expect(parsed.features[0].properties.name).to.be.a('string').and.not.be.empty;
+        }
+
+        // Verify WKT export & import round-trip
+        const wktText = shapeLayer.toWKTString();
+        expect(wktText).to.include('POLYGON((');
+        expect(wktText).to.include('LINESTRING(');
+        expect(wktText).to.include('POINT(');
+
+        shapeLayer.clearAll();
+        shapeLayer.fromWKT(wktText);
+        expect(shapeLayer.shapes).to.have.lengthOf(3);
+    });
+
+    it('executes QuickActions commands, parses coordinates, prevents XSS, and syncs Sidebar body state', () => {
+        let switchedBody = null;
+        let saved = false;
+        const qa = new QuickActions(null, {
+            map: liveMap,
+            onSwitchBody: (b) => { switchedBody = b; },
+            onSaveSession: () => { saved = true; },
+            getBookmarks: () => [
+                { id: 'b1', name: '<img src=x onerror=alert(1)> Crater', lat: 10.5, lng: 20.5, body: 'mars' }
+            ],
+            getLandmarks: () => [
+                { name: 'Conamara <script>evil()</script>', type: 'Chaos', lat: 9.7, lon: -87.3, body: 'europa' }
+            ]
+        });
+
+        qa.open('Conamara');
+        expect(qa.isOpen).to.be.true;
+        expect(qa.resultsList.querySelectorAll('img, script').length).to.equal(0);
+        expect(qa.resultsList.textContent).to.include('Conamara <script>evil()</script>');
+
+        qa.open('');
+        expect(qa.resultsList.querySelectorAll('img, script').length).to.equal(0);
+        expect(qa.resultsList.textContent).to.include('<img src=x onerror=alert(1)> Crater');
+
+        qa.executeCommand('save session');
+        expect(saved).to.be.true;
+
+        qa.executeCommand('18.65, -133.8');
+        expect(liveMap.getCenter().lat).to.be.closeTo(18.65, 0.01);
+        expect(liveMap.getCenter().lng).to.be.closeTo(-133.8, 0.01);
+
+        qa.executeCommand('europa');
+        expect(switchedBody).to.equal('europa');
+        qa.close();
+
+        // Sidebar body class sync
+        const sbDiv = document.createElement('div');
+        sbDiv.id = 'test-sb-panel';
+        const sbBtn = document.createElement('button');
+        sbBtn.id = 'test-sb-btn';
+        document.body.appendChild(sbDiv);
+        document.body.appendChild(sbBtn);
+
+        const sb = new Sidebar('test-sb-panel', 'test-sb-btn');
+        expect(document.body.classList.contains('sidebar-collapsed')).to.be.false;
+        sb.toggle();
+        expect(document.body.classList.contains('sidebar-collapsed')).to.be.true;
+        sb.toggle();
+        expect(document.body.classList.contains('sidebar-collapsed')).to.be.false;
+
+        sbDiv.remove();
+        sbBtn.remove();
     });
 });
 

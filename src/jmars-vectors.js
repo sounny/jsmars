@@ -4,6 +4,8 @@
  *
  * Wraps Leaflet.Draw to provide draw controls (polyline, polygon, circle,
  * rectangle, marker) and integrates the StyleEditor for right-click styling.
+ * Coordinates cleanly with ShapeLayer and exclusive draw tools (Measure,
+ * Sampling, Linear Profile) so temporary tool geometries are never hijacked.
  *
  * @requires leaflet (global L)
  * @requires leaflet.draw (L.Control.Draw)
@@ -29,6 +31,27 @@ export class JMARSVectors {
     this.drawControl = null;
     /** @type {StyleEditor|null} */
     this.styleEditor = null;
+    /** @type {boolean} True when ShapeLayer manages shape creation on this featureGroup */
+    this.delegatedToShapeLayer = false;
+    /** @type {import('./features/shapes/ShapeLayer.js').ShapeLayer|null} */
+    this.shapeLayer = null;
+  }
+
+  /**
+   * Delegate vector lifecycle management to ShapeLayer so the Leaflet.Draw toolbar,
+   * Shapes attribute table, right-click StyleEditor, and SessionManager share one source of truth.
+   * @param {import('./features/shapes/ShapeLayer.js').ShapeLayer} shapeLayer
+   */
+  delegateToShapeLayer(shapeLayer) {
+    this.delegatedToShapeLayer = true;
+    this.shapeLayer = shapeLayer;
+    if (this.styleEditor) {
+      this.styleEditor.onStyleChange = (layer, styles) => {
+        if (layer && layer._shapeId != null && this.shapeLayer) {
+          this.shapeLayer.syncStyleFromLayer(layer._shapeId, styles);
+        }
+      };
+    }
   }
 
   /**
@@ -37,7 +60,6 @@ export class JMARSVectors {
    * and initializes the right-click style editor.
    */
   init() {
-    console.debug('JMARSVectors initializing...');
     if (!L.Control.Draw) {
       console.error('Leaflet.Draw not found. Make sure to load it in index.html');
       return;
@@ -67,40 +89,40 @@ export class JMARSVectors {
 
     this.map.addControl(this.drawControl);
 
-    // Handle newly created shapes
+    // Handle newly created shapes ONLY when not delegated to ShapeLayer
+    // and not owned by an exclusive measurement/sampling/profile tool.
     this.map.on('draw:created', (e) => {
-      console.debug('draw:created event fired');
+      if (this.delegatedToShapeLayer || this.map._exclusiveDrawOwner || e._handledByTool) {
+        return;
+      }
       const type = e.layerType;
       const layer = e.layer;
 
-      // Bind a default popup showing coordinates for markers
       if (type === 'marker') {
         const latlng = layer.getLatLng();
         layer.bindPopup(`Marker at ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
       }
 
       this.featureGroup.addLayer(layer);
-      console.debug('Created new vector shape:', type);
     });
 
     // Open style editor on right-click (context menu) of vector shapes
     this.featureGroup.on('contextmenu', (e) => {
-      console.debug('Context menu on shape');
-      L.DomEvent.stopPropagation(e); // Prevent map context menu
-      // Also prevent the browser's native context menu
+      L.DomEvent.stopPropagation(e);
       if (e.originalEvent) e.originalEvent.preventDefault();
 
-      // Only open for layers with setStyle (not markers)
-      if (typeof e.layer.setStyle === 'function') {
+      if (e.layer && e.layer._shapeId != null && this.shapeLayer) {
+        this.shapeLayer.selectShape(e.layer._shapeId);
+      }
+
+      if (e.layer && typeof e.layer.setStyle === 'function') {
         this.styleEditor.open(e.layer, e.containerPoint);
-      } else {
-        console.warn('Layer does not support styling');
       }
     });
 
     // Close style editor when clicking elsewhere on the map
     this.map.on('click', () => {
-      this.styleEditor.close();
+      this.styleEditor?.close();
     });
   }
 }

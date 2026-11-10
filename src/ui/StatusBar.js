@@ -349,6 +349,12 @@ export class StatusBar {
       this.failedTiles = 0;
       const bName = e?.detail?.body || this.currentBody;
       this.renderLoadStatus(`Loading ${bName}...`);
+      clearTimeout(this._bodySettleTimer);
+      this._bodySettleTimer = setTimeout(() => {
+        if (this.pendingTiles === 0) {
+          this.renderLoadStatus();
+        }
+      }, 1200);
     });
 
     // Reset error count if user clicks status pill

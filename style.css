@@ -1989,15 +1989,15 @@ html {
     border-radius: 6px !important;
   }
 
-  /* Mobile Status Bar - Fixed at top with blur & smooth horizontal scrolling */
+  /* Mobile Status Bar - Fixed at top with blur & clean compact fit */
   #status-bar {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 30px;
-    padding: 0 10px;
-    padding-top: env(safe-area-inset-top);
+    height: calc(32px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 8px 0 8px;
+    box-sizing: border-box;
     background: rgba(15, 23, 42, 0.94);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -2008,10 +2008,35 @@ html {
     align-items: center;
     overflow-x: auto;
     scrollbar-width: none;
-    gap: 8px;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  #status-bar #status-scale {
+    display: none;
   }
 
   #status-bar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  #status-bar {
+    justify-content: space-between;
+    gap: 4px;
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: 10.5px;
+  }
+
+  #status-bar #status-elev {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  #status-bar #status-load-text {
     display: none;
   }
 }
@@ -2718,34 +2743,50 @@ html {
 
 
 /* ==========================================================================
-   32. 2D | 3D view toggle and Cesium globe
+   32. Top Map HUD (2D | 3D Toggle + Quick Command Trigger) & Cesium Globe
    ========================================================================== */
 
-.view-mode-toggle {
-  position: absolute;
+.map-top-hud {
+  position: fixed;
   top: calc(10px + env(safe-area-inset-top, 0px));
-  left: 50%;
+  left: calc(50% + 150px);
   transform: translateX(-50%);
   z-index: 2500;
   display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  transition: left 0.25s ease;
+}
+
+body.sidebar-collapsed .map-top-hud {
+  left: 50%;
+}
+
+.view-mode-toggle {
+  display: flex;
   gap: 0;
   background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid #334155;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
 }
 
 .view-mode-btn {
-  min-width: 64px;
+  min-width: 60px;
   min-height: 44px;
-  padding: 0 16px;
+  padding: 0 15px;
   border: 0;
   background: transparent;
   color: #e2e8f0;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .view-mode-btn + .view-mode-btn {
@@ -2757,16 +2798,58 @@ html {
   color: #fff;
 }
 
+.quick-cmd-trigger {
+  min-height: 44px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.quick-cmd-trigger:hover {
+  border-color: #38bdf8;
+  color: #f8fafc;
+  background: rgba(30, 41, 59, 0.96);
+}
+
+.quick-cmd-trigger svg {
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.quick-cmd-trigger-kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #94a3b8;
+}
+
 .view-mode-btn:focus-visible,
+.quick-cmd-trigger:focus-visible,
 .globe-chrome-btn:focus-visible {
   outline: 2px solid #38bdf8;
   outline-offset: 2px;
 }
 
 .globe-load-error {
-  position: absolute;
-  top: calc(60px + env(safe-area-inset-top, 0px));
-  left: 50%;
+  position: fixed;
+  top: calc(62px + env(safe-area-inset-top, 0px));
+  left: calc(50% + 150px);
   transform: translateX(-50%);
   z-index: 2500;
   margin: 0;
@@ -2776,6 +2859,11 @@ html {
   color: #fff;
   border-radius: 6px;
   font-size: 13px;
+  transition: left 0.25s ease;
+}
+
+body.sidebar-collapsed .globe-load-error {
+  left: 50%;
 }
 
 .globe-view {
@@ -2806,16 +2894,22 @@ html {
 .globe-chrome {
   position: absolute;
   top: calc(62px + env(safe-area-inset-top, 0px));
-  left: 50%;
+  left: calc(50% + 150px);
   transform: translateX(-50%);
   z-index: 5;
-  width: min(560px, calc(100% - 24px));
+  width: min(560px, calc(100% - 400px));
   padding: 8px 10px;
   background: rgba(15, 23, 42, 0.9);
   color: #e2e8f0;
   border: 1px solid #334155;
   border-radius: 8px;
   pointer-events: auto;
+  transition: left 0.25s ease, width 0.25s ease;
+}
+
+body.sidebar-collapsed .globe-chrome {
+  left: 50%;
+  width: min(560px, calc(100% - 120px));
 }
 
 .globe-chrome-controls {
@@ -2895,15 +2989,228 @@ body.view-3d [data-requires-2d] {
   font-size: 11px;
 }
 
+@media (max-width: 1024px) and (min-width: 769px) {
+  .quick-cmd-trigger-kbd {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
+  .map-top-hud,
+  body.sidebar-collapsed .map-top-hud {
+    top: calc(38px + max(8px, env(safe-area-inset-top, 0px)));
+    left: 50%;
+    gap: 6px;
+  }
+
+  .view-mode-btn {
+    min-width: 48px;
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .quick-cmd-trigger {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .quick-cmd-trigger-label,
+  .quick-cmd-trigger-kbd {
+    display: none;
+  }
+
+  .globe-load-error,
+  body.sidebar-collapsed .globe-load-error {
+    top: calc(92px + max(8px, env(safe-area-inset-top, 0px)));
+    left: 50%;
+  }
+
   .globe-view {
     bottom: 0;
   }
 
-  .globe-chrome {
+  .globe-chrome,
+  body.sidebar-collapsed .globe-chrome {
     top: auto;
+    left: 50%;
+    width: min(560px, calc(100% - 24px));
     bottom: calc(78px + env(safe-area-inset-bottom, 0px));
     max-height: 38vh;
     overflow: auto;
   }
+}
+
+/* ==========================================================================
+   33. Quick Command & Navigation Palette (Ctrl+K)
+   ========================================================================== */
+
+.quick-cmd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  background: rgba(2, 6, 23, 0.68);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: calc(10vh + env(safe-area-inset-top, 0px)) 16px 24px;
+  box-sizing: border-box;
+}
+
+.quick-cmd-backdrop[hidden] {
+  display: none !important;
+}
+
+.quick-cmd-modal {
+  width: min(580px, 100%);
+  max-height: min(520px, 76vh);
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(56, 189, 248, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.quick-cmd-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.quick-cmd-icon {
+  color: #38bdf8;
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.quick-cmd-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #f8fafc;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.quick-cmd-input::placeholder {
+  color: #64748b;
+}
+
+.quick-cmd-esc {
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #94a3b8;
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  cursor: pointer;
+}
+
+.quick-cmd-esc:hover {
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+.quick-cmd-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.quick-cmd-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #e2e8f0;
+  font-size: 13px;
+  transition: background 0.1s ease;
+}
+
+.quick-cmd-item.active,
+.quick-cmd-item:hover {
+  background: rgba(56, 189, 248, 0.16);
+  color: #f8fafc;
+}
+
+.quick-cmd-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.quick-cmd-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  flex-shrink: 0;
+}
+
+.quick-cmd-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-cmd-item-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.quick-cmd-meta {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.quick-cmd-kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+}
+
+.quick-cmd-empty {
+  padding: 20px 14px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.quick-cmd-footer {
+  padding: 8px 14px;
+  border-top: 1px solid #1e293b;
+  font-size: 11px;
+  color: #64748b;
+  background: rgba(2, 6, 23, 0.45);
+  white-space: pre-wrap;
 }

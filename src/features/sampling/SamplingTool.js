@@ -1,25 +1,15 @@
 import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
-import { getPlanetaryRadius } from '../../util/geo.js';
-
-/** Simple Mulberry32 seeded pseudo-random number generator for reproducible sampling */
-function createSeededRandom(seed = 123456789) {
-    let s = Math.floor(Math.abs(seed)) || 123456789;
-    return function() {
-        s |= 0; s = s + 0x6D2B79F5 | 0;
-        let t = Math.imul(s ^ s >>> 15, 1 | s);
-        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-}
+import { getPlanetaryRadius, sphericalPolygonArea } from '../../util/geo.js';
 
 /**
  * @module SamplingTool
  * @description Point and area sampling tool for querying WMS layer values.
  *
  * In point mode, the user clicks the map to drop sample markers.
- * In area mode, a polygon is drawn and the centroid is queried.
+ * In area mode, a polygon is drawn, body-scaled geodesic area is computed,
+ * and active WMS layers are queried at the polygon centroid.
  * Results are dispatched via SAMPLE_UPDATED.
  */
 export class SamplingTool {
@@ -31,12 +21,13 @@ export class SamplingTool {
         this.map = map;
         this.isActive = false;
         this.featureGroup = L.featureGroup().addTo(map);
-        this.samples = []; // { id, lat, lng, layers: { name: value } }
+        this.samples = []; // { id, lat, lng, values: [{ name, value }] }
         this.unqueryableLayers = new Set(); // cache of layers that return ServiceException for GetFeatureInfo
-        
+
         this.onClick = this.onClick.bind(this);
         this.onDrawCreated = this.onDrawCreated.bind(this);
-        
+        this.onDrawStop = this.onDrawStop.bind(this);
+
         document.addEventListener(EVENTS.BODY_CHANGED, () => this.clear());
     }
 
@@ -46,7 +37,7 @@ export class SamplingTool {
      */
     activate(mode = 'point') {
         if (this.isActive && this.activeMode === mode) return;
-        this.deactivate(); // Clear previous listeners
+        this.deactivate();
         this.isActive = true;
         this.activeMode = mode;
 
@@ -54,12 +45,20 @@ export class SamplingTool {
             this.map.on('click', this.onClick);
             this.map.getContainer().style.cursor = 'crosshair';
         } else if (mode === 'area') {
-            this.drawControl = new L.Draw.Polygon(this.map, {
-                shapeOptions: { color: '#ff00ff', fillOpacity: 0.2 },
-                showArea: true
-            });
-            this.drawControl.enable();
-            this.map.on(L.Draw.Event.CREATED, this.onDrawCreated);
+            if (this.map) {
+                this.map._exclusiveDrawOwner = 'sampling';
+            }
+            if (L.Draw?.Polygon) {
+                this.drawControl = new L.Draw.Polygon(this.map, {
+                    shapeOptions: { color: '#ff00ff', fillOpacity: 0.2 },
+                    showArea: true
+                });
+                this.drawControl.enable();
+            }
+            const drawCreatedEvt = L.Draw?.Event?.CREATED || 'draw:created';
+            const drawStopEvt = L.Draw?.Event?.DRAWSTOP || 'draw:drawstop';
+            this.map.on(drawCreatedEvt, this.onDrawCreated);
+            this.map.on(drawStopEvt, this.onDrawStop);
         }
     }
 
@@ -76,58 +75,53 @@ export class SamplingTool {
             this.drawControl.disable();
             this.drawControl = null;
         }
-        this.map.off(L.Draw.Event.CREATED, this.onDrawCreated);
+        const drawCreatedEvt = L.Draw?.Event?.CREATED || 'draw:created';
+        const drawStopEvt = L.Draw?.Event?.DRAWSTOP || 'draw:drawstop';
+        this.map.off(drawCreatedEvt, this.onDrawCreated);
+        this.map.off(drawStopEvt, this.onDrawStop);
+        if (this.map && this.map._exclusiveDrawOwner === 'sampling') {
+            this.map._exclusiveDrawOwner = null;
+        }
         this.map.getContainer().style.cursor = '';
 
         document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'sampling' } }));
     }
 
+    onDrawStop() {
+        if (this.isActive && this.activeMode === 'area') {
+            this.deactivate();
+        }
+    }
+
     onDrawCreated(e) {
         if (!this.isActive || this.activeMode !== 'area') return;
 
+        e._handledByTool = 'sampling';
         const layer = e.layer;
         this.featureGroup.addLayer(layer);
         this.calculatePolygonStats(layer);
-        
+
         this.deactivate();
     }
 
     async calculatePolygonStats(layer) {
         const id = this.samples.length + 1;
-        // Approximation: Centroid + 4 bounding box points (clamped to polygon?)
-        // Better: Random points within bounds, filtered by raycast.
-        // Limit to 5 points to avoid spamming server.
-        
-        const bounds = layer.getBounds();
-        const points = [];
-        const rng = createSeededRandom(bounds.getSouth() * 10000 + bounds.getWest() * 10000);
-        
-        // Try 10 attempts to find 5 points (deterministic and reproducible)
-        for (let i = 0; i < 10 && points.length < 5; i++) {
-            const lat = bounds.getSouth() + rng() * (bounds.getNorth() - bounds.getSouth());
-            const lng = bounds.getWest() + rng() * (bounds.getEast() - bounds.getWest());
-            points.push(L.latLng(lat, lng));
-        }
-        
-        // Query all
-        // This will be slow if many layers.
-        // We aggregate results.
-        // Since we don't have real numeric data from WMS (we scrape HTML), 
-        // we can't do real Math (Mean/StdDev) easily unless values are clean numbers.
-        // We'll return "Sampled 5 points" summary.
-        
-        // For demo, just query Center.
-        const center = layer.getCenter();
-        // Get container point for WMS (needs map projection)
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        let ring = typeof layer.getLatLngs === 'function' ? layer.getLatLngs() : [];
+        if (Array.isArray(ring[0])) ring = ring[0];
+        const areaKm2 = ring.length >= 3 ? sphericalPolygonArea(ring, body) : 0;
+
+        const center = layer.getBounds().getCenter();
         const containerPoint = this.map.latLngToContainerPoint(center);
-        
         const data = await this.queryLayers(center, containerPoint);
-        
-        // Format as "Area Stats (Center)"
-        const stats = data.map(d => ({
-            name: d.name,
-            value: `Center: ${d.value} (Approx Area)`
-        }));
+
+        const stats = [
+            { name: 'Geodesic Area', value: `${areaKm2.toFixed(2)} km²` },
+            ...data.map(d => ({
+                name: d.name,
+                value: `Centroid: ${d.value}`
+            }))
+        ];
 
         this.samples.push({
             id: `Area ${id}`,
@@ -135,7 +129,7 @@ export class SamplingTool {
             lng: center.lng,
             values: stats
         });
-        
+
         this.notifyUpdate();
     }
 

@@ -1,6 +1,11 @@
+import { jmarsState } from '../../jmars-state.js';
+import { normalizeBodyKey } from '../../util/body.js';
+import { computeEllipsePolygon, getPlanetaryRadius } from '../../util/geo.js';
+
 /**
  * ShapeIO provides file import/export utilities for the Shape Layer.
- * Handles file dialog, drag-and-drop, and format detection.
+ * Handles file dialog, drag-and-drop, format detection, WKT, and
+ * standards-compliant ESRI Shapefile (.shp/.shx/.dbf) binary serialization.
  */
 export class ShapeIO {
   /**
@@ -11,19 +16,21 @@ export class ShapeIO {
   }
 
   /**
-   * Open a file dialog and import the selected file.
-   * Supports: .geojson, .json, .csv, .kml
+   * Open a file dialog and import the selected file(s).
+   * Supports: .geojson, .json, .csv, .kml, .wkt, .shp, .dbf
    */
   importFile() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.geojson,.json,.csv,.kml';
+    input.multiple = true;
+    input.accept = '.geojson,.json,.csv,.kml,.wkt,.txt,.shp,.dbf,.shx';
     input.style.display = 'none';
 
     input.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      await this._processFile(file);
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        await this.importFiles(files);
+      }
       input.remove();
     });
 
@@ -32,12 +39,68 @@ export class ShapeIO {
   }
 
   /**
-   * Process a file and import shapes.
+   * Import one or more files, automatically pairing companion .shp and .dbf files.
+   * @param {Array<File>|FileList} fileList
+   */
+  async importFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
+    const dbfByStem = new Map();
+    const primaryFiles = [];
+
+    for (const file of files) {
+      const parts = file.name.split('.');
+      const ext = parts.pop().toLowerCase();
+      const stem = parts.join('.').toLowerCase();
+      if (ext === 'dbf') {
+        dbfByStem.set(stem, file);
+      } else if (ext === 'shx' || ext === 'prj' || ext === 'cpg') {
+        continue;
+      } else {
+        primaryFiles.push({ file, ext, stem });
+      }
+    }
+
+    for (const { file, ext, stem } of primaryFiles) {
+      if (ext === 'shp') {
+        const companionDbf = dbfByStem.get(stem) || (dbfByStem.size === 1 ? [...dbfByStem.values()][0] : null);
+        await this._processShapefile(file, companionDbf);
+      } else {
+        await this._processFile(file);
+      }
+    }
+  }
+
+  /**
+   * Parse and import a binary .shp file and optional companion .dbf attribute table.
+   * @param {File} shpFile
+   * @param {File|null} [dbfFile=null]
+   */
+  async _processShapefile(shpFile, dbfFile = null) {
+    try {
+      const shpBuf = await shpFile.arrayBuffer();
+      const dbfBuf = dbfFile ? await dbfFile.arrayBuffer() : null;
+      const collection = ShapeIO.parseShapefileAuto(shpBuf, dbfBuf);
+      this.shapeLayer.fromGeoJSON(collection);
+    } catch (err) {
+      console.error('Shapefile import error:', err);
+      this._notify(`Shapefile import failed: ${err.message}`, true);
+    }
+  }
+
+  /**
+   * Process a single file and import shapes.
    * @param {File} file
    */
   async _processFile(file) {
     try {
       const ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'shp') {
+        await this._processShapefile(file, null);
+        return;
+      }
+
       const text = await file.text();
 
       switch (ext) {
@@ -51,19 +114,23 @@ export class ShapeIO {
         case 'kml':
           this.shapeLayer.fromKML(text);
           break;
+        case 'wkt':
+        case 'txt':
+          this.shapeLayer.fromWKT(text);
+          break;
         default:
           console.warn(`Unsupported file format: .${ext}`);
-          alert(`Unsupported file format: .${ext}\nSupported: .geojson, .json, .csv, .kml`);
+          this._notify(`Unsupported file format: .${ext} (use .geojson, .csv, .kml, .wkt, or .shp)`, true);
       }
     } catch (err) {
       console.error('Import error:', err);
-      alert(`Import failed: ${err.message}`);
+      this._notify(`Import failed: ${err.message}`, true);
     }
   }
 
   /**
    * Export shapes in the selected format.
-   * @param {string} format - 'geojson', 'csv', 'kml'
+   * @param {string} format - 'geojson', 'csv', 'kml', 'wkt', 'shp'
    */
   exportFile(format) {
     switch (format) {
@@ -76,19 +143,87 @@ export class ShapeIO {
       case 'csv':
         this._downloadCSV();
         break;
+      case 'wkt':
+        this.shapeLayer.downloadWKT();
+        break;
+      case 'shp':
+        this._downloadShapefile();
+        break;
       default:
         console.warn(`Unsupported export format: ${format}`);
     }
   }
 
   /**
-   * Export marker shapes as CSV.
+   * Download ESRI Shapefile triad (.shp, .shx, .dbf) for all shapes in the layer.
+   */
+  _downloadShapefile() {
+    const shapes = this.shapeLayer.shapes;
+    if (!shapes || shapes.length === 0) return;
+
+    const body = normalizeBodyKey(jmarsState.get('body') || 'mars');
+    const bundles = ShapeIO.exportShapefileBundles(shapes, body);
+    const stamp = Date.now();
+
+    bundles.forEach(bundle => {
+      const prefix = bundles.length > 1 ? `shapes_${bundle.family}_${stamp}` : `shapes_${stamp}`;
+      this._triggerBinaryDownload(bundle.shpBuffer, `${prefix}.shp`);
+      this._triggerBinaryDownload(bundle.shxBuffer, `${prefix}.shx`);
+      this._triggerBinaryDownload(bundle.dbfBuffer, `${prefix}.dbf`);
+    });
+  }
+
+  /**
+   * Trigger a binary ArrayBuffer download.
+   * @param {ArrayBuffer} buffer
+   * @param {string} filename
+   * @private
+   */
+  _triggerBinaryDownload(buffer, filename) {
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Non-blocking accessible toast notification for import/export feedback.
+   * @param {string} message
+   * @param {boolean} [isError=false]
+   * @private
+   */
+  _notify(message, isError = false) {
+    if (typeof document === 'undefined' || !document.body) return;
+    let toast = document.getElementById('jsmars-io-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'jsmars-io-toast';
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('aria-live', 'polite');
+      toast.style.cssText = 'position:fixed;bottom:44px;left:50%;transform:translateX(-50%);z-index:4500;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:500;box-shadow:0 6px 20px rgba(0,0,0,0.5);transition:opacity 0.2s ease;';
+      document.body.appendChild(toast);
+    }
+    toast.style.background = isError ? '#7f1d1d' : '#0f172a';
+    toast.style.color = '#f8fafc';
+    toast.style.border = isError ? '1px solid #f87171' : '1px solid #38bdf8';
+    toast.textContent = message;
+    toast.style.display = 'block';
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      if (toast) toast.style.display = 'none';
+    }, 3500);
+  }
+
+  /**
+   * Export shapes as CSV.
    */
   _downloadCSV() {
     const shapes = this.shapeLayer.shapes;
     if (shapes.length === 0) return;
 
-    // Collect all unique attribute keys
     const allKeys = new Set();
     shapes.forEach(s => Object.keys(s.attributes).forEach(k => allKeys.add(k)));
     const attrKeys = [...allKeys];
@@ -109,8 +244,6 @@ export class ShapeIO {
 
       const attrs = attrKeys.map(k => {
         const val = (shape.attributes[k] || '').toString();
-        // Escape CSV per RFC 4180: wrap in quotes if the value
-        // contains commas, double-quotes, or newlines.
         if (val.includes(',') || val.includes('"') || val.includes('\n')) {
           return `"${val.replace(/"/g, '""')}"`;
         }
@@ -135,6 +268,7 @@ export class ShapeIO {
    * @param {HTMLElement} target - Drop target element (e.g., the map container)
    */
   enableDragDrop(target) {
+    if (!target) return;
     target.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
@@ -149,9 +283,9 @@ export class ShapeIO {
       e.preventDefault();
       target.classList.remove('drag-over');
 
-      const files = e.dataTransfer.files;
-      for (const file of files) {
-        await this._processFile(file);
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        await this.importFiles(files);
       }
     });
   }
@@ -175,6 +309,12 @@ export class ShapeIO {
         return `LINESTRING(${coords.map(p => `${p[0]} ${p[1]}`).join(', ')})`;
       case 'POLYGON':
         return `POLYGON((${coords[0].map(p => `${p[0]} ${p[1]}`).join(', ')}))`;
+      case 'MULTIPOINT':
+        return `MULTIPOINT(${coords.map(p => `(${p[0]} ${p[1]})`).join(', ')})`;
+      case 'MULTILINESTRING':
+        return `MULTILINESTRING(${coords.map(line => `(${line.map(p => `${p[0]} ${p[1]}`).join(', ')})`).join(', ')})`;
+      case 'MULTIPOLYGON':
+        return `MULTIPOLYGON(${coords.map(poly => `((${poly[0].map(p => `${p[0]} ${p[1]}`).join(', ')}))`).join(', ')})`;
       default:
         return '';
     }
@@ -187,36 +327,318 @@ export class ShapeIO {
    */
   static parseWKT(wkt) {
     if (!wkt || typeof wkt !== 'string') return null;
-    const clean = wkt.trim();
+    const clean = wkt.trim().replace(/^SRID=\d+;/i, '').trim();
     const match = clean.match(/^([A-Za-z]+)\s*\((.*)\)$/s);
     if (!match) return null;
 
     const type = match[1].toUpperCase();
     const body = match[2].trim();
 
+    const parsePair = (pairStr) => {
+      const parts = pairStr.replace(/[()]/g, '').trim().split(/\s+/).map(Number);
+      return [parts[0], parts[1]];
+    };
+
     if (type === 'POINT') {
-      const parts = body.split(/\s+/).map(Number);
-      return { type: 'Point', coordinates: [parts[0], parts[1]] };
+      const pt = parsePair(body);
+      if (Number.isNaN(pt[0]) || Number.isNaN(pt[1])) return null;
+      return { type: 'Point', coordinates: pt };
     }
 
     if (type === 'LINESTRING') {
-      const coords = body.split(',').map(pair => {
-        const parts = pair.trim().split(/\s+/).map(Number);
-        return [parts[0], parts[1]];
-      });
+      const coords = body.split(',').map(parsePair);
       return { type: 'LineString', coordinates: coords };
     }
 
     if (type === 'POLYGON') {
-      const ringBody = body.replace(/^\(/, '').replace(/\)$/, '').trim();
-      const coords = ringBody.split(',').map(pair => {
-        const parts = pair.trim().split(/\s+/).map(Number);
-        return [parts[0], parts[1]];
-      });
-      return { type: 'Polygon', coordinates: [coords] };
+      const rings = body
+        .replace(/^\(/, '')
+        .replace(/\)$/, '')
+        .split(/\)\s*,\s*\(/)
+        .map(ringStr => ringStr.replace(/^\(/, '').replace(/\)$/, '').split(',').map(parsePair));
+      return { type: 'Polygon', coordinates: rings };
+    }
+
+    if (type === 'MULTIPOINT') {
+      const coords = body.split(',').map(parsePair);
+      return { type: 'MultiPoint', coordinates: coords };
+    }
+
+    if (type === 'MULTILINESTRING') {
+      const lines = body
+        .replace(/^\(/, '')
+        .replace(/\)$/, '')
+        .split(/\)\s*,\s*\(/)
+        .map(lineStr => lineStr.replace(/^\(/, '').replace(/\)$/, '').split(',').map(parsePair));
+      return { type: 'MultiLineString', coordinates: lines };
+    }
+
+    if (type === 'MULTIPOLYGON') {
+      const polys = body
+        .replace(/^\(\(/, '')
+        .replace(/\)\)$/, '')
+        .split(/\)\)\s*,\s*\(\(/)
+        .map(polyStr => [polyStr.replace(/^\(/, '').replace(/\)$/, '').split(',').map(parsePair)]);
+      return { type: 'MultiPolygon', coordinates: polys };
     }
 
     return null;
+  }
+
+  /**
+   * Auto-detect ESRI Shapefile geometry type (Point=1, PolyLine=3, Polygon=5),
+   * parse all records, and merge optional dBASE III (.dbf) attributes into a GeoJSON FeatureCollection.
+   * @param {ArrayBuffer} shpBuffer
+   * @param {ArrayBuffer|null} [dbfBuffer=null]
+   * @returns {{type: 'FeatureCollection', features: Array<object>}}
+   */
+  static parseShapefileAuto(shpBuffer, dbfBuffer = null) {
+    const header = this.parseShapefileHeader(shpBuffer);
+    let features = [];
+
+    if (header.shapeType === 1) {
+      features = this.parsePointRecords(shpBuffer);
+    } else if (header.shapeType === 3 || header.shapeType === 5) {
+      features = this.parsePolygonRecords(shpBuffer).map(f => {
+        if (header.shapeType === 3 && f.geometry.type === 'MultiLineString' && f.geometry.coordinates.length === 1) {
+          return {
+            ...f,
+            geometry: {
+              type: 'LineString',
+              coordinates: f.geometry.coordinates[0]
+            }
+          };
+        }
+        return f;
+      });
+    } else {
+      throw new Error(`Unsupported Shapefile geometry type: ${header.shapeTypeName} (${header.shapeType})`);
+    }
+
+    if (dbfBuffer) {
+      const dbfRows = this.parseDBFRecords(dbfBuffer);
+      features.forEach((feat, idx) => {
+        if (dbfRows[idx]) {
+          feat.properties = { ...feat.properties, ...dbfRows[idx] };
+          if (!feat.properties.name && feat.properties.NAME) {
+            feat.properties.name = feat.properties.NAME;
+          }
+        }
+      });
+    }
+
+    return {
+      type: 'FeatureCollection',
+      features
+    };
+  }
+
+  /**
+   * Build standards-compliant ESRI Shapefile (.shp, .shx, .dbf) binary bundles
+   * grouped by ESRI geometry family ('point', 'polyline', 'polygon').
+   * @param {Array<object>} shapes - ShapeLayer shape objects
+   * @param {string} [body='mars'] - Active planetary body for circle approximation
+   * @returns {Array<{family: string, shapeType: number, recordCount: number, shpBuffer: ArrayBuffer, shxBuffer: ArrayBuffer, dbfBuffer: ArrayBuffer}>}
+   */
+  static exportShapefileBundles(shapes = [], body = 'mars') {
+    const groups = {
+      point: [],
+      polyline: [],
+      polygon: []
+    };
+
+    shapes.forEach(shape => {
+      if (!shape || !shape.layer) return;
+      if (shape.type === 'marker') {
+        const ll = shape.layer.getLatLng();
+        groups.point.push({ shape, coords: [ll.lng, ll.lat] });
+      } else if (shape.type === 'polyline') {
+        const gj = shape.layer.toGeoJSON();
+        const lines = gj.geometry.type === 'MultiLineString'
+          ? gj.geometry.coordinates
+          : [gj.geometry.coordinates];
+        groups.polyline.push({ shape, parts: lines });
+      } else if (shape.type === 'circle' && shape.layer.getLatLng && shape.layer.getRadius) {
+        const ll = shape.layer.getLatLng();
+        const radiusKm = (shape.layer.getRadius() / 1000) * (getPlanetaryRadius(body, 'mean') / 6371.0);
+        const ringLatLon = computeEllipsePolygon(ll.lat, ll.lng, radiusKm, radiusKm, 0, body, 48);
+        const ringLonLat = ringLatLon.map(([lat, lon]) => [Number(lon.toFixed(6)), Number(lat.toFixed(6))]);
+        groups.polygon.push({ shape, parts: [ringLonLat] });
+      } else if (shape.layer.toGeoJSON) {
+        const gj = shape.layer.toGeoJSON();
+        if (gj.geometry?.type === 'Polygon') {
+          groups.polygon.push({ shape, parts: gj.geometry.coordinates });
+        } else if (gj.geometry?.type === 'Point') {
+          groups.point.push({ shape, coords: gj.geometry.coordinates });
+        }
+      }
+    });
+
+    const bundles = [];
+
+    const buildDbfForItems = (items) => {
+      const attrKeySet = new Set(['name']);
+      items.forEach(({ shape }) => {
+        Object.keys(shape.attributes || {}).forEach(k => attrKeySet.add(k));
+        if (shape.style?.pattern) attrKeySet.add('pattern');
+      });
+
+      const fields = [
+        { name: 'ID', type: 'N', length: 8, decimals: 0 }
+      ];
+      const keyMapping = [];
+      const usedDbfNames = new Set(['ID']);
+
+      [...attrKeySet].forEach(origKey => {
+        let dbfName = origKey.toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 10) || 'ATTR';
+        let suffix = 1;
+        while (usedDbfNames.has(dbfName)) {
+          const base = dbfName.slice(0, 8);
+          dbfName = `${base}_${suffix++}`;
+        }
+        usedDbfNames.add(dbfName);
+        fields.push({ name: dbfName, type: 'C', length: 64, decimals: 0 });
+        keyMapping.push({ origKey, dbfName });
+      });
+
+      const records = items.map(({ shape }) => {
+        const row = { ID: shape.id };
+        keyMapping.forEach(({ origKey, dbfName }) => {
+          if (origKey === 'pattern' && !(origKey in (shape.attributes || {}))) {
+            row[dbfName] = shape.style?.pattern || '';
+          } else {
+            row[dbfName] = shape.attributes?.[origKey] != null ? String(shape.attributes[origKey]).slice(0, 64) : '';
+          }
+        });
+        return row;
+      });
+
+      return this.createDBFBuffer(fields, records);
+    };
+
+    const buildShxBuffer = (shapeType, bbox, indexEntries) => {
+      const totalBytes = 100 + indexEntries.length * 8;
+      const shx = new ArrayBuffer(totalBytes);
+      const view = new DataView(shx);
+      view.setInt32(0, 9994, false);
+      view.setInt32(24, totalBytes / 2, false);
+      view.setInt32(28, 1000, true);
+      view.setInt32(32, shapeType, true);
+      view.setFloat64(36, bbox.xMin, true);
+      view.setFloat64(44, bbox.yMin, true);
+      view.setFloat64(52, bbox.xMax, true);
+      view.setFloat64(60, bbox.yMax, true);
+      let off = 100;
+      indexEntries.forEach(({ offsetWords, contentWords }) => {
+        view.setInt32(off, offsetWords, false);
+        view.setInt32(off + 4, contentWords, false);
+        off += 8;
+      });
+      return shx;
+    };
+
+    if (groups.point.length > 0) {
+      const pts = groups.point.map(g => g.coords);
+      const shpBuffer = this.createShapefilePointBuffer(pts);
+      const hdr = this.parseShapefileHeader(shpBuffer);
+      const indexEntries = pts.map((_, idx) => ({
+        offsetWords: (100 + idx * 28) / 2,
+        contentWords: 10
+      }));
+      bundles.push({
+        family: 'point',
+        shapeType: 1,
+        recordCount: pts.length,
+        shpBuffer,
+        shxBuffer: buildShxBuffer(1, hdr.bbox, indexEntries),
+        dbfBuffer: buildDbfForItems(groups.point)
+      });
+    }
+
+    for (const [family, shapeType] of [['polyline', 3], ['polygon', 5]]) {
+      const items = groups[family];
+      if (items.length === 0) continue;
+
+      let xMin = Infinity, yMin = Infinity, xMax = -Infinity, yMax = -Infinity;
+      let recordsBytes = 0;
+      const prepared = items.map(({ parts }) => {
+        let rxMin = Infinity, ryMin = Infinity, rxMax = -Infinity, ryMax = -Infinity;
+        let numPts = 0;
+        parts.forEach(ring => {
+          numPts += ring.length;
+          ring.forEach(([x, y]) => {
+            if (x < rxMin) rxMin = x;
+            if (y < ryMin) ryMin = y;
+            if (x > rxMax) rxMax = x;
+            if (y > ryMax) ryMax = y;
+          });
+        });
+        if (rxMin < xMin) xMin = rxMin;
+        if (ryMin < yMin) yMin = ryMin;
+        if (rxMax > xMax) xMax = rxMax;
+        if (ryMax > yMax) yMax = ryMax;
+        const contentBytes = 44 + parts.length * 4 + numPts * 16;
+        recordsBytes += 8 + contentBytes;
+        return { parts, numPts, contentBytes, bbox: { xMin: rxMin, yMin: ryMin, xMax: rxMax, yMax: ryMax } };
+      });
+
+      const totalFileBytes = 100 + recordsBytes;
+      const shpBuffer = new ArrayBuffer(totalFileBytes);
+      const view = new DataView(shpBuffer);
+      view.setInt32(0, 9994, false);
+      view.setInt32(24, totalFileBytes / 2, false);
+      view.setInt32(28, 1000, true);
+      view.setInt32(32, shapeType, true);
+      view.setFloat64(36, xMin, true);
+      view.setFloat64(44, yMin, true);
+      view.setFloat64(52, xMax, true);
+      view.setFloat64(60, yMax, true);
+
+      let offset = 100;
+      const indexEntries = [];
+      prepared.forEach((rec, idx) => {
+        indexEntries.push({ offsetWords: offset / 2, contentWords: rec.contentBytes / 2 });
+        view.setInt32(offset, idx + 1, false);
+        view.setInt32(offset + 4, rec.contentBytes / 2, false);
+        view.setInt32(offset + 8, shapeType, true);
+        view.setFloat64(offset + 12, rec.bbox.xMin, true);
+        view.setFloat64(offset + 20, rec.bbox.yMin, true);
+        view.setFloat64(offset + 28, rec.bbox.xMax, true);
+        view.setFloat64(offset + 36, rec.bbox.yMax, true);
+        view.setInt32(offset + 44, rec.parts.length, true);
+        view.setInt32(offset + 48, rec.numPts, true);
+
+        let partOff = offset + 52;
+        let ptStart = 0;
+        rec.parts.forEach(ring => {
+          view.setInt32(partOff, ptStart, true);
+          partOff += 4;
+          ptStart += ring.length;
+        });
+
+        let ptOff = partOff;
+        rec.parts.forEach(ring => {
+          ring.forEach(([x, y]) => {
+            view.setFloat64(ptOff, x, true);
+            view.setFloat64(ptOff + 8, y, true);
+            ptOff += 16;
+          });
+        });
+
+        offset += 8 + rec.contentBytes;
+      });
+
+      bundles.push({
+        family,
+        shapeType,
+        recordCount: items.length,
+        shpBuffer,
+        shxBuffer: buildShxBuffer(shapeType, { xMin, yMin, xMax, yMax }, indexEntries),
+        dbfBuffer: buildDbfForItems(items)
+      });
+    }
+
+    return bundles;
   }
 
   // --- ESRI Shapefile Binary Header & Record Parsing Solvers ---

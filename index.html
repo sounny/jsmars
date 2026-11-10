@@ -84,9 +84,19 @@
   <!-- Map Container -->
   <div id="map"></div>
 
-  <div id="view-mode-toggle" class="view-mode-toggle" role="group" aria-label="Map view mode">
-    <button type="button" id="view-mode-2d" class="view-mode-btn is-active" aria-pressed="true">2D</button>
-    <button type="button" id="view-mode-3d" class="view-mode-btn" aria-pressed="false">3D</button>
+  <div id="map-top-hud" class="map-top-hud">
+    <div id="view-mode-toggle" class="view-mode-toggle" role="group" aria-label="Map view mode">
+      <button type="button" id="view-mode-2d" class="view-mode-btn is-active" aria-pressed="true">2D</button>
+      <button type="button" id="view-mode-3d" class="view-mode-btn" aria-pressed="false">3D</button>
+    </div>
+    <button type="button" id="quick-cmd-trigger" class="quick-cmd-trigger" aria-label="Open quick command and search palette (Ctrl+K)" title="Search landmarks, coordinates, bookmarks &amp; tools (Ctrl+K)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <span class="quick-cmd-trigger-label">Search / Cmd</span>
+      <kbd class="quick-cmd-trigger-kbd">Ctrl+K</kbd>
+    </button>
   </div>
   <p id="globe-load-error" class="globe-load-error" hidden></p>
   <div id="globe-view" class="globe-view" hidden>
@@ -212,7 +222,7 @@
           <!-- Measurement -->
           <div class="layer-section" data-requires-2d="measurement">
             <div class="layer-section-header"
-              data-tool-info="Measure distances or areas with draw tools; results are listed for review and can be exported.">
+              data-tool-info="Measure geodesic distances, forward azimuth bearings, polygon areas, and perimeters across planetary bodies; review or export GeoJSON/CSV.">
               <span class="layer-title">Measurement</span>
               <span class="icon">+</span>
             </div>
@@ -367,7 +377,7 @@
           <!-- Shapes (Draw / Edit / Import / Export) -->
           <div class="layer-section" data-requires-2d="shapes">
             <div class="layer-section-header"
-              data-tool-info="Draw, edit, and style vector shapes. Import/export GeoJSON, CSV, or KML files.">
+              data-tool-info="Draw, edit, buffer, and style vector shapes with geologic fill patterns. Import/export GeoJSON, WKT, Shapefile (.shp/.shx/.dbf), CSV, or KML.">
               <span class="layer-title">Shapes</span>
               <span class="icon">+</span>
             </div>
@@ -385,12 +395,14 @@
                 </div>
                 <div style="display:flex; gap:4px; margin-bottom:8px">
                   <button id="shape-import-btn" class="tool-btn" style="flex:1; font-size:11px">Import File</button>
-                  <select id="shape-export-format" class="stamp-select" style="flex:0.6">
+                  <select id="shape-export-format" class="stamp-select" style="flex:0.75" aria-label="Shape export format">
                     <option value="geojson">GeoJSON</option>
+                    <option value="wkt">WKT (.wkt)</option>
+                    <option value="shp">Shapefile (.shp)</option>
                     <option value="csv">CSV</option>
                     <option value="kml">KML</option>
                   </select>
-                  <button id="shape-export-btn" class="tool-btn" style="flex:0.6; font-size:11px">Export</button>
+                  <button id="shape-export-btn" class="tool-btn" style="flex:0.55; font-size:11px">Export</button>
                 </div>
                 <div id="shape-table-container"></div>
               </div>
@@ -593,6 +605,7 @@
     import { ExportTool } from './src/features/export/ExportTool.js';
     import { PlacesManager } from './src/features/places/PlacesManager.js';
     import { KeyboardShortcuts } from './src/ui/KeyboardShortcuts.js';
+    import { QuickActions } from './src/ui/QuickActions.js';
     import { MiniMap } from './src/ui/MiniMap.js';
     import { HillshadeLayer } from './src/features/hillshade/HillshadeLayer.js';
     import { HillshadePanel } from './src/features/hillshade/HillshadePanel.js';
@@ -756,9 +769,10 @@
       document.getElementById('stamp-panel-container'), stampLayer
     );
 
-    // -- NEW: Shape Layer --
-    const shapeLayer = new ShapeLayer(jmars.map);
+    // -- NEW: Shape Layer (unified with jmars.vectors FeatureGroup & StyleEditor) --
+    const shapeLayer = new ShapeLayer(jmars.map, { vectors: jmars.vectors });
     shapeLayer.activate();
+    window.shapeLayer = shapeLayer;
     const shapeTable = new ShapeTable(
       document.getElementById('shape-table-container'), shapeLayer, jmars.map
     );
@@ -769,7 +783,10 @@
     ['marker', 'polyline', 'polygon', 'circle', 'rectangle'].forEach(type => {
       const btn = document.getElementById(`shape-draw-${type}`);
       if (btn) {
-        btn.addEventListener('click', () => shapeLayer.startDrawing(type));
+        btn.addEventListener('click', () => {
+          deactivateAllTools();
+          shapeLayer.startDrawing(type);
+        });
       }
     });
     document.getElementById('shape-edit-btn')?.addEventListener('click', () => {
@@ -1018,8 +1035,8 @@
       }
     });
 
-    // Session Manager (include bookmarksTool)
-    const sessionManager = new SessionManager(jmars, craterLayer, measureTool, bookmarksTool);
+    // Session Manager (persists body, layers, view, craters, measurements, bookmarks & vector shapes)
+    const sessionManager = new SessionManager(jmars, craterLayer, measureTool, bookmarksTool, shapeLayer);
 
     // Session Event Listeners
     document.getElementById('session-save-btn').addEventListener('click', () => sessionManager.saveSession());
@@ -1154,8 +1171,79 @@
       }
     });
 
+    // -- Quick Command & Navigation Palette (Ctrl+K) --
+    const quickActions = new QuickActions(null, {
+      jmarsMap: jmars,
+      map: jmars.map,
+      getLandmarks: () => searchBar.landmarks || [],
+      getBookmarks: () => bookmarksTool.getData ? bookmarksTool.getData() : [],
+      onSelectLandmark: (lm) => searchBar.selectLandmark(lm),
+      onSelectBookmark: (bm) => bookmarksTool.goTo(bm),
+      onSwitchBody: (bodyKey) => jmars.switchBody(bodyKey),
+      onSetViewMode: (mode) => viewModeToggle.setMode(mode),
+      onSaveSession: () => sessionManager.saveSession(),
+      onLoadSession: () => document.getElementById('session-load-input')?.click(),
+      onShareLink: () => document.getElementById('share-link-btn')?.click(),
+      onResetView: () => {
+        if (viewModeToggle.mode === '3d') {
+          viewModeToggle.resetView();
+        } else {
+          const body = JMARS_CONFIG.bodies[jmars.currentBody];
+          if (body) jmars.map.setView(body.center, body.zoom);
+        }
+      },
+      onOpenLayers: () => {
+        if (window.innerWidth > 768 && sidebar.isCollapsed) sidebar.toggle();
+        openAccordionSection('Layer Manager');
+      },
+      onOpenTools: () => {
+        if (window.innerWidth > 768 && sidebar.isCollapsed) sidebar.toggle();
+        openAccordionSection('Tools');
+      },
+      onToggleSidebar: () => sidebar.toggle(),
+      onRunTool: async (toolId) => {
+        const twoDTools = new Set(['measure-distance', 'measure-area', 'profile-linear', 'profile-radial', 'investigate', 'crater', 'shapes', 'stamps']);
+        if (twoDTools.has(toolId) && viewModeToggle.mode === '3d') {
+          await viewModeToggle.setMode('2d');
+        }
+        const openToolByTitle = (title) => {
+          if (window.innerWidth > 768 && sidebar.isCollapsed) sidebar.toggle();
+          openAccordionSection('Tools');
+          const headers = document.querySelectorAll('#tools-list .layer-section-header');
+          headers.forEach((h) => {
+            const t = h.querySelector('.layer-title')?.textContent?.trim() || '';
+            if (t === title) {
+              const content = h.nextElementSibling;
+              if (content && content.style.display === 'none') {
+                h.click();
+              }
+              h.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          });
+        };
+        if (toolId === 'measure-distance') { openToolByTitle('Measurement'); measureDistBtn.click(); }
+        else if (toolId === 'measure-area') { openToolByTitle('Measurement'); measureAreaBtn.click(); }
+        else if (toolId === 'profile-linear') { openToolByTitle('Profiles'); enhancedProfileBtn.click(); }
+        else if (toolId === 'profile-radial') { openToolByTitle('Profiles'); profileBtn.click(); }
+        else if (toolId === 'investigate') { openToolByTitle('Investigate'); investigateBtn.click(); }
+        else if (toolId === 'crater') { openToolByTitle('Crater Counting'); craterBtn.click(); }
+        else if (toolId === 'shapes') { openToolByTitle('Shapes'); }
+        else if (toolId === 'stamps') { openToolByTitle('Stamp (Footprints)'); }
+        else if (toolId === 'krc') { openToolByTitle('KRC Thermal Model'); }
+        else if (toolId === 'mcd') { openToolByTitle('MCD Atmospheric Profiler'); }
+        else if (toolId === 'radar') { openToolByTitle('Subsurface Radar Sounder'); }
+        else if (toolId === 'lunar-site') {
+          openToolByTitle('Lunar Base Site Planner');
+          document.querySelector('#lunar-site-panel-container button')?.click();
+        }
+      }
+    });
+    window.quickActions = quickActions;
+    document.getElementById('quick-cmd-trigger')?.addEventListener('click', () => quickActions.toggle());
+
     // -- NEW: Keyboard Shortcuts --
     const shortcuts = new KeyboardShortcuts(jmars.map, {
+      openQuickActions: () => quickActions.toggle(),
       saveSession: () => sessionManager.saveSession(),
       loadSession: () => document.getElementById('session-load-input').click(),
       exportMap: () => exportTool.exportPNG(),
@@ -1164,8 +1252,12 @@
         shapeLayer.stopDrawing();
       },
       resetView: () => {
-        const body = JMARS_CONFIG.bodies[jmars.currentBody];
-        if (body) jmars.map.setView(body.center, body.zoom);
+        if (viewModeToggle.mode === '3d') {
+          viewModeToggle.resetView();
+        } else {
+          const body = JMARS_CONFIG.bodies[jmars.currentBody];
+          if (body) jmars.map.setView(body.center, body.zoom);
+        }
       }
     });
 

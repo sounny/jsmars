@@ -1,17 +1,15 @@
 import { EVENTS } from '../../constants.js';
 import { jmarsState } from '../../jmars-state.js';
-import {haversineDistance, sphericalPolygonArea, BODIES, getPlanetaryRadius } from '../../util/geo.js';
+import { haversineDistance, sphericalPolygonArea, azimuth, computePolygonPerimeter, BODIES, getPlanetaryRadius } from '../../util/geo.js';
 
 /**
  * @module MeasureTool
- * @description Provides distance and area measurement on the Leaflet map.
+ * @description Provides geodesic distance, forward azimuth bearing, polygon area,
+ * and polygon perimeter measurement on the Leaflet map across Mars, Moon, Earth, and Europa.
  *
- * Uses Leaflet.Draw to let the user draw polylines (distance) or
- * polygons (area), then computes body-scaled metric values.
- *
- * Listeners for L.Draw.Event.CREATED and DRAWSTOP are registered
- * only while the tool is active, so they do not intercept draw
- * events intended for ShapeLayer or other tools.
+ * Uses Leaflet.Draw to let the user draw polylines (distance + azimuth) or
+ * polygons (area + perimeter), isolated from ShapeLayer/JMARSVectors via
+ * `_exclusiveDrawOwner` and `_handledByTool`.
  */
 export class MeasureTool {
     /**
@@ -65,8 +63,8 @@ export class MeasureTool {
 
     /**
      * Activate the measure tool in the given mode.
-     * Registers L.Draw event listeners so they are only active
-     * while this tool is in use.
+     * Registers L.Draw event listeners and sets `_exclusiveDrawOwner` so
+     * ShapeLayer and JMARSVectors do not hijack measurement geometries.
      * @param {'distance'|'area'} mode - Measurement mode.
      */
     activate(mode) {
@@ -78,8 +76,11 @@ export class MeasureTool {
 
         this.activeMode = mode;
         this.isDrawing = true;
+        if (this.map) {
+            this.map._exclusiveDrawOwner = 'measure';
+        }
 
-        if (mode === 'distance') {
+        if (mode === 'distance' && L.Draw?.Polyline) {
             this.drawControl = new L.Draw.Polyline(this.map, {
                 shapeOptions: {
                     color: '#00ff00',
@@ -87,7 +88,7 @@ export class MeasureTool {
                 },
                 metric: true
             });
-        } else if (mode === 'area') {
+        } else if (mode === 'area' && L.Draw?.Polygon) {
             this.drawControl = new L.Draw.Polygon(this.map, {
                 shapeOptions: {
                     color: '#00ff00',
@@ -100,8 +101,10 @@ export class MeasureTool {
         }
 
         // Register draw listeners only while active
-        this.map.on(L.Draw.Event.CREATED, this.onDrawCreated);
-        this.map.on(L.Draw.Event.DRAWSTOP, this.onDrawStop);
+        const drawCreatedEvt = L.Draw?.Event?.CREATED || 'draw:created';
+        const drawStopEvt = L.Draw?.Event?.DRAWSTOP || 'draw:drawstop';
+        this.map.on(drawCreatedEvt, this.onDrawCreated);
+        this.map.on(drawStopEvt, this.onDrawStop);
 
         if (this.drawControl) {
             this.drawControl.enable();
@@ -117,9 +120,15 @@ export class MeasureTool {
             this.drawControl = null;
         }
 
-        // Unregister draw listeners so other tools are not affected
-        this.map.off(L.Draw.Event.CREATED, this.onDrawCreated);
-        this.map.off(L.Draw.Event.DRAWSTOP, this.onDrawStop);
+        if (this.map) {
+            const drawCreatedEvt = L.Draw?.Event?.CREATED || 'draw:created';
+            const drawStopEvt = L.Draw?.Event?.DRAWSTOP || 'draw:drawstop';
+            this.map.off(drawCreatedEvt, this.onDrawCreated);
+            this.map.off(drawStopEvt, this.onDrawStop);
+            if (this.map._exclusiveDrawOwner === 'measure') {
+                this.map._exclusiveDrawOwner = null;
+            }
+        }
 
         this.activeMode = null;
         this.isDrawing = false;
@@ -137,6 +146,36 @@ export class MeasureTool {
     }
 
     /**
+     * Delete a single measurement by ID.
+     * @param {string} id - Measurement ID.
+     * @returns {boolean} True if found and deleted.
+     */
+    deleteMeasurement(id) {
+        const idx = this.measurements.findIndex((m) => m.id === id);
+        if (idx === -1) return false;
+        const [removed] = this.measurements.splice(idx, 1);
+        if (removed?.layer) {
+            this.layerGroup.removeLayer(removed.layer);
+        }
+        this.notifyUpdate();
+        return true;
+    }
+
+    /**
+     * Extract flat array of LatLng vertices from a polyline or polygon layer.
+     * @private
+     */
+    _extractLatLngs(layer) {
+        if (!layer || typeof layer.getLatLngs !== 'function') return [];
+        const raw = layer.getLatLngs();
+        if (!Array.isArray(raw) || raw.length === 0) return [];
+        if (Array.isArray(raw[0])) {
+            return Array.isArray(raw[0][0]) ? raw[0][0] : raw[0];
+        }
+        return raw;
+    }
+
+    /**
      * Handle a completed draw event from Leaflet.Draw.
      * @param {object} e - Leaflet draw:created event.
      */
@@ -147,25 +186,33 @@ export class MeasureTool {
         if ((type === 'polyline' && this.activeMode === 'distance') ||
             (type === 'polygon' && this.activeMode === 'area')) {
 
+            e._handledByTool = 'measure';
             this.layerGroup.addLayer(layer);
 
-            // Generate unique ID using substring (not deprecated substr)
             const id = Date.now() + Math.random().toString(36).substring(2, 11);
-            let name, value, valueStr, vertices;
+            const pts = this._extractLatLngs(layer);
+            const vertices = pts.length;
+            let name, value, valueStr;
+            let azimuthDeg = null;
+            let perimeterMeters = null;
+            let perimeterStr = null;
+            let secondaryStr = '';
 
             if (type === 'polyline') {
                 this.lineCount++;
                 name = `Line ${this.lineCount}`;
                 value = this.calculateDistance(layer);
                 valueStr = this.formatDistance(value);
-                vertices = layer.getLatLngs().length;
+                azimuthDeg = this.calculateAzimuth(layer);
+                secondaryStr = azimuthDeg !== null ? `Az ${azimuthDeg.toFixed(1)}°` : '';
             } else {
                 this.areaCount++;
                 name = `Area ${this.areaCount}`;
                 value = this.calculateArea(layer);
                 valueStr = this.formatArea(value);
-                // Polygon latlngs are nested [[p1, p2, p3]]
-                vertices = layer.getLatLngs()[0].length;
+                perimeterMeters = this.calculatePerimeter(layer);
+                perimeterStr = this.formatDistance(perimeterMeters);
+                secondaryStr = `Perim ${perimeterStr}`;
             }
 
             const measurement = {
@@ -175,18 +222,21 @@ export class MeasureTool {
                 value,
                 valueStr,
                 vertices,
+                azimuthDeg,
+                perimeterMeters,
+                perimeterStr,
+                secondaryStr,
                 layer
             };
 
             this.measurements.push(measurement);
 
-            // Bind Popup
+            // Bind XSS-safe Popup
             this.updatePopup(measurement);
 
             // Add click listener for highlighting
             layer.on('click', () => {
                 this.highlight(id);
-                // Also open popup
                 layer.openPopup();
             });
 
@@ -202,9 +252,7 @@ export class MeasureTool {
      */
     onDrawStop() {
         if (this.isDrawing) {
-            this.isDrawing = false;
-            this.activeMode = null;
-            this.drawControl = null;
+            this.deactivate();
             document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'measure' } }));
         }
     }
@@ -218,21 +266,60 @@ export class MeasureTool {
     }
 
     /**
-     * Bind or update the popup content for a measurement.
+     * Bind or update the popup content for a measurement using safe DOM APIs.
      * @param {object} m - Measurement record.
      */
     updatePopup(m) {
-        const body = (jmarsState.get('body') || 'Mars');
+        const bodyKey = (jmarsState.get('body') || 'mars').toLowerCase();
+        const bodyLabel = BODIES[bodyKey]?.name || bodyKey.charAt(0).toUpperCase() + bodyKey.slice(1);
         const projType = m.type === 'Line' ? 'Geodesic / Equidistant Arc' : 'Authalic / Equal-Area';
-        const content = `
-            <div style="text-align:center">
-                <b>${m.name}</b><br>
-                <b>${m.type === 'Line' ? 'Distance' : 'Area'}:</b> ${m.valueStr}<br>
-                <div style="font-size:10px; color:#888; margin-top:3px;">Projection: ${projType} (${body})</div>
-                <div style="font-size:10px; color:#888;">Vertices: ${m.vertices}</div>
-            </div>
-        `;
-        m.layer.bindPopup(content);
+
+        const root = document.createElement('div');
+        root.style.textAlign = 'center';
+
+        const titleEl = document.createElement('b');
+        titleEl.textContent = m.name || m.type;
+        root.appendChild(titleEl);
+        root.appendChild(document.createElement('br'));
+
+        const valLine = document.createElement('div');
+        const valLabel = document.createElement('b');
+        valLabel.textContent = m.type === 'Line' ? 'Distance: ' : 'Area: ';
+        valLine.appendChild(valLabel);
+        valLine.appendChild(document.createTextNode(m.valueStr || ''));
+        root.appendChild(valLine);
+
+        if (m.type === 'Line' && Number.isFinite(m.azimuthDeg)) {
+            const azLine = document.createElement('div');
+            const azLabel = document.createElement('b');
+            azLabel.textContent = 'Forward Azimuth: ';
+            azLine.appendChild(azLabel);
+            azLine.appendChild(document.createTextNode(`${m.azimuthDeg.toFixed(1)}°`));
+            root.appendChild(azLine);
+        } else if (m.type === 'Area' && m.perimeterStr) {
+            const pLine = document.createElement('div');
+            const pLabel = document.createElement('b');
+            pLabel.textContent = 'Perimeter: ';
+            pLine.appendChild(pLabel);
+            pLine.appendChild(document.createTextNode(m.perimeterStr));
+            root.appendChild(pLine);
+        }
+
+        const meta1 = document.createElement('div');
+        meta1.style.cssText = 'font-size:10px; color:#888; margin-top:3px;';
+        meta1.textContent = `Projection: ${projType} (${bodyLabel})`;
+        root.appendChild(meta1);
+
+        const meta2 = document.createElement('div');
+        meta2.style.cssText = 'font-size:10px; color:#888;';
+        meta2.textContent = `Vertices: ${m.vertices}`;
+        root.appendChild(meta2);
+
+        if (typeof m.layer.getPopup === 'function' && m.layer.getPopup()) {
+            m.layer.setPopupContent(root);
+        } else if (typeof m.layer.bindPopup === 'function') {
+            m.layer.bindPopup(root);
+        }
     }
 
     /**
@@ -245,10 +332,6 @@ export class MeasureTool {
         if (m) {
             m.name = newName;
             this.updatePopup(m);
-            // If popup is open, update it
-            if (m.layer.isPopupOpen()) {
-                m.layer.setPopupContent(m.layer.getPopup().getContent());
-            }
         }
     }
 
@@ -257,7 +340,6 @@ export class MeasureTool {
      * @param {string} id - Measurement ID.
      */
     highlight(id) {
-        // Reset all styles
         this.measurements.forEach(m => {
             if (m.type === 'Line') {
                 m.layer.setStyle({ color: '#00ff00', weight: 3 });
@@ -266,12 +348,9 @@ export class MeasureTool {
             }
         });
 
-        // Highlight target
         const m = this.measurements.find(x => x.id === id);
         if (m) {
             m.layer.setStyle({ color: '#ffff00', weight: 5, fillOpacity: 0.4 });
-
-            // Dispatch event to highlight table row
             document.dispatchEvent(new CustomEvent(EVENTS.MEASURE_HIGHLIGHT, { detail: { id } }));
         }
     }
@@ -284,11 +363,25 @@ export class MeasureTool {
     calculateDistance(layer) {
         const body = (jmarsState.get('body') || 'mars').toLowerCase();
         let totalKm = 0;
-        const latlngs = layer.getLatLngs();
+        const latlngs = this._extractLatLngs(layer);
         for (let i = 0; i < latlngs.length - 1; i++) {
             totalKm += haversineDistance(latlngs[i].lat, latlngs[i].lng, latlngs[i + 1].lat, latlngs[i + 1].lng, body);
         }
         return totalKm * 1000.0;
+    }
+
+    /**
+     * Calculate forward geodesic azimuth bearing from the start vertex to the end vertex.
+     * @param {L.Polyline} layer - The polyline layer.
+     * @returns {number|null} Bearing in degrees [0, 360) or null if fewer than 2 vertices.
+     */
+    calculateAzimuth(layer) {
+        const latlngs = this._extractLatLngs(layer);
+        if (latlngs.length < 2) return null;
+        const first = latlngs[0];
+        const last = latlngs[latlngs.length - 1];
+        const brg = azimuth(first.lat, first.lng, last.lat, last.lng);
+        return parseFloat(brg.toFixed(1));
     }
 
     /**
@@ -298,12 +391,21 @@ export class MeasureTool {
      */
     calculateArea(layer) {
         const body = (jmarsState.get('body') || 'mars').toLowerCase();
-        let latlngs = layer.getLatLngs();
-        if (Array.isArray(latlngs[0])) {
-            latlngs = latlngs[0];
-        }
+        const latlngs = this._extractLatLngs(layer);
         const areaKm2 = sphericalPolygonArea(latlngs, body);
         return areaKm2 * 1e6;
+    }
+
+    /**
+     * Calculate the geodesic perimeter of a polygon on the active body.
+     * @param {L.Polygon} layer - The polygon layer.
+     * @returns {number} Perimeter in meters on the active body.
+     */
+    calculatePerimeter(layer) {
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        const latlngs = this._extractLatLngs(layer);
+        const perimKm = computePolygonPerimeter(latlngs, body);
+        return perimKm * 1000.0;
     }
 
     /**
@@ -348,6 +450,9 @@ export class MeasureTool {
                 value: m.value,
                 valueUnit: m.type === 'Line' ? 'meters' : 'square meters',
                 valueFormatted: m.valueStr,
+                azimuthDeg: m.azimuthDeg ?? null,
+                perimeterMeters: m.perimeterMeters ?? null,
+                perimeterFormatted: m.perimeterStr ?? null,
                 vertices: m.vertices
             };
             return geojson;
@@ -367,15 +472,20 @@ export class MeasureTool {
     exportCSV() {
         if (this.measurements.length === 0) return;
 
-        const header = ['Name', 'Type', 'Vertices', 'Value', 'Unit'];
+        const header = ['Name', 'Type', 'Vertices', 'Value', 'Unit', 'AzimuthDeg', 'PerimeterMeters'];
         const rows = this.measurements.map(m => {
             const unit = m.type === 'Line' ? 'm' : 'm²';
+            const safeName = String(m.name || '').replace(/"/g, '""');
+            const azVal = Number.isFinite(m.azimuthDeg) ? m.azimuthDeg.toFixed(1) : '';
+            const perimVal = Number.isFinite(m.perimeterMeters) ? m.perimeterMeters.toFixed(2) : '';
             return [
-                `"${m.name}"`,
+                `"${safeName}"`,
                 m.type,
                 m.vertices,
                 m.value.toFixed(2),
-                unit
+                unit,
+                azVal,
+                perimVal
             ].join(',');
         });
 
@@ -410,6 +520,10 @@ export class MeasureTool {
             value: m.value,
             valueStr: m.valueStr,
             vertices: m.vertices,
+            azimuthDeg: m.azimuthDeg ?? null,
+            perimeterMeters: m.perimeterMeters ?? null,
+            perimeterStr: m.perimeterStr ?? null,
+            secondaryStr: m.secondaryStr ?? '',
             latlngs: m.layer.getLatLngs()
         }));
     }
@@ -424,30 +538,43 @@ export class MeasureTool {
 
         data.forEach(m => {
             let layer;
-            // Reconstruct Layer
             if (m.type === 'Line') {
+                this.lineCount++;
                 layer = L.polyline(m.latlngs, { color: '#00ff00', weight: 3 });
             } else {
-                // Polygon latlngs from getLatLngs() might be nested [[...]] for simple polygons in Leaflet
-                // But L.polygon constructor handles it if we pass it back exactly as retrieved usually.
-                // However, L.Draw.Polygon usually creates a simple polygon. 
-                // Let's try passing it directly.
+                this.areaCount++;
                 layer = L.polygon(m.latlngs, { color: '#00ff00', weight: 3, fillOpacity: 0.2 });
             }
 
             this.layerGroup.addLayer(layer);
 
+            const azimuthDeg = m.type === 'Line'
+                ? (Number.isFinite(m.azimuthDeg) ? m.azimuthDeg : this.calculateAzimuth(layer))
+                : null;
+            const perimeterMeters = m.type === 'Area'
+                ? (Number.isFinite(m.perimeterMeters) ? m.perimeterMeters : this.calculatePerimeter(layer))
+                : null;
+            const perimeterStr = m.type === 'Area'
+                ? (m.perimeterStr || this.formatDistance(perimeterMeters))
+                : null;
+            const secondaryStr = m.secondaryStr || (
+                m.type === 'Line'
+                    ? (azimuthDeg !== null ? `Az ${azimuthDeg.toFixed(1)}°` : '')
+                    : `Perim ${perimeterStr}`
+            );
+
             const measurement = {
                 ...m,
-                layer: layer
+                azimuthDeg,
+                perimeterMeters,
+                perimeterStr,
+                secondaryStr,
+                layer
             };
 
             this.measurements.push(measurement);
-
-            // Re-bind Popup
             this.updatePopup(measurement);
 
-            // Re-bind Events
             layer.on('click', () => {
                 this.highlight(m.id);
                 layer.openPopup();

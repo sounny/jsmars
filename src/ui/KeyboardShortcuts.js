@@ -1,4 +1,3 @@
-import { EVENTS } from '../constants.js';
 import { to180 } from '../util/geo.js';
 
 /**
@@ -7,11 +6,11 @@ import { to180 } from '../util/geo.js';
  * Matches common shortcuts from the JMARS desktop application.
  *
  * Shortcuts:
+ *   Ctrl+K       Quick command & navigation palette
  *   Ctrl+S       Save session
  *   Ctrl+O       Load session
- *   Ctrl+K       Quick actions palette
  *   Ctrl+Shift+E Export map
- *   Ctrl+G       Go to coordinates (prompt)
+ *   Ctrl+G       Go to coordinates / command palette
  *   Escape       Cancel current tool
  *   ?            Show shortcuts help
  *   1-5          Quick zoom levels
@@ -42,14 +41,22 @@ export class KeyboardShortcuts {
   _onKeyDown(e) {
     // Ignore when full-screen Lunar Base Site Planner modal is open
     if (typeof document !== 'undefined' && document.body?.classList?.contains('lsp-open')) return;
-    // Ignore if focus is in input/textarea/select
-    const tag = e.target.tagName.toLowerCase();
-    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-    if (e.target.isContentEditable) return;
 
     const ctrl = e.ctrlKey || e.metaKey;
     const shift = e.shiftKey;
-    const key = e.key.toLowerCase();
+    const key = (e.key || '').toLowerCase();
+
+    // Ctrl+K / Cmd+K: Toggle Quick Command Palette from anywhere (including inputs)
+    if (ctrl && !shift && key === 'k') {
+      e.preventDefault();
+      this.handlers.openQuickActions?.();
+      return;
+    }
+
+    // Ignore remaining shortcuts if focus is in input/textarea/select
+    const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.target?.isContentEditable) return;
 
     // Ctrl+S: Save session
     if (ctrl && key === 's') {
@@ -72,10 +79,14 @@ export class KeyboardShortcuts {
       return;
     }
 
-    // Ctrl+G: Go to coordinates
+    // Ctrl+G: Go to coordinates (opens Quick Command Palette if available)
     if (ctrl && key === 'g') {
       e.preventDefault();
-      this._goToCoordinates();
+      if (typeof this.handlers.openQuickActions === 'function') {
+        this.handlers.openQuickActions();
+      } else {
+        this._goToCoordinates();
+      }
       return;
     }
 
@@ -125,7 +136,7 @@ export class KeyboardShortcuts {
   }
 
   /**
-   * Prompt user for lat/lon and navigate there.
+   * Fallback coordinate navigation if QuickActions is not wired.
    */
   _goToCoordinates() {
     const input = prompt('Go to coordinates (lat, lon):');
@@ -168,6 +179,7 @@ export class KeyboardShortcuts {
         <div class="shortcut-grid">
           <div class="shortcut-section">
             <h3>Navigation</h3>
+            <div class="shortcut-row"><kbd>Ctrl+K</kbd> <span>Quick command palette</span></div>
             <div class="shortcut-row"><kbd>+</kbd> / <kbd>-</kbd> <span>Zoom in / out</span></div>
             <div class="shortcut-row"><kbd>1</kbd>-<kbd>5</kbd> <span>Quick zoom levels</span></div>
             <div class="shortcut-row"><kbd>R</kbd> <span>Reset view</span></div>

@@ -22,9 +22,9 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [ ] **Navigation Bar**:
     - Top bar with Zoom controls, Lat/Lon readout.
     - Unified Search/Landmark tool.
-- [x] **Quick Actions Palette**:
-    - [x] Added keyboard-first command input in sidebar branding area.
-    - [x] Added shortcuts for session save/load, reset view, panel navigation, and sidebar toggle.
+- [x] **Quick Actions Palette (`Ctrl+K`)**:
+    - [x] Accessible modal Command & Navigation Palette (`#quick-command-backdrop`) and top-HUD trigger (`#quick-cmd-trigger`).
+    - [x] Unified fuzzy search across IAU landmarks, saved bookmarks, direct `lat, lon` coordinates, planetary body switches, 2D/3D view modes, science tools, and session actions.
 - [x] **Map Tools**:
     - [x] **Panner View**: Overview map (MiniMap) linked to main viewport.
     - [x] **Lat/Lon Grid**: Graticule overlay with configurable spacing/colors.
@@ -43,26 +43,26 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **UI**: Controls for Line Count, Angular Offset, Length.
 - [x] **Visualization**: Multi-line chart.
 
-### 3.3 Custom Shapes & Geologic Patterns
-- [ ] **Pattern Library**: Canvas/SVG patterns for Ejecta, Crater Material, Fracture Zone, Plain.
-- [ ] **Style Manager**: Apply patterns to polygon fills.
-- [ ] **Drawing**: Points, Lines, Polygons, Circles, Rectangles.
-- [ ] **Measurements**: Independent distance/area tools (Azimuth, Length, Perimeter).
+### 3.3 Custom Shapes & Geologic Patterns (Completed, v0.12.0)
+- [x] **Pattern Library**: Planetary SVG `<pattern>` library for Ejecta Blanket, Crater Material, Volcanic Plains, Fracture Zone, Layered Deposits, and Chaos/Breccia (`StyleEditor.js`).
+- [x] **Style Manager**: Right-click context Style Editor applying SVG geologic fill patterns, stroke dash arrays, colors, and opacities to polygon/circle/rectangle shapes.
+- [x] **Drawing & GIS Attributes**: Points, Lines, Polygons, Circles, and Rectangles with multi-body geodesic buffering, custom attribute columns (`+ Column`), WKT (`.wkt`), and binary ESRI Shapefile triad (`.shp`/`.shx`/`.dbf`) import/export (`ShapeLayer.js`, `ShapeTable.js`, `ShapeIO.js`).
+- [x] **Measurements**: Independent geodesic distance & area tools isolated from `ShapeLayer`, computing forward geodesic Azimuth ($0^\circ\text{–}360^\circ$), Length, Perimeter, and Spherical Area with per-row deletion (`MeasureTool.js`, `MeasurementTable.js`).
 
 ### 3.4 Investigate Tool (New)
 - [x] **Pixel Inspector**: Click to query WMS/Numeric values at a point.
 - [ ] **Spectral Plot**: If multi-band data is available, plot spectrum.
 
 ## Phase 4: Data Management & Search
-- [ ] **Unified Search**:
-    - **Landmarks**: Fuzzy search against local JSON database (mimics `places`).
+- [x] **Unified Search**:
+    - [x] **Landmarks**: Levenshtein typo-tolerant fuzzy search against local IAU JSON gazetteer with cross-body navigation (`SearchBar.js`, `QuickActions.js`).
     - [x] **Bookmarks**: Save/Rename/Delete current viewport (localStorage & Session).
 - [x] **Nomenclature Tool**:
     - [x] Toggleable layer of major landmarks (Craters, Mons, Valles).
     - [x] Filter by type.
 - [x] **Session Management**:
-    - [x] Save session (Active layers, order, opacity, panner, ROIs, bookmarks).
-    - [x] Load session (JSON file upload).
+    - [x] Save session (Active layers, order, opacity, craters, measurements, vector shapes with geologic patterns & custom attributes, bookmarks).
+    - [x] Load session (JSON file upload with cross-body switch sequencing).
 - [x] **Multi-body Support**:
     - [x] Body selector (Mars, Moon, Earth, Europa).
     - [ ] Configurable endpoints and coordinate systems.
@@ -169,14 +169,21 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **Information Architecture**: Reorganized sidebar into 5 semantic categories (Measure & Inspect, Cartography & Geology, Planetary Data & Orbital Layers, Physical Models & Simulations [Modeled], Mission Planning & 3D Visualization).
 - [x] **WCAG 2.1 AA Accessibility**: Full keyboard support (Enter/Space), ARIA buttons/controls, focus-trapped dialogs, 44x44px touch targets on info buttons, and screen-reader polite toasts.
 - [x] **Scientific Data Provenance**: Watermark/badge indicating illustrative procedural textures in 3D viewer and multispectral ratio proxies in Band Math.
-- [x] **Automated Test Runner**: Added `scripts/run_tests.py` verifying all 1,186 unit tests pass with 0 failures.
+- [x] **Automated Test Runner**: Added `scripts/run_tests.py` verifying all unit tests pass with 0 failures.
+
+## Phase 11: JMARS Desktop Parity — Geologic Patterns, Shapefiles, Command Palette & Mobile HUD (Completed, 2026-11-10)
+- [x] **Geologic SVG Fill Patterns**: 6 planetary geologic unit patterns injected into Leaflet SVG `<defs>` and persisted in GeoJSON/Session exports.
+- [x] **ESRI Shapefile Triad & Multi-Feature WKT I/O**: Pure browser binary `.shp` + `.shx` + `.dbf` export and `.shp` + `.dbf` / `.wkt` import alongside GeoJSON, CSV, and KML.
+- [x] **Custom Attribute Table & Multi-Body Geodesic Buffering**: Dynamic custom attribute columns (`+ Column`) with XSS-safe inline editing, and planet-scaled geodesic buffers across Mars, Moon, Earth, and Europa.
+- [x] **Independent Geodesic Azimuth & Perimeter**: Forward bearing ($0^\circ\text{–}360^\circ$) on polylines, perimeter on polygons, and `_exclusiveDrawOwner` draw isolation preventing `ShapeLayer` hijacking.
+- [x] **Global `Ctrl+K` Command Palette & Mobile HUD Fix**: Unified Command & Navigation Palette (`QuickActions.js`) and responsive `#map-top-hud` placement resolving mobile 2D/3D overlap with `#status-bar`.
 
 ## Documentation & Process
 - [x] **Documentation Portal**: Live web portal in `docs/index.html`.
 - [x] **Release Notes**: Maintained in `docs/release-notes.md`.
 - [x] **User Guide**: Maintained in `docs/user-guide.md`.
 - [x] **Work Log**: Maintained in `docs/LOG.md`.
-- [x] **Automated CI/CD**: 1,186 automated unit tests verifying 100% test pass via `scripts/run_tests.py`.
+- [x] **Automated CI/CD**: 1,210 automated unit tests verifying 100% test pass via `scripts/run_tests.py` plus headless desktop/mobile E2E verification (`verification/test_localhost_full.py`).
 
 ## Lunar Base Site Planner (v0.10.0, 2026-10-12)
 - [x] South pole LOLA site DEMs, slope, illumination, Earth visibility, PSR

@@ -86,6 +86,9 @@ export class EnhancedProfileTool {
     activate() {
         if (this.isActive) return;
         this.isActive = true;
+        if (this.map) {
+            this.map._exclusiveDrawOwner = 'profile';
+        }
         const body = (jmarsState.get('body') || 'mars').toLowerCase();
         if (body === 'mars') {
             molaDem.ensureLoaded().catch(() => {});
@@ -93,17 +96,21 @@ export class EnhancedProfileTool {
         this.featureGroup.clearLayers();
         this.profileData = [];
 
-        this.drawControl = new L.Draw.Polyline(this.map, {
-            shapeOptions: {
-                color: '#00ff00',
-                weight: 3
-            },
-            metric: true
-        });
-        this.drawControl.enable();
+        if (L.Draw?.Polyline) {
+            this.drawControl = new L.Draw.Polyline(this.map, {
+                shapeOptions: {
+                    color: '#00ff00',
+                    weight: 3
+                },
+                metric: true
+            });
+            this.drawControl.enable();
+        }
 
-        this.map.on(L.Draw.Event.CREATED, this.onDrawCreated);
-        this.map.on(L.Draw.Event.DRAWSTOP, this.onDrawStop);
+        const drawCreatedEvt = L.Draw?.Event?.CREATED || 'draw:created';
+        const drawStopEvt = L.Draw?.Event?.DRAWSTOP || 'draw:drawstop';
+        this.map.on(drawCreatedEvt, this.onDrawCreated);
+        this.map.on(drawStopEvt, this.onDrawStop);
         this.map.getContainer().style.cursor = 'crosshair';
     }
 
@@ -119,12 +126,16 @@ export class EnhancedProfileTool {
             this.drawControl = null;
         }
 
-        this.map.off(L.Draw.Event.CREATED, this.onDrawCreated);
-        this.map.off(L.Draw.Event.DRAWSTOP, this.onDrawStop);
-        this.map.getContainer().style.cursor = '';
-        
-        // We keep the layer on map until cleared manually? 
-        // Standard JMARS behavior: Layer stays. 
+        if (this.map) {
+            const drawCreatedEvt = L.Draw?.Event?.CREATED || 'draw:created';
+            const drawStopEvt = L.Draw?.Event?.DRAWSTOP || 'draw:drawstop';
+            this.map.off(drawCreatedEvt, this.onDrawCreated);
+            this.map.off(drawStopEvt, this.onDrawStop);
+            if (this.map._exclusiveDrawOwner === 'profile') {
+                this.map._exclusiveDrawOwner = null;
+            }
+            this.map.getContainer().style.cursor = '';
+        }
     }
 
     /**
@@ -141,25 +152,21 @@ export class EnhancedProfileTool {
      * @param {object} e - Leaflet draw event.
      */
     onDrawCreated(e) {
+        e._handledByTool = 'profile';
         const layer = e.layer;
         this.featureGroup.addLayer(layer);
-        
-        // Calculate Profile
+
         this.calculateProfile(layer);
-        
-        // Stop drawing after one line? Or allow multiple? 
-        // User request: "Multi-segment line drawing". 
-        // Usually this means one continuous polyline. 
-        // L.Draw.Polyline handles segments.
-        // Once "Finish" is clicked, CREATED is fired.
-        
-        // We typically want one active profile at a time for the chart.
+
         this.deactivate();
         document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'profile' } }));
     }
 
     onDrawStop() {
-        // Handled by deactivate called in onDrawCreated usually.
+        if (this.isActive) {
+            this.deactivate();
+            document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'profile' } }));
+        }
     }
 
     /**

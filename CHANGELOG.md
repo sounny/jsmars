@@ -1,5 +1,27 @@
 # Change Log
 
+## [0.12.0] - 2026-11-10
+
+### Added
+- **Geologic SVG Pattern Library (`StyleEditor.js`, `ShapeLayer.js`)**: Six planetary geologic unit fill patterns (*Ejecta*, *Crater Material*, *Volcanic Plains*, *Fracture Zone*, *Layered Deposits*, *Chaos/Breccia*) rendered via SVG `<defs>` and persisted in GeoJSON/Sessions.
+- **ESRI Shapefile Triad & WKT I/O (`ShapeIO.js`)**: Pure browser binary `.shp`/`.shx`/`.dbf` export, multi-file `.shp` + `.dbf` import, and multi-feature `.wkt` import/export.
+- **Custom Shape Attributes & Multi-Body Buffering (`ShapeTable.js`, `ShapeLayer.js`)**: Dynamic `+ Column` custom attributes with XSS-safe inline editing, inline non-blocking toolbar inputs, and planet-calibrated geodesic buffers across Mars, Moon, Earth, and Europa.
+- **Independent Geodesic Azimuth & Perimeter (`MeasureTool.js`, `MeasurementTable.js`)**: Forward geodesic bearing ($0^\circ\text{–}360^\circ$) for distance lines, geodesic perimeter for polygons, per-row delete controls, and `_exclusiveDrawOwner` draw isolation from `ShapeLayer`.
+- **Global `Ctrl+K` Command Palette (`QuickActions.js`, `KeyboardShortcuts.js`)**: Accessible modal palette and top-HUD `Search / Cmd` trigger searching coordinates, commands, bookmarks, and fuzzy IAU landmarks.
+- **Session Shape Persistence (`SessionManager.js`)**: Full save/restore of vector shapes, styles, geologic patterns, and custom attributes after canonical body switching.
+
+### Fixed
+- **Mobile 2D/3D HUD Overlap (`style.css`, `index.html`)**: Positioned `#map-top-hud` cleanly below `#status-bar` on `<= 768px` viewports and centered it over the active map canvas on desktop, resolving the mobile Europa 2D/3D button overlap (`tickets/2026-11-04_2D-3D-buttons-placement.md`).
+- **Offline/Headless `L.Draw` Resilience (`MeasureTool.js`, `EnhancedProfileTool.js`, `SamplingTool.js`)**: Guarded `L.Draw` constructors and event names when `Leaflet.Draw` is unavailable.
+- **Test Runner Diagnostics (`scripts/run_tests.py`, `scripts/dev_server.py`)**: Upgraded local servers to `ThreadingHTTPServer` and added fast-fail `pageerror` reporting; expanded suite to 1,210 passing unit tests (`sw.js` `jsmars-shell-v1.6.0`).
+
+## [0.11.0] - 2026-10-13
+
+### Added
+- **Lunar Base Site Planner (`src/features/lunar-site/`)**: Full-screen lunar south pole engineering workspace built on real LRO LOLA 20 m & 120 m DEMs and Mazarico et al. (2011) illumination/PSR maps, with slope hazard classification, corridor profiling, landing pad blast buffers, horizon analysis, DXF/SVG CAD import, and OBJ/GeoTIFF/DXF/CSV/JSON exports.
+- **Universal Multi-Body Geodesy (`src/util/geo.js`)**: Centralized `getPlanetaryRadius(body, type)` across Mars, Moon, Earth, and Europa; updated NASA Artemis III October 2024 candidate landing regions.
+- **Fuzzy Search & Accessibility**: Levenshtein typo-tolerant landmark search, direct coordinate parsing, 5-category sidebar organization, WCAG 2.1 AA keyboard/ARIA controls, and `scripts/run_tests.py` headless test runner.
+
 ## [0.10.0] - 2026-09-27
 
 ### Added

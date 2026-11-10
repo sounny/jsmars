@@ -860,3 +860,16 @@ TEST FAILURE: Unit test suite failed (1 failures):
 TEST FAILURE: Browser console errors encountered during UI interaction:
 [pageerror] molaDem.getElevation is not a function
 [pageerror] molaDem.getElevation is not a function
+
+## 2026-11-10 — v0.12.0 JMARS Parity, Geologic Patterns, Shapefile Triad, Command Palette & Mobile HUD Fix
+- **Shapes, Geologic Fill Patterns & ESRI Shapefile Triad (`StyleEditor.js`, `ShapeLayer.js`, `ShapeTable.js`, `ShapeIO.js`, `jmars-vectors.js`)**:
+  - Added 6 planetary SVG `<pattern>` fills (*Ejecta Blanket*, *Crater Material*, *Volcanic Plains*, *Fracture Zone*, *Layered Deposits*, *Chaos / Breccia*), custom `+ Column` schema fields with XSS-safe inline editing, multi-body geodesic `Buffer` support (Mars, Moon, Earth, Europa), multi-feature `.wkt` import/export, and pure browser binary ESRI `.shp`/`.shx`/`.dbf` export + `.shp`/`.dbf` import.
+- **Independent Geodesic Measurement & Exclusive Draw Isolation (`MeasureTool.js`, `MeasurementTable.js`, `SamplingTool.js`, `EnhancedProfileTool.js`)**:
+  - Added forward geodesic azimuth ($0^\circ\text{–}360^\circ$) on polylines, geodesic perimeter on polygons, per-row `×` deletion, `L.Draw` offline/headless safety guards, and `_exclusiveDrawOwner` isolation so temporary measurement/profile/sampling drawings are never hijacked by `ShapeLayer`.
+- **Session Shape Persistence & `Ctrl+K` Command Palette (`SessionManager.js`, `QuickActions.js`, `KeyboardShortcuts.js`)**:
+  - Persisted and restored `ShapeLayer` GeoJSON features, geologic patterns, and custom attributes across cross-body session loads; added accessible `Ctrl+K` / `⌘+K` Command & Navigation Palette.
+- **Mobile & Desktop Top-HUD Fix (`style.css`, `index.html`, `Sidebar.js`, `tickets/2026-11-04_2D-3D-buttons-placement.md`)**:
+  - Centered `#map-top-hud` (`2D | 3D` + `Search / Cmd`) over the visible map area on desktop and positioned it cleanly below `#status-bar` on `<= 768px` mobile viewports, eliminating the mobile Europa 2D/3D overlap and right-edge status clipping.
+- **Verification**:
+  - `python scripts/run_tests.py`: **1,210 passed, 0 failed** (`sw.js` `jsmars-shell-v1.6.0`).
+  - `python verification/test_localhost_full.py`: Full desktop + mobile Playwright E2E verification passing with 0 console/page errors.

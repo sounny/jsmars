@@ -1,15 +1,32 @@
 import { EVENTS } from '../../constants.js';
-import { computeBufferPolygon } from '../../util/geo.js';
+import { jmarsState } from '../../jmars-state.js';
+import { normalizeBodyKey } from '../../util/body.js';
+import { computeBufferPolygon, computeEllipsePolygon, getPlanetaryRadius } from '../../util/geo.js';
+import { applyGeologicPatternToLayer } from './StyleEditor.js';
+import { ShapeIO } from './ShapeIO.js';
 
 /**
- * ShapeLayer provides full-featured vector drawing and editing.
- * Supports points, lines, polygons, circles, rectangles with
- * attribute dictionaries and style customization.
+ * ShapeLayer provides full-featured vector drawing, geologic unit styling,
+ * multi-body geodesic buffering, attribute dictionaries, and GIS serialization.
  */
 export class ShapeLayer {
-  constructor(map) {
+  /**
+   * @param {L.Map} map - Leaflet map instance
+   * @param {object} [options]
+   * @param {import('../../jmars-vectors.js').JMARSVectors} [options.vectors] - Shared JMARSVectors instance
+   * @param {L.FeatureGroup} [options.featureGroup] - Optional explicit FeatureGroup
+   * @param {import('./StyleEditor.js').StyleEditor} [options.styleEditor] - Optional explicit StyleEditor
+   */
+  constructor(map, options = {}) {
     this.map = map;
-    this.featureGroup = new L.FeatureGroup();
+    if (options.vectors) {
+      this.featureGroup = options.vectors.featureGroup;
+      this.styleEditor = options.vectors.styleEditor || null;
+      options.vectors.delegateToShapeLayer(this);
+    } else {
+      this.featureGroup = options.featureGroup || new L.FeatureGroup();
+      this.styleEditor = options.styleEditor || null;
+    }
     this.isActive = false;
     this.shapes = []; // Array of { id, layer, type, attributes, style }
     this.selectedId = null;
@@ -21,12 +38,14 @@ export class ShapeLayer {
   }
 
   /**
-   * Activate the shape layer and enable draw controls.
+   * Activate the shape layer and enable draw event listeners.
    */
   activate() {
     if (this.isActive) return;
     this.isActive = true;
-    this.featureGroup.addTo(this.map);
+    if (this.map && !this.map.hasLayer(this.featureGroup)) {
+      this.featureGroup.addTo(this.map);
+    }
     this.map.on('draw:created', this._onCreated);
     this.map.on('draw:edited', this._onEdited);
     this.map.on('draw:deleted', this._onDeleted);
@@ -47,7 +66,7 @@ export class ShapeLayer {
   /**
    * Start drawing a specific shape type.
    * @param {string} type - 'marker', 'polyline', 'polygon', 'circle', 'rectangle'
-   * @param {object} [options] - Leaflet draw options
+   * @param {object} [options] - Leaflet draw shape options
    */
   startDrawing(type, options = {}) {
     this.stopDrawing();
@@ -63,11 +82,11 @@ export class ShapeLayer {
     const drawOptions = { ...defaultStyle, ...options };
 
     const DrawHandlers = {
-      marker: L.Draw.Marker,
-      polyline: L.Draw.Polyline,
-      polygon: L.Draw.Polygon,
-      circle: L.Draw.Circle,
-      rectangle: L.Draw.Rectangle
+      marker: L.Draw?.Marker,
+      polyline: L.Draw?.Polyline,
+      polygon: L.Draw?.Polygon,
+      circle: L.Draw?.Circle,
+      rectangle: L.Draw?.Rectangle
     };
 
     const Handler = DrawHandlers[type];
@@ -93,12 +112,51 @@ export class ShapeLayer {
   }
 
   /**
+   * Register interaction and pattern hooks for a shape and add it to the FeatureGroup.
+   * @param {object} shape
+   * @private
+   */
+  _registerShape(shape) {
+    const { id, layer } = shape;
+    layer._shapeId = id;
+
+    if (shape.style?.pattern) {
+      applyGeologicPatternToLayer(layer, shape.style.pattern, shape.style.fillColor);
+    } else if (typeof layer.setStyle === 'function') {
+      applyGeologicPatternToLayer(layer, '');
+    }
+
+    layer.on('click', () => this.selectShape(id));
+    layer.on('contextmenu', (ev) => {
+      if (L.DomEvent) L.DomEvent.stopPropagation(ev);
+      if (ev?.originalEvent) ev.originalEvent.preventDefault();
+      this.selectShape(id);
+      if (this.styleEditor && typeof layer.setStyle === 'function') {
+        this.styleEditor.open(layer, ev.containerPoint || { x: 100, y: 100 });
+      }
+    });
+
+    if (!this.featureGroup.hasLayer(layer)) {
+      this.featureGroup.addLayer(layer);
+    }
+    // Re-apply pattern once mounted in SVG DOM
+    if (shape.style?.pattern) {
+      applyGeologicPatternToLayer(layer, shape.style.pattern, shape.style.fillColor);
+    }
+    this.shapes.push(shape);
+  }
+
+  /**
    * Handle draw:created event from Leaflet.Draw.
+   * Ignores geometries created by exclusive measurement, sampling, or profile tools.
    * @param {object} e - Leaflet event
    */
   _onCreated(e) {
+    if (this.map?._exclusiveDrawOwner || e?._handledByTool) {
+      return;
+    }
     const layer = e.layer;
-    const type = e.layerType;
+    const type = e.layerType || this._detectType(layer);
     const id = this.nextId++;
 
     const shape = {
@@ -112,19 +170,7 @@ export class ShapeLayer {
       style: this._getLayerStyle(layer)
     };
 
-    // Store reference on the layer
-    layer._shapeId = id;
-
-    // Add click handler for selection
-    layer.on('click', () => this.selectShape(id));
-    layer.on('contextmenu', (ev) => {
-      L.DomEvent.stopPropagation(ev);
-      this.selectShape(id);
-    });
-
-    this.featureGroup.addLayer(layer);
-    this.shapes.push(shape);
-
+    this._registerShape(shape);
     document.dispatchEvent(new CustomEvent(EVENTS.SHAPE_CREATED, { detail: shape }));
   }
 
@@ -150,6 +196,7 @@ export class ShapeLayer {
       const idx = this.shapes.findIndex(s => s.layer === layer);
       if (idx >= 0) {
         const shape = this.shapes.splice(idx, 1)[0];
+        if (this.selectedId === shape.id) this.selectedId = null;
         document.dispatchEvent(new CustomEvent(EVENTS.SHAPE_DELETED, { detail: shape }));
       }
     });
@@ -160,7 +207,6 @@ export class ShapeLayer {
    * @param {number} id
    */
   selectShape(id) {
-    // Deselect previous
     if (this.selectedId != null) {
       const prev = this.shapes.find(s => s.id === this.selectedId);
       if (prev && prev.layer.setStyle) {
@@ -171,7 +217,7 @@ export class ShapeLayer {
     this.selectedId = id;
     const shape = this.shapes.find(s => s.id === id);
     if (shape && shape.layer.setStyle) {
-      shape.layer.setStyle({ weight: 4 });
+      shape.layer.setStyle({ weight: Math.max(4, (shape.style?.weight || 2) + 2) });
     }
 
     document.dispatchEvent(new CustomEvent(EVENTS.SHAPE_SELECTED, { detail: shape }));
@@ -204,32 +250,59 @@ export class ShapeLayer {
   }
 
   /**
-   * Update style for a shape.
+   * Synchronize stored style metadata after external StyleEditor changes.
+   * @param {number} id
+   * @param {object} styles
+   */
+  syncStyleFromLayer(id, styles) {
+    const shape = this.shapes.find(s => s.id === id);
+    if (!shape) return;
+    shape.style = { ...shape.style, ...styles };
+    document.dispatchEvent(new CustomEvent(EVENTS.SHAPE_UPDATED, { detail: shape }));
+  }
+
+  /**
+   * Update style (including optional geologic fill pattern) for a shape.
    * @param {number} id
    * @param {object} style
    */
   updateStyle(id, style) {
     const shape = this.shapes.find(s => s.id === id);
-    if (shape) {
-      shape.style = { ...shape.style, ...style };
-      if (shape.layer.setStyle) {
-        shape.layer.setStyle(style);
-      }
+    if (!shape) return;
+
+    shape.style = { ...shape.style, ...style };
+    if (shape.layer.setStyle) {
+      shape.layer.setStyle(style);
+      applyGeologicPatternToLayer(
+        shape.layer,
+        shape.style.pattern || '',
+        shape.style.fillColor
+      );
     }
+    document.dispatchEvent(new CustomEvent(EVENTS.SHAPE_UPDATED, { detail: shape }));
   }
 
   /**
-   * Create a geodesic buffer polygon around an existing shape.
+   * Create a geodesic buffer polygon around an existing shape using the active planetary body's radius.
    * @param {number} shapeId - ID of source shape
    * @param {number} [radiusKm=10] - Buffer radius in km
+   * @param {string|null} [bodyOverride=null] - Optional body key override
    * @returns {object|null} - Created buffer shape
    */
-  createBuffer(shapeId, radiusKm = 10) {
+  createBuffer(shapeId, radiusKm = 10, bodyOverride = null) {
     const shape = this.shapes.find(s => s.id === shapeId);
-    if (!shape || !shape.layer) return null;
+    if (!shape || !shape.layer || !(radiusKm > 0)) return null;
 
+    const body = normalizeBodyKey(bodyOverride || jmarsState.get('body') || 'mars');
+    let effectiveRadiusKm = radiusKm;
     let rawCoords = [];
-    if (shape.layer.getLatLng) {
+
+    if (shape.type === 'circle' && shape.layer.getLatLng && shape.layer.getRadius) {
+      const ll = shape.layer.getLatLng();
+      rawCoords = [ll.lat, ll.lng];
+      const circleRadiusKm = (shape.layer.getRadius() / 1000) * (getPlanetaryRadius(body, 'mean') / 6371.0);
+      effectiveRadiusKm = circleRadiusKm + radiusKm;
+    } else if (shape.layer.getLatLng) {
       const ll = shape.layer.getLatLng();
       rawCoords = [ll.lat, ll.lng];
     } else if (shape.layer.getLatLngs) {
@@ -238,15 +311,16 @@ export class ShapeLayer {
       rawCoords = flat.map(p => [p.lat, p.lng]);
     }
 
-    const bufferCoords = computeBufferPolygon(rawCoords, radiusKm, 'mars');
+    const bufferCoords = computeBufferPolygon(rawCoords, effectiveRadiusKm, body);
     if (bufferCoords.length === 0) return null;
 
     const bufferLayer = L.polygon(bufferCoords, {
       color: '#f59e0b',
       weight: 2,
+      opacity: 0.9,
       fillColor: '#f59e0b',
       fillOpacity: 0.2,
-      dashArray: '3,3'
+      dashArray: '4,4'
     });
 
     const newId = this.nextId++;
@@ -256,42 +330,43 @@ export class ShapeLayer {
       type: 'polygon',
       attributes: {
         name: `Buffer (${radiusKm} km) of ${shape.attributes?.name || 'Shape ' + shapeId}`,
-        description: `Geodesic buffer zone of ${radiusKm} km`
+        description: `Geodesic buffer zone of ${radiusKm} km (${body})`
       },
       style: this._getLayerStyle(bufferLayer)
     };
 
-    bufferLayer._shapeId = newId;
-    bufferLayer.on('click', () => this.selectShape(newId));
-    this.featureGroup.addLayer(bufferLayer);
-    this.shapes.push(bufferShape);
-
+    this._registerShape(bufferShape);
     document.dispatchEvent(new CustomEvent(EVENTS.SHAPE_CREATED, { detail: bufferShape }));
     return bufferShape;
   }
 
   /**
-   * Clear all shapes.
+   * Clear all shapes and reset state cleanly.
    */
   clearAll() {
     this.shapes = [];
     this.selectedId = null;
     this.featureGroup.clearLayers();
+    document.dispatchEvent(new CustomEvent(EVENTS.SHAPES_IMPORTED, { detail: { count: 0 } }));
   }
 
   /**
-   * Export all shapes as GeoJSON.
+   * Export all shapes as GeoJSON (preserving attributes, styles, geologic patterns, and circle radii).
    * @returns {object} - GeoJSON FeatureCollection
    */
   toGeoJSON() {
     const features = this.shapes.map(shape => {
       const gj = shape.layer.toGeoJSON();
-      gj.properties = {
+      const props = {
         id: shape.id,
         type: shape.type,
         ...shape.attributes,
         _style: shape.style
       };
+      if (shape.type === 'circle' && typeof shape.layer.getRadius === 'function') {
+        props._circleRadiusMeters = shape.layer.getRadius();
+      }
+      gj.properties = props;
       return gj;
     });
 
@@ -306,37 +381,50 @@ export class ShapeLayer {
    * @param {object} geojson - GeoJSON FeatureCollection or Feature
    */
   fromGeoJSON(geojson) {
+    if (!geojson) return;
     try {
-      const geoLayer = L.geoJSON(geojson, {
+      L.geoJSON(geojson, {
         style: (feature) => {
           return feature.properties?._style || {
             color: '#4dabf7',
             weight: 2,
+            opacity: 0.9,
+            fillColor: '#4dabf7',
             fillOpacity: 0.2
           };
         },
         pointToLayer: (feature, latlng) => {
+          if (feature.properties?._circleRadiusMeters > 0) {
+            return L.circle(latlng, {
+              radius: feature.properties._circleRadiusMeters,
+              ...(feature.properties._style || { color: '#4dabf7', weight: 2, fillOpacity: 0.2 })
+            });
+          }
           return L.marker(latlng);
         },
         onEachFeature: (feature, layer) => {
           const id = this.nextId++;
+          const savedStyle = feature.properties?._style || this._getLayerStyle(layer);
           const shape = {
             id,
             layer,
-            type: this._detectType(layer),
-            attributes: { ...feature.properties },
-            style: feature.properties?._style || this._getLayerStyle(layer)
+            type: feature.properties?.type === 'circle' && layer instanceof L.Circle
+              ? 'circle'
+              : this._detectType(layer),
+            attributes: { ...(feature.properties || {}) },
+            style: { ...savedStyle }
           };
 
-          // Remove internal props from attributes
+          // Remove internal serialization properties from user attributes
           delete shape.attributes._style;
+          delete shape.attributes._circleRadiusMeters;
           delete shape.attributes.id;
           delete shape.attributes.type;
+          if (!shape.attributes.name) {
+            shape.attributes.name = shape.attributes.NAME || `Shape ${id}`;
+          }
 
-          layer._shapeId = id;
-          layer.on('click', () => this.selectShape(id));
-          this.featureGroup.addLayer(layer);
-          this.shapes.push(shape);
+          this._registerShape(shape);
         }
       });
 
@@ -349,17 +437,96 @@ export class ShapeLayer {
   }
 
   /**
-   * Import shapes from CSV (lat, lon, name, description).
+   * Import shapes from Well-Known Text (.wkt), supporting single or multi-line WKT geometries.
+   * @param {string} wktText
+   */
+  fromWKT(wktText) {
+    if (!wktText || typeof wktText !== 'string') return;
+    const lines = wktText
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(l => l && !l.startsWith('#') && !l.startsWith('--'));
+
+    const features = [];
+    lines.forEach((line, idx) => {
+      let rawWkt = line;
+      let label = '';
+      // Support optional "name\tWKT" or "WKT;name" conventions
+      if (line.includes('\t')) {
+        const parts = line.split('\t');
+        const geomCandidate = parts.find(p => /^(MULTI)?(POINT|LINESTRING|POLYGON)/i.test(p.trim()));
+        if (geomCandidate) {
+          rawWkt = geomCandidate.trim();
+          label = parts.find(p => p.trim() !== rawWkt)?.trim() || '';
+        }
+      }
+      const geom = ShapeIO.parseWKT(rawWkt);
+      if (geom) {
+        features.push({
+          type: 'Feature',
+          geometry: geom,
+          properties: {
+            name: label || `WKT Feature ${idx + 1}`,
+            description: ''
+          }
+        });
+      }
+    });
+
+    if (features.length > 0) {
+      this.fromGeoJSON({ type: 'FeatureCollection', features });
+    }
+  }
+
+  /**
+   * Serialize all current shapes as newline-delimited WKT strings.
+   * Circles are approximated as 48-vertex geodesic polygons on the active body.
+   * @returns {string}
+   */
+  toWKTString() {
+    const body = normalizeBodyKey(jmarsState.get('body') || 'mars');
+    return this.shapes
+      .map(shape => {
+        if (shape.type === 'circle' && shape.layer.getLatLng && shape.layer.getRadius) {
+          const ll = shape.layer.getLatLng();
+          const radiusKm = (shape.layer.getRadius() / 1000) * (getPlanetaryRadius(body, 'mean') / 6371.0);
+          const ringLatLon = computeEllipsePolygon(ll.lat, ll.lng, radiusKm, radiusKm, 0, body, 48);
+          const ringLonLat = ringLatLon.map(([lat, lon]) => [Number(lon.toFixed(6)), Number(lat.toFixed(6))]);
+          return ShapeIO.toWKT({ type: 'Polygon', coordinates: [ringLonLat] });
+        }
+        const gj = shape.layer.toGeoJSON();
+        return ShapeIO.toWKT(gj.geometry);
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  /**
+   * Export current shapes to a .wkt file download.
+   */
+  downloadWKT() {
+    const wkt = this.toWKTString();
+    if (!wkt) return;
+    const blob = new Blob([wkt], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shapes_${Date.now()}.wkt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Import shapes from CSV (lat, lon, name, description, and arbitrary extra columns).
    * @param {string} csvText - CSV content
    */
   fromCSV(csvText) {
-    const lines = csvText.trim().split('\n');
+    const lines = csvText.trim().split(/\r?\n/);
     if (lines.length < 2) return;
 
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
     const latIdx = headers.findIndex(h => h === 'lat' || h === 'latitude');
     const lonIdx = headers.findIndex(h => h === 'lon' || h === 'lng' || h === 'longitude');
-    const nameIdx = headers.findIndex(h => h === 'name');
 
     if (latIdx < 0 || lonIdx < 0) {
       console.error('CSV must have lat/latitude and lon/longitude columns');
@@ -380,12 +547,10 @@ export class ShapeLayer {
           attrs[h] = cols[j] || '';
         }
       });
+      if (!attrs.name) attrs.name = `Point ${id}`;
 
       const shape = { id, layer: marker, type: 'marker', attributes: attrs, style: {} };
-      marker._shapeId = id;
-      marker.on('click', () => this.selectShape(id));
-      this.featureGroup.addLayer(marker);
-      this.shapes.push(shape);
+      this._registerShape(shape);
     }
 
     document.dispatchEvent(new CustomEvent(EVENTS.SHAPES_IMPORTED, {
@@ -407,27 +572,22 @@ export class ShapeLayer {
         const name = pm.querySelector('name')?.textContent || '';
         const desc = pm.querySelector('description')?.textContent || '';
 
-        // Points
         const point = pm.querySelector('Point coordinates');
         if (point) {
-          const [lon, lat, alt] = point.textContent.trim().split(',').map(Number);
+          const [lon, lat] = point.textContent.trim().split(',').map(Number);
           if (!isNaN(lat) && !isNaN(lon)) {
             const marker = L.marker([lat, lon]);
             const id = this.nextId++;
             const shape = {
               id, layer: marker, type: 'marker',
-              attributes: { name, description: desc },
+              attributes: { name: name || `Placemark ${id}`, description: desc },
               style: {}
             };
-            marker._shapeId = id;
-            marker.on('click', () => this.selectShape(id));
-            this.featureGroup.addLayer(marker);
-            this.shapes.push(shape);
+            this._registerShape(shape);
           }
           return;
         }
 
-        // LineStrings
         const lineCoords = pm.querySelector('LineString coordinates');
         if (lineCoords) {
           const latlngs = this._parseKMLCoords(lineCoords.textContent);
@@ -436,18 +596,14 @@ export class ShapeLayer {
             const id = this.nextId++;
             const shape = {
               id, layer: polyline, type: 'polyline',
-              attributes: { name, description: desc },
+              attributes: { name: name || `Line ${id}`, description: desc },
               style: { color: '#4dabf7', weight: 2 }
             };
-            polyline._shapeId = id;
-            polyline.on('click', () => this.selectShape(id));
-            this.featureGroup.addLayer(polyline);
-            this.shapes.push(shape);
+            this._registerShape(shape);
           }
           return;
         }
 
-        // Polygons
         const polyCoords = pm.querySelector('Polygon outerBoundaryIs LinearRing coordinates');
         if (polyCoords) {
           const latlngs = this._parseKMLCoords(polyCoords.textContent);
@@ -456,13 +612,10 @@ export class ShapeLayer {
             const id = this.nextId++;
             const shape = {
               id, layer: polygon, type: 'polygon',
-              attributes: { name, description: desc },
+              attributes: { name: name || `Polygon ${id}`, description: desc },
               style: { color: '#4dabf7', weight: 2, fillOpacity: 0.2 }
             };
-            polygon._shapeId = id;
-            polygon.on('click', () => this.selectShape(id));
-            this.featureGroup.addLayer(polygon);
-            this.shapes.push(shape);
+            this._registerShape(shape);
           }
         }
       });
@@ -505,20 +658,16 @@ export class ShapeLayer {
    * Export current shapes to KML file download.
    */
   downloadKML() {
-    /**
-     * Escape XML special characters to produce valid KML.
-     * @param {string} str - Raw string.
-     * @returns {string} XML-safe string.
-     */
     const escapeXml = (str) =>
-      str.replace(/&/g, '&amp;')
-         .replace(/</g, '&lt;')
-         .replace(/>/g, '&gt;')
-         .replace(/"/g, '&quot;');
+      String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 
     let kml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     kml += '<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n';
-    kml += `<name>jsMars Shapes</name>\n`;
+    kml += '<name>jsMars Shapes</name>\n';
 
     this.shapes.forEach(shape => {
       const gj = shape.layer.toGeoJSON();
@@ -573,13 +722,15 @@ export class ShapeLayer {
    * @returns {object}
    */
   _getLayerStyle(layer) {
-    if (layer.options) {
+    if (layer?.options) {
       return {
         color: layer.options.color,
         weight: layer.options.weight,
         opacity: layer.options.opacity,
         fillColor: layer.options.fillColor,
-        fillOpacity: layer.options.fillOpacity
+        fillOpacity: layer.options.fillOpacity,
+        dashArray: layer.options.dashArray || null,
+        pattern: layer.options.pattern || ''
       };
     }
     return {};

@@ -2,8 +2,8 @@ import { EVENTS } from '../../constants.js';
 
 /**
  * @module MeasurementTable
- * @description Renders a table of measurements and highlights the
- * selected row when a measurement is clicked on the map.
+ * @description Renders a table of geodesic measurements (distance, azimuth,
+ * area, perimeter) and highlights or deletes rows interactively.
  */
 export class MeasurementTable {
     /**
@@ -23,13 +23,14 @@ export class MeasurementTable {
 
         this.render();
 
-        // Listeners
         document.addEventListener(EVENTS.MEASURE_UPDATED, (e) => {
-            this.renderRows(e.detail);
+            this.renderRows(e.detail || []);
         });
 
         document.addEventListener(EVENTS.MEASURE_HIGHLIGHT, (e) => {
-            this.highlightRow(e.detail.id);
+            if (e.detail?.id) {
+                this.highlightRow(e.detail.id);
+            }
         });
     }
 
@@ -37,97 +38,134 @@ export class MeasurementTable {
      * Build the initial table skeleton inside the container.
      */
     render() {
-        this.container.innerHTML = `
-            <table class="crater-table" style="width:100%; font-size:12px; color:#eee; border-collapse:collapse;">
-                <thead>
-                    <tr style="border-bottom:1px solid #555; text-align:left;">
-                        <th style="padding:4px;">Name</th>
-                        <th style="padding:4px;">Type</th>
-                        <th style="padding:4px;">Verts</th>
-                        <th style="padding:4px;">Value</th>
-                    </tr>
-                </thead>
-                <tbody id="measure-table-body">
-                </tbody>
-            </table>
-            <div id="measure-empty-msg" style="padding:10px; text-align:center; color:#888; font-style:italic;">
-                No measurements yet.
-            </div>
-        `;
-        this.tbody = this.container.querySelector('#measure-table-body');
-        this.emptyMsg = this.container.querySelector('#measure-empty-msg');
+        this.container.textContent = '';
+
+        const table = document.createElement('table');
+        table.className = 'crater-table';
+        table.style.cssText = 'width:100%; font-size:12px; color:#eee; border-collapse:collapse;';
+
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+        headRow.style.cssText = 'border-bottom:1px solid #555; text-align:left;';
+
+        const columns = ['Name', 'Type', 'Value', 'Az / Perim', ''];
+        columns.forEach((label) => {
+            const th = document.createElement('th');
+            th.style.padding = '4px';
+            th.textContent = label;
+            headRow.appendChild(th);
+        });
+        thead.appendChild(headRow);
+
+        const tbody = document.createElement('tbody');
+        tbody.id = 'measure-table-body';
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+
+        const emptyMsg = document.createElement('div');
+        emptyMsg.id = 'measure-empty-msg';
+        emptyMsg.style.cssText = 'padding:10px; text-align:center; color:#888; font-style:italic;';
+        emptyMsg.textContent = 'No measurements yet.';
+
+        this.container.appendChild(table);
+        this.container.appendChild(emptyMsg);
+
+        this.tbody = tbody;
+        this.emptyMsg = emptyMsg;
     }
 
     /**
-     * Populate table rows from the measurements array.
+     * Populate table rows from the measurements array using XSS-safe DOM APIs.
      * @param {Array<object>} measurements - Array of measurement records.
      */
     renderRows(measurements) {
-        this.tbody.innerHTML = '';
+        if (!this.tbody || !this.emptyMsg) return;
+        this.tbody.textContent = '';
 
-        if (measurements.length === 0) {
+        if (!Array.isArray(measurements) || measurements.length === 0) {
             this.emptyMsg.style.display = 'block';
+            this.selectedId = null;
             return;
         }
         this.emptyMsg.style.display = 'none';
 
-        measurements.forEach(m => {
+        measurements.forEach((m) => {
             const tr = document.createElement('tr');
             tr.id = `measure-row-${m.id}`;
             tr.style.borderBottom = '1px solid #333';
             tr.style.cursor = 'pointer';
+            tr.title = `${m.vertices || 0} vertices`;
 
-            // Name Cell (Editable)
+            // Editable Name cell
             const nameTd = document.createElement('td');
             nameTd.style.padding = '4px';
             const nameInput = document.createElement('input');
             nameInput.type = 'text';
-            nameInput.value = m.name;
-            nameInput.style.background = 'transparent';
-            nameInput.style.border = 'none';
-            nameInput.style.color = '#eee';
-            nameInput.style.width = '100%';
-            nameInput.style.fontFamily = 'inherit';
-            nameInput.style.fontSize = 'inherit';
-
-            // Handle name change
+            nameInput.value = m.name || '';
+            nameInput.setAttribute('aria-label', `Measurement name for ${m.name || m.type}`);
+            nameInput.style.cssText = 'background:transparent; border:none; color:#eee; width:100%; font-family:inherit; font-size:inherit;';
             nameInput.addEventListener('change', (e) => {
                 this.measureTool.updateName(m.id, e.target.value);
             });
-            nameInput.addEventListener('click', (e) => e.stopPropagation()); // Prevent row click
-
+            nameInput.addEventListener('click', (e) => e.stopPropagation());
             nameTd.appendChild(nameInput);
 
-            // Other Cells
+            // Type cell (with vertex count badge)
             const typeTd = document.createElement('td');
-            typeTd.textContent = m.type;
-            typeTd.style.padding = '4px';
+            typeTd.style.cssText = 'padding:4px; white-space:nowrap; color:#cbd5e1;';
+            typeTd.textContent = `${m.type} (${m.vertices ?? 0})`;
 
-            const vertsTd = document.createElement('td');
-            vertsTd.textContent = m.vertices;
-            vertsTd.style.padding = '4px';
-
+            // Primary Value cell
             const valueTd = document.createElement('td');
-            valueTd.textContent = m.valueStr;
-            valueTd.style.padding = '4px';
+            valueTd.style.cssText = 'padding:4px; white-space:nowrap; font-variant-numeric:tabular-nums;';
+            valueTd.textContent = m.valueStr || '';
+
+            // Secondary Metric cell (Azimuth for Line, Perimeter for Area)
+            const secTd = document.createElement('td');
+            secTd.style.cssText = 'padding:4px; white-space:nowrap; color:#94a3b8; font-size:11px; font-variant-numeric:tabular-nums;';
+            if (m.secondaryStr) {
+                secTd.textContent = m.secondaryStr;
+            } else if (m.type === 'Line' && Number.isFinite(m.azimuthDeg)) {
+                secTd.textContent = `Az ${m.azimuthDeg.toFixed(1)}°`;
+            } else if (m.type === 'Area' && m.perimeterStr) {
+                secTd.textContent = `Perim ${m.perimeterStr}`;
+            } else {
+                secTd.textContent = '—';
+            }
+
+            // Delete Action cell
+            const actionTd = document.createElement('td');
+            actionTd.style.cssText = 'padding:2px 4px; text-align:right;';
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'measure-delete-btn';
+            delBtn.setAttribute('aria-label', `Delete measurement ${m.name || m.id}`);
+            delBtn.title = 'Delete measurement';
+            delBtn.style.cssText = 'background:transparent; border:none; color:#94a3b8; cursor:pointer; font-size:14px; line-height:1; padding:2px 5px; border-radius:4px;';
+            delBtn.textContent = '×';
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (typeof this.measureTool.deleteMeasurement === 'function') {
+                    if (this.selectedId === m.id) this.selectedId = null;
+                    this.measureTool.deleteMeasurement(m.id);
+                }
+            });
+            actionTd.appendChild(delBtn);
 
             tr.appendChild(nameTd);
             tr.appendChild(typeTd);
-            tr.appendChild(vertsTd);
             tr.appendChild(valueTd);
+            tr.appendChild(secTd);
+            tr.appendChild(actionTd);
 
-            // Row Click
             tr.addEventListener('click', () => {
                 this.measureTool.highlight(m.id);
-                // We don't need to call highlightRow here because measureTool dispatches an event back to us
-                // But for immediate feedback we could.
-                // Let's rely on the event loop for consistency.
             });
 
             this.tbody.appendChild(tr);
         });
 
-        // Re-highlight if selection persists
         if (this.selectedId) {
             this.highlightRow(this.selectedId);
         }
@@ -138,7 +176,6 @@ export class MeasurementTable {
      * @param {string} id - Measurement ID to highlight.
      */
     highlightRow(id) {
-        // Remove previous highlight
         if (this.selectedId) {
             const prevRow = document.getElementById(`measure-row-${this.selectedId}`);
             if (prevRow) prevRow.style.background = 'transparent';
@@ -147,8 +184,10 @@ export class MeasurementTable {
         this.selectedId = id;
         const row = document.getElementById(`measure-row-${id}`);
         if (row) {
-            row.style.background = '#444';
-            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            row.style.background = '#334155';
+            if (typeof row.scrollIntoView === 'function') {
+                row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
         }
     }
 }

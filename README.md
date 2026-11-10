@@ -60,10 +60,11 @@ For decades, planetary GIS required downloading 2GB desktop installers, configur
 * **Orbital Ground Tracks:** Visualize live spacecraft orbits for MRO, Mars Odyssey, MAVEN, and Mars Express.
 
 ### 📐 5. Digitization, Analysis & Export
-* **Vector Drawing:** Points, lines, polygons, circles, and rectangles with attribute tables and custom styling presets.
-* **Geospatial Import/Export:** Drag-and-drop support for GeoJSON, KML, and CSV.
-* **Map Export:** High-resolution PNG, JPEG, and georeferenced World Files (`.pgw` / `.jgw`).
-* **Session Persistence:** Save and load full workspace states (active layers, digitized shapes, viewports) as portable JSON files.
+* **Vector Drawing & Geologic Patterns:** Points, lines, polygons, circles, and rectangles with 6 planetary SVG geologic fill patterns (*Ejecta*, *Crater Material*, *Volcanic Plains*, *Fracture Zone*, *Layered Deposits*, *Chaos/Breccia*), custom attribute columns, and multi-body geodesic buffering.
+* **Independent Geodesic Measurement:** Planet-calibrated distance, initial forward azimuth ($0^\circ\text{–}360^\circ$), spherical polygon area, and perimeter isolated from vector digitization.
+* **GIS & Shapefile Interoperability:** Import and export binary **ESRI Shapefile triads (`.shp`/`.shx`/`.dbf`)**, **WKT (`.wkt`)**, **GeoJSON**, **KML**, and **CSV**.
+* **Quick Command Palette (`Ctrl+K`):** Instant fuzzy landmark search, direct coordinate fly-to, cross-body switching, bookmark recall, and tool activation.
+* **Map Export & Session Persistence:** High-resolution PNG, JPEG, georeferenced World Files (`.pgw` / `.jgw`), and portable `.json` workspaces preserving layers, viewports, measurements, craters, and styled shapes.
 
 ---
 

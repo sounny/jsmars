@@ -1,6 +1,19 @@
 # JSMARS Release Notes
 
 
+## v0.12.0 - JMARS Desktop Parity: Geologic Patterns, ESRI Shapefiles, Command Palette & Mobile HUD
+**Date:** 2026-11-10
+
+### Highlights
+- **Geologic Fill Pattern Library (`StyleEditor.js`, `ShapeLayer.js`)**: Added 6 planetary SVG `<pattern>` fills (*Ejecta Blanket*, *Crater Material*, *Volcanic Plains*, *Fracture Zone*, *Layered Deposits*, *Chaos / Breccia*) selectable via the right-click Style Editor and preserved across GeoJSON and Session round-trips.
+- **Binary ESRI Shapefile Triad & Multi-Part WKT I/O (`ShapeIO.js`)**: Added standards-compliant browser binary serialization of ESRI Shapefile triads (`.shp`, `.shx`, `.dbf` partitioned by Point/Arc/Polygon geometry class), companion `.shp` + `.dbf` multi-file import, and multi-feature `.wkt` import/export.
+- **Dynamic Custom Attribute Columns & Multi-Body Geodesic Buffers (`ShapeTable.js`, `ShapeLayer.js`)**: Added `+ Column` custom schema extension, XSS-safe inline attribute editing, and planet-calibrated geodesic `Buffer` generation across Mars, Moon, Earth, and Europa.
+- **Independent Geodesic Measurement & Draw Isolation (`MeasureTool.js`, `MeasurementTable.js`, `jmars-vectors.js`)**: Added initial forward geodesic **Azimuth** ($0^\circ\text{–}360^\circ$) on polylines, geodesic **Perimeter** on polygons, per-row `×` deletion, and `_exclusiveDrawOwner` draw isolation so Measurements, Profiles, and Area Sampling never leak temporary geometries into the Shapes table.
+- **Global `Ctrl+K` Command & Navigation Palette (`QuickActions.js`, `KeyboardShortcuts.js`)**: Added a unified accessible modal command palette (`Ctrl+K` / `⌘+K` and top-HUD `Search / Cmd` button) combining fuzzy IAU landmark search, direct `lat, lon` fly-to, saved bookmarks, planetary body switching, 2D/3D view toggling, and tool launch.
+- **Full Session Shape Persistence (`SessionManager.js`)**: Saved and restored `ShapeLayer` features, geologic fill patterns, circle radii, and custom attribute dictionaries across cross-body session loads.
+- **Mobile & Desktop Top-HUD Ergonomics (`style.css`, `index.html`, `Sidebar.js`)**: Centered `#map-top-hud` (`2D | 3D` + `Search / Cmd`) over the visible map area on desktop (tracking sidebar collapse) and repositioned it cleanly below `#status-bar` on mobile viewports (`<= 768px`), resolving the mobile Europa 2D/3D status-bar overlap.
+- **Verification & PWA Shell (`sw.js` v1.6.0)**: Expanded automated Mocha suite to **1,210 passing unit tests** (`scripts/run_tests.py` with fast-fail `pageerror` diagnostics) plus full desktop + mobile Playwright E2E verification (`verification/test_localhost_full.py`).
+
 ## v0.11.0 - Core Hardening, Geodesy Unification & Accessibility Milestone
 **Date:** 2026-10-13
 

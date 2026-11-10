@@ -86,17 +86,25 @@ The sidebar organizes 23 tools into 5 structured, accessible categories:
 - Under **Map Export**, export high-resolution publication-ready maps with neatline borders, coordinate tick labels, scale bars, and titles.
 - Click **Export World File** to download `.pgw` or `.jgw` georeferencing sidecar files for direct import into QGIS, ArcGIS, and GDAL.
 
-## Drawing Shapes (ROIs)
-1. Look for the **Shapes** section or the toolbar on the map.
-2. Select a tool: Point, Line, Polygon, Circle, Rectangle.
-3. Edit attributes in the shape table, change fill/stroke colors, and import/export GeoJSON, CSV, KML, or WKT (Well-Known Text) files.
+## Independent Geodesic Measurement (Distance, Azimuth, Area & Perimeter)
+1. Open **Measurement** under **Measure & Inspect** in the sidebar.
+2. Click **Distance** to draw a multi-segment polyline (computes planet-scaled geodesic length and initial forward **Azimuth** bearing $0^\circ\text{–}360^\circ$) or **Area** to draw a polygon (computes spherical **Area** and geodesic **Perimeter**).
+3. Measurements stay strictly isolated from the **Shapes** layer. Review values in the table, delete individual rows with **×**, or export to **GeoJSON** / **CSV**.
 
-## Navigation
+## Drawing Shapes, Geologic Patterns & Shapefile/WKT I/O
+1. Open the **Shapes** section under **Cartography & Geology** (or use the map draw toolbar).
+2. Select a geometry tool: **Point**, **Line**, **Polygon**, **Circle**, or **Rectangle**.
+3. **Geologic Fill Patterns:** Right-click any polygon, circle, or rectangle on the map to open the **Style Editor** and apply stroke/fill colors, dash styles, and SVG geologic unit patterns (*Ejecta Blanket*, *Crater Material*, *Volcanic Plains*, *Fracture Zone*, *Layered Deposits*, *Chaos / Breccia*).
+4. **Custom Attributes & Geodesic Buffers:** Click **+ Column** in the shape table toolbar to add custom attribute fields (double-click any cell to edit inline), or select a shape and click **Buffer** to generate a planet-scaled geodesic buffer polygon in kilometers.
+5. **GIS Import / Export:** Import and export **GeoJSON**, **WKT (`.wkt`)**, **ESRI Shapefile triads (`.shp` + `.shx` + `.dbf`)**, **CSV**, or **KML**. Select both `.shp` and `.dbf` together when importing a shapefile to preserve all attribute columns. Shapes, patterns, and attributes are also saved inside JSMARS Session `.json` files.
+
+## Navigation & Quick Command Palette (`Ctrl+K`)
+- **Quick Command Palette (`Ctrl+K` / `⌘+K`):** Click **Search / Cmd** at the top of the map or press **Ctrl+K** anywhere to jump to IAU landmarks (typo-tolerant fuzzy search), fly directly to `lat, lon` coordinates, recall saved bookmarks, switch planetary bodies, toggle **2D | 3D**, or launch any science tool.
 - **Pan:** Click and drag the map.
 - **Zoom:** Use the +/- buttons or your mouse wheel.
-- **Coordinates:** View current Latitude/Longitude in the bottom-left corner. Click the format button to cycle between $E180$, $E360$, and $DMS$.
+- **Coordinates:** View current Latitude/Longitude in the status bar. Click the format button to cycle between $E180$, $E360$, and $DMS$.
 - **Map Viewpoints:** Use the Map Options panel to jump between Global Equirectangular, North Polar (Planum Boreum), and South Polar (Planum Australe) views.
-- **North Arrow & Planetary Scale Bar:** View real-time physical scale bars calibrated to true planetary radii ($R_{\text{Mars}} = 3389.5\text{ km}$, $R_{\text{Moon}} = 1737.4\text{ km}$) with cosine latitude distortion.
+- **North Arrow & Planetary Scale Bar:** View real-time physical scale bars calibrated to true planetary radii ($R_{\text{Mars}} = 3389.5\text{ km}$, $R_{\text{Moon}} = 1737.4\text{ km}$, $R_{\text{Europa}} = 1560.8\text{ km}$) with cosine latitude distortion.
 
 ## Troubleshooting
 - **"Loading map data..." stuck?** The map server might be slow or down. Try refreshing the page.

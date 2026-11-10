@@ -1,9 +1,8 @@
 import http.server
-import socketserver
 import sys
-import os
 
 PORT = 8080
+
 
 class DevHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -22,18 +21,22 @@ class DevHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             return 'text/javascript'
         return super().guess_type(path)
 
+
+class ReusableThreadingHTTPServer(http.server.ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
 def run():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
-    handler = DevHTTPRequestHandler
-    # Allow port reuse
-    socketserver.TCPServer.allow_reuse_address = True
     try:
-        with socketserver.TCPServer(("", port), handler) as httpd:
+        with ReusableThreadingHTTPServer(("", port), DevHTTPRequestHandler) as httpd:
             print(f"JSMARS Dev Server listening at http://localhost:{port}/")
             httpd.serve_forever()
     except OSError as e:
         print(f"Failed to bind port {port}: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     run()
