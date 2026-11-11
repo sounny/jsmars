@@ -1,5 +1,15 @@
 # Change Log
 
+## [0.13.0] - 2026-11-11
+
+### Added
+- **Astronomical 3D Solar Ephemeris (`src/util/solarEphemeris.js`, `CesiumGlobe.js`, `ViewModeToggle.js`)**: Real-time IAU WGCCRE (Archinal et al., 2018) + JPL J2000 Keplerian subsolar point and body-fixed sunlight solver across all worlds, with explicit **Terminator** UI (`Live UTC Ephemeris` `[Ephemeris]` vs `Local Hour [Model]` anchored to viewed longitude), `TimeSlider` $L_s$ sync, Earth `SkyAtmosphere` clock sync, and smooth-ellipsoid provenance disclosure.
+- **26-Body JMARS Solar System Catalog (`jmars-config.js`, `geo.js`, `globeViewModel.js`, `BodySelector.js`, `PlanetaryScaleBar.js`)**: Added 22 verified HTTPS/CORS spacecraft-mapped worlds across 7 `<optgroup>` planetary systems (*Mercury, Venus, Phobos, Deimos, Ceres, Vesta, Jupiter, Io, Ganymede, Callisto, Saturn, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe, Triton, Pluto, Charon*), IAU oblate spheroid 3D ellipsoids, small-body zoom scaling, 56 new IAU landmarks, and Venera/Vega/Huygens landing sites.
+
+### Fixed
+- **3D Globe Lighting Trap (`CesiumGlobe.js`, `MarsTime.js`, `TimeSlider.js`)**: Removed hardcoded `z = -0.15` (`+8.63°N`) solar vector and prime-meridian `0°E` noon trap; fixed `MarsTime.computeState().subSolarLon` per Allison & McEwen (2000) Eq. (20) & (24); emitted `date` on `TimeSlider.setLs()`.
+- **Multi-Body Deep-Link & Command Palette Sync (`URLStateEngine.js`, `index.html`, `StatusBar.js`, `jmars-map.js`)**: Replaced hardcoded 4-body whitelist in `URLStateEngine.parseURLToState` with dynamic `JMARS_CONFIG.bodies` lookup, wired `QuickActions` `onSwitchBody` through canonical `switchActiveBody`, deduplicated WMS capability layers by layer name, and guarded Mars MOLA elevation timer on cross-body switches (`sw.js` `jsmars-shell-v1.7.0`, 1,218 passing unit tests).
+
 ## [0.12.0] - 2026-11-10
 
 ### Added

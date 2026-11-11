@@ -123,8 +123,10 @@ export class TimeSlider {
     const solarInsolation = MarsTime.SOLAR_CONSTANT_1AU / (r_AU * r_AU);
     const delta_s = Math.asin(Math.sin(MarsTime.OBLIQUITY * Math.PI / 180) * Math.sin(newLs * Math.PI / 180)) * 180 / Math.PI;
 
+    const updatedDate = MarsTime.lsToDate(newLs, currentMY);
     this.currentState = {
       ...this.currentState,
+      date: updatedDate,
       Ls: newLs,
       msd: approxMsd,
       r_AU,

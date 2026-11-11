@@ -154,8 +154,7 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
     - [x] Mathematical equations, scientific background, and physical formulas for planetary science engines.
     - [x] Step-by-step user tutorials, workflows, and parameter references.
     - [x] Keyboard shortcuts cheat sheet and GIS export format specifications.
-- [x] **Shipped planetary bodies (as of v0.9)**: Mars, Moon, Earth, and Europa.
-- [ ] Titan and Venus WMS bodies remain future work (not part of Phase 9).
+- [x] **Shipped planetary bodies (v0.13.0 — 26 Verified Worlds)**: Mars, Moon, Earth, Mercury, Venus, Phobos, Deimos, Ceres, Vesta, Jupiter, Io, Europa, Ganymede, Callisto, Saturn, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe, Triton, Pluto, and Charon (all HTTPS + CORS spacecraft mosaics; simulated Uranus/Neptune mosaics intentionally excluded).
 - [ ] **Interactive Code & Live Tool Sandboxes**:
     - [ ] Embedded interactive calculation widgets for KRC, MCD, CSFD, and Astrodynamics in the docs portal.
 - [ ] **Automated Doc Generator & API References**:
@@ -178,12 +177,17 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **Independent Geodesic Azimuth & Perimeter**: Forward bearing ($0^\circ\text{–}360^\circ$) on polylines, perimeter on polygons, and `_exclusiveDrawOwner` draw isolation preventing `ShapeLayer` hijacking.
 - [x] **Global `Ctrl+K` Command Palette & Mobile HUD Fix**: Unified Command & Navigation Palette (`QuickActions.js`) and responsive `#map-top-hud` placement resolving mobile 2D/3D overlap with `#status-bar`.
 
+## Phase 12: Astronomical 3D Solar Ephemeris & 26-Body JMARS Solar System Expansion (Completed, 2026-11-11)
+- [x] **Astronomical 3D Solar Ephemeris (`src/util/solarEphemeris.js`, `CesiumGlobe.js`, `ViewModeToggle.js`)**: Replaced the hardcoded fake `z = -0.15` (`+8.63°N`) directional vector and prime-meridian `0°E` noon trap with real IAU WGCCRE (Archinal et al., 2018) pole orientation + prime-meridian rotation + lunar libration + JPL J2000 Keplerian heliocentric orbits. Added explicit **`Terminator`** UI distinguishing **`Live UTC Ephemeris`** (`[Ephemeris]`, synced with `TimeSlider` $L_s$ and Earth `SkyAtmosphere`) from **`Local Hour [Model]`** (anchored to viewed longitude), plus smooth-ellipsoid vs baked-relief provenance disclosure.
+- [x] **MarsTime Subsolar Longitude Fix (`MarsTime.js`, `TimeSlider.js`)**: Corrected `MarsTime.computeState().subSolarLon` per Allison & McEwen (2000) Eq. (20) & (24) (`180 - mtc * 15 - eotDeg`) and emitted `MarsTime.lsToDate()` from `TimeSlider.setLs()`.
+- [x] **26-World JMARS Solar System Catalog (`jmars-config.js`, `geo.js`, `globeViewModel.js`, `BodySelector.js`, `URLStateEngine.js`)**: Added 22 verified spacecraft-mapped worlds across 7 `<optgroup>` planetary systems (Mercury, Venus, Phobos, Deimos, Ceres, Vesta, Jupiter, Io, Ganymede, Callisto, Saturn, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe, Triton, Pluto, Charon), IAU IAU oblate spheroid 3D ellipsoids, small-body camera zoom scaling, 56 new IAU landmarks, and Venera/Vega/Huygens landing sites.
+
 ## Documentation & Process
 - [x] **Documentation Portal**: Live web portal in `docs/index.html`.
 - [x] **Release Notes**: Maintained in `docs/release-notes.md`.
 - [x] **User Guide**: Maintained in `docs/user-guide.md`.
 - [x] **Work Log**: Maintained in `docs/LOG.md`.
-- [x] **Automated CI/CD**: 1,210 automated unit tests verifying 100% test pass via `scripts/run_tests.py` plus headless desktop/mobile E2E verification (`verification/test_localhost_full.py`).
+- [x] **Automated CI/CD**: 1,218 automated unit tests verifying 100% test pass via `scripts/run_tests.py` plus headless desktop/mobile E2E verification (`verification/test_localhost_full.py`).
 
 ## Lunar Base Site Planner (v0.10.0, 2026-10-12)
 - [x] South pole LOLA site DEMs, slope, illumination, Earth visibility, PSR

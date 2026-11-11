@@ -2,15 +2,24 @@
  * @module CesiumGlobe
  * @description Full-size CesiumJS globe for the active planetary body.
  *
- * Uses the body's ellipsoid and drapes the same WMS/XYZ sources as the
- * Leaflet map. There is no Cesium ion token and no Earth imagery fallback.
+ * Uses the body's IAU WGCCRE ellipsoid and drapes the same WMS/XYZ sources as
+ * the Leaflet map. There is no Cesium ion token and no Earth imagery fallback.
  * The globe is the reference ellipsoid only — elevation terrain is not loaded.
+ *
+ * When the optional solar terminator is enabled, illumination uses authentic
+ * IAU WGCCRE + JPL J2000 planetary ephemeris (`src/util/solarEphemeris.js`)
+ * rather than a hardcoded fake solar declination.
  */
 import {
   BODY_ELLIPSOIDS,
+  minCameraHeightMeters,
   zoomToCameraHeightMeters,
   cameraHeightToZoom
 } from './globeViewModel.js';
+import {
+  computeSubSolarPointForBody,
+  computeModeledLocalSolarLight
+} from '../../util/solarEphemeris.js';
 
 /**
  * Resolve a Cesium ellipsoid for a body. Built-in Mars/Moon/WGS84 constants
@@ -21,12 +30,15 @@ import {
  * @returns {object}
  */
 export function resolveEllipsoid(Cesium, bodyKey) {
-  const spec = BODY_ELLIPSOIDS[bodyKey] || BODY_ELLIPSOIDS.mars;
+  const key = String(bodyKey || 'mars').toLowerCase();
+  const spec = BODY_ELLIPSOIDS[key] || BODY_ELLIPSOIDS.mars;
   if (spec.cesiumName && Cesium.Ellipsoid[spec.cesiumName]) {
     return Cesium.Ellipsoid[spec.cesiumName];
   }
   const [x, y, z] = spec.radii;
-  return new Cesium.Ellipsoid(x, y, z);
+  // Cesium's EllipsoidTerrainProvider quadtree requires x === y (axisymmetric spheroid)
+  const eq = (x + y) * 0.5;
+  return new Cesium.Ellipsoid(eq, eq, z);
 }
 
 /**
@@ -83,6 +95,7 @@ export class CesiumGlobe {
     this.onHover = null;
     this.onSpinPaused = null;
     this._lightingHour = null;
+    this.lightingState = { enabled: false };
   }
 
   get ready() {
@@ -96,7 +109,8 @@ export class CesiumGlobe {
    */
   mount(Cesium, options) {
     this.Cesium = Cesium;
-    const bodyKey = BODY_ELLIPSOIDS[options.body] ? options.body : 'mars';
+    const rawBody = String(options.body || 'mars').toLowerCase();
+    const bodyKey = BODY_ELLIPSOIDS[rawBody] ? rawBody : 'mars';
     const ellipsoid = resolveEllipsoid(Cesium, bodyKey);
     Cesium.Ellipsoid.default = ellipsoid;
 
@@ -145,9 +159,15 @@ export class CesiumGlobe {
     globe.showGroundAtmosphere = bodyKey === 'earth';
     globe.enableLighting = false;
     globe.depthTestAgainstTerrain = false;
+    // Scale Cesium's default Earth-sized lighting fade distances to the body's radius
+    // so terminator shading works identically on Deimos (7 km) and Jupiter (71,492 km).
+    globe.lightingFadeOutDistance = ellipsoid.maximumRadius * 20;
+    globe.lightingFadeInDistance = ellipsoid.maximumRadius * 40;
+    globe.nightFadeOutDistance = ellipsoid.maximumRadius * 20;
+    globe.nightFadeInDistance = ellipsoid.maximumRadius * 50;
 
     const controller = viewer.scene.screenSpaceCameraController;
-    controller.minimumZoomDistance = 1000;
+    controller.minimumZoomDistance = minCameraHeightMeters(ellipsoid.maximumRadius);
     controller.maximumZoomDistance = ellipsoid.maximumRadius * 12;
 
     this._bindInteraction();
@@ -239,8 +259,9 @@ export class CesiumGlobe {
 
   zoomBy(direction) {
     if (!this.ready) return;
+    const minStep = Math.max(5, minCameraHeightMeters(this.ellipsoid?.maximumRadius || 3396190) * 0.5);
     const height = this.viewer.camera.positionCartographic?.height || 100000;
-    const step = Math.max(500, height * 0.45);
+    const step = Math.max(minStep, height * 0.45);
     if (direction > 0) this.viewer.camera.zoomIn(step);
     else this.viewer.camera.zoomOut(step);
   }
@@ -273,29 +294,68 @@ export class CesiumGlobe {
   }
 
   /**
-   * Visual sunlight only. Hour 12 lights the prime meridian.
-   * This is not a body-specific solar ephemeris.
-   * @param {{enabled: boolean, hour?: number}} options
+   * Apply smooth-ellipsoid day/night solar terminator shading.
+   *
+   * Modes:
+   * - `'ephemeris'` (default): Real astronomical IAU WGCCRE + JPL J2000 solar
+   *   ephemeris at `options.date` (defaults to current UTC). Also updates
+   *   `viewer.clock.currentTime` so Earth's `SkyAtmosphere` aligns with the ground terminator.
+   * - `'local'` (`[Model]`): Synthetic local solar hour (`0..24`, `12` = local noon
+   *   at `options.referenceLon` or current camera target longitude) using the
+   *   body's authentic seasonal solar declination at `options.date`.
+   *
+   * @param {{enabled: boolean, mode?: 'ephemeris'|'local', body?: string, date?: Date|number|string, hour?: number, referenceLon?: number}} options
+   * @returns {object} Applied lighting state summary
    */
   setLighting(options) {
-    if (!this.ready) return;
-    const { Cesium, viewer } = this;
     if (!options || !options.enabled) {
       this._lightingHour = null;
-      viewer.scene.globe.enableLighting = false;
-      viewer.scene.light = new Cesium.SunLight();
-      return;
+      this.lightingState = { enabled: false };
+      if (this.ready) {
+        this.viewer.scene.globe.enableLighting = false;
+        this.viewer.scene.light = new this.Cesium.SunLight();
+      }
+      return this.lightingState;
     }
-    const hour = Number.isFinite(options.hour) ? options.hour : 12;
-    this._lightingHour = hour;
-    const sunLon = (12 - hour) * (Math.PI / 12);
-    const direction = new Cesium.Cartesian3(-Math.cos(sunLon), -Math.sin(sunLon), -0.15);
+
+    const bodyKey = this.bodyKey || options.body || 'mars';
+    const mode = options.mode === 'local' ? 'local' : 'ephemeris';
+    const parsedDate = options.date ? new Date(options.date) : new Date();
+    const validDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+
+    let calc;
+    if (mode === 'local') {
+      const hour = Number.isFinite(options.hour) ? options.hour : 12;
+      this._lightingHour = hour;
+      const camLon = Number.isFinite(options.referenceLon)
+        ? options.referenceLon
+        : (this.getCameraView()?.lng ?? 0);
+      calc = computeModeledLocalSolarLight(bodyKey, hour, camLon, validDate);
+    } else {
+      this._lightingHour = null;
+      calc = computeSubSolarPointForBody(bodyKey, validDate);
+    }
+
+    this.lightingState = {
+      enabled: true,
+      ...calc
+    };
+
+    if (!this.ready) return this.lightingState;
+
+    const { Cesium, viewer } = this;
+    if (viewer.clock && Cesium.JulianDate?.fromDate) {
+      viewer.clock.currentTime = Cesium.JulianDate.fromDate(validDate);
+    }
+    const [dx, dy, dz] = calc.lightDirectionFixed;
+    const direction = new Cesium.Cartesian3(dx, dy, dz);
     Cesium.Cartesian3.normalize(direction, direction);
     viewer.scene.light = new Cesium.DirectionalLight({
       direction,
-      intensity: 2.2
+      intensity: 2.0
     });
     viewer.scene.globe.enableLighting = true;
+    return this.lightingState;
   }
 
   resize() {

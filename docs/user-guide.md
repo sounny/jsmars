@@ -4,7 +4,7 @@ Welcome to JSMARS, a web-based planetary GIS viewer.
 
 ## Getting Started
 1. Open `index.html` in your browser.
-2. The map will load centered on Mars (Lat 0, Lon 0). Use the planetary body selector at the top of the sidebar to seamlessly switch between **Mars**, the **Moon**, **Earth**, and **Europa**.
+2. The map will load centered on Mars (Lat 0, Lon 0). Use the grouped planetary body selector at the top of the sidebar (or press **Ctrl+K** and type a world's name) to switch across **26 verified Solar System worlds** organized into 7 planetary systems (*Inner Planets & Moon*, *Mars Moons*, *Asteroids & Dwarf Planets*, *Jupiter System*, *Saturn System*, *Neptune System*, and *Pluto System*).
 
 ## Managing Layers
 - **Add/Remove:** Use the buttons in the "Layer Manager" panel (top-right) to add layers from the available list or remove active layers.
@@ -40,7 +40,7 @@ The sidebar organizes 23 tools into 5 structured, accessible categories:
 ### 3D Globe
 1. Use the **2D | 3D** control at the top of the map. 2D is the flat Leaflet map. 3D replaces it with a CesiumJS globe of the active body.
 2. The globe uses the body's reference ellipsoid and drapes the imagery layer you have turned on (USGS, OpenPlanetary, NASA GIBS, or NASA Trek). **Elevation terrain is not loaded** — Olympus Mons will not stand above the surrounding plains. That is planned. The on-globe line names the imagery and the ellipsoid.
-3. Drag to orbit, scroll or use **+ / −** to zoom, and **Spin** to rotate. **Grid** draws a latitude/longitude overlay. **Light** is a visual terminator (local hour), not a measured ephemeris. **Reset** returns to the body's overview.
+3. Drag to orbit, scroll or use **+ / −** to zoom, and **Spin** to rotate. **Grid** draws a latitude/longitude overlay. **Terminator** opens the solar illumination panel with two provenance-labeled modes: **Live UTC Ephemeris** (`[Ephemeris]`, computing the true subsolar point from JPL J2000 orbits + IAU WGCCRE body pole/rotation elements, synced with the Mars $L_s$ Time Slider or snapped to real-time UTC via **Now**) and **Local Hour [Model]** (`[Model]`, anchoring local solar hour `00:00–24:00` to your currently viewed longitude while keeping the body's true seasonal solar declination). Note that terminator shading applies to the smooth reference ellipsoid only (local crater shadows in tiles remain baked spacecraft illumination). **Reset** returns to the body's overview.
 4. Switch back to **2D** to restore the place you were looking at in 3D.
 5. Drawing, measuring, crater counting, profiles, and the other map tools stay in 2D. They are greyed out while 3D is open.
 

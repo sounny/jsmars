@@ -28,6 +28,7 @@ import {
     CESIUM_VERSION,
     BODY_ELLIPSOIDS,
     TWO_D_ONLY_TOOL_IDS,
+    minCameraHeightMeters,
     zoomToCameraHeightMeters,
     cameraHeightToZoom,
     describeImageryLayer,
@@ -35,6 +36,14 @@ import {
     formatGlobeProvenance,
     isCesiumCdnUrl
 } from '../src/features/globe/globeViewModel.js';
+import {
+    HELIOCENTRIC_ORBITS,
+    IAU_ROTATION_MODELS,
+    computeSubSolarPointForBody,
+    computeModeledLocalSolarLight,
+    formatSubSolarCoord
+} from '../src/util/solarEphemeris.js';
+import { BodySelector } from '../src/ui/BodySelector.js';
 import { TrajectoryEngine } from '../src/features/orbit/TrajectoryEngine.js';
 import { ColorStretchControl } from '../src/ui/ColorStretchControl.js';
 import { InvestigateTool } from '../src/features/investigate/InvestigateTool.js';
@@ -18234,6 +18243,182 @@ describe('JMARS Parity v1.6: Shapes, Geologic Patterns, Shapefile Triad, Azimuth
 
         sbDiv.remove();
         sbBtn.remove();
+    });
+});
+
+describe('v0.13.0: Astronomical 3D Solar Ephemeris & 26-Body JMARS System Catalog', () => {
+    const EXPECTED_26_BODIES = [
+        'mars', 'moon', 'earth', 'mercury', 'venus',
+        'phobos', 'deimos',
+        'ceres', 'vesta',
+        'jupiter', 'io', 'europa', 'ganymede', 'callisto',
+        'saturn', 'mimas', 'enceladus', 'tethys', 'dione', 'rhea', 'titan', 'iapetus', 'phoebe',
+        'triton',
+        'pluto', 'charon'
+    ];
+
+    it('computes accurate Earth solstice and equinox subsolar coordinates from IAU/JPL ephemeris', () => {
+        const solstice = computeSubSolarPointForBody('earth', new Date('2026-06-21T12:00:00Z'));
+        expect(solstice.mode).to.equal('ephemeris');
+        expect(solstice.subSolarLatDeg).to.be.closeTo(23.44, 0.15);
+        expect(solstice.subSolarLonEastDeg).to.be.closeTo(0.0, 1.5);
+
+        const equinox = computeSubSolarPointForBody('earth', new Date('2026-03-20T14:46:00Z'));
+        expect(equinox.subSolarLatDeg).to.be.closeTo(0.0, 0.2);
+
+        const formatted = formatSubSolarCoord(solstice.subSolarLatDeg, solstice.subSolarLonEastDeg);
+        expect(formatted).to.include('23.4°N');
+    });
+
+    it('bounds lunar solar declination strictly within ±1.65° all year (eliminating the +8.63°N trap)', () => {
+        for (let month = 0; month < 12; month++) {
+            for (const day of [1, 15]) {
+                const dt = new Date(Date.UTC(2026, month, day, 12, 0, 0));
+                const moonSun = computeSubSolarPointForBody('moon', dt);
+                expect(Math.abs(moonSun.subSolarLatDeg)).to.be.at.most(1.65);
+            }
+        }
+        const mercurySun = computeSubSolarPointForBody('mercury', new Date('2026-08-15T00:00:00Z'));
+        expect(Math.abs(mercurySun.subSolarLatDeg)).to.be.at.most(0.15);
+    });
+
+    it('matches MarsTime seasonal declination and corrected subsolar longitude on Mars', () => {
+        const testDate = new Date('2026-05-10T06:30:00Z');
+        const eph = computeSubSolarPointForBody('mars', testDate);
+        const mt = MarsTime.computeState(testDate);
+
+        expect(eph.subSolarLatDeg).to.be.closeTo(mt.subSolarLat, 0.25);
+        const mtLon180 = ((mt.subSolarLon + 180) % 360 + 360) % 360 - 180;
+        let dLon = Math.abs(eph.subSolarLonEastDeg - mtLon180);
+        if (dLon > 180) dLon = 360 - dLon;
+        expect(dLon).to.be.at.most(2.5);
+    });
+
+    it('produces unit-norm fixed-frame sun and opposite light vectors across all 26 JMARS bodies', () => {
+        const epoch = new Date('2026-11-11T12:00:00Z');
+        for (const bodyKey of EXPECTED_26_BODIES) {
+            const state = computeSubSolarPointForBody(bodyKey, epoch);
+            expect(state.body).to.equal(bodyKey);
+            expect(state.subSolarLatDeg).to.be.within(-90, 90);
+            expect(state.subSolarLonEastDeg).to.be.within(-180, 180);
+
+            const [sx, sy, sz] = state.sunDirectionFixed;
+            const [lx, ly, lz] = state.lightDirectionFixed;
+            const sNorm = Math.hypot(sx, sy, sz);
+            const lNorm = Math.hypot(lx, ly, lz);
+            const dot = sx * lx + sy * ly + sz * lz;
+
+            expect(sNorm).to.be.closeTo(1.0, 1e-9);
+            expect(lNorm).to.be.closeTo(1.0, 1e-9);
+            expect(dot).to.be.closeTo(-1.0, 1e-9);
+        }
+    });
+
+    it('anchors Modeled Local Solar Hour at the camera target longitude while keeping seasonal declination', () => {
+        const dt = new Date('2026-11-11T12:00:00Z');
+        const olympusLon = -133.8;
+        const eph = computeSubSolarPointForBody('mars', dt);
+        const localNoon = computeModeledLocalSolarLight('mars', 12, olympusLon, dt);
+        const localMorning = computeModeledLocalSolarLight('mars', 6, olympusLon, dt);
+
+        expect(localNoon.mode).to.equal('local');
+        expect(localNoon.subSolarLonEastDeg).to.be.closeTo(olympusLon, 1e-6);
+        expect(localNoon.subSolarLatDeg).to.be.closeTo(eph.subSolarLatDeg, 1e-6);
+        expect(localMorning.subSolarLonEastDeg).to.be.closeTo(-43.8, 1e-6);
+    });
+
+    it('maintains 100% catalog parity across JMARS_CONFIG, BODIES, BODY_ELLIPSOIDS, IAU_ROTATION_MODELS & URLStateEngine', () => {
+        const cfgKeys = Object.keys(JMARS_CONFIG.bodies);
+        expect(cfgKeys).to.have.members(EXPECTED_26_BODIES);
+        expect(cfgKeys).to.not.include('uranus');
+        expect(cfgKeys).to.not.include('neptune');
+
+        for (const key of EXPECTED_26_BODIES) {
+            const cfg = JMARS_CONFIG.bodies[key];
+            expect(cfg, `Missing config for ${key}`).to.be.an('object');
+            expect(cfg.group).to.be.a('string').and.not.be.empty;
+            expect(cfg.layers).to.be.an('array').and.not.be.empty;
+            for (const layer of cfg.layers) {
+                expect(layer.url).to.match(/^https:\/\//);
+            }
+
+            expect(BODIES[key], `Missing BODIES entry for ${key}`).to.be.an('object');
+            expect(BODIES[key].meanRadius).to.be.greaterThan(0);
+
+            expect(BODY_ELLIPSOIDS[key], `Missing BODY_ELLIPSOIDS for ${key}`).to.be.an('object');
+            expect(BODY_ELLIPSOIDS[key].radii).to.have.lengthOf(3);
+            expect(BODY_ELLIPSOIDS[key].radii[0]).to.be.greaterThan(1000);
+            expect(BODY_ELLIPSOIDS[key].radii[0], `Cesium quadtree requires x === y for ${key}`).to.equal(BODY_ELLIPSOIDS[key].radii[1]);
+
+            expect(IAU_ROTATION_MODELS[key], `Missing IAU_ROTATION_MODELS for ${key}`).to.be.an('object');
+            expect(normalizeBodyKey(key.toUpperCase())).to.equal(key);
+
+            const url = URLStateEngine.serializeStateToURL({ body: key, lat: -10.25, lon: 167.68, zoom: 4 }, 'https://jsmars.sounny.com/');
+            const parsed = URLStateEngine.parseURLToState(url);
+            if (key !== 'mars') {
+                expect(parsed.body).to.equal(key);
+            }
+            expect(parsed.lat).to.be.closeTo(-10.25, 1e-4);
+            expect(parsed.lon).to.be.closeTo(167.68, 1e-4);
+        }
+
+        // Triaxial small bodies and oblate gas giants
+        expect(BODY_ELLIPSOIDS.phobos.radii[0]).to.be.greaterThan(BODY_ELLIPSOIDS.phobos.radii[2]);
+        expect(BODY_ELLIPSOIDS.vesta.radii[0]).to.be.greaterThan(BODY_ELLIPSOIDS.vesta.radii[2]);
+        expect(BODY_ELLIPSOIDS.saturn.radii[0]).to.be.greaterThan(BODY_ELLIPSOIDS.saturn.radii[2]);
+        expect(minCameraHeightMeters(BODY_ELLIPSOIDS.deimos.radii[0])).to.be.lessThan(500);
+        expect(minCameraHeightMeters(BODY_ELLIPSOIDS.mars.radii[0])).to.equal(1000);
+    });
+
+    it('appends smooth-ellipsoid terminator provenance disclaimer when 3D lighting is enabled', () => {
+        const titanDefaultId = JMARS_CONFIG.bodies.titan.defaultLayer;
+        const layers = describeActiveImagery([{ id: titanDefaultId, visible: true }], JMARS_CONFIG.bodies.titan.layers);
+        const offText = formatGlobeProvenance('titan', layers, { enabled: false });
+        expect(offText).to.include('Titan');
+        expect(offText).to.not.include('Terminator shades day/night');
+
+        const ephState = computeSubSolarPointForBody('titan', new Date('2026-11-11T12:00:00Z'));
+        const onText = formatGlobeProvenance('titan', layers, { enabled: true, ...ephState });
+        expect(onText).to.include('Terminator shades day/night on the smooth ellipsoid only');
+        expect(onText).to.include('fixed spacecraft illumination');
+    });
+
+    it('renders grouped <optgroup> options in BodySelector, scales Jupiter/Deimos bars, and matches all 26 bodies in QuickActions', () => {
+        const container = document.createElement('div');
+        container.id = 'test-body-selector-26';
+        document.body.appendChild(container);
+
+        let switched = null;
+        const fakeMapCtrl = {
+            currentBody: 'mars',
+            switchBody: (k) => { switched = k; fakeMapCtrl.currentBody = k; }
+        };
+        new BodySelector('test-body-selector-26', fakeMapCtrl);
+        const optgroups = container.querySelectorAll('optgroup');
+        const options = container.querySelectorAll('option');
+        expect(optgroups.length).to.equal(7);
+        expect(options.length).to.equal(26);
+
+        const selectEl = container.querySelector('select');
+        selectEl.value = 'titan';
+        selectEl.dispatchEvent(new Event('change'));
+        expect(switched).to.equal('titan');
+        container.remove();
+        jmarsState.set('body', 'mars');
+
+        // PlanetaryScaleBar from Deimos to Jupiter
+        const jupMpp = PlanetaryScaleBar.getMetersPerPixel(0, 1, 'jupiter');
+        const deiMpp = PlanetaryScaleBar.getMetersPerPixel(0, 1, 'deimos');
+        expect(jupMpp).to.be.greaterThan(deiMpp * 5000);
+        const jupFriendly = PlanetaryScaleBar.getFriendlyDistance(jupMpp * 140);
+        expect(jupFriendly.text).to.include('km');
+
+        // QuickActions dynamic 26-body commands
+        const qa = new QuickActions(null, { onSwitchBody: () => {} });
+        expect(qa.buildMatches('titan').some(m => m.id === 'body-titan')).to.be.true;
+        expect(qa.buildMatches('pluto').some(m => m.id === 'body-pluto')).to.be.true;
+        expect(qa.buildMatches('enceladus').some(m => m.id === 'body-enceladus')).to.be.true;
+        expect(qa.buildMatches('vesta').some(m => m.id === 'body-vesta')).to.be.true;
     });
 });
 

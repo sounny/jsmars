@@ -1,6 +1,24 @@
 # JSMARS Release Notes
 
 
+## v0.13.0 - Astronomical 3D Solar Ephemeris & 26-Body JMARS Solar System Catalog
+**Date:** 2026-11-11
+
+### Highlights
+- **Astronomical 3D Solar Terminator (`src/util/solarEphemeris.js`, `CesiumGlobe.js`, `ViewModeToggle.js`)**:
+  - Eliminated the legacy 3D `"Light"` button's hardcoded `z = -0.15` (`+8.63°N`) solar declination trap and prime-meridian (`0°E`) noon offset.
+  - Implemented **IAU WGCCRE (Archinal et al., 2018)** rotational elements ($\alpha_0, \delta_0, W_0, \dot{W}$, plus lunar E1 libration bounding lunar solar declination strictly within $\pm 1.59^\circ$) coupled with **JPL J2000 Keplerian heliocentric orbits** across every supported planetary system.
+  - Renamed the 3D control to **Terminator** with explicit scientific provenance: **Live UTC Ephemeris** (`[Ephemeris]`, synchronized with real-time UTC, the Mars $L_s$ `TimeSlider`, and Earth's `SkyAtmosphere` clock) and **Local Hour [Model]** (`[Model]`, anchoring local solar hour `00:00–24:00` to the camera's viewed longitude while preserving seasonal declination).
+  - Appended an explicit smooth-ellipsoid disclaimer in `.globe-provenance` whenever terminator shading is active, clarifying that 3D DEM shadows are not loaded and local crater/mountain shadows in imagery remain baked spacecraft illumination.
+- **Mars Subsolar Longitude & TimeSlider Sync (`MarsTime.js`, `TimeSlider.js`)**:
+  - Fixed `MarsTime.computeState(date).subSolarLon` using Allison & McEwen (2000) Eq. (20) & (24) (`180 - mtc * 15 - eotDeg` including equation of center) and updated `TimeSlider.setLs()` to emit `date: MarsTime.lsToDate(newLs, currentMY)` so scrubbing $L_s$ updates the 3D seasonal terminator live.
+- **26 Verified JMARS Solar System Worlds (`jmars-config.js`, `geo.js`, `globeViewModel.js`, `BodySelector.js`)**:
+  - Expanded JSMARS from 4 bodies to **26 spacecraft-mapped worlds** organized into 7 semantic `<optgroup>` sections: **Inner Planets & Moon** (*Mars, Moon, Earth, Mercury, Venus*), **Mars Moons** (*Phobos, Deimos*), **Asteroids & Dwarf Planets** (*Ceres, Vesta*), **Jupiter System** (*Jupiter, Io, Europa, Ganymede, Callisto*), **Saturn System** (*Saturn, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe*), **Neptune System** (*Triton*), and **Pluto System** (*Pluto, Charon*).
+  - Every WMS/WMTS/XYZ layer was live-verified over HTTPS with `Access-Control-Allow-Origin: *` for both 2D Leaflet and 3D WebGL. Simulated gas-giant mosaics (`Uranus Simulated Global Mosaic` / `Neptune Simulated Global Mosaic`) were audited and excluded to uphold 100% real spacecraft data integrity.
+  - Added IAU IAU oblate spheroid 3D ellipsoids (`globeViewModel.js`) with radius-proportional minimum camera zoom distances for small moons/asteroids, 10,000–50,000 km gas-giant scale bar steps (`PlanetaryScaleBar.js`), 56 new IAU landmarks (`landmarks.json`), Venera 9/13/14, Vega 2 & ESA Huygens landing sites (`landing-sites.json`), 26-body deep-link URL parsing (`URLStateEngine.js`), and canonical `switchActiveBody` synchronization in `Ctrl+K` `QuickActions` (`index.html`).
+- **Verification & PWA Shell (`sw.js` v1.7.0)**:
+  - Expanded automated Mocha unit test suite to **1,218 passing tests (0 failures)** and desktop + mobile Playwright E2E suite (`verification/test_localhost_full.py`) covering Pluto, Titan (`Ctrl+K` switch + Huygens), Mars 3D Ephemeris/Model Terminator, and triaxial Phobos.
+
 ## v0.12.0 - JMARS Desktop Parity: Geologic Patterns, ESRI Shapefiles, Command Palette & Mobile HUD
 **Date:** 2026-11-10
 

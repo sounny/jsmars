@@ -6,6 +6,7 @@
 import { EVENTS } from '../../constants.js';
 import { JMARS_CONFIG } from '../../jmars-config.js';
 import { jmarsState } from '../../jmars-state.js';
+import { formatSubSolarCoord } from '../../util/solarEphemeris.js';
 import { loadCesium } from './cesiumLoader.js';
 import { CesiumGlobe } from './CesiumGlobe.js';
 import {
@@ -36,6 +37,9 @@ export class ViewModeToggle {
     this._ignoreMapMove = false;
     this._globe = new CesiumGlobe(this.cesiumEl);
     this._imagery = [];
+    this._lightingMode = 'ephemeris';
+    this._ephemerisDate = new Date();
+    this._followLiveClock = true;
     this._resize = () => this._globe.resize();
     this._buildChrome();
     this._bind();
@@ -51,7 +55,7 @@ export class ViewModeToggle {
     controls.className = 'globe-chrome-controls';
 
     const zoomIn = this._button('Zoom in', '+', () => this._globe.zoomBy(1));
-    const zoomOut = this._button('Zoom out', '−', () => this._globe.zoomBy(-1));
+    const zoomOut = this._button('Zoom out', '\u2212', () => this._globe.zoomBy(-1));
     this._spinBtn = this._button('Spin the globe', 'Spin', () => {
       const next = !this._globe.autoSpin;
       this._globe.setAutoSpin(next);
@@ -63,24 +67,80 @@ export class ViewModeToggle {
       this._gridBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
     });
     this._gridBtn.setAttribute('aria-pressed', 'false');
-    this._lightBtn = this._button('Toggle visual sunlight', 'Light', () => {
-      const next = this._lightBtn.getAttribute('aria-pressed') !== 'true';
-      this._lightBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
-      this._hourWrap.hidden = !next;
-      this._globe.setLighting({ enabled: next, hour: Number(this._hourSlider.value) });
-    });
+
+    this._lightBtn = this._button(
+      'Toggle ellipsoid day/night solar terminator',
+      'Terminator',
+      () => {
+        const next = this._lightBtn.getAttribute('aria-pressed') !== 'true';
+        this._lightBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+        this._solarPanel.hidden = !next;
+        if (next && this._followLiveClock) {
+          this._ephemerisDate = new Date();
+        }
+        this._applyCurrentLighting();
+      }
+    );
     this._lightBtn.setAttribute('aria-pressed', 'false');
+
     const reset = this._button('Reset globe to the body overview', 'Reset', () => this.resetView());
 
     [zoomIn, zoomOut, this._spinBtn, this._gridBtn, this._lightBtn, reset].forEach((btn) => {
       controls.appendChild(btn);
     });
 
+    // Astronomical Terminator Panel (Live UTC Ephemeris vs Modeled Local Hour)
+    this._solarPanel = document.createElement('div');
+    this._solarPanel.className = 'globe-solar-panel';
+    this._solarPanel.hidden = true;
+
+    const modeRow = document.createElement('div');
+    modeRow.className = 'globe-solar-modes';
+
+    this._ephemModeBtn = document.createElement('button');
+    this._ephemModeBtn.type = 'button';
+    this._ephemModeBtn.className = 'globe-solar-mode-btn is-active';
+    this._ephemModeBtn.setAttribute('aria-pressed', 'true');
+    this._ephemModeBtn.textContent = 'Live UTC Ephemeris';
+    this._ephemModeBtn.addEventListener('click', () => {
+      this._lightingMode = 'ephemeris';
+      this._syncLightingModeUi();
+      this._applyCurrentLighting();
+    });
+
+    this._localModeBtn = document.createElement('button');
+    this._localModeBtn.type = 'button';
+    this._localModeBtn.className = 'globe-solar-mode-btn';
+    this._localModeBtn.setAttribute('aria-pressed', 'false');
+    this._localModeBtn.textContent = 'Local Hour [Model]';
+    this._localModeBtn.addEventListener('click', () => {
+      this._lightingMode = 'local';
+      this._syncLightingModeUi();
+      this._applyCurrentLighting();
+    });
+
+    this._nowBtn = document.createElement('button');
+    this._nowBtn.type = 'button';
+    this._nowBtn.className = 'globe-solar-now-btn';
+    this._nowBtn.title = 'Snap solar ephemeris back to current real-time UTC';
+    this._nowBtn.textContent = 'Now';
+    this._nowBtn.addEventListener('click', () => {
+      this._followLiveClock = true;
+      this._ephemerisDate = new Date();
+      this._lightingMode = 'ephemeris';
+      this._syncLightingModeUi();
+      this._applyCurrentLighting();
+    });
+
+    modeRow.appendChild(this._ephemModeBtn);
+    modeRow.appendChild(this._localModeBtn);
+    modeRow.appendChild(this._nowBtn);
+
     this._hourWrap = document.createElement('label');
     this._hourWrap.className = 'globe-hour';
     this._hourWrap.hidden = true;
     const hourText = document.createElement('span');
-    hourText.textContent = 'Lighting hour';
+    hourText.textContent = 'Local solar hour (at view lon)';
     this._hourValue = document.createElement('span');
     this._hourValue.textContent = '12:00';
     this._hourSlider = document.createElement('input');
@@ -89,15 +149,23 @@ export class ViewModeToggle {
     this._hourSlider.max = '24';
     this._hourSlider.step = '0.5';
     this._hourSlider.value = '12';
-    this._hourSlider.setAttribute('aria-label', 'Visual lighting hour');
+    this._hourSlider.setAttribute('aria-label', 'Modeled local solar hour at viewed longitude');
     this._hourSlider.addEventListener('input', () => {
       const hour = Number(this._hourSlider.value);
       this._hourValue.textContent = formatHour(hour);
-      this._globe.setLighting({ enabled: true, hour });
+      this._applyCurrentLighting();
     });
     this._hourWrap.appendChild(hourText);
     this._hourWrap.appendChild(this._hourSlider);
     this._hourWrap.appendChild(this._hourValue);
+
+    this._solarReadout = document.createElement('p');
+    this._solarReadout.className = 'globe-solar-readout';
+    this._solarReadout.textContent = '';
+
+    this._solarPanel.appendChild(modeRow);
+    this._solarPanel.appendChild(this._hourWrap);
+    this._solarPanel.appendChild(this._solarReadout);
 
     this._provenance = document.createElement('p');
     this._provenance.className = 'globe-provenance';
@@ -111,7 +179,7 @@ export class ViewModeToggle {
     credit.textContent = '3D globe by CesiumJS (Apache-2.0).';
 
     chrome.appendChild(controls);
-    chrome.appendChild(this._hourWrap);
+    chrome.appendChild(this._solarPanel);
     chrome.appendChild(this._provenance);
     chrome.appendChild(this._coords);
     chrome.appendChild(credit);
@@ -124,9 +192,51 @@ export class ViewModeToggle {
       }
       const ns = coords.lat >= 0 ? 'N' : 'S';
       const ew = coords.lng >= 0 ? 'E' : 'W';
-      this._coords.textContent = `${Math.abs(coords.lat).toFixed(2)}°${ns}, ${Math.abs(coords.lng).toFixed(2)}°${ew}`;
+      this._coords.textContent = `${Math.abs(coords.lat).toFixed(2)}\u00b0${ns}, ${Math.abs(coords.lng).toFixed(2)}\u00b0${ew}`;
     };
     this._globe.onSpinPaused = () => this._syncSpinLabel();
+  }
+
+  _syncLightingModeUi() {
+    const isEphem = this._lightingMode !== 'local';
+    this._ephemModeBtn.classList.toggle('is-active', isEphem);
+    this._ephemModeBtn.setAttribute('aria-pressed', isEphem ? 'true' : 'false');
+    this._localModeBtn.classList.toggle('is-active', !isEphem);
+    this._localModeBtn.setAttribute('aria-pressed', isEphem ? 'false' : 'true');
+    this._hourWrap.hidden = isEphem;
+    this._nowBtn.hidden = !isEphem;
+  }
+
+  _applyCurrentLighting() {
+    const enabled = this._lightBtn.getAttribute('aria-pressed') === 'true';
+    const viewLon = this._globe.ready
+      ? (this._globe.getCameraView()?.lng ?? (this.jmars.getViewState()?.lng ?? 0))
+      : (this.jmars.getViewState()?.lng ?? 0);
+    const activeDate = this._followLiveClock && this._lightingMode === 'ephemeris'
+      ? this._ephemerisDate
+      : this._ephemerisDate;
+
+    const state = this._globe.setLighting({
+      enabled,
+      mode: this._lightingMode,
+      body: this.jmars.currentBody,
+      date: activeDate,
+      hour: Number(this._hourSlider.value),
+      referenceLon: viewLon
+    });
+
+    if (enabled && state && state.enabled) {
+      const subText = formatSubSolarCoord(state.subSolarLatDeg, state.subSolarLonEastDeg);
+      if (state.mode === 'local') {
+        this._solarReadout.textContent = `[Model] ${formatHour(state.localSolarHour)} at ${formatLon(state.referenceLonEastDeg)} \u00b7 Subsolar ${subText} (IAU seasonal \u03b4\u2609)`;
+      } else {
+        const utcShort = state.utcIso.slice(0, 16).replace('T', ' ') + ' UTC';
+        this._solarReadout.textContent = `[Ephemeris] ${utcShort} \u00b7 Subsolar ${subText} (IAU WGCCRE)`;
+      }
+    } else {
+      this._solarReadout.textContent = '';
+    }
+    this._renderProvenance();
   }
 
   _button(label, text, onClick) {
@@ -159,14 +269,31 @@ export class ViewModeToggle {
     this.jmars.map.on('moveend', () => {
       if (this.mode !== '3d' || this._ignoreMapMove || !this._globe.ready) return;
       const view = this.jmars.getViewState();
-      if (view) this._globe.setCameraView({ ...view, viewportHeightPx: this._viewportHeight() });
+      if (view) {
+        this._globe.setCameraView({ ...view, viewportHeightPx: this._viewportHeight() });
+        if (this._lightBtn.getAttribute('aria-pressed') === 'true' && this._lightingMode === 'local') {
+          this._applyCurrentLighting();
+        }
+      }
     });
 
     document.addEventListener(EVENTS.BODY_CHANGED, () => {
       if (this.mode === '3d') this._refreshFromMap({ recenter: true });
     });
     document.addEventListener(EVENTS.LAYERS_CHANGED, () => {
-      if (this.mode === '3d') this._refreshFromMap({ recenter: false });
+      if (this.mode === '3d' && this._globe.bodyKey === this.jmars.currentBody) {
+        this._refreshFromMap({ recenter: false });
+      }
+    });
+    document.addEventListener(EVENTS.TIME_CHANGED, (event) => {
+      const incomingDate = event?.detail?.date ? new Date(event.detail.date) : null;
+      if (incomingDate && !Number.isNaN(incomingDate.getTime())) {
+        this._followLiveClock = false;
+        this._ephemerisDate = incomingDate;
+        if (this.mode === '3d' && this._lightBtn.getAttribute('aria-pressed') === 'true') {
+          this._applyCurrentLighting();
+        }
+      }
     });
     window.addEventListener('resize', this._resize);
   }
@@ -249,14 +376,10 @@ export class ViewModeToggle {
       imagery: this._imagery,
       viewportHeightPx: this._viewportHeight()
     });
-    this._globe.setLighting({
-      enabled: this._lightBtn.getAttribute('aria-pressed') === 'true',
-      hour: Number(this._hourSlider.value)
-    });
     this._globe.setGraticule(this._gridBtn.getAttribute('aria-pressed') === 'true');
     this._globe.setAutoSpin(false);
     this._syncSpinLabel();
-    this._renderProvenance();
+    this._applyCurrentLighting();
   }
 
   _refreshFromMap(options) {
@@ -276,13 +399,9 @@ export class ViewModeToggle {
         viewportHeightPx: this._viewportHeight()
       });
       this._globe.setGraticule(this._gridBtn.getAttribute('aria-pressed') === 'true');
-      this._globe.setLighting({
-        enabled: this._lightBtn.getAttribute('aria-pressed') === 'true',
-        hour: Number(this._hourSlider.value)
-      });
       this._globe.setAutoSpin(keepSpin);
       this._syncSpinLabel();
-      this._renderProvenance();
+      this._applyCurrentLighting();
       return;
     }
     this._imagery = imagery;
@@ -290,7 +409,7 @@ export class ViewModeToggle {
     if (options.recenter) {
       this._globe.setCameraView({ ...view, viewportHeightPx: this._viewportHeight() });
     }
-    this._renderProvenance();
+    this._applyCurrentLighting();
   }
 
   _currentImagery() {
@@ -303,7 +422,11 @@ export class ViewModeToggle {
   }
 
   _renderProvenance() {
-    this._provenance.textContent = formatGlobeProvenance(this.jmars.currentBody, this._imagery);
+    this._provenance.textContent = formatGlobeProvenance(
+      this.jmars.currentBody,
+      this._imagery,
+      this._globe.lightingState
+    );
   }
 
   resetView() {
@@ -317,6 +440,9 @@ export class ViewModeToggle {
       zoom: body.zoom ?? 2,
       viewportHeightPx: this._viewportHeight()
     });
+    if (this._lightBtn.getAttribute('aria-pressed') === 'true' && this._lightingMode === 'local') {
+      this._applyCurrentLighting();
+    }
   }
 
   _viewportHeight() {
@@ -382,6 +508,11 @@ function formatHour(hour) {
   const hours = Math.floor(hour);
   const mins = Math.floor((hour - hours) * 60);
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+function formatLon(lonEast) {
+  const hemi = lonEast >= 0 ? 'E' : 'W';
+  return `${Math.abs(lonEast).toFixed(1)}\u00b0${hemi}`;
 }
 
 export { TWO_D_ONLY_TOOL_IDS };

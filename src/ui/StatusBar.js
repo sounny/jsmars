@@ -1,5 +1,5 @@
 import { EVENTS } from '../constants.js';
-import { formatLatLon } from '../util/geo.js';
+import { BODIES, formatLatLon } from '../util/geo.js';
 import { molaDem } from '../util/mola-dem.js';
 import { jmarsState } from '../jmars-state.js';
 import { PlanetaryScaleBar } from './PlanetaryScaleBar.js';
@@ -123,7 +123,7 @@ export class StatusBar {
     if (!Number.isFinite(metersPerPx) || metersPerPx <= 0) return;
     const friendly = PlanetaryScaleBar.getFriendlyDistance(metersPerPx * maxWidth);
     const pixelWidth = Math.max(Math.round(friendly.meters / metersPerPx), 20);
-    const bodyDisplay = body.charAt(0).toUpperCase() + body.slice(1);
+    const bodyDisplay = BODIES[body]?.name || (body.charAt(0).toUpperCase() + body.slice(1));
     this.scaleLabelEl.textContent = `${friendly.text} (${bodyDisplay})`;
     this.scaleBarEl.style.width = `${pixelWidth}px`;
   }
@@ -180,7 +180,7 @@ export class StatusBar {
 
     // Listen for body changes
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
-      this.currentBody = e?.detail?.body || 'mars';
+      this.currentBody = (e?.detail?.body || 'mars').toLowerCase();
       this.updateCoords(this.map.getCenter());
       this.updateScale();
     });
@@ -225,7 +225,9 @@ export class StatusBar {
     if (this.currentBody === 'mars') {
       clearTimeout(this._elevTimer);
       this._elevTimer = setTimeout(() => {
+        if (this.currentBody !== 'mars') return;
         molaDem.getElevation(latlng.lat, latlng.lng).then(elev => {
+          if (this.currentBody !== 'mars') return;
           if (Number.isFinite(elev)) {
             const elevStr = `${Math.round(elev)} m (${(elev / 1000).toFixed(2)} km)`;
             if (this.elevValEl) this.elevValEl.textContent = elevStr;
@@ -235,6 +237,7 @@ export class StatusBar {
         }).catch(() => {});
       }, 150);
     } else {
+      clearTimeout(this._elevTimer);
       if (this.elevValEl) this.elevValEl.textContent = 'N/A';
     }
   }

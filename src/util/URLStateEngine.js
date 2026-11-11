@@ -1,3 +1,5 @@
+import { JMARS_CONFIG } from '../jmars-config.js';
+
 /**
  * @module URLStateEngine
  * @description Deep-link URL state serializer and deserializer for JSMARS.
@@ -9,7 +11,7 @@ export class URLStateEngine {
   /**
    * Serialize active session state to a compact query string.
    * @param {Object} state - State options
-   * @param {string} [state.body='mars'] - Planetary body key ('mars', 'moon', 'earth', 'europa')
+   * @param {string} [state.body='mars'] - Planetary body key (any key in JMARS_CONFIG.bodies)
    * @param {number} [state.lat=0] - Center latitude in degrees
    * @param {number} [state.lon=0] - Center longitude in degrees
    * @param {number} [state.zoom=2] - Map zoom level
@@ -98,8 +100,8 @@ export class URLStateEngine {
     // Body
     let body = null;
     if (params.has('body')) {
-      const b = params.get('body').toLowerCase();
-      if (['mars', 'moon', 'earth', 'europa'].includes(b)) {
+      const b = params.get('body').trim().toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(JMARS_CONFIG.bodies, b)) {
         body = b;
         hasState = true;
       }

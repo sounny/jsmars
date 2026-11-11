@@ -377,7 +377,7 @@ export class JMARSMap {
 
       wmsLayers.forEach(l => {
         // Skip duplicates (hardcoded layers may already exist)
-        if (this.availableLayers.find(existing => existing.id === l.name)) return;
+        if (this.availableLayers.find(existing => existing.id === l.name || (existing.url === wmsUrl && existing.options?.layers === l.name))) return;
 
         this.availableLayers.push({
           id: l.name,

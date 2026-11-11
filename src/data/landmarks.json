@@ -379,7 +379,7 @@
   },
   {
     "name": "Amundsen Crater",
-    "lat": -84.50,
+    "lat": -84.5,
     "lon": 82.8,
     "type": "Crater",
     "body": "moon",
@@ -540,7 +540,7 @@
     "origin": "Son of Europa and Zeus; prominent cycloidal double-ridge lineament."
   },
   {
-    "name": "Mannann\u00e1n Crater",
+    "name": "Mannannán Crater",
     "lat": 3.1,
     "lon": -119.8,
     "type": "Crater",
@@ -790,5 +790,509 @@
     "body": "europa",
     "diameterKm": 490,
     "origin": "Sanctuary of Apollo; high-latitude tidal cusp fracture."
+  },
+  {
+    "name": "Caloris Planitia",
+    "lat": 30.5,
+    "lon": 160.2,
+    "type": "Planitia",
+    "body": "mercury",
+    "diameterKm": 1550,
+    "origin": "Latin for 'Plains of Heat'; largest impact basin on Mercury."
+  },
+  {
+    "name": "Rachmaninoff",
+    "lat": 27.66,
+    "lon": 57.37,
+    "type": "Crater",
+    "body": "mercury",
+    "diameterKm": 306,
+    "origin": "Sergei Rachmaninoff; peak-ring basin hosting Mercury's lowest elevation."
+  },
+  {
+    "name": "Rembrandt",
+    "lat": -32.89,
+    "lon": 87.87,
+    "type": "Crater",
+    "body": "mercury",
+    "diameterKm": 716,
+    "origin": "Rembrandt van Rijn; young southern impact basin with radial graben."
+  },
+  {
+    "name": "Kuiper",
+    "lat": -11.34,
+    "lon": -31.32,
+    "type": "Crater",
+    "body": "mercury",
+    "diameterKm": 62,
+    "origin": "Gerard Kuiper; bright rayed crater defining the Kuiperian period."
+  },
+  {
+    "name": "Borealis Planitia",
+    "lat": 72.4,
+    "lon": -79.5,
+    "type": "Planitia",
+    "body": "mercury",
+    "diameterKm": 4200,
+    "origin": "Northern volcanic smooth plains emplaced by flood volcanism."
+  },
+  {
+    "name": "Maxwell Montes",
+    "lat": 65.2,
+    "lon": 3.3,
+    "type": "Mons",
+    "body": "venus",
+    "diameterKm": 797,
+    "origin": "James Clerk Maxwell; highest mountain massif on Venus (~11 km)."
+  },
+  {
+    "name": "Maat Mons",
+    "lat": 0.5,
+    "lon": 194.6,
+    "type": "Mons",
+    "body": "venus",
+    "diameterKm": 395,
+    "origin": "Egyptian goddess of truth; tallest shield volcano on Venus with active vent remodeling."
+  },
+  {
+    "name": "Artemis Corona",
+    "lat": -35.0,
+    "lon": 135.0,
+    "type": "Corona",
+    "body": "venus",
+    "diameterKm": 2600,
+    "origin": "Greek goddess of the hunt; largest volcano-tectonic corona in the Solar System."
+  },
+  {
+    "name": "Lakshmi Planum",
+    "lat": 68.6,
+    "lon": 339.3,
+    "type": "Planum",
+    "body": "venus",
+    "diameterKm": 2345,
+    "origin": "Hindu goddess of prosperity; high plateau in western Ishtar Terra."
+  },
+  {
+    "name": "Diana Chasma",
+    "lat": -14.8,
+    "lon": 154.8,
+    "type": "Chasma",
+    "body": "venus",
+    "diameterKm": 938,
+    "origin": "Roman moon goddess; deep rift canyon in Aphrodite Terra."
+  },
+  {
+    "name": "Mead",
+    "lat": 12.5,
+    "lon": 57.2,
+    "type": "Crater",
+    "body": "venus",
+    "diameterKm": 270,
+    "origin": "Margaret Mead; largest impact crater on Venus."
+  },
+  {
+    "name": "Stickney",
+    "lat": 1.0,
+    "lon": -49.0,
+    "type": "Crater",
+    "body": "phobos",
+    "diameterKm": 9.0,
+    "origin": "Chloe Angeline Stickney Hall; 9 km crater dominating Phobos."
+  },
+  {
+    "name": "Hall",
+    "lat": -80.0,
+    "lon": 150.0,
+    "type": "Crater",
+    "body": "phobos",
+    "diameterKm": 5.4,
+    "origin": "Asaph Hall, discoverer of Phobos and Deimos in 1877."
+  },
+  {
+    "name": "Swift",
+    "lat": 12.5,
+    "lon": 1.8,
+    "type": "Crater",
+    "body": "deimos",
+    "diameterKm": 1.0,
+    "origin": "Jonathan Swift, whose 1726 Gulliver's Travels anticipated two Martian moons."
+  },
+  {
+    "name": "Voltaire",
+    "lat": 22.0,
+    "lon": -3.5,
+    "type": "Crater",
+    "body": "deimos",
+    "diameterKm": 1.9,
+    "origin": "French Enlightenment writer whose 1752 Micromegas described two Martian moons."
+  },
+  {
+    "name": "Occator",
+    "lat": 19.82,
+    "lon": 239.33,
+    "type": "Crater",
+    "body": "ceres",
+    "diameterKm": 92,
+    "origin": "Roman agricultural deity; hosts bright sodium-carbonate Cerealia & Vinalia Faculae."
+  },
+  {
+    "name": "Ahuna Mons",
+    "lat": -10.48,
+    "lon": 316.2,
+    "type": "Mons",
+    "body": "ceres",
+    "diameterKm": 20,
+    "origin": "Sumi Naga harvest festival; 4 km cryovolcanic dome imaged by Dawn."
+  },
+  {
+    "name": "Kerwan",
+    "lat": -10.77,
+    "lon": 123.99,
+    "type": "Crater",
+    "body": "ceres",
+    "diameterKm": 284,
+    "origin": "Hopi spirit of sprouting maize; largest confirmed impact basin on Ceres."
+  },
+  {
+    "name": "Haulani",
+    "lat": 5.8,
+    "lon": 10.77,
+    "type": "Crater",
+    "body": "ceres",
+    "diameterKm": 34,
+    "origin": "Hawaiian plant goddess; young bright-rayed crater."
+  },
+  {
+    "name": "Rheasilvia",
+    "lat": -75.0,
+    "lon": 301.0,
+    "type": "Crater",
+    "body": "vesta",
+    "diameterKm": 500,
+    "origin": "Vestal Virgin mother of Romulus and Remus; giant south-polar basin with 22 km central peak."
+  },
+  {
+    "name": "Marcia",
+    "lat": 9.4,
+    "lon": 190.1,
+    "type": "Crater",
+    "body": "vesta",
+    "diameterKm": 68,
+    "origin": "Roman Vestal Virgin; young volatile-pitted crater."
+  },
+  {
+    "name": "Divalia Fossae",
+    "lat": -9.9,
+    "lon": 196.0,
+    "type": "Fossa",
+    "body": "vesta",
+    "diameterKm": 520,
+    "origin": "Roman festival of Angerona; equatorial graben trough encircling Vesta."
+  },
+  {
+    "name": "Loki Patera",
+    "lat": 13.0,
+    "lon": 51.2,
+    "type": "Other",
+    "body": "io",
+    "diameterKm": 202,
+    "origin": "Norse trickster god; largest active volcanic depression and overturning lava lake on Io."
+  },
+  {
+    "name": "Pele",
+    "lat": -18.7,
+    "lon": 104.7,
+    "type": "Other",
+    "body": "io",
+    "diameterKm": 30,
+    "origin": "Hawaiian volcano goddess; persistent lava lake with 1,200 km red sulfur plume ring."
+  },
+  {
+    "name": "Tvashtar Paterae",
+    "lat": 62.8,
+    "lon": -123.5,
+    "type": "Other",
+    "body": "io",
+    "diameterKm": 306,
+    "origin": "Vedic artisan god; chain of active silicate fire-fountain calderas."
+  },
+  {
+    "name": "Boosaule Montes",
+    "lat": -3.7,
+    "lon": 90.9,
+    "type": "Mons",
+    "body": "io",
+    "diameterKm": 547,
+    "origin": "Egyptian cavern of Io; tallest non-volcanic tectonic peak on Io (~17.5 km)."
+  },
+  {
+    "name": "Galileo Regio",
+    "lat": 47.0,
+    "lon": -129.6,
+    "type": "Other",
+    "body": "ganymede",
+    "diameterKm": 4439,
+    "origin": "Galileo Galilei; ancient dark heavily cratered icy crust with concentric furrows."
+  },
+  {
+    "name": "Gilgamesh",
+    "lat": -62.8,
+    "lon": -124.8,
+    "type": "Crater",
+    "body": "ganymede",
+    "diameterKm": 585,
+    "origin": "Sumerian hero king; prominent icy multi-ring impact basin."
+  },
+  {
+    "name": "Uruk Sulcus",
+    "lat": 0.8,
+    "lon": -160.3,
+    "type": "Linea",
+    "body": "ganymede",
+    "diameterKm": 2451,
+    "origin": "Ancient Mesopotamian city; bright tectonically grooved terrain."
+  },
+  {
+    "name": "Valhalla",
+    "lat": 14.7,
+    "lon": -56.0,
+    "type": "Crater",
+    "body": "callisto",
+    "diameterKm": 3800,
+    "origin": "Odin's hall in Norse mythology; largest multi-ring impact basin in the Solar System."
+  },
+  {
+    "name": "Asgard",
+    "lat": 32.2,
+    "lon": -139.9,
+    "type": "Crater",
+    "body": "callisto",
+    "diameterKm": 1600,
+    "origin": "Realm of the Norse gods; second-largest concentric ring structure on Callisto."
+  },
+  {
+    "name": "Herschel",
+    "lat": 1.39,
+    "lon": -111.76,
+    "type": "Crater",
+    "body": "mimas",
+    "diameterKm": 139,
+    "origin": "William Herschel, discoverer of Mimas in 1789; spans one-third of Mimas' diameter."
+  },
+  {
+    "name": "Baghdad Sulcus",
+    "lat": -86.9,
+    "lon": 129.5,
+    "type": "Linea",
+    "body": "enceladus",
+    "diameterKm": 176,
+    "origin": "One Thousand and One Nights; south-polar 'Tiger Stripe' venting subsurface ocean plumes."
+  },
+  {
+    "name": "Damascus Sulcus",
+    "lat": -80.6,
+    "lon": 74.1,
+    "type": "Linea",
+    "body": "enceladus",
+    "diameterKm": 125,
+    "origin": "One Thousand and One Nights; active cryovolcanic 'Tiger Stripe' fracture."
+  },
+  {
+    "name": "Odysseus",
+    "lat": 32.8,
+    "lon": -128.9,
+    "type": "Crater",
+    "body": "tethys",
+    "diameterKm": 445,
+    "origin": "Hero of Homer's Odyssey; giant viscously relaxed impact basin."
+  },
+  {
+    "name": "Ithaca Chasma",
+    "lat": -14.0,
+    "lon": 4.0,
+    "type": "Chasma",
+    "body": "tethys",
+    "diameterKm": 1219,
+    "origin": "Island home of Odysseus; 100 km-wide canyon girdling three-quarters of Tethys."
+  },
+  {
+    "name": "Eurotas Chasmata",
+    "lat": 4.9,
+    "lon": 58.6,
+    "type": "Chasma",
+    "body": "dione",
+    "diameterKm": 1000,
+    "origin": "River of Sparta in the Aeneid; bright ice fault scarps ('wispy terrain')."
+  },
+  {
+    "name": "Inktomi",
+    "lat": -14.1,
+    "lon": -112.1,
+    "type": "Crater",
+    "body": "rhea",
+    "diameterKm": 47,
+    "origin": "Lakota spider spirit; bright young water-ice ray crater."
+  },
+  {
+    "name": "Kraken Mare",
+    "lat": 68.0,
+    "lon": 50.0,
+    "type": "Other",
+    "body": "titan",
+    "diameterKm": 1170,
+    "origin": "Norse sea monster; largest liquid methane/ethane sea on Titan."
+  },
+  {
+    "name": "Ligeia Mare",
+    "lat": 79.0,
+    "lon": 112.0,
+    "type": "Other",
+    "body": "titan",
+    "diameterKm": 500,
+    "origin": "Greek Siren; deep methane sea sounded to ~160 m depth by Cassini RADAR."
+  },
+  {
+    "name": "Xanadu",
+    "lat": -15.0,
+    "lon": -100.0,
+    "type": "Other",
+    "body": "titan",
+    "diameterKm": 3400,
+    "origin": "Coleridge's Kubla Khan; radar-bright water-ice highland continent."
+  },
+  {
+    "name": "Selk",
+    "lat": 7.0,
+    "lon": 161.0,
+    "type": "Crater",
+    "body": "titan",
+    "diameterKm": 90,
+    "origin": "Egyptian goddess of knowledge; target impact structure for NASA's Dragonfly rotorcraft."
+  },
+  {
+    "name": "Doom Mons",
+    "lat": -14.65,
+    "lon": -40.42,
+    "type": "Mons",
+    "body": "titan",
+    "diameterKm": 63,
+    "origin": "Tolkien's Mount Doom; putative cryovolcanic edifice next to Sotra Patera."
+  },
+  {
+    "name": "Toledo Montes",
+    "lat": 0.0,
+    "lon": -136.0,
+    "type": "Mons",
+    "body": "iapetus",
+    "diameterKm": 1100,
+    "origin": "Song of Roland; 20 km-tall equatorial mountain ridge spanning Cassini Regio."
+  },
+  {
+    "name": "Turgis",
+    "lat": 16.9,
+    "lon": -28.4,
+    "type": "Crater",
+    "body": "iapetus",
+    "diameterKm": 580,
+    "origin": "Saracen count in Song of Roland; giant basin with 15 km scarp landslide."
+  },
+  {
+    "name": "Jason",
+    "lat": 16.2,
+    "lon": 42.3,
+    "type": "Crater",
+    "body": "phoebe",
+    "diameterKm": 101,
+    "origin": "Leader of the Argonauts; largest crater on captured Kuiper Belt moon Phoebe."
+  },
+  {
+    "name": "Monad Regio",
+    "lat": 20.0,
+    "lon": 37.0,
+    "type": "Other",
+    "body": "triton",
+    "diameterKm": 2000,
+    "origin": "Chinese symbol of duality; smooth cryovolcanic resurfaced plains."
+  },
+  {
+    "name": "Bubembe Regio",
+    "lat": 18.0,
+    "lon": 335.0,
+    "type": "Other",
+    "body": "triton",
+    "diameterKm": 2300,
+    "origin": "Baganda island sacred to Mukasa; classic 'cantaloupe terrain' diapiric crust."
+  },
+  {
+    "name": "Mazomba",
+    "lat": -18.9,
+    "lon": 62.7,
+    "type": "Crater",
+    "body": "triton",
+    "diameterKm": 27,
+    "origin": "Chaga mythological giant fish; largest confirmed impact crater on Triton."
+  },
+  {
+    "name": "Sputnik Planitia",
+    "lat": 24.0,
+    "lon": 176.0,
+    "type": "Planitia",
+    "body": "pluto",
+    "diameterKm": 1492,
+    "origin": "Sputnik 1; convecting solid nitrogen-ice glacier basin forming Tombaugh Regio's western lobe."
+  },
+  {
+    "name": "Wright Mons",
+    "lat": -21.36,
+    "lon": 173.21,
+    "type": "Mons",
+    "body": "pluto",
+    "diameterKm": 165,
+    "origin": "Orville and Wilbur Wright; 4 km-high putative water-ice cryovolcano."
+  },
+  {
+    "name": "Tenzing Montes",
+    "lat": -15.6,
+    "lon": 177.4,
+    "type": "Mons",
+    "body": "pluto",
+    "diameterKm": 283,
+    "origin": "Tenzing Norgay; 6.2 km water-ice mountain range bordering Sputnik Planitia."
+  },
+  {
+    "name": "Cthulhu Macula",
+    "lat": -7.0,
+    "lon": 90.0,
+    "type": "Macula",
+    "body": "pluto",
+    "diameterKm": 2990,
+    "origin": "H. P. Lovecraft deity; vast dark reddish equatorial tholin province."
+  },
+  {
+    "name": "Mordor Macula",
+    "lat": 82.5,
+    "lon": 0.0,
+    "type": "Macula",
+    "body": "charon",
+    "diameterKm": 475,
+    "origin": "Tolkien's dark land; reddish north-polar tholin cap cold-trapped from Pluto's atmosphere."
+  },
+  {
+    "name": "Serenity Chasma",
+    "lat": 5.0,
+    "lon": 355.0,
+    "type": "Chasma",
+    "body": "charon",
+    "diameterKm": 200,
+    "origin": "Firefly vessel; part of Charon's global extensional tectonic canyon belt."
+  },
+  {
+    "name": "Vulcan Planitia",
+    "lat": -10.0,
+    "lon": 10.0,
+    "type": "Planitia",
+    "body": "charon",
+    "diameterKm": 1000,
+    "origin": "Star Trek planet; smooth southern cryovolcanic plains."
   }
 ]

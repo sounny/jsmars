@@ -5,15 +5,16 @@ import { switchActiveBody } from '../util/body.js';
 
 /**
  * @module BodySelector
- * @description Dropdown selector for switching planetary bodies (Mars, Moon, Earth).
- * Reads available bodies from JMARS_CONFIG and switches via the canonical
- * JMARSMap body-switch path. Also listens for external body changes to keep
- * the dropdown in sync.
+ * @description Dropdown selector for switching planetary bodies across all
+ * JMARS planetary systems (Inner Planets & Moon, Mars Moons, Asteroids & Dwarf
+ * Planets, Jupiter, Saturn, Neptune, and Pluto systems).
+ * Organizes bodies into semantic `<optgroup>` sections when `body.group` is set.
  */
 export class BodySelector {
     /**
      * Create a new BodySelector.
      * @param {string} containerId - DOM id of the container element
+     * @param {import('../jmars-map.js').JMARSMap} jmarsMap
      */
     constructor(containerId, jmarsMap) {
         this.container = document.getElementById(containerId);
@@ -24,44 +25,51 @@ export class BodySelector {
     }
 
     /**
-     * Build the select dropdown, populate options from config, and bind events.
+     * Build the select dropdown, populate grouped options from config, and bind events.
      * @private
      */
     init() {
         console.debug('BodySelector initializing...');
 
-        // Create dropdown
         const select = document.createElement('select');
         select.className = 'body-selector-dropdown';
         select.setAttribute('aria-label', 'Select planetary body');
 
-        // Populate options
         const bodies = JMARS_CONFIG.bodies;
         if (bodies) {
-            Object.keys(bodies).forEach(key => {
+            const groups = new Map();
+            Object.keys(bodies).forEach((key) => {
                 const body = bodies[key];
+                if (!body) return;
                 const option = document.createElement('option');
                 option.value = key;
-                option.text = body.name;
-                select.appendChild(option);
+                option.textContent = body.name || key;
+
+                if (body.group) {
+                    let optgroup = groups.get(body.group);
+                    if (!optgroup) {
+                        optgroup = document.createElement('optgroup');
+                        optgroup.label = body.group;
+                        groups.set(body.group, optgroup);
+                        select.appendChild(optgroup);
+                    }
+                    optgroup.appendChild(option);
+                } else {
+                    select.appendChild(option);
+                }
             });
         } else {
             console.error('JMARS_CONFIG.bodies is undefined');
         }
 
-        // Set initial value
         const currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
         select.value = currentBody;
-        console.debug('BodySelector initial value:', currentBody);
 
-        // Event listener
         select.addEventListener('change', (e) => {
             const newBody = e.target.value;
-            console.debug('BodySelector changed to:', newBody);
             switchActiveBody(this.jmarsMap, newBody);
         });
 
-        // Listen for external changes (e.g. loaded session)
         document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
             if (e.detail && e.detail.body) {
                 select.value = e.detail.body.toLowerCase();
@@ -69,6 +77,5 @@ export class BodySelector {
         });
 
         this.container.appendChild(select);
-        console.debug('BodySelector appended to container');
     }
 }

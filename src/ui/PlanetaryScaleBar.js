@@ -133,7 +133,7 @@ export class PlanetaryScaleBar {
     const steps = [
       0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500,
       1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000,
-      1000000, 2000000, 5000000
+      1000000, 2000000, 5000000, 10000000, 20000000, 50000000
     ];
 
     let chosen = steps[0];
@@ -166,7 +166,7 @@ export class PlanetaryScaleBar {
 
     const pixelWidth = Math.max(Math.round(friendly.meters / metersPerPx), 20);
 
-    const bodyDisplay = this.currentBody.charAt(0).toUpperCase() + this.currentBody.slice(1);
+    const bodyDisplay = BODIES[this.currentBody]?.name || (this.currentBody.charAt(0).toUpperCase() + this.currentBody.slice(1));
     this.labelEl.textContent = `${friendly.text} (${bodyDisplay})`;
     this.barEl.style.width = `${pixelWidth}px`;
   }

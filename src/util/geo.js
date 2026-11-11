@@ -3,21 +3,21 @@
  * Includes planetary-specific calculations for Mars, Moon, Earth, and Europa.
  */
 
-// Planetary radii (km)
+// Planetary radii (km) — IAU WGCCRE (Archinal et al. 2018)
 export const BODIES = {
-  mars: {
-    name: 'Mars',
-    equatorialRadius: 3396.2,
-    polarRadius: 3376.2,
-    meanRadius: 3389.5,
-    flattening: 0.00589
+  mercury: {
+    name: 'Mercury',
+    equatorialRadius: 2439.7,
+    polarRadius: 2439.7,
+    meanRadius: 2439.7,
+    flattening: 0.0
   },
-  moon: {
-    name: 'Moon',
-    equatorialRadius: 1738.1,
-    polarRadius: 1736.0,
-    meanRadius: 1737.4,
-    flattening: 0.0012
+  venus: {
+    name: 'Venus',
+    equatorialRadius: 6051.8,
+    polarRadius: 6051.8,
+    meanRadius: 6051.8,
+    flattening: 0.0
   },
   earth: {
     name: 'Earth',
@@ -27,12 +27,166 @@ export const BODIES = {
     // WGS84 exact: 1/298.257223563 = 0.003352811; using rounded approximation
     flattening: 0.003353
   },
+  moon: {
+    name: 'Moon',
+    equatorialRadius: 1738.1,
+    polarRadius: 1736.0,
+    meanRadius: 1737.4,
+    flattening: 0.0012
+  },
+  mars: {
+    name: 'Mars',
+    equatorialRadius: 3396.2,
+    polarRadius: 3376.2,
+    meanRadius: 3389.5,
+    flattening: 0.00589
+  },
+  phobos: {
+    name: 'Phobos',
+    equatorialRadius: 13.0,
+    polarRadius: 9.1,
+    meanRadius: 11.08,
+    flattening: 0.3
+  },
+  deimos: {
+    name: 'Deimos',
+    equatorialRadius: 7.8,
+    polarRadius: 5.1,
+    meanRadius: 6.24,
+    flattening: 0.34615
+  },
+  ceres: {
+    name: 'Ceres',
+    equatorialRadius: 482.6,
+    polarRadius: 445.6,
+    meanRadius: 469.7,
+    flattening: 0.07667
+  },
+  vesta: {
+    name: 'Vesta',
+    equatorialRadius: 286.3,
+    polarRadius: 223.2,
+    meanRadius: 262.7,
+    flattening: 0.2204
+  },
+  jupiter: {
+    name: 'Jupiter',
+    equatorialRadius: 71492.0,
+    polarRadius: 66854.0,
+    meanRadius: 69911.0,
+    flattening: 0.06487
+  },
+  io: {
+    name: 'Io',
+    equatorialRadius: 1829.4,
+    polarRadius: 1815.7,
+    meanRadius: 1821.49,
+    flattening: 0.00749
+  },
   europa: {
     name: 'Europa',
     equatorialRadius: 1564.13,
     polarRadius: 1557.4,
     meanRadius: 1560.8,
     flattening: 0.0043
+  },
+  ganymede: {
+    name: 'Ganymede',
+    equatorialRadius: 2631.2,
+    polarRadius: 2631.2,
+    meanRadius: 2631.2,
+    flattening: 0.0
+  },
+  callisto: {
+    name: 'Callisto',
+    equatorialRadius: 2410.3,
+    polarRadius: 2410.3,
+    meanRadius: 2410.3,
+    flattening: 0.0
+  },
+  saturn: {
+    name: 'Saturn',
+    equatorialRadius: 60268.0,
+    polarRadius: 54364.0,
+    meanRadius: 58232.0,
+    flattening: 0.09796
+  },
+  mimas: {
+    name: 'Mimas',
+    equatorialRadius: 207.8,
+    polarRadius: 190.6,
+    meanRadius: 198.2,
+    flattening: 0.08277
+  },
+  enceladus: {
+    name: 'Enceladus',
+    equatorialRadius: 256.6,
+    polarRadius: 248.3,
+    meanRadius: 252.1,
+    flattening: 0.03235
+  },
+  tethys: {
+    name: 'Tethys',
+    equatorialRadius: 538.4,
+    polarRadius: 526.3,
+    meanRadius: 531.0,
+    flattening: 0.02247
+  },
+  dione: {
+    name: 'Dione',
+    equatorialRadius: 563.4,
+    polarRadius: 559.6,
+    meanRadius: 561.4,
+    flattening: 0.00674
+  },
+  rhea: {
+    name: 'Rhea',
+    equatorialRadius: 765.0,
+    polarRadius: 762.4,
+    meanRadius: 763.5,
+    flattening: 0.0034
+  },
+  titan: {
+    name: 'Titan',
+    equatorialRadius: 2574.73,
+    polarRadius: 2574.73,
+    meanRadius: 2574.73,
+    flattening: 0.0
+  },
+  iapetus: {
+    name: 'Iapetus',
+    equatorialRadius: 746.0,
+    polarRadius: 712.0,
+    meanRadius: 734.5,
+    flattening: 0.04558
+  },
+  phoebe: {
+    name: 'Phoebe',
+    equatorialRadius: 109.4,
+    polarRadius: 101.8,
+    meanRadius: 106.5,
+    flattening: 0.06947
+  },
+  triton: {
+    name: 'Triton',
+    equatorialRadius: 1353.4,
+    polarRadius: 1353.4,
+    meanRadius: 1353.4,
+    flattening: 0.0
+  },
+  pluto: {
+    name: 'Pluto',
+    equatorialRadius: 1188.3,
+    polarRadius: 1188.3,
+    meanRadius: 1188.3,
+    flattening: 0.0
+  },
+  charon: {
+    name: 'Charon',
+    equatorialRadius: 606.0,
+    polarRadius: 606.0,
+    meanRadius: 606.0,
+    flattening: 0.0
   }
 };
 
@@ -87,7 +241,7 @@ export function to360(lon) {
  * @returns {number} - Planetographic latitude in degrees
  */
 export function toGraphic(lat, body = 'mars') {
-  const b = BODIES[body];
+  const b = BODIES[String(body || 'mars').toLowerCase()];
   if (!b) return lat;
   const ratio = (b.equatorialRadius / b.polarRadius) ** 2;
   const radLat = lat * Math.PI / 180;
@@ -101,7 +255,7 @@ export function toGraphic(lat, body = 'mars') {
  * @returns {number} - Planetocentric latitude in degrees
  */
 export function toCentric(lat, body = 'mars') {
-  const b = BODIES[body];
+  const b = BODIES[String(body || 'mars').toLowerCase()];
   if (!b) return lat;
   const ratio = (b.polarRadius / b.equatorialRadius) ** 2;
   const radLat = lat * Math.PI / 180;

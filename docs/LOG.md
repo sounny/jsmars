@@ -873,3 +873,15 @@ TEST FAILURE: Browser console errors encountered during UI interaction:
 - **Verification**:
   - `python scripts/run_tests.py`: **1,210 passed, 0 failed** (`sw.js` `jsmars-shell-v1.6.0`).
   - `python verification/test_localhost_full.py`: Full desktop + mobile Playwright E2E verification passing with 0 console/page errors.
+
+## 2026-11-11 — v0.13.0 Astronomical 3D Solar Ephemeris & 26-Body JMARS Solar System Catalog
+- **Diagnosed & Eliminated 3D Globe Lighting Trap (`src/util/solarEphemeris.js`, `CesiumGlobe.js`, `ViewModeToggle.js`, `MarsTime.js`, `TimeSlider.js`)**:
+  - Replaced hardcoded `z = -0.15` (`+8.63°N`) solar declination vector and `0°E` prime-meridian noon offset with exact JPL J2000 Keplerian heliocentric orbits + IAU WGCCRE (Archinal et al., 2018) pole orientation ($\alpha_0, \delta_0$), prime-meridian rotation ($W_0 + \dot{W}d$), and lunar E1 libration.
+  - Added **Terminator** globe control with `Live UTC Ephemeris` (`[Ephemeris]`, synced to `TimeSlider` $L_s$ and Earth `SkyAtmosphere`) vs `Local Hour [Model]` (anchored to camera longitude), plus explicit smooth-ellipsoid vs baked spacecraft relief provenance text.
+  - Fixed `MarsTime.computeState().subSolarLon` per Allison & McEwen (2000) Eq. (20) & (24).
+- **Expanded Multi-Body Support from 4 to 26 Verified Worlds (`jmars-config.js`, `geo.js`, `globeViewModel.js`, `BodySelector.js`, `QuickActions.js`, `PlanetaryScaleBar.js`, `URLStateEngine.js`, `landmarks.json`, `landing-sites.json`)**:
+  - Added Mercury, Venus, Phobos, Deimos, Ceres, Vesta, Jupiter, Io, Ganymede, Callisto, Saturn, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe, Triton, Pluto, and Charon across 7 `<optgroup>` planetary systems; audited and excluded simulated Uranus/Neptune mosaics.
+  - Wired `URLStateEngine` and `QuickActions` (`switchActiveBody`) for all 26 bodies; bumped `sw.js` to `jsmars-shell-v1.7.0`.
+- **Verification**:
+  - `python scripts/run_tests.py`: **1,218 passed, 0 failed**.
+  - `python verification/test_localhost_full.py`: Desktop + mobile E2E suite passing with 0 console/page errors.

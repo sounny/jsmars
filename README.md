@@ -27,24 +27,25 @@ For decades, planetary GIS required downloading 2GB desktop installers, configur
 - 📱 **Planetary GIS in Your Pocket:** Fully responsive, touch-first mobile UX with a collapsible bottom sheet for smartphones and tablets.
 - 📲 **1-Click PWA Install:** Install JSMARS as a standalone native app on macOS, Windows, Linux, iOS, and Android with automatic background updates.
 - 🛠️ **Zero-Build Architecture:** No Webpack, no Vite, 0 npm dependencies in production. Native browser ES Modules (`import`/`export`).
-- 🪐 **True Multi-Body Support:** Seamlessly switch between Mars, the Moon, Earth, and Europa with live WMS/XYZ feeds from USGS Astrogeology, NASA Trek, and NASA GIBS. Titan and Venus are not yet available.
+- 🪐 **26 Solar System Worlds Across 7 Planetary Systems:** Seamlessly switch across **Mars, Moon, Earth, Mercury, Venus, Phobos, Deimos, Ceres, Vesta, Jupiter, Io, Europa, Ganymede, Callisto, Saturn, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe, Triton, Pluto, and Charon** with live HTTPS/CORS spacecraft WMS/XYZ feeds from USGS Astrogeology, NASA Trek, NASA GIBS, and OpenPlanetary (strictly excluding simulated gas-giant textures).
 
 ---
 
 ## ✨ Key Capabilities
 
-### 🪐 1. Multi-Body Planetary Maps
-* **Mars:** OpenPlanetary Viking basemap, USGS Viking MDIM 2.1 WMS, THEMIS Daytime IR, and global MOLA shaded relief.
-* **The Moon:** High-resolution LROC basemaps, LOLA digital elevation models, **interactive Apollo (11–17), Luna, and Surveyor landing sites** with full mission metadata, and the **Lunar Base Site Planner** (LRO LOLA 20 m/px & 100 m/px south-pole DEMs, Mazarico et al. 2011 illumination/PSR overlays, flat-area Euclidean distance transform, corridor profiler, DXF/SVG CAD overlay, and OBJ/GeoTIFF/DXF export — see [docs/lunar-site-planner.md](docs/lunar-site-planner.md)).
-* **Earth:** NASA GIBS Blue Marble Next Generation and Blue Marble Shaded Relief.
-* **Europa:** USGS Galileo/Voyager global mosaic plus NASA Trek color and regional mosaics, icy-world IAU nomenclature, and radius-calibrated scale.
-* **IAU Nomenclature:** Searchable database of official planetary landmarks (craters, *mons*, *valles*, *planitia*, *maria*, *lineae*).
+### 🪐 1. Multi-Body Planetary Maps (26 Verified Worlds)
+* **Inner Planets & Moon:** **Mars** (OpenPlanetary Viking, USGS MDIM 2.1, THEMIS Day IR, MOLA relief), **Moon** (LROC WAC, LOLA relief, Apollo/Luna/Chang'e/Artemis III sites, and full **Lunar Base Site Planner** — see [docs/lunar-site-planner.md](docs/lunar-site-planner.md)), **Earth** (NASA GIBS Blue Marble), **Mercury** (MESSENGER MDIS global & color mosaics), and **Venus** (Magellan SAR FMAP, C3-MDIR colorized topography & Venera/Vega landing sites).
+* **Mars Moons & Main-Belt Asteroids:** **Phobos** (Viking global mosaic), **Deimos** (Viking global mosaic), **Ceres** (Dawn Framing Camera global mosaic), and **Vesta** (Dawn Framing Camera HAMO mosaic).
+* **Jupiter System:** **Jupiter** (Cassini cylindrical cloud mosaic), **Io** (Galileo/Voyager merged color), **Europa** (USGS Galileo/Voyager + NASA Trek global), **Ganymede** (Galileo/Voyager global), and **Callisto** (Galileo/Voyager global).
+* **Saturn System:** **Saturn** (Cassini global), **Mimas**, **Enceladus**, **Tethys**, **Dione**, **Rhea**, **Titan** (NASA Trek Cassini ISS/VIMS color-ratio & SAR mosaics + ESA **Huygens Probe** landing site), **Iapetus**, and **Phoebe** (Cassini ISS mosaics).
+* **Outer Solar System:** **Triton** (Voyager 2 global mosaic), **Pluto** (New Horizons LORRI/MVIC global mosaic), and **Charon** (New Horizons global mosaic).
+* **IAU Nomenclature:** Searchable 144-landmark gazetteer across all planetary systems (*craters*, *montes*, *valles*, *planitiae*, *maria*, *lineae*, *maculae*, *sulci*).
 
-### 🌍 2. 3D Globe
-* **2D | 3D toggle:** 2D stays the Leaflet map. 3D is a full-size [CesiumJS](https://cesium.com/platform/cesiumjs/) globe (Apache-2.0, © Cesium GS, Inc.) that replaces the map in place. Cesium is loaded from a pinned CDN release only after the first switch to 3D.
-* **Body ellipsoids:** Mars and the Moon use Cesium's `Ellipsoid.MARS` and `Ellipsoid.MOON`. Earth uses WGS84. Europa uses the same IAU equatorial and polar radii as the rest of JSMARS. No Cesium ion token, and no Earth basemap on other bodies.
-* **Published imagery:** The active WMS/XYZ layer (USGS Astrogeology, OpenPlanetary, NASA GIBS, NASA Trek) is draped on that ellipsoid.
-* **Elevation terrain is not loaded.** The globe is the reference ellipsoid. MOLA/LOLA terrain is planned. 2D elevation profiles still sample the USGS MOLA 128 ppd DEM on Mars.
+### 🌍 2. 3D Globe & Astronomical Solar Terminator
+* **2D | 3D toggle:** 2D stays the Leaflet map. 3D is a full-size [CesiumJS](https://cesium.com/platform/cesiumjs/) globe (Apache-2.0, © Cesium GS, Inc.) loaded from a pinned CDN release only on the first switch to 3D.
+* **True IAU Oblate Spheroid Ellipsoids & Radius-Scaled Lighting:** All 26 worlds use IAU WGCCRE (Archinal et al., 2018) radii — including mean-equatorial oblate spheroids for small irregular moons/asteroids (Phobos, Deimos, Vesta, Mimas, Enceladus, Io) and oblate spheroids for Jupiter and Saturn, with camera zoom limits scaled to body radius.
+* **Astronomical Solar Terminator (`solarEphemeris.js`):** Optional **Terminator** control computes real-time subsolar latitude/longitude and body-fixed sunlight vectors from JPL J2000 Keplerian heliocentric orbits + IAU WGCCRE pole right ascension, declination, prime-meridian rotation ($W_0 + \dot{W}d$), and lunar libration (`[Ephemeris]` Live UTC, synchronized with the Mars $L_s$ `TimeSlider` and Earth's `SkyAtmosphere`), alongside an explicitly badged **`Local Hour [Model]`** mode anchored to the viewed longitude.
+* **Published imagery & terrain provenance:** The active WMS/XYZ spacecraft mosaic is draped on the reference ellipsoid. **3D elevation terrain (DEM) is not loaded** — when the terminator is active, the globe chrome explicitly notes that shading applies to macro day/night ($\cos	heta_z$) on the smooth ellipsoid while crater/mountain relief in tiles reflects baked spacecraft illumination.
 * **Elevation transects (2D):** Linear and radial cross-section profiles across crater rims, volcanoes, and canyon floors.
 
 ### 🔬 3. Scientific Research & Modeling Suite

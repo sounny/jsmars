@@ -1,3 +1,4 @@
+import { JMARS_CONFIG } from '../jmars-config.js';
 import { jmarsState } from '../jmars-state.js';
 import { normalizeBodyKey, switchActiveBody } from '../util/body.js';
 import { to180 } from '../util/geo.js';
@@ -262,11 +263,12 @@ export class QuickActions {
         const cmds = [];
 
         if (o.onSwitchBody || o.jmarsMap) {
-            const switchTo = (bodyKey, label) => ({
+            const switchTo = (bodyKey, label, group = '') => ({
                 id: `body-${bodyKey}`,
                 label: `Switch Body: ${label}`,
                 category: 'Body',
-                keywords: `planet body switch ${bodyKey} ${label.toLowerCase()}`,
+                meta: group || undefined,
+                keywords: `planet moon asteroid body switch ${bodyKey} ${label.toLowerCase()} ${group.toLowerCase()}`,
                 run: async () => {
                     if (o.onSwitchBody) {
                         await o.onSwitchBody(bodyKey);
@@ -275,12 +277,12 @@ export class QuickActions {
                     }
                 }
             });
-            cmds.push(
-                switchTo('mars', 'Mars'),
-                switchTo('moon', 'Moon (Luna)'),
-                switchTo('earth', 'Earth'),
-                switchTo('europa', 'Europa')
-            );
+            const cfgBodies = JMARS_CONFIG?.bodies || {};
+            Object.entries(cfgBodies).forEach(([key, bodyCfg]) => {
+                if (!bodyCfg) return;
+                const displayLabel = key === 'moon' ? 'Moon (Luna)' : (bodyCfg.name || key);
+                cmds.push(switchTo(key, displayLabel, bodyCfg.group || ''));
+            });
         }
 
         if (o.onSetViewMode) {
@@ -430,7 +432,9 @@ export class QuickActions {
         // 2. Commands
         const commands = this.getCommands();
         if (!qLower) {
-            items.push(...commands.slice(0, 12));
+            const bodyCmds = commands.filter((c) => c.category === 'Body').slice(0, 5);
+            const otherCmds = commands.filter((c) => c.category !== 'Body').slice(0, 9);
+            items.push(...bodyCmds, ...otherCmds);
         } else {
             const qTokens = qLower.split(/\s+/).filter(Boolean);
             commands.forEach((cmd) => {

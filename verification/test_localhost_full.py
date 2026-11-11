@@ -1,6 +1,9 @@
+import http.server
+import socket
 import sys
 import os
 import shutil
+import threading
 from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -38,6 +41,21 @@ def run_tests():
     def on_page_error(err):
         page_errors.append(str(err))
         print(f"[PAGE ERROR] {err}")
+
+    local_httpd = None
+    try:
+        with socket.create_connection(("127.0.0.1", 8080), timeout=0.5):
+            print("Detected running server on http://localhost:8080/")
+    except OSError:
+        class QuietHandler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, fmt, *args):
+                pass
+        class ThreadedServer(http.server.ThreadingHTTPServer):
+            allow_reuse_address = True
+            daemon_threads = True
+        local_httpd = ThreadedServer(("127.0.0.1", 8080), QuietHandler)
+        threading.Thread(target=local_httpd.serve_forever, daemon=True).start()
+        print("Started embedded ThreadingHTTPServer on http://localhost:8080/")
 
     print("Launching Chromium...")
     with sync_playwright() as p:
@@ -250,6 +268,110 @@ def run_tests():
         page.screenshot(path=snap8)
         print(f"Captured: {snap8}")
 
+        # 9. v0.13.0: 26-Body JMARS System Catalog & Astronomical 3D Solar Terminator
+        print("\nStep 9: Verifying 26-Body JMARS Catalog, Pluto/Titan/Phobos & 3D Ephemeris Terminator...")
+        optgroups = page.locator("#body-selector-container select.body-selector-dropdown optgroup").count()
+        options_vals = page.locator("#body-selector-container select.body-selector-dropdown option").evaluate_all("els => els.map(e => e.value)")
+        assert optgroups == 7, f"Expected 7 planetary system <optgroup> sections, got {optgroups}"
+        assert len(options_vals) == 26, f"Expected 26 verified JMARS bodies, got {len(options_vals)}: {options_vals}"
+        assert "uranus" not in options_vals and "neptune" not in options_vals, "Simulated gas-giant mosaics must not be present"
+
+        # 2D Pluto New Horizons basemap (centered on Tombaugh Regio / Sputnik Planitia)
+        page.select_option("#body-selector-container select.body-selector-dropdown", "pluto")
+        page.wait_for_function(
+            "document.querySelectorAll('#map .leaflet-tile-loaded').length >= 8",
+            timeout=20000
+        )
+        page.wait_for_timeout(600)
+        scale_txt = page.locator("#status-scale-label").inner_text()
+        elev_txt = page.locator("#status-elev-val").inner_text()
+        assert "(Pluto)" in scale_txt, f"Expected '(Pluto)' in status scale bar, got: {scale_txt}"
+        assert elev_txt == "N/A", f"Expected 'N/A' elevation on Pluto, got: {elev_txt}"
+        snap10 = os.path.join(SCREENSHOT_DIR, "10_pluto_2d_basemap.png")
+        page.screenshot(path=snap10)
+        print(f"Captured: {snap10}")
+
+        # Switch to Titan via Ctrl+K QuickActions (verifying canonical switchActiveBody sync)
+        page.keyboard.press("Control+k")
+        page.wait_for_selector("#quick-command-backdrop:not([hidden])", state="visible", timeout=5000)
+        page.fill("#quick-cmd-input", "Switch Body: Titan")
+        page.wait_for_timeout(250)
+        page.keyboard.press("Enter")
+        page.wait_for_function(
+            "document.querySelectorAll('#map .leaflet-tile-loaded').length >= 6",
+            timeout=20000
+        )
+        page.wait_for_timeout(600)
+        selected_body = page.locator("#body-selector-container select.body-selector-dropdown").input_value()
+        assert selected_body == "titan", f"Expected Ctrl+K body switch to sync BodySelector to 'titan', got '{selected_body}'"
+        titan_labels = page.locator(".landing-marker-label").all_inner_texts()
+        assert any("Huygens" in lbl for lbl in titan_labels), f"Expected 'Huygens Probe' landing site on Titan, got: {titan_labels}"
+        snap11 = os.path.join(SCREENSHOT_DIR, "11_titan_2d_huygens.png")
+        page.screenshot(path=snap11)
+        print(f"Captured: {snap11}")
+
+        # 3D Globe Astronomical Terminator on Mars (Live UTC Ephemeris vs Local Hour [Model])
+        page.select_option("#body-selector-container select.body-selector-dropdown", "mars")
+        page.wait_for_timeout(1500)
+        page.click("#view-mode-3d")
+        page.wait_for_selector("#cesium-container .cesium-viewer", state="visible", timeout=15000)
+        page.wait_for_timeout(2500)
+
+        term_btn = page.locator("button.globe-chrome-btn", has_text="Terminator")
+        assert term_btn.is_visible(), "Expected 'Terminator' button in 3D globe chrome"
+        term_btn.click()
+        page.wait_for_timeout(800)
+
+        solar_panel = page.locator(".globe-solar-panel")
+        assert solar_panel.is_visible(), "Expected .globe-solar-panel to be visible when Terminator is enabled"
+        ephem_readout = page.locator(".globe-solar-readout").inner_text()
+        prov_readout = page.locator(".globe-provenance").inner_text()
+        print(f"3D Ephemeris Readout: {ephem_readout}")
+        assert ephem_readout.startswith("[Ephemeris]") and "IAU WGCCRE" in ephem_readout, f"Unexpected ephemeris readout: {ephem_readout}"
+        assert "Terminator shades day/night on the smooth ellipsoid only" in prov_readout, f"Missing smooth-ellipsoid disclaimer: {prov_readout}"
+
+        snap12 = os.path.join(SCREENSHOT_DIR, "12_mars_3d_ephemeris_terminator.png")
+        page.screenshot(path=snap12)
+        print(f"Captured: {snap12}")
+
+        # Test Modeled Local Hour mode
+        local_btn = page.locator("button.globe-solar-mode-btn", has_text="Local Hour [Model]")
+        local_btn.click()
+        page.wait_for_timeout(400)
+        model_readout = page.locator(".globe-solar-readout").inner_text()
+        assert model_readout.startswith("[Model]"), f"Expected [Model] readout in local hour mode, got: {model_readout}"
+        assert page.locator(".globe-hour").is_visible(), "Expected local solar hour slider to be visible in [Model] mode"
+
+        # Switch back to Live UTC Ephemeris and test Titan + oblate Phobos in 3D (verifying surface tiles > 0!)
+        page.locator("button.globe-solar-mode-btn", has_text="Live UTC Ephemeris").click()
+        page.select_option("#body-selector-container select.body-selector-dropdown", "titan")
+        page.wait_for_function(
+            "window.jsmarsView?._globe?.viewer?.scene?.globe?._surface?._tilesToRender?.length > 0",
+            timeout=15000
+        )
+        page.wait_for_timeout(2500)
+        snap13 = os.path.join(SCREENSHOT_DIR, "13_titan_3d_terminator.png")
+        page.screenshot(path=snap13)
+        print(f"Captured: {snap13}")
+
+        page.select_option("#body-selector-container select.body-selector-dropdown", "phobos")
+        page.locator("button.globe-solar-mode-btn", has_text="Local Hour [Model]").click()
+        page.wait_for_function(
+            "window.jsmarsView?._globe?.viewer?.scene?.globe?._surface?._tilesToRender?.length > 0",
+            timeout=15000
+        )
+        page.wait_for_timeout(3500)
+        phobos_prov = page.locator(".globe-provenance").inner_text()
+        assert "Phobos oblate spheroid" in phobos_prov, f"Expected Phobos oblate spheroid provenance, got: {phobos_prov}"
+        snap14 = os.path.join(SCREENSHOT_DIR, "14_phobos_3d_triaxial.png")
+        page.screenshot(path=snap14)
+        print(f"Captured: {snap14}")
+
+        # Return to 2D Mars before narrow viewport check
+        page.click("#view-mode-2d")
+        page.select_option("#body-selector-container select.body-selector-dropdown", "mars")
+        page.wait_for_timeout(800)
+
         # Also verify narrow desktop/tablet (800x600) HUD non-overlap
         page.set_viewport_size({"width": 800, "height": 600})
         page.wait_for_timeout(300)
@@ -319,6 +441,8 @@ def run_tests():
 
         mobile_ctx.close()
         browser.close()
+    if local_httpd:
+        local_httpd.shutdown()
 
     if ARTIFACT_DIR:
         print("\nCopying screenshots to artifact directory...")

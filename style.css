@@ -77,6 +77,10 @@ html {
   display: block;
 }
 
+#map.is-under-globe ~ #loading-indicator {
+  display: none !important;
+}
+
 /* ==========================================================================
    3. Controls Sidebar
    ========================================================================== */
@@ -3213,4 +3217,84 @@ body.view-3d [data-requires-2d] {
   color: #64748b;
   background: rgba(2, 6, 23, 0.45);
   white-space: pre-wrap;
+}
+
+
+/* ==========================================================================
+   3D Solar Terminator Panel & Multi-System Body Selector Groups (v0.13.0)
+   ========================================================================== */
+
+.globe-solar-panel {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: rgba(2, 6, 23, 0.65);
+}
+
+.globe-solar-panel[hidden] {
+  display: none;
+}
+
+.globe-solar-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.globe-solar-mode-btn,
+.globe-solar-now-btn {
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.globe-solar-mode-btn.is-active {
+  background: #0369a1;
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+.globe-solar-now-btn {
+  margin-left: auto;
+  border-color: #0284c7;
+  color: #7dd3fc;
+}
+
+.globe-solar-now-btn[hidden] {
+  display: none;
+}
+
+.globe-solar-mode-btn:focus-visible,
+.globe-solar-now-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.globe-solar-readout {
+  margin: 6px 0 0;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #f8fafc;
+}
+
+.body-selector-dropdown optgroup {
+  background: #0f172a;
+  color: #38bdf8;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.body-selector-dropdown option {
+  background: #1e293b;
+  color: #f1f5f9;
+  font-weight: 400;
 }

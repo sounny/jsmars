@@ -593,6 +593,7 @@
     import { SampleTable } from './src/features/sampling/SampleTable.js';
     import { EVENTS } from './src/constants.js';
     import { JMARS_CONFIG } from './src/jmars-config.js';
+    import { switchActiveBody } from './src/util/body.js';
     // New P1/P2 features
     import { StampLayer } from './src/features/stamp/StampLayer.js';
     import { StampQueryPanel } from './src/features/stamp/StampQueryPanel.js';
@@ -1179,7 +1180,7 @@
       getBookmarks: () => bookmarksTool.getData ? bookmarksTool.getData() : [],
       onSelectLandmark: (lm) => searchBar.selectLandmark(lm),
       onSelectBookmark: (bm) => bookmarksTool.goTo(bm),
-      onSwitchBody: (bodyKey) => jmars.switchBody(bodyKey),
+      onSwitchBody: (bodyKey) => switchActiveBody(jmars, bodyKey),
       onSetViewMode: (mode) => viewModeToggle.setMode(mode),
       onSaveSession: () => sessionManager.saveSession(),
       onLoadSession: () => document.getElementById('session-load-input')?.click(),

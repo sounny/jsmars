@@ -110,8 +110,10 @@ export class MarsTime {
     // Sub-solar latitude is equal to solar declination
     const subSolarLat = delta_s;
 
-    // Sub-solar longitude (East)
-    const subSolarLon = ((alpha_FMS - mtc * 15) % 360 + 360) % 360;
+    // Sub-solar longitude (East, 0-360) per Allison & McEwen (2000) Eq. (20) & (24)
+    const Ls_rad = Ls * Math.PI / 180;
+    const eotDeg = (2.861 * Math.sin(2 * Ls_rad) - 0.071 * Math.sin(4 * Ls_rad) + 0.002 * Math.sin(6 * Ls_rad)) - eoc;
+    const subSolarLon = (((180 - mtc * 15 - eotDeg) % 360) + 360) % 360;
 
     // Mars Year calculation (MY 1 started on 1955-04-11, MSD 28945.0)
     // Approximate Mars year duration = 668.6 sols
