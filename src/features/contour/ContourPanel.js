@@ -1,3 +1,5 @@
+import { EVENTS } from '../../constants.js';
+
 /**
  * @module features/contour/ContourPanel
  * @description UI panel for controlling elevation contour lines derived from
@@ -88,6 +90,12 @@ export class ContourPanel {
 
     width.addEventListener('change', (e) => {
       this.layer.setParams({ lineWidth: parseFloat(e.target.value) });
+    });
+
+    document.addEventListener(EVENTS.BODY_CHANGED, () => {
+      toggleBtn.textContent = 'Enable Contours';
+      toggleBtn.classList.remove('active');
+      controls.style.display = 'none';
     });
   }
 }

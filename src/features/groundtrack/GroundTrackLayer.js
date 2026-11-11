@@ -67,6 +67,14 @@ export class GroundTrackLayer {
         active: false  // Mission ended 2006
       }
     };
+
+    document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
+      const body = (e?.detail?.body || 'mars').toLowerCase();
+      if (body !== 'mars') {
+        this.clearAll();
+        this.deactivate();
+      }
+    });
   }
 
   /**

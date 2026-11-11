@@ -1067,7 +1067,7 @@
     }
 
     // View Update Listener
-    document.addEventListener('jmars:update-view', (e) => {
+    document.addEventListener(EVENTS.UPDATE_VIEW, (e) => {
       if (e.detail) {
         jmars.applyViewState(e.detail);
       }
@@ -1147,6 +1147,10 @@
     // Auto-deactivation handling (event name now uses jmars: prefix)
     document.addEventListener(EVENTS.TOOL_DEACTIVATED, (e) => {
       if (!e.detail) return;
+      if (e.detail.tool === 'crater') {
+        craterBtn.textContent = 'Start Crater Counting';
+        craterBtn.classList.remove('active');
+      }
       if (e.detail.tool === 'measure') {
         measureDistBtn.classList.remove('active');
         measureAreaBtn.classList.remove('active');
@@ -1168,7 +1172,11 @@
     window.addEventListener('unhandledrejection', (event) => {
       console.error('Unhandled rejection:', event.reason);
       if (layerListContainer && layerListContainer.innerText.includes('Loading')) {
-        layerListContainer.innerHTML = `<div class="error-msg">Error loading layers: ${event.reason.message}</div>`;
+        layerListContainer.innerHTML = '';
+        const errDiv = document.createElement('div');
+        errDiv.className = 'error-msg';
+        errDiv.textContent = `Error loading layers: ${event.reason?.message || event.reason || 'Unknown error'}`;
+        layerListContainer.appendChild(errDiv);
       }
     });
 

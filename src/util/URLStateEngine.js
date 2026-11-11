@@ -81,6 +81,10 @@ export class URLStateEngine {
     return queryString ? `${prefix}?${queryString}` : prefix;
   }
 
+  static deserialize(urlOrSearchString = '') {
+    return this.parseURLToState(urlOrSearchString);
+  }
+
   /**
    * Parse a deep-link URL or search query string into a structured state object.
    * @param {string} urlOrSearchString - Full URL or query string (e.g. "?lat=-14.5&lon=175.4&z=6&body=mars")
@@ -88,6 +92,9 @@ export class URLStateEngine {
    */
   static parseURLToState(urlOrSearchString = '') {
     let search = urlOrSearchString;
+    if (search.includes('#') && search.includes('?')) {
+      search = search.substring(0, search.indexOf('#'));
+    }
     if (search.includes('?')) {
       search = search.substring(search.indexOf('?'));
     } else if (search.includes('#')) {

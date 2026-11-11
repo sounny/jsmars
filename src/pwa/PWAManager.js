@@ -55,6 +55,10 @@ export class PWAManager {
       this.registration = await navigator.serviceWorker.register('./sw.js', {
         scope: './'
       });
+      if (!this.registration) {
+        console.warn('[PWA] Service Worker registration returned no registration object');
+        return;
+      }
       console.log('[PWA] Service Worker registered with scope:', this.registration.scope);
 
       // Check if there is already a waiting service worker

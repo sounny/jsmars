@@ -1,3 +1,5 @@
+import { EVENTS } from '../../constants.js';
+
 /**
  * HillshadeLayer generates real-time hillshade relief from DEM tiles.
  * Based on the JMARS ReliefShadeOp algorithm (Zhou 1992).
@@ -23,6 +25,10 @@ export class HillshadeLayer {
     // DEM source URL (MOLA 128ppd grayscale)
     this.demWmsUrl = 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map';
     this.demLayer = 'MOLA_elevation';
+
+    document.addEventListener(EVENTS.BODY_CHANGED, () => {
+      if (this.isActive) this.deactivate();
+    });
   }
 
   /**

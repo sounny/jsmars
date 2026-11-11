@@ -33,6 +33,11 @@ export class StampLayer {
       'MOC-NA': { target: 'mars', host: 'MGS', instrument: 'MOC-NA/WA', productType: 'NASDP' },
       'CRISM': { target: 'mars', host: 'MRO', instrument: 'CRISM', productType: 'TER' }
     };
+
+    document.addEventListener(EVENTS.BODY_CHANGED, () => {
+      this.clear();
+      this.deactivate();
+    });
   }
 
   /**

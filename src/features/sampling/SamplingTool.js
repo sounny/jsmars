@@ -28,7 +28,11 @@ export class SamplingTool {
         this.onDrawCreated = this.onDrawCreated.bind(this);
         this.onDrawStop = this.onDrawStop.bind(this);
 
-        document.addEventListener(EVENTS.BODY_CHANGED, () => this.clear());
+        document.addEventListener(EVENTS.BODY_CHANGED, () => {
+            this.clear();
+            if (this.isActive) this.deactivate();
+            document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'sampling' } }));
+        });
     }
 
     /**

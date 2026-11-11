@@ -5,6 +5,7 @@
 import { el, toLL } from './LunarSitePlanner.js';
 import { RasterGrid, loadGeoTiffLib, xyToLatLon, scaleFactor } from './PolarGrid.js';
 import { localFrame, cropGrid, terrainToOBJ, gridToGeoTIFF, featuresToDXF, toCSV, download } from './Exporters.js';
+import { EVENTS } from '../../constants.js';
 
 /** Barker et al. (2021) 87°S–90°S 5 m mosaic, hosted by USGS with CORS. */
 export const LIVE_5M = {
@@ -63,7 +64,7 @@ export function attachExport(P) {
     L.rectangle([toLL(w.xmin, w.ymin), toLL(w.xmax, w.ymax)], { color: '#fff', weight: 1.5, dashArray: '3 3', fill: false }).addTo(winLayer);
     updateInfo();
   };
-  document.addEventListener('jmars:lunar-site-changed', () => {
+  document.addEventListener(EVENTS.LUNAR_SITE_CHANGED, () => {
     P.lastFrame = null;
   });
   const src = el('select', { 'aria-label': 'Terrain source' },

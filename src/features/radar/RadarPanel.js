@@ -2,6 +2,7 @@ import { RadarSounderEngine } from './RadarSounderEngine.js';
 import { RadarChart } from './RadarChart.js';
 import { EVENTS } from '../../constants.js';
 import { jmarsState } from '../../jmars-state.js';
+import { switchActiveBody } from '../../util/body.js';
 import {
   PROVENANCE_KIND,
   SCIENCE_ARCHIVES,
@@ -217,9 +218,13 @@ export class RadarPanel {
     this.chart.setData(data);
   }
 
-  flyToTrack() {
+  async flyToTrack() {
     const preset = RadarSounderEngine.PRESETS[this.currentPreset];
     if (preset && this.map) {
+      const targetBody = (preset.body || 'mars').toLowerCase();
+      if (targetBody !== (this.currentBody || 'mars').toLowerCase() && window.jmars) {
+        await switchActiveBody(window.jmars, targetBody);
+      }
       this.map.flyTo([preset.lat, preset.lon], 5);
     }
   }

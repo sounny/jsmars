@@ -9,6 +9,7 @@ import { findFlatAreas, sampleProfile, horizonProfile, sunPathEnvelope, discStat
 import { drawProfile, drawHorizon } from './PlannerCharts.js';
 import { scaleFactor } from './PolarGrid.js';
 import { attachCadExport, segmentDistance } from './PlannerCadExport.js';
+import { EVENTS } from '../../constants.js';
 
 export function attachTools(P) {
   // ---------------- mode bar
@@ -57,7 +58,7 @@ export function attachTools(P) {
     flatOut.replaceChildren(tbl, el('p', { class: 'lsp-muted', text: 'Largest discs whose every 20 m cell has a 5 m-derived max slope at or below the threshold (exact Euclidean distance transform). Accuracy ±20 m; LOLA slope RMS error ≈1.5–2.5° (Barker et al. 2021).' }));
     P.flatResults = res;
   });
-  document.addEventListener('jmars:lunar-site-changed', () => {
+  document.addEventListener(EVENTS.LUNAR_SITE_CHANGED, () => {
     flatLayer.clearLayers();
     flatOut.replaceChildren();
     P.flatResults = [];

@@ -197,7 +197,10 @@ export const BODIES = {
  * @returns {number} Radius in km (or meters if type === 'meters').
  */
 export function getPlanetaryRadius(body = 'mars', type = 'mean') {
-  const key = (body || 'mars').toLowerCase();
+  if (typeof body === 'number' && Number.isFinite(body)) {
+    return type === 'meters' ? body * 1000.0 : body;
+  }
+  const key = (typeof body === 'string' ? body : 'mars').toLowerCase();
   const b = BODIES[key] || BODIES.mars;
   if (type === 'equatorial') return b.equatorialRadius;
   if (type === 'polar') return b.polarRadius;
@@ -348,11 +351,20 @@ export function sphericalToCartesian(lat, lon, altKm = 0, body = 'mars') {
  * @returns {{lat: number, lon: number, altKm: number}}
  */
 export function cartesianToSpherical(x, y, z, body = 'mars') {
+  if (typeof x === 'object' && x !== null) {
+    body = y || x.body || 'mars';
+    z = typeof x.z === 'number' ? x.z : 0;
+    y = typeof x.y === 'number' ? x.y : 0;
+    x = typeof x.x === 'number' ? x.x : 0;
+  }
   const R_mean = BODIES[body]?.meanRadius || 3389.5;
   const r = Math.sqrt(x * x + y * y + z * z);
+  if (r === 0) {
+    return { lat: 0, lon: 0, altKm: -R_mean };
+  }
   const altKm = r - R_mean;
 
-  const lat = Math.asin(z / r) * 180 / Math.PI;
+  const lat = Math.asin(Math.max(-1.0, Math.min(1.0, z / r))) * 180 / Math.PI;
   const lon = Math.atan2(y, x) * 180 / Math.PI;
 
   return { lat, lon: to180(lon), altKm };
@@ -533,12 +545,11 @@ export function interpolateGreatCirclePath(lat1, lon1, lat2, lon2, numPoints = 1
   const phi2 = lat2 * Math.PI / 180;
   const lambda2 = lon2 * Math.PI / 180;
 
-  const d = 2 * Math.asin(
-    Math.sqrt(
-      Math.sin((phi2 - phi1) / 2) ** 2 +
-      Math.cos(phi1) * Math.cos(phi2) * Math.sin((lambda2 - lambda1) / 2) ** 2
-    )
+  const sinHalfD = Math.sqrt(
+    Math.sin((phi2 - phi1) / 2) ** 2 +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin((lambda2 - lambda1) / 2) ** 2
   );
+  const d = 2 * Math.asin(Math.max(-1.0, Math.min(1.0, sinHalfD)));
 
   if (d < 1e-10) return [{ lat: lat1, lng: lon1 }];
 
@@ -772,7 +783,8 @@ export function computeCrossTrackDistance(lat, lon, pathLat1, pathLon1, pathLat2
   const theta13 = azimuth(pathLat1, pathLon1, lat, lon) * Math.PI / 180;
   const theta12 = azimuth(pathLat1, pathLon1, pathLat2, pathLon2) * Math.PI / 180;
 
-  const dXt = Math.asin(Math.sin(d13) * Math.sin(theta13 - theta12));
+  const sinDxt = Math.max(-1.0, Math.min(1.0, Math.sin(d13) * Math.sin(theta13 - theta12)));
+  const dXt = Math.asin(sinDxt);
   return dXt * R;
 }
 

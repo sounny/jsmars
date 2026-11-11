@@ -140,6 +140,18 @@ export class MCDPanel {
         this.lsInput.value = detail.Ls.toFixed(1);
       }
     });
+
+    const resetPick = () => {
+      if (this.isPicking) {
+        this.isPicking = false;
+        this.pickBtn.style.background = '#334155';
+        this.pickBtn.innerText = '📍 Pick Location';
+        this.map.getContainer().style.cursor = '';
+      }
+    };
+
+    EventBus.on(EVENTS.BODY_CHANGED, resetPick);
+    EventBus.on(EVENTS.VIEW_MODE_CHANGED, resetPick);
   }
 
   bindEvents() {

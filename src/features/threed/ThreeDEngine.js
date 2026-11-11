@@ -423,11 +423,10 @@ export class ThreeDEngine {
    */
   static computeHorizonDipAngle(altitudeKm, body = 'mars') {
     let R = 3389.5;
-    if (typeof body === 'string') {
-      if (body.toLowerCase() === 'moon') R = 1737.4;
-      else if (body.toLowerCase() === 'earth') R = 6371.0;
-    } else if (typeof body === 'number' && Number.isFinite(body)) {
+    if (typeof body === 'number' && Number.isFinite(body)) {
       R = Math.max(1.0, body);
+    } else {
+      R = getPlanetaryRadius(body, 'mean') || 3389.5;
     }
     const h = Math.max(0, altitudeKm);
 

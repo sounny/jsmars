@@ -53,7 +53,7 @@ export class EnhancedProfileTool {
         this.hoverMarker = null;
 
         // Synchronize chart mouse hovering with map cursor position
-        document.addEventListener('jmars:profile-hover', (e) => {
+        document.addEventListener(EVENTS.PROFILE_HOVER, (e) => {
             const detail = e.detail;
             if (detail?.clear) {
                 if (this.hoverMarker) {

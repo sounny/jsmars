@@ -1,3 +1,5 @@
+import { EVENTS } from '../../constants.js';
+
 /**
  * ContourLayer generates contour lines from DEM tiles.
  * Based on the JMARS ContourStage algorithm.
@@ -24,6 +26,10 @@ export class ContourLayer {
     // DEM source (same as hillshade)
     this.demWmsUrl = 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map';
     this.demLayer = 'MOLA_elevation';
+
+    document.addEventListener(EVENTS.BODY_CHANGED, () => {
+      if (this.isActive) this.deactivate();
+    });
   }
 
   /**

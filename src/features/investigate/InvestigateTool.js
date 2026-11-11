@@ -297,18 +297,19 @@ export class InvestigateTool {
             return;
         }
 
-        let html = '';
+        resultsEl.innerHTML = '';
         results.forEach(res => {
-            html += `
-                <div class="investigate-layer-result">
-                    <strong>${res.name}</strong>
-                    <div style="font-size: 11px; overflow: auto; max-height: 100px; background: #eee; color: #000; padding: 2px;">
-                        ${res.value}
-                    </div>
-                </div>
-            `;
+            const wrap = document.createElement('div');
+            wrap.className = 'investigate-layer-result';
+            const strong = document.createElement('strong');
+            strong.textContent = res.name || '';
+            const valDiv = document.createElement('div');
+            valDiv.style.cssText = 'font-size: 11px; overflow: auto; max-height: 100px; background: #eee; color: #000; padding: 2px;';
+            valDiv.innerHTML = res.value || '';
+            wrap.appendChild(strong);
+            wrap.appendChild(valDiv);
+            resultsEl.appendChild(wrap);
         });
-        resultsEl.innerHTML = html;
     }
 
     /**

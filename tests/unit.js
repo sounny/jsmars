@@ -69,7 +69,7 @@ import { SessionManager } from '../src/ui/SessionManager.js';
 import { LayerManager } from '../src/ui/layer-manager.js';
 import { StampQueryPanel } from '../src/features/stamp/StampQueryPanel.js';
 import { normalizeBodyKey, switchActiveBody } from '../src/util/body.js';
-import { BODIES, haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
+import { BODIES, getPlanetaryRadius, haversineDistance, azimuth, toGraphic, toCentric, formatLatLon, sphericalPolygonArea, computeEllipsePolygon, computeBufferPolygon, isPointInPolygon, computeBoundingBox, sphericalToCartesian, cartesianToSpherical, interpolateGreatCircle, computeMidpoint, computeDestinationPoint, computeCrossTrackDistance, computeAlongTrackDistance, computePolylineLength, computePolygonPerimeter, computeGreatCircleMidpoint, computeTunnelChordDistance, computeSphericalRhumbLineDistance, computeSphericalExcess, computeEllipsoidalGeodesicDistanceAndoyer, computePolylineDeflectionAngles, computeSphericalBoundingCircle, computeGreatCircleIntersection, computePlanetaryEllipseSurfaceArea, computeSomiglianaTheoreticalGravity, convertPlanetographicToPlanetocentricLatitude, computeGreatCircleRhumbLineHeading, computeLambertAzimuthalEqualArea, computePolarStereographic, computeMeridianConvergenceAngle, computeSinusoidalProjection, computeSinusoidalInverse, computeMercatorScaleDistortionFactor, computeOrthographicProjection, computeOrthographicInverse, computeGnomonicProjection, computeGnomonicInverse, computeEquidistantCylindricalProjection, computeEquidistantCylindricalInverse, computeLambertConformalConicProjection, computeLambertConformalConicInverse, computePolarStereographicProjection, computePolarStereographicInverse, computeMollweideProjection, computeMollweideInverse } from '../src/util/geo.js';
 import { JMARS_CONFIG } from '../src/jmars-config.js';
 import { R_MOON, latLonToXY, xyToLatLon, scaleFactor, RasterGrid, decodeFraction } from '../src/features/lunar-site/PolarGrid.js';
 import { LUNAR_OBLIQUITY_DEG, distanceTransform, findFlatAreas, hillshade, roughness, sampleProfile, horizonProfile, sunPathEnvelope, discStats } from '../src/features/lunar-site/TerrainAnalysis.js';
@@ -18419,6 +18419,70 @@ describe('v0.13.0: Astronomical 3D Solar Ephemeris & 26-Body JMARS System Catalo
         expect(qa.buildMatches('pluto').some(m => m.id === 'body-pluto')).to.be.true;
         expect(qa.buildMatches('enceladus').some(m => m.id === 'body-enceladus')).to.be.true;
         expect(qa.buildMatches('vesta').some(m => m.id === 'body-vesta')).to.be.true;
+    });
+});
+
+describe('Regression & Robustness Hardening: Geodesy, Bodies, State & Events', () => {
+    it('getPlanetaryRadius should handle strings, numbers, nulls, and unknown bodies safely', () => {
+        expect(getPlanetaryRadius('mars')).to.equal(3389.5);
+        expect(getPlanetaryRadius('moon')).to.equal(1737.4);
+        expect(getPlanetaryRadius('earth')).to.equal(6371.0);
+        expect(getPlanetaryRadius('titan')).to.be.closeTo(2574.7, 0.1);
+        expect(getPlanetaryRadius('pluto')).to.equal(1188.3);
+        // Numeric radius input
+        expect(getPlanetaryRadius(2440.0)).to.equal(2440.0);
+        expect(getPlanetaryRadius(2440.0, 'meters')).to.equal(2440000.0);
+        // Fallbacks
+        expect(getPlanetaryRadius(null)).to.equal(3389.5);
+        expect(getPlanetaryRadius(undefined)).to.equal(3389.5);
+        expect(getPlanetaryRadius('unknown_asteroid')).to.equal(3389.5);
+    });
+
+    it('ThreeDEngine.computeHorizonDipAngle should accept both string body names and numbers', () => {
+        const dipMars = ThreeDEngine.computeHorizonDipAngle(300.0, 'mars');
+        expect(dipMars.horizonDipAngleDeg).to.be.closeTo(23.266, 0.01);
+
+        const dipMoon = ThreeDEngine.computeHorizonDipAngle(100.0, 'moon');
+        expect(dipMoon.horizonDipAngleDeg).to.be.greaterThan(0);
+        expect(dipMoon.horizonDistanceKm).to.be.greaterThan(0);
+
+        const dipNumeric = ThreeDEngine.computeHorizonDipAngle(300.0, 3389.5);
+        expect(dipNumeric.horizonDipAngleDeg).to.be.closeTo(23.266, 0.01);
+    });
+
+    it('cartesianToSpherical should handle origin {0,0,0} without NaN or division by zero', () => {
+        const pt = cartesianToSpherical({ x: 0, y: 0, z: 0 });
+        expect(Number.isFinite(pt.lat)).to.be.true;
+        expect(Number.isFinite(pt.lon)).to.be.true;
+        expect(Number.isFinite(pt.altKm)).to.be.true;
+        expect(pt.lat).to.equal(0);
+        expect(pt.lon).to.equal(0);
+    });
+
+    it('computeCrossTrackDistance should clamp domain bounds without NaN', () => {
+        // Coincident points
+        const d1 = computeCrossTrackDistance(0, 0, 0, 0, 0, 0);
+        expect(Number.isFinite(d1)).to.be.true;
+        expect(d1).to.equal(0);
+
+        // Standard cross track
+        const d2 = computeCrossTrackDistance(10, 10, 0, 0, 0, 90);
+        expect(Number.isFinite(d2)).to.be.true;
+    });
+
+    it('URLStateEngine.deserialize should strip hash fragments from query strings', () => {
+        const state = URLStateEngine.deserialize('?lat=10.5&lon=-20.5&zoom=6&body=moon#overview');
+        expect(state.body).to.equal('moon');
+        expect(state.lat).to.equal(10.5);
+        expect(state.lon).to.equal(-20.5);
+        expect(state.zoom).to.equal(6);
+    });
+
+    it('EVENTS constants should include newly unified event keys', () => {
+        expect(EVENTS.COLOR_STRETCH_CHANGED).to.equal('jmars:color-stretch-changed');
+        expect(EVENTS.COPY_SHARE_LINK).to.equal('jmars:copy-share-link');
+        expect(EVENTS.PROFILE_HOVER).to.equal('jmars:profile-hover');
+        expect(EVENTS.LUNAR_SITE_CHANGED).to.equal('jmars:lunar-site-changed');
     });
 });
 

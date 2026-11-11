@@ -36,6 +36,7 @@ export class CraterLayer {
         // Body change listener
         document.addEventListener(EVENTS.BODY_CHANGED, () => {
             this.handleClearRequest();
+            document.dispatchEvent(new CustomEvent(EVENTS.CRATER_CLEAR));
             if (this.isActive) this.deactivate();
             document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'crater' } }));
         });

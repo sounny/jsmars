@@ -111,6 +111,10 @@ export class StampQueryPanel {
     document.addEventListener(EVENTS.STAMP_SELECTED, (e) => {
       this._highlightRow(e.detail);
     });
+
+    document.addEventListener(EVENTS.BODY_CHANGED, () => {
+      this._doClear();
+    });
   }
 
   async _doSearch() {

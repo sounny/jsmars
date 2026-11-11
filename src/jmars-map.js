@@ -104,7 +104,7 @@ export class JMARSMap {
         };
 
         if (urlState.colorStretch) {
-          document.dispatchEvent(new CustomEvent('jmars:color-stretch-changed', { detail: urlState.colorStretch }));
+          document.dispatchEvent(new CustomEvent(EVENTS.COLOR_STRETCH_CHANGED, { detail: urlState.colorStretch }));
         }
       }
     }
@@ -124,12 +124,12 @@ export class JMARSMap {
     });
 
     // Auto-sync color stretch adjustments
-    document.addEventListener('jmars:color-stretch-changed', () => {
+    document.addEventListener(EVENTS.COLOR_STRETCH_CHANGED, () => {
       scheduleViewSync();
     });
 
     // Listen for copy share link requests
-    document.addEventListener('jmars:copy-share-link', async () => {
+    document.addEventListener(EVENTS.COPY_SHARE_LINK, async () => {
       await this.copyShareLink();
     });
   }

@@ -1081,9 +1081,10 @@ export class ProjectionManager {
    * @returns {number} Meridional distance along meridian in km
    */
   static computeMeridianDistance(lat1Deg, lat2Deg, body = 'mars') {
-    const isMars = body.toLowerCase() === 'mars';
-    const a = isMars ? 3396.19 : (body.toLowerCase() === 'moon' ? 1737.4 : 6378.14);
-    const f = isMars ? 0.005886 : (body.toLowerCase() === 'moon' ? 0.0001 : 0.0033528);
+    const bInfo = BODIES[(body || 'mars').toLowerCase()];
+    const a = bInfo?.radii ? (bInfo.radii[0] / 1000.0) : (bInfo?.equatorialRadius || 3396.19);
+    const c = bInfo?.radii ? (bInfo.radii[2] / 1000.0) : (bInfo?.polarRadius || 3376.2);
+    const f = a > c ? (a - c) / a : 0.0;
     const e2 = 2.0 * f - f * f;
 
     const phi1 = Math.min(lat1Deg, lat2Deg) * Math.PI / 180.0;

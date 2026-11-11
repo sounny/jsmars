@@ -58,6 +58,10 @@ export class RadialProfileTool {
         // Bindings
         this.onClick = this.onClick.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
+
+        document.addEventListener(EVENTS.BODY_CHANGED, () => {
+            if (this.isActive) this.deactivate();
+        });
     }
 
     /**

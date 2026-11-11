@@ -1,3 +1,5 @@
+import { EVENTS } from '../../constants.js';
+
 /**
  * @module features/hillshade/HillshadePanel
  * @description UI panel for controlling real-time hillshade (relief shading)
@@ -86,6 +88,12 @@ export class HillshadePanel {
     opacity.addEventListener('input', (e) => {
       this.container.querySelector('#hs-opacity-val').textContent = e.target.value;
       this.layer.setParams({ opacity: parseInt(e.target.value) / 100 });
+    });
+
+    document.addEventListener(EVENTS.BODY_CHANGED, () => {
+      toggleBtn.textContent = 'Enable Hillshade';
+      toggleBtn.classList.remove('active');
+      controls.style.display = 'none';
     });
   }
 }

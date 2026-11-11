@@ -165,7 +165,7 @@
             feedbackEl.style.backgroundColor = "rgba(16, 185, 129, 0.12)";
             feedbackEl.style.border = "1px solid rgba(16, 185, 129, 0.35)";
             feedbackEl.style.color = "#10b981";
-            feedbackEl.innerHTML = `✓ ${result.message || "Thank you! Your message has been received."}`;
+            feedbackEl.textContent = `✓ ${result.message || "Thank you! Your message has been received."}`;
 
             form.reset();
             tsInput.value = Date.now();
@@ -188,7 +188,7 @@
           feedbackEl.style.backgroundColor = "rgba(244, 63, 94, 0.12)";
           feedbackEl.style.border = "1px solid rgba(244, 63, 94, 0.35)";
           feedbackEl.style.color = "#f43f5e";
-          feedbackEl.innerHTML = `⚠️ ${err.message || "An error occurred while sending. Please try again or email directly."}`;
+          feedbackEl.textContent = `⚠️ ${err.message || "An error occurred while sending. Please try again or email directly."}`;
 
           if (submitBtn) {
             submitBtn.disabled = false;

@@ -62,7 +62,7 @@ export class ProfileChart {
         this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
         this.canvas.addEventListener('mouseleave', () => {
             this.draw(this.lastProfiles);
-            document.dispatchEvent(new CustomEvent('jmars:profile-hover', { detail: { clear: true } }));
+            document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_HOVER, { detail: { clear: true } }));
         });
 
         // Initial text
@@ -138,7 +138,7 @@ export class ProfileChart {
             this.ctx.fillText(`Elev: ${Math.round(nearest.elev)}m`, nearest.px + 15, nearest.py - 8);
 
             if (Number.isFinite(nearest.lat) && Number.isFinite(nearest.lng)) {
-                document.dispatchEvent(new CustomEvent('jmars:profile-hover', {
+                document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_HOVER, {
                     detail: { lat: nearest.lat, lng: nearest.lng, dist: nearest.dist, elev: nearest.elev }
                 }));
             }

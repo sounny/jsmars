@@ -58,7 +58,11 @@ export class MeasureTool {
      */
     get scaleFactor() {
         const body = (jmarsState.get('body') || 'mars').toLowerCase();
-        return this.scaleFactors[body] ?? this.scaleFactors.mars;
+        if (this.scaleFactors[body] != null) {
+            return this.scaleFactors[body];
+        }
+        const meanR = getPlanetaryRadius(body, 'mean');
+        return meanR ? meanR / 6371.0 : this.scaleFactors.mars;
     }
 
     /**
@@ -793,11 +797,14 @@ export class MeasureTool {
         const theta13 = Math.atan2(y13, x13);
 
         // Cross-track angular distance
-        const dxtRad = Math.asin(Math.sin(d13) * Math.sin(theta13 - theta12));
+        const sinDxt = Math.max(-1.0, Math.min(1.0, Math.sin(d13) * Math.sin(theta13 - theta12)));
+        const dxtRad = Math.asin(sinDxt);
         const crossTrackKm = dxtRad * R;
 
         // Along-track angular distance
-        const datRad = Math.acos(Math.cos(d13) / Math.cos(dxtRad));
+        const cosDxt = Math.cos(dxtRad);
+        const cosDat = cosDxt !== 0 ? Math.cos(d13) / cosDxt : 0;
+        const datRad = Math.acos(Math.max(-1.0, Math.min(1.0, cosDat)));
         const alongTrackKm = datRad * R;
 
         return {
@@ -1066,10 +1073,11 @@ export class MeasureTool {
         const phi1 = startLat * Math.PI / 180.0;
         const lam1 = startLon * Math.PI / 180.0;
 
-        const phi2 = Math.asin(
+        const sinPhi2 = Math.max(-1.0, Math.min(1.0,
             Math.sin(phi1) * Math.cos(delta) +
             Math.cos(phi1) * Math.sin(delta) * Math.cos(theta)
-        );
+        ));
+        const phi2 = Math.asin(sinPhi2);
 
         let lam2 = lam1 + Math.atan2(
             Math.sin(theta) * Math.sin(delta) * Math.cos(phi1),
@@ -1186,8 +1194,8 @@ export class MeasureTool {
      * @param {number} lon3
      * @returns {{excessRadians: number, excessDegrees: number, solidAngleSteradians: number}}
      */
-    static computeGreatCircleExcessAngle(lat1, lon1, lat2, lon2, lat3, lon3) {
-        const areaRes = this.computeSphericalPolygonArea([[lat1, lon1], [lat2, lon2], [lat3, lon3]], 'mars');
+    static computeGreatCircleExcessAngle(lat1, lon1, lat2, lon2, lat3, lon3, body = 'mars') {
+        const areaRes = this.computeSphericalPolygonArea([[lat1, lon1], [lat2, lon2], [lat3, lon3]], body);
         const excessRad = areaRes.sphericalExcessRad;
 
         return {
@@ -1250,9 +1258,10 @@ export class MeasureTool {
         const theta = initialBearingDeg * Math.PI / 180.0;
         const delta = Math.max(0, distanceKm) / R; // Angular distance in radians
 
-        const phi2 = Math.asin(
+        const sinPhi2 = Math.max(-1.0, Math.min(1.0,
             Math.sin(phi1) * Math.cos(delta) + Math.cos(phi1) * Math.sin(delta) * Math.cos(theta)
-        );
+        ));
+        const phi2 = Math.asin(sinPhi2);
 
         const y = Math.sin(theta) * Math.sin(delta) * Math.cos(phi1);
         const x = Math.cos(delta) - Math.sin(phi1) * Math.sin(phi2);

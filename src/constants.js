@@ -23,6 +23,10 @@ export const EVENTS = Object.freeze({
   OVERLAYS_CHANGED: 'jmars:overlays-changed',
   /** Fired to programmatically pan/zoom the map. */
   UPDATE_VIEW: 'jmars:update-view',
+  /** Fired when map raster color stretch (brightness/contrast/saturation) adjusts. */
+  COLOR_STRETCH_CHANGED: 'jmars:color-stretch-changed',
+  /** Fired to copy shareable deep-link URL. */
+  COPY_SHARE_LINK: 'jmars:copy-share-link',
 
   // ── Tools ───────────────────────────────────────────────────
   /** Fired when a tool is activated (payload: { tool: string }). */
@@ -55,6 +59,8 @@ export const EVENTS = Object.freeze({
   // ── Profiles ────────────────────────────────────────────────
   /** Fired when a new elevation profile is generated (radial or linear). */
   PROFILE_GENERATED: 'jmars:profile-generated',
+  /** Fired when hovering over an elevation profile chart to highlight track point. */
+  PROFILE_HOVER: 'jmars:profile-hover',
 
   // ── Shapes ──────────────────────────────────────────────────
   /** Fired when a new shape is drawn or added. */
@@ -138,5 +144,9 @@ export const EVENTS = Object.freeze({
 
   // ── Map Projections ─────────────────────────────────────────
   /** Fired when projection mode changes (Cylindrical / North Polar / South Polar). */
-  PROJECTION_CHANGED: 'jmars:projection-changed'
+  PROJECTION_CHANGED: 'jmars:projection-changed',
+
+  // ── Lunar Base Site Planner ─────────────────────────────────
+  /** Fired when active lunar south pole site selection changes. */
+  LUNAR_SITE_CHANGED: 'jmars:lunar-site-changed'
 });

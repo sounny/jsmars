@@ -8,6 +8,7 @@ import { loadBands, decodeFraction, xyToLatLon, latLonToXY } from './PolarGrid.j
 import { hillshade, roughness, distanceTransform } from './TerrainAnalysis.js';
 import { renderGrey, renderSlopeClasses, renderFraction, renderPSR, renderScalar, VIRIDIS_CSS, SLOPE_COLORS } from './PlannerRenderers.js';
 import { attachTools } from './PlannerTools.js';
+import { EVENTS } from '../../constants.js';
 
 const BASE = './assets/lunar-south-pole/';
 export const toLL = (x, y) => L.latLng(y / 1000, x / 1000);
@@ -225,7 +226,7 @@ export class LunarSitePlanner {
       const b = this.grids.regElev?.bounds;
       if (b) this.map.fitBounds([toLL(b.xmin, b.ymin), toLL(b.xmax, b.ymax)]);
       this.renderThematic();
-      document.dispatchEvent(new CustomEvent('jmars:lunar-site-changed', { detail: { site: null } }));
+      document.dispatchEvent(new CustomEvent(EVENTS.LUNAR_SITE_CHANGED, { detail: { site: null } }));
       return;
     }
     const s = this.site;
@@ -250,7 +251,7 @@ export class LunarSitePlanner {
       this.map.fitBounds([toLL(b.xmin, b.ymin), toLL(b.xmax, b.ymax)]);
       this.renderThematic();
       this.setStatus(`${s.name}: ${e.width}×${e.height} cells at ${e.res} m.`);
-      document.dispatchEvent(new CustomEvent('jmars:lunar-site-changed', { detail: { site: s.id } }));
+      document.dispatchEvent(new CustomEvent(EVENTS.LUNAR_SITE_CHANGED, { detail: { site: s.id } }));
     } catch (err) {
       if (token === this._loadToken) {
         console.error(err);
