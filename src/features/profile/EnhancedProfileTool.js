@@ -32,9 +32,9 @@ export class EnhancedProfileTool {
             earth: [
                 {
                     id: 'aster_gdem',
-                    name: 'ASTER GDEM (GIBS shaded relief)',
-                    url: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
-                    layer: 'ASTER_GDEM_Greyscale_ShadedRelief'
+                    name: 'Copernicus / SRTM Terrain Relief (EOX WMS)',
+                    url: 'https://tiles.maps.eox.at/wms',
+                    layer: 'terrain'
                 }
             ],
             moon: [

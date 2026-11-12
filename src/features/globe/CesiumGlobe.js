@@ -90,9 +90,11 @@ export class CesiumGlobe {
     this.autoSpin = false;
     this._spinLast = null;
     this._onTick = null;
+    this._onCameraMoveEnd = null;
     this._handler = null;
     this._graticuleLayer = null;
     this.onHover = null;
+    this.onCameraChanged = null;
     this.onSpinPaused = null;
     this._lightingHour = null;
     this.lightingState = { enabled: false };
@@ -207,9 +209,10 @@ export class CesiumGlobe {
   setCameraView(view) {
     if (!this.ready || !view) return;
     const { Cesium, ellipsoid } = this;
-    const lat = Number(view.lat);
+    const rawLat = Number(view.lat);
     const lng = Number(view.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if (!Number.isFinite(rawLat) || !Number.isFinite(lng)) return;
+    const lat = Math.max(-90, Math.min(90, rawLat));
     const height = Number.isFinite(view.heightMeters)
       ? view.heightMeters
       : zoomToCameraHeightMeters(view.zoom, {
@@ -224,6 +227,9 @@ export class CesiumGlobe {
         roll: 0
       }
     });
+    if (typeof this.onCameraChanged === 'function') {
+      this.onCameraChanged(this.getCameraView({ viewportHeightPx: view.viewportHeightPx }));
+    }
   }
 
   /**
@@ -264,6 +270,9 @@ export class CesiumGlobe {
     const step = Math.max(minStep, height * 0.45);
     if (direction > 0) this.viewer.camera.zoomIn(step);
     else this.viewer.camera.zoomOut(step);
+    if (typeof this.onCameraChanged === 'function') {
+      this.onCameraChanged(this.getCameraView());
+    }
   }
 
   setAutoSpin(enabled) {
@@ -415,6 +424,15 @@ export class CesiumGlobe {
         lng: Cesium.Math.toDegrees(carto.longitude)
       });
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+    if (viewer.camera?.moveEnd?.addEventListener) {
+      this._onCameraMoveEnd = () => {
+        if (typeof this.onCameraChanged === 'function' && this.ready) {
+          this.onCameraChanged(this.getCameraView());
+        }
+      };
+      viewer.camera.moveEnd.addEventListener(this._onCameraMoveEnd);
+    }
   }
 
   destroyViewer() {
@@ -422,6 +440,10 @@ export class CesiumGlobe {
       this._handler.destroy();
       this._handler = null;
     }
+    if (this.viewer && this._onCameraMoveEnd && this.viewer.camera?.moveEnd?.removeEventListener) {
+      this.viewer.camera.moveEnd.removeEventListener(this._onCameraMoveEnd);
+    }
+    this._onCameraMoveEnd = null;
     if (this.viewer && this._onTick) {
       this.viewer.clock.onTick.removeEventListener(this._onTick);
     }

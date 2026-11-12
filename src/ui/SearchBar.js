@@ -30,6 +30,8 @@ export class SearchBar {
         this.currentMatches = [];
         /** @type {number} Active keyboard selection index */
         this.activeIndex = -1;
+        /** @type {((landmark: Object) => boolean)|null} Optional filter to hide active game spoilers */
+        this.spoilerFilter = null;
 
         if (!this.container) {
             console.error(`SearchBar container '${containerId}' not found.`);
@@ -174,13 +176,32 @@ export class SearchBar {
      */
     async loadLandmarks() {
         try {
-            const response = await fetch('./src/data/landmarks.json');
+            const response = await fetch(new URL('../data/landmarks.json', import.meta.url));
             if (!response.ok) throw new Error('Failed to load landmarks');
             this.landmarks = await response.json();
         } catch (error) {
             console.error('Error loading landmarks:', error);
             this.landmarks = [];
         }
+    }
+
+    /**
+     * Set an optional predicate `(landmark) => boolean` to filter searchable landmarks
+     * (e.g., hiding unfound scavenger hunt targets while preserving coordinate navigation).
+     * @param {((landmark: Object) => boolean)|null} filterFn
+     */
+    setSpoilerFilter(filterFn) {
+        this.spoilerFilter = typeof filterFn === 'function' ? filterFn : null;
+    }
+
+    /**
+     * Return landmarks permitted in autocomplete results.
+     * @returns {Array<Object>}
+     */
+    getSearchableLandmarks() {
+        if (!Array.isArray(this.landmarks)) return [];
+        if (!this.spoilerFilter) return this.landmarks;
+        return this.landmarks.filter((lm) => this.spoilerFilter(lm));
     }
 
     /**
@@ -330,7 +351,7 @@ export class SearchBar {
         }
 
         const coordHit = SearchBar.parseCoordinateQuery(query);
-        const ranked = SearchBar.rankLandmarks(this.landmarks, query, this.currentBody);
+        const ranked = SearchBar.rankLandmarks(this.getSearchableLandmarks(), query, this.currentBody);
         const matches = coordHit ? [coordHit, ...ranked] : ranked;
 
         this.renderResults(matches);

@@ -129,6 +129,8 @@ export const EVENTS = Object.freeze({
   // ── 3D View ─────────────────────────────────────────────────
   /** Fired when the map view mode changes. Payload: { mode: '2d'|'3d' }. */
   VIEW_MODE_CHANGED: 'jmars:view-mode-changed',
+  /** Fired when cursor hovers or camera settles on the 3D Cesium globe. */
+  GLOBE_HOVER: 'jmars:globe-hover',
   /** Fired when 3D terrain viewer is toggled. */
   THREED_TOGGLED: 'jmars:threed-toggled',
   /** Fired when 3D view camera/parameters change. */

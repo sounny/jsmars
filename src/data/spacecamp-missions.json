@@ -1,0 +1,606 @@
+{
+  "deckId": "spacecamp_5rounds_v2",
+  "maxScore": 600,
+  "mysteryUnlock": {
+    "requiredCompletedRounds": 3,
+    "autoUnlockMinutes": 15
+  },
+  "ui": {
+    "en": {
+      "eventBadge": "JSMARS · FLIGHT OPS",
+      "title": "Mission JSMARS: Space Data Analysts",
+      "subtitle": "Digital Workshop in Mission Planning & Remote Sensing Analysis",
+      "briefingBtn": "Slides",
+      "missionsBtn": "5 Trails",
+      "standingsBtn": "Standings",
+      "aiBtn": "AI CapCom",
+      "projectorLink": "Leaderboard & Podium",
+      "handleTitle": "Claim Your Callsign",
+      "handleSubtitle": "Saved in a browser cookie (no password). Points across all 5 rounds sync live to the leaderboard.",
+      "handlePlaceholder": "Callsign (e.g. AtlasRover, Toubkal_EO)",
+      "handleRules": "3-20 characters: letters, numbers, _ or -",
+      "handleClaimBtn": "Join",
+      "handleChecking": "Registering callsign...",
+      "handleTaken": "Callsign already taken! Pick an available suggestion or type another:",
+      "handleInvalid": "Use 3-20 letters, numbers, _ or - (no spaces).",
+      "scanBtn": "Scan Reticle Target",
+      "flyBtn": "Fly to Coordinates",
+      "launchToolBtn": "Open JSMARS Tool",
+      "hint1Btn": "Hint 1",
+      "hint2Btn": "Hint 2",
+      "nextRoundBtn": "Advance to Next Trail →",
+      "mysteryLockedTitle": "Round 5 Encrypted — Outer Solar System Finale (180 pts)",
+      "mysteryLockedDesc": "Unlocks automatically once you score in 3 trails OR at 15:00 elapsed time — massive comeback points!",
+      "mysteryUnlockedToast": "ROUND 5 UNLOCKED! 180-point Outer Solar System Finale is now live.",
+      "sensorCardHeader": "SPACE ASSET & SENSOR BRIEF",
+      "jsmarsSkillHeader": "JSMARS SKILL YOU ARE LEARNING",
+      "scoreLabel": "PTS",
+      "roundLabel": "ROUND",
+      "rankLabel": "RANK",
+      "wrongBodyPrefix": "Switch Body Selector (top-left) to",
+      "offTargetPrefix": "Signal weak — reticle center is",
+      "offTargetSuffix": "from target. Pan closer and scan again!",
+      "completedBadge": "COMPLETE"
+    },
+    "fr": {
+      "eventBadge": "JSMARS · OPÉRATIONS",
+      "title": "Mission JSMARS: Space Data Analysts",
+      "subtitle": "Atelier numérique de planification de missions et d'analyse en télédétection",
+      "briefingBtn": "Supports",
+      "missionsBtn": "5 Parcours",
+      "standingsBtn": "Classement",
+      "aiBtn": "IA CapCom",
+      "projectorLink": "Classement & Podium",
+      "handleTitle": "Choisissez Votre Pseudo",
+      "handleSubtitle": "Sauvegardé par cookie navigateur (sans mot de passe). Vos points sur les 5 manches sont synchronisés en direct.",
+      "handlePlaceholder": "Pseudo (ex. AtlasRover, Toubkal_EO)",
+      "handleRules": "3 à 20 caractères : lettres, chiffres, _ ou -",
+      "handleClaimBtn": "Rejoindre",
+      "handleChecking": "Enregistrement en cours...",
+      "handleTaken": "Ce pseudo est déjà pris ! Choisissez une suggestion disponible ou saisissez-en un autre :",
+      "handleInvalid": "Utilisez 3 à 20 lettres, chiffres, _ ou - (sans espaces).",
+      "scanBtn": "Scanner la Cible",
+      "flyBtn": "Voler vers la Zone",
+      "launchToolBtn": "Ouvrir l'Outil JSMARS",
+      "hint1Btn": "Indice 1",
+      "hint2Btn": "Indice 2",
+      "nextRoundBtn": "Passer au Parcours Suivant →",
+      "mysteryLockedTitle": "Manche 5 Chiffrée — Finale Système Externe (180 pts)",
+      "mysteryLockedDesc": "Déblocage automatique après 3 parcours entamés OU après 15 min — idéal pour remonter au score !",
+      "mysteryUnlockedToast": "MANCHE 5 DÉBLOQUÉE ! La finale à 180 points dans le Système Solaire externe est ouverte.",
+      "sensorCardHeader": "CAPTEUR SPATIAL & TÉLÉDÉTECTION",
+      "jsmarsSkillHeader": "COMPÉTENCE JSMARS DU PARCOURS",
+      "scoreLabel": "PTS",
+      "roundLabel": "MANCHE",
+      "rankLabel": "RANG",
+      "wrongBodyPrefix": "Changez le sélecteur d'astre (en haut à gauche) sur",
+      "offTargetPrefix": "Signal faible — le réticule est à",
+      "offTargetSuffix": "de la cible. Rapprochez-vous et rescannez !",
+      "completedBadge": "VALIDÉ"
+    }
+  },
+  "introCards": [
+    {
+      "id": "speaker",
+      "step": "01 / 05",
+      "avatar": "assets/spacecamp/anwar-avatar.jpg",
+      "en": {
+        "kicker": "INSTRUCTOR & MISSION BRIEFING",
+        "title": "Dr. Moulay Anwar Sounny-Slitine",
+        "body": "Dr. Moulay Anwar Sounny-Slitine is Assistant Professor of Earth Observation, GNSS, and GeoAI at the International Space University (ISU), where he chairs the Space Applications Department for the Space Studies Program and serves as ISU's Head of Delegation to UN COPUOS. He also serves on the Geography faculty at Texas State University and is a Research Fellow at The University of Texas at Austin, where he earned his Ph.D. and M.A. in Geography and the Environment, B.S. in Civil Engineering, and B.A. in Geography. Previously on the faculty at the University of Wisconsin-Madison and the University of Florida, he created JSMARS to put open planetary GIS and satellite analysis directly in the browser.",
+        "highlights": [
+          "Creator of JSMARS, an open-source planetary and Earth Observation WebGIS inspired by ASU JMARS",
+          "Focuses on applied spatial data science, GeoAI, Earth Observation, and hands-on technical curricula",
+          "1-Hour Schedule: 5 min Intro · 5 × 5 min Trails (25m) · 5 min Winner's Circle (+25m Buffer)"
+        ]
+      },
+      "fr": {
+        "kicker": "INTERVENANT & BRIEFING DE MISSION",
+        "title": "Dr. Moulay Anwar Sounny-Slitine",
+        "body": "Dr. Moulay Anwar Sounny-Slitine est professeur assistant en observation de la Terre, GNSS et GeoAI à l'International Space University (ISU), où il dirige le département Space Applications du Space Studies Program et représente l'ISU auprès du comité COPUOS des Nations Unies. Il est également enseignant au département de géographie de Texas State University et chercheur associé (Research Fellow) à l'Université du Texas à Austin, où il a obtenu son doctorat (Ph.D.) et son master (M.A.) en géographie et environnement, son B.S. en génie civil et son B.A. en géographie. Après avoir enseigné à l'Université du Wisconsin-Madison et à l'Université de Floride, il a créé JSMARS pour rendre l'analyse spatiale et planétaire accessible directement dans le navigateur.",
+        "highlights": [
+          "Créateur de JSMARS, SIG planétaire et d'observation de la Terre open-source inspiré de JMARS (ASU)",
+          "Travaux centrés sur la science des données spatiales appliquée, la GeoAI et l'observation de la Terre",
+          "Format 1 heure : 5 min Intro · 5 × 5 min Parcours (25m) · 5 min Podium (+25m Marge)"
+        ]
+      },
+      "action": {
+        "body": "earth",
+        "lat": 32.223,
+        "lon": -7.953,
+        "zoom": 11,
+        "en": "Fly to Ben Guerir, Morocco",
+        "fr": "Voler vers Ben Guerir, Maroc"
+      }
+    },
+    {
+      "id": "gis_eo",
+      "step": "02 / 05",
+      "en": {
+        "kicker": "WHAT IS GIS & EARTH OBSERVATION?",
+        "title": "Reading Earth's Surface from Orbit",
+        "body": "A Geographic Information System (GIS) stacks co-registered spatial datasets by latitude and longitude: satellite imagery (rasters), laser elevation models (DEMs), and mapped shapes (vectors). In Morocco, Earth Observation (EO) satellites classify forests, irrigated farms, cities, solar power plants, and hyper-arid deserts from 786 km above Earth.",
+        "highlights": [
+          "Spectral Signature & Texture: Forests absorb red light; cities show rectilinear grids; irrigated farms form geometric parcels; sand dunes reflect bright iron-oxide tones",
+          "Noor Ouarzazate (580 MW) & Rehamna Green Energy Park are sited using solar irradiance rasters",
+          "Round 1 puts YOU in charge of classifying Moroccan land covers from 10 m Sentinel-2 satellite data!"
+        ]
+      },
+      "fr": {
+        "kicker": "QU'EST-CE QUE LE SIG & L'OBSERVATION DE LA TERRE ?",
+        "title": "Lire la Surface Terrestre depuis l'Espace",
+        "body": "Un Système d'Information Géographique (SIG) superpose des couches géoréférencées : images satellitaires (rasters), modèles numériques d'élévation (MNT) et tracés géométriques (vecteurs). Au Maroc, l'Observation de la Terre (OT) distingue forêts de cèdres, périmètres irrigués, villes, centrales solaires et ergs sahariens à 786 km d'altitude.",
+        "highlights": [
+          "Signature spectrale & texture : canopée sombre des forêts, trames urbaines, parcelles agricoles géométriques et dunes riches en oxydes de fer",
+          "Noor Ouarzazate (580 MW) et Ben Guerir utilisent ces cartes d'ensoleillement satellitaires",
+          "Dans la Manche 1, vous classifierez l'occupation du sol au Maroc sur imagerie Sentinel-2 à 10 m !"
+        ]
+      },
+      "action": {
+        "body": "earth",
+        "lat": 30.992,
+        "lon": -6.863,
+        "zoom": 11,
+        "en": "Inspect Noor Ouarzazate Solar Complex",
+        "fr": "Inspecter la Centrale Noor Ouarzazate"
+      }
+    },
+    {
+      "id": "space_assets",
+      "step": "03 / 05",
+      "en": {
+        "kicker": "SPACE ASSETS COLLECTING DATA",
+        "title": "Cameras, Thermal Infrared & Orbital Lasers",
+        "body": "Planetary scientists never rely on a single camera. Spacecraft combine optical multispectral imagers, day/night thermal infrared sensors, and pulsing laser altimeters to measure rock, dust, slope, and water ice across the Solar System.",
+        "highlights": [
+          "Earth: ESA Copernicus Sentinel-2 MSI (10 m optical) & NASA Terra/Aqua MODIS",
+          "Mars: MGS MOLA (671M laser elevation pulses), Mars Odyssey THEMIS (thermal IR), MRO HiRISE (25 cm/px)",
+          "Moon & Europa: LRO LOLA (polar slope, sunlight & ice traps) and Galileo SSI (9 m/px ocean-world ice rafts)"
+        ]
+      },
+      "fr": {
+        "kicker": "LES CAPTEURS SPATIAUX EN ORBITE",
+        "title": "Caméras Optiques, Infrarouge Thermique & Lasers",
+        "body": "Les planétologues combinent toujours plusieurs instruments : imageurs multispectraux, capteurs infrarouges jour/nuit et altimètres laser permettent de mesurer la pente, la roche et la glace d'eau à travers tout le Système Solaire.",
+        "highlights": [
+          "Terre : ESA Copernicus Sentinel-2 MSI (optique 10 m) & NASA MODIS",
+          "Mars : MGS MOLA (671 millions de tirs laser), Mars Odyssey THEMIS (IR thermique), MRO HiRISE (25 cm/px)",
+          "Lune & Europe : LRO LOLA (pentes, lumière et glace polaire) et Galileo SSI (radeaux de glace à 9 m/px)"
+        ]
+      }
+    },
+    {
+      "id": "mission_engineering",
+      "step": "04 / 05",
+      "en": {
+        "kicker": "MISSION PLANNING · ROVERS & ARTEMIS BASES",
+        "title": "How Scientists Plan Safe Landings & Traverses",
+        "body": "Sending a rover to Mars or astronauts to the Moon is a GIS optimization puzzle. On Mars, rover planners use MOLA slope profiles and THEMIS thermal rock maps to avoid steep cliffs and sand traps. At the Lunar South Pole, Artemis planners balance 4 competing variables: flat landing slope (< 5°), continuous solar power, direct Earth radio line-of-sight, and proximity to Permanently Shadowed water-ice craters.",
+        "highlights": [
+          "Erfoud & Anti-Atlas in southeastern Morocco serve as a real Mars rover field analog on Earth",
+          "Round 3 scores your actual Mars rover path across Jezero Crater using live USGS MOLA elevation data!",
+          "Round 4 scores your Lunar South Pole landing pin using real NASA LRO LOLA rasters!"
+        ]
+      },
+      "fr": {
+        "kicker": "INGÉNIERIE DE MISSION · ROVERS & ARTEMIS",
+        "title": "Planifier un Atterrissage et un Trajet de Rover",
+        "body": "Poser un rover sur Mars ou une base sur la Lune est un vrai défi SIG. Sur Mars, on trace les pentes MOLA pour éviter les falaises. Au Pôle Sud lunaire (Artemis), il faut équilibrer 4 critères : pente douce (< 5°), ensoleillement maximal, visibilité radio directe avec la Terre et proximité des cratères d'ombre permanente riches en glace d'eau.",
+        "highlights": [
+          "Erfoud et l'Anti-Atlas au Maroc servent de terrain d'essai réel aux rovers martiens",
+          "La Manche 3 évalue votre propre trajet de rover à Jezero sur les vraies altitudes MOLA !",
+          "La Manche 4 note votre site d'alunissage au Pôle Sud sur les vraies grilles NASA LOLA !"
+        ]
+      }
+    },
+    {
+      "id": "progressive_rules",
+      "step": "05 / 05",
+      "en": {
+        "kicker": "5 PROGRESSIVE TRAILS · 5 MIN EACH · 600 TOTAL POINTS",
+        "title": "Progressive Scoring — Anyone Can Come Back & Win!",
+        "body": "Designed for a crisp 1-hour session (5 min Intro · 5 × 5 min Trails · 5 min Podium + Buffer). Each 5-minute trail teaches a new JSMARS tool with escalating points, so experimenting early never ruins your shot at #1!",
+        "highlights": [
+          "Trail 1 (~5m · 60 pts): Earth Observation — Classify 4 Moroccan land covers + Measurement",
+          "Trail 2 (~5m · 90 pts): Mars Laser Altimetry — Scan Olympus Mons & Valles Marineris + Profile",
+          "Trail 3 (~5m · 120 pts): Mars Rover Traverse — Pick payload tools + Draw scored Jezero path",
+          "Trail 4 (~5m · 150 pts): Moon Artemis Siting — Score your South Pole pin on NASA LOLA data",
+          "Trail 5 (~5m · 180 pts): Auto-Unlocking Finale — Europa Conamara Chaos + 9 m/px Mosaic + 3D/Shapes!"
+        ]
+      },
+      "fr": {
+        "kicker": "5 PARCOURS PROGRESSIFS · 5 MIN CHACUN · 600 POINTS",
+        "title": "Score Progressif — Tout reste jouable jusqu'à la fin !",
+        "body": "Conçu pour un atelier d'une heure (5 min Intro · 5 × 5 min Parcours · 5 min Podium + Marge). Chaque parcours de 5 minutes débloque un nouvel outil JSMARS avec des points croissants !",
+        "highlights": [
+          "Manche 1 (~5m · 60 pts) : Observation de la Terre — Classifier 4 paysages du Maroc + Mesure",
+          "Manche 2 (~5m · 90 pts) : Altimétrie Laser sur Mars — Olympus Mons, Valles Marineris + Profil",
+          "Manche 3 (~5m · 120 pts) : Rover sur Mars — Choisir vos outils SIG + Trajet noté à Jezero",
+          "Manche 4 (~5m · 150 pts) : Base Lunaire Artemis — Noter votre site sur données NASA LOLA",
+          "Manche 5 (~5m · 180 pts) : Finale Auto-débloquée — Europe Conamara Chaos + Mosaïque 9 m/px + 3D/Formes !"
+        ]
+      }
+    }
+  ],
+  "rounds": [
+    {
+      "roundNumber": 1,
+      "id": "round1_earth_eo",
+      "type": "eo_classification",
+      "maxPoints": 60,
+      "targetMinutes": 5,
+      "body": "earth",
+      "en": {
+        "shortTitle": "Earth EO",
+        "title": "Round 1 · Earth Observation & Moroccan Land Cover",
+        "jsmarsSkill": "Body Selector (Earth) · Layer Manager (Sentinel-2 10m) · Coordinate Fly-To · Measurement Tool",
+        "summary": "Inspect 4 real satellite targets across Morocco on 10 m ESA Copernicus Sentinel-2 imagery. Classify each land cover from its color, texture, and geometry (up to 48 pts), then measure one site using JSMARS Measurement (+12 pts)!",
+        "sensorTitle": "ESA Copernicus Sentinel-2 MSI (10 m Optical)",
+        "sensorBody": "Remote sensing analysts interpret Tone (spectral color), Texture (smooth sand vs rough canopy), Pattern (geometric farm fields vs natural valleys), and Context to map land cover across Earth.",
+        "measurePrompt": "Tool Step (+12 pts): Open Tools → Measurement → Distance (or Area) and measure any Moroccan feature on Earth!"
+      },
+      "fr": {
+        "shortTitle": "Terre OT",
+        "title": "Manche 1 · Observation de la Terre & Paysages du Maroc",
+        "jsmarsSkill": "Sélecteur d'astre (Earth) · Layer Manager (Sentinel-2 10m) · Coordonnées · Outil Measurement",
+        "summary": "Inspectez 4 sites satellitaires réels au Maroc sur l'imagerie ESA Sentinel-2 à 10 m. Classifiez l'occupation du sol grâce à la couleur, la texture et la géométrie (jusqu'à 48 pts), puis mesurez un site avec l'outil Measurement (+12 pts) !",
+        "sensorTitle": "ESA Copernicus Sentinel-2 MSI (Optique 10 m)",
+        "sensorBody": "En télédétection, l'analyste observe la teinte spectrale, la texture (canopée rugueuse vs sable lisse) et la géométrie (trames urbaines ou parcelles irriguées) pour cartographier la Terre.",
+        "measurePrompt": "Étape Outil (+12 pts) : Ouvrez Tools → Measurement → Distance (ou Area) et mesurez une structure au Maroc sur la carte !"
+      },
+      "landCoverClasses": [
+        { "id": "forest", "en": "Forest / Woodland", "fr": "Forêt Dense" },
+        { "id": "urban", "en": "Urban / Built-Up", "fr": "Zone Urbaine" },
+        { "id": "cropland", "en": "Irrigated Cropland", "fr": "Terres Agricoles" },
+        { "id": "desert", "en": "Hyper-Arid Desert Dunes", "fr": "Désert & Dunes" },
+        { "id": "water", "en": "Open Ocean / Reservoir", "fr": "Eau Libre / Lac" }
+      ],
+      "sites": [
+        {
+          "id": "eo_site_atlas_cedar",
+          "code": "Site Alpha (33.425°N, -5.155°E)",
+          "lat": 33.425,
+          "lon": -5.155,
+          "zoom": 12,
+          "correctClass": "forest",
+          "maxPoints": 12,
+          "en": {
+            "prompt": "Fly to 33.425°N, -5.155°E in the Middle Atlas uplands. Zoom to 10 m resolution and classify the dark, rough-textured chlorophyll-rich cover:",
+            "reveal": "Ifrane / Azrou Atlas Cedar Forest! Healthy tree canopy strongly absorbs visible red light for photosynthesis and appears deep dark green with coarse shadow texture."
+          },
+          "fr": {
+            "prompt": "Volez vers 33,425°N, -5,155°E dans le Moyen Atlas. Zoomez à 10 m et classifiez cette couverture sombre et texturée riche en chlorophylle :",
+            "reveal": "Cédraie d'Ifrane / Azrou ! La canopée forestière absorbe fortement la lumière rouge pour la photosynthèse et apparaît vert foncé avec une texture rugueuse."
+          }
+        },
+        {
+          "id": "eo_site_benguerir_urban",
+          "code": "Site Beta (32.223°N, -7.953°E)",
+          "lat": 32.223,
+          "lon": -7.953,
+          "zoom": 13,
+          "correctClass": "urban",
+          "maxPoints": 12,
+          "en": {
+            "prompt": "Fly to 32.223°N, -7.953°E in Morocco's Rehamna Province! Inspect the high-albedo geometric street grids, campus boulevards, and infrastructure:",
+            "reveal": "Ben Guerir & UM6P Urban Corridor! Concrete, asphalt, rooftops, and rectilinear road networks create unmistakable geometric patterns and bright reflectance."
+          },
+          "fr": {
+            "prompt": "Volez vers 32,223°N, -7,953°E dans la province de Rehamna ! Observez les réseaux routiers géométriques, campus et bâtiments :",
+            "reveal": "Ville de Ben Guerir & Campus UM6P ! Le béton, les toitures et la trame orthogonale des avenues signent immédiatement le tissu urbain."
+          }
+        },
+        {
+          "id": "eo_site_doukkala_ag",
+          "code": "Site Gamma (32.580°N, -8.620°E)",
+          "lat": 32.580,
+          "lon": -8.620,
+          "zoom": 12,
+          "correctClass": "cropland",
+          "maxPoints": 12,
+          "en": {
+            "prompt": "Fly west toward 32.580°N, -8.620°E. Notice the dense patchwork of small rectangular green and harvested parcels fed by canal networks:",
+            "reveal": "Doukkala Irrigated Agricultural Plain! Unlike wild forests, cultivated farmland forms sharp rectangular field boundaries alternating between active green crops and fallow soil."
+          },
+          "fr": {
+            "prompt": "Volez à l'ouest vers 32,580°N, -8,620°E. Observez la mosaïque serrée de parcelles rectangulaires vertes et dorées irriguées par canaux :",
+            "reveal": "Périmètre irrigué des Doukkala ! Contrairement aux forêts naturelles, l'agriculture se reconnaît au découpage géométrique net des champs cultivés."
+          }
+        },
+        {
+          "id": "eo_site_erg_chebbi",
+          "code": "Site Delta (31.140°N, -3.970°E)",
+          "lat": 31.140,
+          "lon": -3.970,
+          "zoom": 11,
+          "correctClass": "desert",
+          "maxPoints": 12,
+          "en": {
+            "prompt": "Fly southeast across the High Atlas to 31.140°N, -3.970°E near the Erfoud Mars analog zone. Classify the bright orange star-ridge formations:",
+            "reveal": "Erg Chebbi Sand Sea (Merzouga / Tafilalt Sahara)! Ferric-oxide coated quartz sand forms 150 m wind-sculpted star dunes — spectrally analogous to bright Martian dust!"
+          },
+          "fr": {
+            "prompt": "Traversez le Haut Atlas vers 31,140°N, -3,970°E près de la zone analogue martienne d'Erfoud. Classifiez ces crêtes orangées en étoile :",
+            "reveal": "Dunes de l'Erg Chebbi (Merzouga / Sahara du Tafilalt) ! Le sable recouvert d'oxydes de fer forme des dunes géantes dont la réflectance rappelle les poussières martiennes."
+          }
+        }
+      ],
+      "measureBonusPoints": 12
+    },
+    {
+      "roundNumber": 2,
+      "id": "round2_mars_altimetry",
+      "type": "scan_and_profile",
+      "maxPoints": 90,
+      "targetMinutes": 5,
+      "body": "mars",
+      "spoilerNames": ["Olympus Mons", "Valles Marineris", "Melas Chasma", "Candor Chasma", "Coprates Chasma"],
+      "en": {
+        "shortTitle": "Mars Relief",
+        "title": "Round 2 · Mars Laser Altimetry & Giant Tectonics",
+        "jsmarsSkill": "Layer Stacking (MOLA Colorized Elevation + Opacity) · Linear & Radial Elevation Profiles",
+        "summary": "Switch to Mars! Turn on MOLA Colorized Elevation in Layer Manager to see planetary height by laser altimetry, locate Mars's two grandest geologic structures, and slice a real 21.9 km topographic profile.",
+        "sensorTitle": "Mars Global Surveyor — MOLA Laser Altimeter",
+        "sensorBody": "MOLA bounced 671 million infrared laser pulses off Mars to measure topography to ~1 m vertical precision — revealing both the tallest volcano (Olympus Mons, +21.9 km) and a 4,000 km tectonic canyon rift (Valles Marineris, -7 km)."
+      },
+      "fr": {
+        "shortTitle": "Relief Mars",
+        "title": "Manche 2 · Altimétrie Laser & Mégastructures de Mars",
+        "jsmarsSkill": "Superposition de couches (MOLA Colorized Elevation) · Profils Topographiques (Linear / Radial Profile)",
+        "summary": "Passez sur Mars ! Activez MOLA Colorized Elevation dans Layer Manager pour visualiser l'altitude laser, repérez les deux plus grandes structures géologiques de Mars et tracez une coupe topographique de 21,9 km.",
+        "sensorTitle": "Mars Global Surveyor — Altimètre Laser MOLA",
+        "sensorBody": "L'altimètre MOLA a tiré 671 millions d'impulsions laser depuis l'orbite pour mesurer le relief martien au mètre près, révélant le plus haut volcan (+21,9 km) et un rift tectonique de 4 000 km (-7 km)."
+      },
+      "targets": [
+        {
+          "id": "r2_olympus",
+          "body": "mars",
+          "lat": 18.65,
+          "lon": 226.2,
+          "radiusKm": 340,
+          "points": 30,
+          "hintCost": 4,
+          "en": {
+            "title": "Target 2A: Solar System's Tallest Volcano (30 pts)",
+            "clue": "Switch Body Selector to Mars and enable 'MOLA Colorized Elevation' in Layer Manager! Find the colossal white/red 624 km shield volcano northwest of the 3 aligned Tharsis volcanoes.",
+            "hint1": "Look in Mars's western hemisphere around 18°N, -134°E (226°E), northwest of the three diagonal Tharsis Montes.",
+            "hint2": "Center your scanner reticle at 18.65°N, -133.8°E (226.2°E) over Olympus Mons's summit caldera."
+          },
+          "fr": {
+            "title": "Cible 2A : Le Plus Haut Volcan du Système Solaire (30 pts)",
+            "clue": "Passez sur Mars et activez « MOLA Colorized Elevation » dans Layer Manager ! Repérez l'immense volcan bouclier de 624 km au nord-ouest des 3 volcans alignés de Tharsis.",
+            "hint1": "Cherchez dans l'hémisphère ouest de Mars vers 18°N, -134°E (226°E), au nord-ouest des trois volcans de Tharsis.",
+            "hint2": "Centrez le réticule sur 18,65°N, -133,8°E (226,2°E) au sommet d'Olympus Mons."
+          }
+        },
+        {
+          "id": "r2_valles",
+          "body": "mars",
+          "lat": -13.9,
+          "lon": 300.8,
+          "radiusKm": 680,
+          "points": 30,
+          "hintCost": 4,
+          "en": {
+            "title": "Target 2B: The 4,000 km Tectonic Canyon (30 pts)",
+            "clue": "Follow the Tharsis volcanic rise east just south of the equator to scan the deep blue/green 4,000 km canyon system that cracked Mars's crust 7 km deep.",
+            "hint1": "Look around -14°S between -90°E and -50°E (270°E–310°E), east of the Tharsis volcanoes.",
+            "hint2": "Center the central Melas/Coprates trough near -13.9°S, -59.2°E (300.8°E)."
+          },
+          "fr": {
+            "title": "Cible 2B : Le Canyon Tectonique de 4 000 km (30 pts)",
+            "clue": "Suivez le bombement de Tharsis vers l'est juste au sud de l'équateur et scannez le gigantesque réseau de canyons profond de 7 km.",
+            "hint1": "Cherchez vers -14°S entre -90°E et -50°E (270°E–310°E), à l'est de Tharsis.",
+            "hint2": "Centrez la fosse centrale vers -13,9°S, -59,2°E (300,8°E)."
+          }
+        }
+      ],
+      "lab": {
+        "id": "r2_profile_lab",
+        "points": 30,
+        "eventType": "profile",
+        "requiredBody": "mars",
+        "toolLaunch": "profile-linear",
+        "en": {
+          "title": "Tool Step 2C: Slice a MOLA Laser Elevation Profile (+30 pts)",
+          "prompt": "Open Tools → Profiles → Linear Profile (click at least 2 points across Olympus Mons or Valles Marineris, then double-click to finish) to plot real MOLA elevation!"
+        },
+        "fr": {
+          "title": "Étape Outil 2C : Tracer un Profil Laser MOLA (+30 pts)",
+          "prompt": "Ouvrez Tools → Profiles → Linear Profile (cliquez sur 2 points à travers Olympus Mons ou Valles Marineris puis double-cliquez) pour tracer le profil d'altitude !"
+        }
+      }
+    },
+    {
+      "roundNumber": 3,
+      "id": "round3_mars_rover",
+      "type": "mars_rover_planner",
+      "maxPoints": 120,
+      "targetMinutes": 5,
+      "body": "mars",
+      "start": { "lat": 18.38, "lon": 77.58, "name": "Jezero Crater Landing Zone" },
+      "goal": { "lat": 18.72, "lon": 76.95, "name": "Nili Carbonate Highlands", "captureRadiusKm": 22 },
+      "en": {
+        "shortTitle": "Mars Rover",
+        "title": "Round 3 · Mars Rover Path & Payload Planning (Jezero)",
+        "jsmarsSkill": "Rover Route Engineering · Live MOLA DEM Slope Scoring · Landing Ellipses & Payload Selection",
+        "summary": "Plan an extended rover traverse from Perseverance's landing zone on the Jezero Crater floor (18.38°N, 77.58°E) out to the Nili Carbonate Highlands (18.72°N, 76.95°E)! Choose the right JSMARS planning tools (30 pts), draw a low-slope rover route evaluated against real USGS MOLA elevations (75 pts), and inspect Landing Sites or Crater Hazards (+15 pts)!",
+        "sensorTitle": "MRO HiRISE + MOLA Slope & Neretva Vallis Channel",
+        "sensorBody": "Driving straight over Jezero's steep crater rim risks rover wheel slip and excessive energy climb. Pro tip: turn on MOLA Colorized Elevation or Hillshade and look for the ancient Neretva Vallis river channel breaching the western rim (~18.52°N, 77.33°E) for a gentler natural ramp!",
+        "flyJezeroBtn": "Center Map on Jezero Traverse Zone",
+        "drawRouteBtn": "Draw Rover Waypoints on Map",
+        "clearRouteBtn": "Clear Waypoints",
+        "evaluateRouteBtn": "Score Rover Plan & Sync Points",
+        "toolsPrompt": "1. Select the 3 JSMARS Mission Planning Tools needed for a safe Mars rover traverse (up to 30 pts):",
+        "routePrompt": "2. Click 'Draw Rover Waypoints' and click 3–10 points on the Mars map from the Green Start Pin (Jezero Floor) to the Gold Goal Pin (Nili Highlands), then click 'Score Rover Plan' (up to 75 pts):",
+        "labPrompt": "3. Bonus Field Check (+15 pts): Toggle 'Show Landing Sites' (Tools → Landing Sites) OR log a hazard crater with 'Crater Counting' on Mars!"
+      },
+      "fr": {
+        "shortTitle": "Rover Mars",
+        "title": "Manche 3 · Planification de Trajet Rover & Outils (Jezero)",
+        "jsmarsSkill": "Ingénierie de Traverse Rover · Calcul de Pente MOLA Réel · Sites d'Atterrissage & Choix d'Outils",
+        "summary": "Planifiez la traversée d'un rover depuis le site de Perseverance au fond du cratère Jezero (18,38°N, 77,58°E) jusqu'au plateau carbonaté de Nili (18,72°N, 76,95°E) ! Sélectionnez les bons outils SIG (30 pts), tracez l'itinéraire le moins abrupt évalué sur les vraies altitudes MOLA (75 pts) et vérifiez les sites d'atterrissage (+15 pts) !",
+        "sensorTitle": "Pentes MOLA & Vallée Fluviale de Neretva Vallis",
+        "sensorBody": "Franchir tout droit le rempart abrupt du cratère Jezero expose le rover au patinage. Astuce : activez MOLA Colorized Elevation ou Hillshade et empruntez l'ancien chenal fluvial de Neretva Vallis qui entaille le rebord ouest (~18,52°N, 77,33°E) !",
+        "flyJezeroBtn": "Centrer sur la Zone de Jezero",
+        "drawRouteBtn": "Tracer les Waypoints sur la Carte",
+        "clearRouteBtn": "Effacer le Tracé",
+        "evaluateRouteBtn": "Évaluer l'Itinéraire & Marquer les Points",
+        "toolsPrompt": "1. Cochez les 3 outils JSMARS indispensables pour planifier ce trajet de rover sur Mars (jusqu'à 30 pts) :",
+        "routePrompt": "2. Cliquez sur « Tracer les Waypoints », placez 3 à 10 points du départ vert (fond de Jezero) à l'arrivée dorée (plateau de Nili), puis cliquez sur « Évaluer l'Itinéraire » (jusqu'à 75 pts) :",
+        "labPrompt": "3. Vérification Terrain (+15 pts) : Activez « Show Landing Sites » (Tools → Landing Sites) OU pointez un cratère avec « Crater Counting » !"
+      },
+      "toolChoices": [
+        {
+          "id": "mola_profile",
+          "correct": true,
+          "en": "Profiles (MOLA DEM) — Verify slope angles & total elevation climb",
+          "fr": "Profiles (MOLA DEM) — Vérifier les angles de pente et le dénivelé"
+        },
+        {
+          "id": "themis_landing",
+          "correct": true,
+          "en": "THEMIS Thermal IR & Landing Sites — Check rock vs loose dust traps & landing ellipse",
+          "fr": "THEMIS IR Thermique & Landing Sites — Distinguer roche saine et pièges de poussière"
+        },
+        {
+          "id": "measure_craters",
+          "correct": true,
+          "en": "Measurement & Crater Counting — Compute drive distance, azimuth & crater hazards",
+          "fr": "Measurement & Crater Counting — Calculer distance, azimut et cratères dangereux"
+        },
+        {
+          "id": "lunar_psr",
+          "correct": false,
+          "en": "Lunar South Pole PSR Grid — Map Moon polar cold traps (85°S–90°S)",
+          "fr": "Grille PSR Pôle Sud Lunaire — Cratères ombragés de la Lune (85°S–90°S)"
+        },
+        {
+          "id": "galileo_mag",
+          "correct": false,
+          "en": "Galileo Magnetometer — Detect subsurface oceans inside Jupiter's magnetosphere",
+          "fr": "Magnétomètre Galileo — Détecter un océan sous la glace autour de Jupiter"
+        },
+        {
+          "id": "blind_drive",
+          "correct": false,
+          "en": "Single Optical Snapshot Only — Drive blind without elevation or distance data",
+          "fr": "Simple Photo Optique — Rouler à l'aveugle sans altitude ni mesure de distance"
+        }
+      ],
+      "labBonusPoints": 15
+    },
+    {
+      "roundNumber": 4,
+      "id": "round4_lunar_landing",
+      "type": "lunar_landing_scorer",
+      "maxPoints": 150,
+      "targetMinutes": 5,
+      "body": "moon",
+      "en": {
+        "shortTitle": "Moon Landing",
+        "title": "Round 4 · Artemis Lunar South Pole Landing Site Selection",
+        "jsmarsSkill": "Lunar Base Site Planner (Polar Stereographic GIS) · Multi-Criteria Engineering Trade-Offs",
+        "summary": "Open JSMARS's Lunar Base Site Planner to explore real NASA LRO LOLA data at the Moon's South Pole (85°S–90°S). Compare candidate Artemis regions (Shackleton Rim, Connecting Ridge, Malapert Massif, de Gerlache), toggle Slope, Solar Visibility, Earth Visibility & PSR Water-Ice layers, and click to score your landing site (up to 150 pts)!",
+        "sensorTitle": "NASA LRO LOLA (Barker et al. 2021; Mazarico et al. 2011)",
+        "sensorBody": "Every pixel you click inside the Lunar Base Site Planner reads real NASA LOLA measurements! To score near 150/150: find a flat ridge (Slope ≤ 5° = 45 pts) bathed in sunlight (Solar ≥ 75% = 45 pts) with Earth radio line-of-sight (Earth ≥ 50% = 30 pts) located within 0.2–2.5 km of a Permanently Shadowed water-ice crater (30 pts) — without landing inside the freezing dark PSR itself!",
+        "openPlannerBtn": "Launch Lunar Base Site Planner & Pick Site",
+        "criteriaLabels": {
+          "slope": "Touchdown Slope Safety (max 45)",
+          "sun": "Solar Power Illumination (max 45)",
+          "earth": "Direct-to-Earth Radio Comms (max 30)",
+          "ice": "Water-Ice PSR Rover Access (max 30)"
+        }
+      },
+      "fr": {
+        "shortTitle": "Site Lunaire",
+        "title": "Manche 4 · Sélection d'un Site d'Alunissage Artemis (Pôle Sud)",
+        "jsmarsSkill": "Lunar Base Site Planner (SIG Polaire Stéréographique) · Analyse Multicritère NASA LOLA",
+        "summary": "Ouvrez le Lunar Base Site Planner de JSMARS pour explorer les vraies grilles NASA LRO LOLA du Pôle Sud lunaire (85°S–90°S). Comparez les sites Artemis (Shackleton Rim, Connecting Ridge, Malapert Massif), affichez Pente, Ensoleillement, Visibilité Terre et Glace PSR, puis cliquez pour faire noter votre site d'alunissage (jusqu'à 150 pts) !",
+        "sensorTitle": "NASA LRO LOLA (Barker et al. 2021 ; Mazarico et al. 2011)",
+        "sensorBody": "Chaque clic interroge les vraies mesures laser NASA LOLA ! Pour viser 150/150 : cherchez une crête plate (Pente ≤ 5° = 45 pts), très éclairée (Soleil ≥ 75 % = 45 pts), visible depuis la Terre (Terre ≥ 50 % = 30 pts) et proche (0,2 à 2,5 km) d'un cratère d'ombre permanente riche en glace d'eau (30 pts) — sans atterrir dans l'ombre glaciale !",
+        "openPlannerBtn": "Ouvrir le Planificateur Polaire & Choisir un Site",
+        "criteriaLabels": {
+          "slope": "Sécurité Pente d'Alunissage (max 45)",
+          "sun": "Énergie Solaire Annuelle (max 45)",
+          "earth": "Liaison Radio Directe Terre (max 30)",
+          "ice": "Accès Rover à la Glace PSR (max 30)"
+        }
+      }
+    },
+    {
+      "roundNumber": 5,
+      "id": "round5_europa_finale",
+      "type": "ocean_world_finale",
+      "maxPoints": 180,
+      "targetMinutes": 5,
+      "isMystery": true,
+      "body": "europa",
+      "spoilerNames": ["Conamara Chaos"],
+      "en": {
+        "shortTitle": "Finale (180p)",
+        "title": "Round 5 · Outer Solar System Finale: Alien Ocean World!",
+        "jsmarsSkill": "Outer Solar System Worlds · High-Res Regional Mosaics (9 m/px) · Vector Shapes & 3D Globe",
+        "summary": "MASSIVE 180-POINT COMEBACK FINALE! Leave the inner planets for Jupiter's icy moon Europa, hiding a global saltwater ocean beneath its fractured ice shell. Complete all 3 exploration steps to claim up to 180 points!",
+        "sensorTitle": "NASA Galileo SSI (9 m/px) & Europa Clipper Preview",
+        "sensorBody": "Galileo's magnetometer detected an induced magnetic field inside Jupiter's magnetosphere — proving Europa holds ~2× all the liquid water in Earth's oceans! At Conamara Chaos, warm upwelling melted the ice shell, breaking kilometer-sized 'icebergs' loose before refreezing them."
+      },
+      "fr": {
+        "shortTitle": "Finale (180p)",
+        "title": "Manche 5 · Finale Système Externe : Monde Océan d'Europe !",
+        "jsmarsSkill": "Lunes du Système Externe · Mosaïque Régionale Haute Résolution (9 m/px) · Formes & Globe 3D",
+        "summary": "GRANDE FINALE À 180 POINTS ! Cap sur Europe (Europa), lune glacée de Jupiter abritant un océan global d'eau liquide salée sous sa banquise fracturée. Validez les 3 étapes pour remporter jusqu'à 180 points !",
+        "sensorTitle": "NASA Galileo SSI (9 m/px) & Cible Europa Clipper",
+        "sensorBody": "Le magnétomètre de Galileo a révélé un océan salé global contenant deux fois plus d'eau que tous les océans terrestres réunis ! À Conamara Chaos, des radeaux de glace géants ont dérivé puis regelé au-dessus d'une poche d'eau tiède."
+      },
+      "target": {
+        "id": "r5_conamara_scan",
+        "body": "europa",
+        "lat": 8.85,
+        "lon": 86.15,
+        "radiusKm": 230,
+        "points": 70,
+        "hintCost": 5,
+        "en": {
+          "title": "Step 5A: Scan Conamara Chaos on Europa (70 pts)",
+          "clue": "Switch Body Selector to Europa (Jupiter System)! Just north of the equator in the eastern hemisphere (~8.9°N, 86.2°E), right beneath the giant dark X-shaped intersection of two tectonic lineaments, center your reticle on the disrupted ice-raft chaos terrain!",
+          "hint1": "Switch Body Selector to Europa (under Jupiter System). Pan just north of the equator around +9°N, +86°E.",
+          "hint2": "Center your scanner at 8.85°N, 86.15°E right below the giant dark X crossing!"
+        },
+        "fr": {
+          "title": "Étape 5A : Scanner Conamara Chaos sur Europe (70 pts)",
+          "clue": "Passez le sélecteur d'astre sur Europa (Jupiter System) ! Juste au nord de l'équateur vers 8,9°N, 86,2°E, juste sous le grand X sombre formé par deux fractures géantes, centrez le terrain chaotique de radeaux de glace !",
+          "hint1": "Sélectionnez Europa (section Jupiter System) et cherchez juste au nord de l'équateur vers +9°N, +86°E.",
+          "hint2": "Centrez le réticule sur 8,85°N, 86,15°E juste sous la grande croix sombre en X !"
+        }
+      },
+      "mosaicStep": {
+        "id": "r5_galileo_mosaic",
+        "layerId": "europa_conamara_chaos",
+        "points": 55,
+        "en": {
+          "title": "Step 5B: Activate 9 m/px Galileo SSI Spacecraft Mosaic (+55 pts)",
+          "prompt": "Open Layer Manager on Europa and turn on 'Conamara Chaos 9m/px (Galileo SSI)', then zoom in to see the real rotated icebergs!",
+          "btn": "Enable 9 m/px Galileo Mosaic & Zoom In"
+        },
+        "fr": {
+          "title": "Étape 5B : Activer la Mosaïque Galileo SSI à 9 m/px (+55 pts)",
+          "prompt": "Ouvrez Layer Manager sur Europa et activez « Conamara Chaos 9m/px (Galileo SSI) », puis zoomez sur les vrais icebergs fracturés !",
+          "btn": "Activer la Mosaïque Galileo 9 m/px & Zoomer"
+        }
+      },
+      "cartographyStep": {
+        "id": "r5_cartography_3d",
+        "points": 55,
+        "en": {
+          "title": "Step 5C: Map an Ice Raft (Shapes) OR Inspect 3D Globe (+55 pts)",
+          "prompt": "Outline an ice raft on Europa using Tools → Shapes (Point, Line, Polygon, or Circle) OR click '3D' in the top bar to inspect Europa as a 3D planetary globe!"
+        },
+        "fr": {
+          "title": "Étape 5C : Cartographier un Iceberg (Shapes) OU Mode Globe 3D (+55 pts)",
+          "prompt": "Entourez un radeau de glace avec Tools → Shapes (Point, Line, Poly ou Circle) OU cliquez sur « 3D » en haut pour explorer Europe en globe 3D !"
+        }
+      }
+    }
+  ]
+}

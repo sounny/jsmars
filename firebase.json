@@ -1,9 +1,13 @@
 {
+  "database": {
+    "rules": "database.rules.json"
+  },
   "hosting": {
     "site": "jsmars-sounny",
     "public": ".",
     "ignore": [
       "firebase.json",
+      "database.rules.json",
       "**/.*",
       "**/node_modules/**",
       "jmars/**",

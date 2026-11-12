@@ -1,6 +1,34 @@
 # JSMARS Release Notes
 
 
+## v0.14.0 - Mission JSMARS: Space Data Analysts (`/spacecamp/`), Live Leaderboard & Unobstructed 3D Globe HUD
+**Date:** 2026-11-12
+
+### Highlights
+- **Mission JSMARS: Space Data Analysts (`spacecamp/index.html`, `src/features/spacecamp/`)**:
+  - Launched an evergreen, self-guided and classroom-ready planetary GIS & remote-sensing mission game at `/spacecamp/` (*Atelier numérique de planification de missions et d'analyse en télédétection*) while keeping the root `/` scientific viewer 100% untouched via shared `src/app-init.js`.
+  - **Wide-Screen Docked Right Side Panel (`384px`)**: Co-docks `#map`, `#globe-view`, and `#status-bar` (`body.sc-panel-open`) with a collapsible edge tab (`#sc-edge-toggle-btn`) and zero startup blocking modal so all JSMARS layers and tools remain unobstructed.
+  - **Strict English Default + Instant `EN | FR` Switch**: Defaults to English regardless of OS browser locale, with 1-click full French translation persisted via cookie (`jsmars_sc_lang`).
+- **5 Progressive Scientific Rounds (`60 + 90 + 120 + 150 + 180 = 600 Max Points`)**:
+  - **Round 1 (Earth EO - 60 pts)**: Added 10 m ESA Copernicus Sentinel-2 Cloudless WMS (`earth_s2_cloudless`) on Earth to classify 4 real Moroccan land covers (Middle Atlas Cedar Forest, Ben Guerir Urban Corridor, Doukkala Irrigated Cropland, Erg Chebbi Sahara Dunes) + geodesic Measurement.
+  - **Round 2 (Mars Laser Altimetry - 90 pts)**: MOLA Colorized Elevation layer stacking, reticle scanning of Olympus Mons & Valles Marineris (with `SearchBar.setSpoilerFilter` anti-spoiler protection), and MOLA elevation profiling.
+  - **Round 3 (Mars Rover Path & Payload Planning - 120 pts)**: Multi-waypoint rover route engineering from Jezero Crater Floor (`18.38°N, 77.58°E`) to Nili Carbonate Highlands (`18.72°N, 76.95°E`) scored against live USGS 128 ppd MOLA DEM slopes with an inline SVG elevation sparkline + payload tool selection.
+  - **Round 4 (Artemis Lunar South Pole Landing Site Selection - 150 pts)**: Integrated live 4-criteria Artemis engineering scorecard inside `LunarSitePlanner` over real NASA LRO LOLA slope, solar visibility, Earth radio visibility, and PSR water-ice rasters (`jmars:lunar-site-inspected`).
+  - **Round 5 (Europa Ocean World Finale - 180 pts)**: Auto-unlocks after scoring in 3 trails or 25 minutes (playable solo without an instructor), featuring corrected Conamara Chaos coordinates (`8.85°N, 86.15°E`), 9 m/px Galileo SSI mosaic activation, and vector shape / 3D Globe cartography.
+- **Precision Flight Operations Avionics UI (`SpaceCampIcons.js`, `spacecamp.css`, `SpaceCampOverlay.js`)**:
+  - Engineered a dark-titanium Flight Operations console (`#05080f` recessed telemetry wells, `#090d16` panel chassis, `#0e1421` task modules, `JetBrains Mono` `tabular-nums` readouts, 3-cell Operator/Telemetry/Standing strip, collapsible Sensor & GIS Spec accordion, and zero-emoji `1.75px` monoline aerospace SVG icons).
+  - Calibrated for a 1-hour live workshop (`5m` Intro + `5 × 5m` Trails = `25m` + `5m` Podium + `25m` Buffer) with `5m Trail` / `25m (5×5m)` / `60m Event` projector timer presets and `15:00` fallback auto-unlock on Round 5 (`autoUnlockMinutes: 15`).
+  - Upgraded Earth WMS base/relief layers (`jmars-config.js`, `EnhancedProfileTool.js`, `RadialProfileTool.js`) to CORS-enabled ESA Copernicus / EOX WMS (`https://tiles.maps.eox.at/wms`) for zero-503 tile reliability.
+- **Live Firebase Realtime Database Scoreboard & Winner's Circle (`database.rules.json`, `SpaceCampFirebase.js`, `SpaceCampLeaderboardPage.js`)**:
+  - Real-time score and discovery feed streaming backed by Firebase RTDB (`sounny-com`) with unreadable player write secrets, `[0..600]` server-enforced bounds, unique case-insensitive callsign claiming with 3 collision-free suggestions, and shared-PC operator switching.
+  - Accessible both via the in-app **Leaderboard** console tab and the standalone 1080p/4K projector & Winner's Circle Podium dashboard at `/spacecamp/leaderboard/` (`All-Time` vs `Live Today` filters + Specialist Mission Commendations).
+- **Telemetry-Grounded AI CapCom (`SpaceCampCopilot.js`)**:
+  - Built-in Socratic telemetry diagnostics out of the box plus optional local-session Gemini API key integration using `gemini-3.8-flash` on the official `/v1beta/interactions` REST API (`Api-Revision: 2026-05-20`).
+- **Unobstructed 3D Globe Right-Rail HUD & Coordinate Clamping (`ViewModeToggle.js`, `globeViewModel.js`, `CesiumGlobe.js`, `StatusBar.js`, `PlanetaryScaleBar.js`, `style.css`)**:
+  - Replaced the center-blocking 3D globe panel with a docked `54px` dark-titanium vertical icon rail on the right edge (`> 768px`) and a compact single-row bottom pill dock on mobile (`<= 768px`), keeping 100% of the planetary disk unobstructed.
+  - Moved **Solar Terminator** and **3D Globe & Data Provenance** into dismissible contextual popovers paired with a bottom-right provenance summary pill (`#globe-micro-attribution`), and offset Cesium bottom-left credits past `#controls`.
+  - Wired live 3D hover/camera telemetry (`jmars:globe-hover`) into `#status-bar` and clamped out-of-range EPSG:4326 latitudes to `[-90°, +90°]` (`[-89.9°, +89.9°]` in `PlanetaryScaleBar.getMetersPerPixel()`).
+
 ## v0.13.0 - Astronomical 3D Solar Ephemeris & 26-Body JMARS Solar System Catalog
 **Date:** 2026-11-11
 

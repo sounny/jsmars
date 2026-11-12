@@ -442,12 +442,12 @@
   },
   {
     "name": "Conamara Chaos",
-    "lat": -9.0,
-    "lon": -87.0,
+    "lat": 8.85,
+    "lon": 86.15,
     "type": "Chaos",
     "body": "europa",
     "diameterKm": 140,
-    "origin": "Celtic mythical region; disrupted matrix of floating ice rafts and chaotic matrix terrain."
+    "origin": "Celtic mythical region; disrupted matrix of floating ice rafts imaged at 9 m/px by NASA Galileo SSI."
   },
   {
     "name": "Pwyll Crater",
@@ -1294,5 +1294,59 @@
     "body": "charon",
     "diameterKm": 1000,
     "origin": "Star Trek planet; smooth southern cryovolcanic plains."
+  },
+  {
+    "name": "Cydonia Mensae",
+    "lat": 40.75,
+    "lon": 350.54,
+    "type": "Other",
+    "body": "mars",
+    "diameterKm": 350,
+    "origin": "Eroded mesa field along Mars's crustal dichotomy boundary; site of Viking 1's famous sun-angle shadow mesa."
+  },
+  {
+    "name": "Ben Guerir (UM6P / Space Camp)",
+    "lat": 32.223,
+    "lon": -7.953,
+    "type": "Other",
+    "body": "earth",
+    "diameterKm": 15,
+    "origin": "Rehamna Province, Morocco; Green Energy Park, UM6P, and NASA Space Apps Ben Guerir hub."
+  },
+  {
+    "name": "Erfoud / Anti-Atlas Mars Analog",
+    "lat": 31.431,
+    "lon": -4.233,
+    "type": "Planitia",
+    "body": "earth",
+    "diameterKm": 120,
+    "origin": "Tafilalt & Anti-Atlas, Morocco; hyper-arid Devonian-Cambrian desert used as a premier ESA/international Mars rover field testbed."
+  },
+  {
+    "name": "Noor Ouarzazate Solar Complex",
+    "lat": 30.992,
+    "lon": -6.863,
+    "type": "Other",
+    "body": "earth",
+    "diameterKm": 10,
+    "origin": "Drâa-Tafilalet, Morocco; 580 MW concentrated solar power (CSP) mirror array clearly visible from Earth observation satellites."
+  },
+  {
+    "name": "Richat Structure (Eye of the Sahara)",
+    "lat": 21.124,
+    "lon": -11.402,
+    "type": "Corona",
+    "body": "earth",
+    "diameterKm": 40,
+    "origin": "Adrar Plateau, Mauritania; 40 km deeply eroded concentric alkaline geologic dome used as an orbital landmark since Gemini IV."
+  },
+  {
+    "name": "Nile River Delta",
+    "lat": 30.9,
+    "lon": 31.12,
+    "type": "Valles",
+    "body": "earth",
+    "diameterKm": 240,
+    "origin": "Northern Egypt; classic arcuate fan delta directly analogous to ancient Martian lacustrine deltas such as Jezero Crater."
   }
 ]

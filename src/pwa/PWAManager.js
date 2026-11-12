@@ -52,8 +52,10 @@ export class PWAManager {
 
   async _registerServiceWorker() {
     try {
-      this.registration = await navigator.serviceWorker.register('./sw.js', {
-        scope: './'
+      const swUrl = new URL('../../sw.js', import.meta.url);
+      const swScope = new URL('../../', import.meta.url).pathname;
+      this.registration = await navigator.serviceWorker.register(swUrl.href, {
+        scope: swScope
       });
       if (!this.registration) {
         console.warn('[PWA] Service Worker registration returned no registration object');

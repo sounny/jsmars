@@ -119,7 +119,11 @@ export class PlanetaryScaleBar {
    */
   static getMetersPerPixel(centerLat, zoom, bodyName = 'mars') {
     const radiusMeters = ((BODIES[bodyName] || BODIES.mars).meanRadius) * 1000;
-    const cosLat = Math.max(Math.cos(centerLat * Math.PI / 180), 0.001);
+    const numericLat = Number(centerLat);
+    const clampedLat = Number.isFinite(numericLat)
+      ? Math.max(-89.9, Math.min(89.9, numericLat))
+      : 0;
+    const cosLat = Math.max(Math.cos(clampedLat * Math.PI / 180), 0.001);
     const circumference = 2 * Math.PI * radiusMeters * cosLat;
     return circumference / (256 * Math.pow(2, zoom));
   }

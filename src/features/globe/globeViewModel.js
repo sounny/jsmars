@@ -394,6 +394,29 @@ export function formatGlobeProvenance(bodyKey, descriptors, lightingState) {
 }
 
 /**
+ * Concise single-line attribution & provenance summary for the unobtrusive
+ * corner pill in 3D mode (full details remain inspectable in the info popover).
+ * @param {string} bodyKey
+ * @param {Array<{name?: string, attribution?: string}>} descriptors
+ * @param {{enabled?: boolean, mode?: 'ephemeris'|'local'}} [lightingState]
+ * @returns {string}
+ */
+export function formatGlobeCompactSummary(bodyKey, descriptors, lightingState) {
+  const names = [];
+  (descriptors || []).forEach((desc) => {
+    const label = desc.attribution || desc.name;
+    if (label && !names.includes(label)) names.push(label);
+  });
+  const imagery = names.length ? names[0] + (names.length > 1 ? ` +${names.length - 1}` : '') : 'No imagery';
+  const parts = [imagery, 'Smooth Ellipsoid (No DEM)'];
+  if (lightingState && lightingState.enabled) {
+    parts.push(lightingState.mode === 'local' ? 'Terminator [Model]' : 'Terminator [Ephemeris]');
+  }
+  parts.push('CesiumJS');
+  return parts.join(' \u00b7 ');
+}
+
+/**
  * True when a URL is the Cesium CDN bundle, a worker, or a Cesium asset.
  * The service worker must not precache or runtime-cache these.
  * @param {string} url

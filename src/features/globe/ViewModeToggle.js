@@ -2,6 +2,13 @@
  * @module ViewModeToggle
  * @description 2D | 3D switch. 2D is the existing Leaflet map. 3D replaces
  * that view with a Cesium globe and is loaded only on the first switch.
+ *
+ * Chrome layout:
+ * - Desktop (> 768px): Unobtrusive vertical dark-titanium icon rail docked at
+ *   the right edge (`#globe-chrome`), contextual popovers anchored beside the
+ *   rail only when opened, and a single-line corner attribution pill.
+ * - Mobile (<= 768px): Compact single-row horizontal icon pill dock above the
+ *   bottom sheet so the planetary disk remains unobstructed.
  */
 import { EVENTS } from '../../constants.js';
 import { JMARS_CONFIG } from '../../jmars-config.js';
@@ -12,8 +19,85 @@ import { CesiumGlobe } from './CesiumGlobe.js';
 import {
   describeActiveImagery,
   formatGlobeProvenance,
+  formatGlobeCompactSummary,
   TWO_D_ONLY_TOOL_IDS
 } from './globeViewModel.js';
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * Build a crisp 18x18 monoline SVG icon using DOM APIs (zero innerHTML).
+ * @param {Array<{tag: string, attrs: Record<string, string>}>} primitives
+ * @param {number} [size=18]
+ * @returns {SVGSVGElement}
+ */
+function createMonolineIcon(primitives, size = 18) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('width', String(size));
+  svg.setAttribute('height', String(size));
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.9');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('globe-btn-icon');
+  for (const item of primitives) {
+    const node = document.createElementNS(SVG_NS, item.tag);
+    for (const [k, v] of Object.entries(item.attrs)) {
+      node.setAttribute(k, v);
+    }
+    svg.appendChild(node);
+  }
+  return svg;
+}
+
+const ICONS = {
+  zoomIn: [
+    { tag: 'line', attrs: { x1: '12', y1: '5', x2: '12', y2: '19' } },
+    { tag: 'line', attrs: { x1: '5', y1: '12', x2: '19', y2: '12' } }
+  ],
+  zoomOut: [
+    { tag: 'line', attrs: { x1: '5', y1: '12', x2: '19', y2: '12' } }
+  ],
+  reset: [
+    { tag: 'circle', attrs: { cx: '12', cy: '12', r: '7' } },
+    { tag: 'circle', attrs: { cx: '12', cy: '12', r: '1.6', fill: 'currentColor' } },
+    { tag: 'line', attrs: { x1: '12', y1: '2', x2: '12', y2: '5' } },
+    { tag: 'line', attrs: { x1: '12', y1: '19', x2: '12', y2: '22' } },
+    { tag: 'line', attrs: { x1: '2', y1: '12', x2: '5', y2: '12' } },
+    { tag: 'line', attrs: { x1: '19', y1: '12', x2: '22', y2: '12' } }
+  ],
+  spin: [
+    { tag: 'path', attrs: { d: 'M21 12a9 9 0 1 1-2.64-6.36' } },
+    { tag: 'polyline', attrs: { points: '21 3 21 8.5 15.5 8.5' } }
+  ],
+  pause: [
+    { tag: 'line', attrs: { x1: '9', y1: '6', x2: '9', y2: '18' } },
+    { tag: 'line', attrs: { x1: '15', y1: '6', x2: '15', y2: '18' } }
+  ],
+  grid: [
+    { tag: 'circle', attrs: { cx: '12', cy: '12', r: '9' } },
+    { tag: 'line', attrs: { x1: '3', y1: '12', x2: '21', y2: '12' } },
+    { tag: 'path', attrs: { d: 'M12 3a14.5 14.5 0 0 0 0 18' } },
+    { tag: 'path', attrs: { d: 'M12 3a14.5 14.5 0 0 1 0 18' } }
+  ],
+  terminator: [
+    { tag: 'circle', attrs: { cx: '12', cy: '12', r: '9' } },
+    { tag: 'path', attrs: { d: 'M12 3a9 9 0 0 0 0 18Z', fill: 'currentColor', 'fill-opacity': '0.32', stroke: 'none' } },
+    { tag: 'line', attrs: { x1: '12', y1: '3', x2: '12', y2: '21' } }
+  ],
+  info: [
+    { tag: 'circle', attrs: { cx: '12', cy: '12', r: '9' } },
+    { tag: 'line', attrs: { x1: '12', y1: '16', x2: '12', y2: '11.5' } },
+    { tag: 'circle', attrs: { cx: '12', cy: '8', r: '0.6', fill: 'currentColor' } }
+  ],
+  close: [
+    { tag: 'line', attrs: { x1: '18', y1: '6', x2: '6', y2: '18' } },
+    { tag: 'line', attrs: { x1: '6', y1: '6', x2: '18', y2: '18' } }
+  ]
+};
 
 export class ViewModeToggle {
   /**
@@ -40,6 +124,7 @@ export class ViewModeToggle {
     this._lightingMode = 'ephemeris';
     this._ephemerisDate = new Date();
     this._followLiveClock = true;
+    this._lastCameraZoom = 2;
     this._resize = () => this._globe.resize();
     this._buildChrome();
     this._bind();
@@ -47,31 +132,76 @@ export class ViewModeToggle {
   }
 
   _buildChrome() {
+    // 1. Compact Right-Edge Vertical Action Rail (Mobile: Bottom Pill Dock)
     const chrome = document.createElement('div');
     chrome.className = 'globe-chrome';
     chrome.id = 'globe-chrome';
 
     const controls = document.createElement('div');
     controls.className = 'globe-chrome-controls';
+    controls.setAttribute('role', 'toolbar');
+    controls.setAttribute('aria-label', '3D globe controls');
 
-    const zoomIn = this._button('Zoom in', '+', () => this._globe.zoomBy(1));
-    const zoomOut = this._button('Zoom out', '\u2212', () => this._globe.zoomBy(-1));
-    this._spinBtn = this._button('Spin the globe', 'Spin', () => {
-      const next = !this._globe.autoSpin;
-      this._globe.setAutoSpin(next);
-      this._syncSpinLabel();
+    const zoomIn = this._iconButton({
+      id: 'globe-zoom-in-btn',
+      label: 'Zoom in',
+      srText: 'Zoom in',
+      tooltip: 'Zoom in',
+      icon: ICONS.zoomIn,
+      onClick: () => this._globe.zoomBy(1)
     });
-    this._gridBtn = this._button('Toggle latitude and longitude grid', 'Grid', () => {
-      const next = this._gridBtn.getAttribute('aria-pressed') !== 'true';
-      this._globe.setGraticule(next);
-      this._gridBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+    const zoomOut = this._iconButton({
+      id: 'globe-zoom-out-btn',
+      label: 'Zoom out',
+      srText: 'Zoom out',
+      tooltip: 'Zoom out',
+      icon: ICONS.zoomOut,
+      onClick: () => this._globe.zoomBy(-1)
+    });
+    const reset = this._iconButton({
+      id: 'globe-reset-btn',
+      label: 'Reset globe to the body overview',
+      srText: 'Reset',
+      tooltip: 'Reset view',
+      icon: ICONS.reset,
+      onClick: () => this.resetView()
+    });
+
+    this._spinBtn = this._iconButton({
+      id: 'globe-spin-btn',
+      label: 'Spin the globe',
+      srText: 'Spin',
+      tooltip: 'Spin globe',
+      icon: ICONS.spin,
+      onClick: () => {
+        const next = !this._globe.autoSpin;
+        this._globe.setAutoSpin(next);
+        this._syncSpinLabel();
+      }
+    });
+    this._spinBtn.setAttribute('aria-pressed', 'false');
+
+    this._gridBtn = this._iconButton({
+      id: 'globe-grid-btn',
+      label: 'Toggle latitude and longitude grid',
+      srText: 'Grid',
+      tooltip: 'Lat/Lon grid',
+      icon: ICONS.grid,
+      onClick: () => {
+        const next = this._gridBtn.getAttribute('aria-pressed') !== 'true';
+        this._globe.setGraticule(next);
+        this._gridBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+      }
     });
     this._gridBtn.setAttribute('aria-pressed', 'false');
 
-    this._lightBtn = this._button(
-      'Toggle ellipsoid day/night solar terminator',
-      'Terminator',
-      () => {
+    this._lightBtn = this._iconButton({
+      id: 'globe-terminator-btn',
+      label: 'Toggle ellipsoid day/night solar terminator',
+      srText: 'Terminator',
+      tooltip: 'Solar terminator',
+      icon: ICONS.terminator,
+      onClick: () => {
         const next = this._lightBtn.getAttribute('aria-pressed') !== 'true';
         this._lightBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
         this._solarPanel.hidden = !next;
@@ -80,19 +210,61 @@ export class ViewModeToggle {
         }
         this._applyCurrentLighting();
       }
-    );
+    });
     this._lightBtn.setAttribute('aria-pressed', 'false');
 
-    const reset = this._button('Reset globe to the body overview', 'Reset', () => this.resetView());
-
-    [zoomIn, zoomOut, this._spinBtn, this._gridBtn, this._lightBtn, reset].forEach((btn) => {
-      controls.appendChild(btn);
+    this._infoBtn = this._iconButton({
+      id: 'globe-info-btn',
+      label: 'Inspect 3D globe ellipsoid and imagery provenance',
+      srText: 'Globe info',
+      tooltip: 'Globe & data info',
+      icon: ICONS.info,
+      onClick: () => this.setInfoOpen(this._infoPopover.hidden)
     });
+    this._infoBtn.setAttribute('aria-pressed', 'false');
+    this._infoBtn.setAttribute('aria-expanded', 'false');
+    this._infoBtn.setAttribute('aria-controls', 'globe-info-popover');
 
-    // Astronomical Terminator Panel (Live UTC Ephemeris vs Modeled Local Hour)
+    controls.appendChild(zoomIn);
+    controls.appendChild(zoomOut);
+    controls.appendChild(reset);
+    controls.appendChild(this._divider());
+    controls.appendChild(this._spinBtn);
+    controls.appendChild(this._gridBtn);
+    controls.appendChild(this._lightBtn);
+    controls.appendChild(this._divider());
+    controls.appendChild(this._infoBtn);
+
+    chrome.appendChild(controls);
+
+    // 2. Contextual Floating Popover Stack (Anchored next to the rail, never over center)
+    this._popoverStack = document.createElement('div');
+    this._popoverStack.className = 'globe-popover-stack';
+    this._popoverStack.id = 'globe-popover-stack';
+
+    // 2a. Astronomical Terminator Popover (Live UTC Ephemeris vs Modeled Local Hour)
     this._solarPanel = document.createElement('div');
     this._solarPanel.className = 'globe-solar-panel';
+    this._solarPanel.id = 'globe-solar-panel';
     this._solarPanel.hidden = true;
+
+    const solarHeader = document.createElement('div');
+    solarHeader.className = 'globe-popover-header';
+    const solarTitle = document.createElement('span');
+    solarTitle.className = 'globe-popover-title';
+    solarTitle.textContent = 'Solar Terminator';
+    const solarHideBtn = document.createElement('button');
+    solarHideBtn.type = 'button';
+    solarHideBtn.className = 'globe-popover-close';
+    solarHideBtn.setAttribute('aria-label', 'Hide terminator settings panel');
+    solarHideBtn.title = 'Hide panel (keep terminator active)';
+    solarHideBtn.appendChild(createMonolineIcon(ICONS.close, 14));
+    solarHideBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._solarPanel.hidden = true;
+    });
+    solarHeader.appendChild(solarTitle);
+    solarHeader.appendChild(solarHideBtn);
 
     const modeRow = document.createElement('div');
     modeRow.className = 'globe-solar-modes';
@@ -163,38 +335,142 @@ export class ViewModeToggle {
     this._solarReadout.className = 'globe-solar-readout';
     this._solarReadout.textContent = '';
 
+    const solarNote = document.createElement('p');
+    solarNote.className = 'globe-solar-note';
+    solarNote.textContent = 'Smooth ellipsoid day/night only — no 3D DEM shadows; local relief in tiles is fixed spacecraft illumination.';
+
+    this._solarPanel.appendChild(solarHeader);
     this._solarPanel.appendChild(modeRow);
     this._solarPanel.appendChild(this._hourWrap);
     this._solarPanel.appendChild(this._solarReadout);
+    this._solarPanel.appendChild(solarNote);
+
+    // 2b. Globe & Data Provenance Popover (On-demand via ⓘ button or corner pill)
+    this._infoPopover = document.createElement('div');
+    this._infoPopover.className = 'globe-info-popover';
+    this._infoPopover.id = 'globe-info-popover';
+    this._infoPopover.setAttribute('role', 'region');
+    this._infoPopover.setAttribute('aria-label', '3D globe data provenance');
+    this._infoPopover.hidden = true;
+
+    const infoHeader = document.createElement('div');
+    infoHeader.className = 'globe-popover-header';
+    const infoTitle = document.createElement('span');
+    infoTitle.className = 'globe-popover-title';
+    infoTitle.textContent = '3D Globe & Data Provenance';
+    const infoCloseBtn = document.createElement('button');
+    infoCloseBtn.type = 'button';
+    infoCloseBtn.className = 'globe-popover-close';
+    infoCloseBtn.id = 'globe-info-close';
+    infoCloseBtn.setAttribute('aria-label', 'Close globe provenance');
+    infoCloseBtn.appendChild(createMonolineIcon(ICONS.close, 14));
+    infoCloseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.setInfoOpen(false);
+    });
+    infoHeader.appendChild(infoTitle);
+    infoHeader.appendChild(infoCloseBtn);
 
     this._provenance = document.createElement('p');
     this._provenance.className = 'globe-provenance';
-
-    this._coords = document.createElement('p');
-    this._coords.className = 'globe-coords';
-    this._coords.textContent = '';
 
     const credit = document.createElement('p');
     credit.className = 'globe-credit';
     credit.textContent = '3D globe by CesiumJS (Apache-2.0).';
 
-    chrome.appendChild(controls);
-    chrome.appendChild(this._solarPanel);
-    chrome.appendChild(this._provenance);
-    chrome.appendChild(this._coords);
-    chrome.appendChild(credit);
-    this.globeEl.appendChild(chrome);
+    this._infoPopover.appendChild(infoHeader);
+    this._infoPopover.appendChild(this._provenance);
+    this._infoPopover.appendChild(credit);
 
+    this._popoverStack.appendChild(this._solarPanel);
+    this._popoverStack.appendChild(this._infoPopover);
+
+    // 3. Subtle Bottom-Right Single-Line Attribution & Provenance Pill
+    this._microAttr = document.createElement('button');
+    this._microAttr.type = 'button';
+    this._microAttr.className = 'globe-micro-attribution';
+    this._microAttr.id = 'globe-micro-attribution';
+    this._microAttr.setAttribute('aria-label', 'Inspect 3D globe data provenance');
+    this._microAttr.setAttribute('aria-controls', 'globe-info-popover');
+    this._microAttr.setAttribute('aria-expanded', 'false');
+    this._microAttrText = document.createElement('span');
+    this._microAttrText.className = 'globe-micro-attribution-text';
+    this._microAttr.appendChild(this._microAttrText);
+    this._microAttr.appendChild(createMonolineIcon(ICONS.info, 13));
+    this._microAttr.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.setInfoOpen(this._infoPopover.hidden);
+    });
+
+    this.globeEl.appendChild(chrome);
+    this.globeEl.appendChild(this._popoverStack);
+    this.globeEl.appendChild(this._microAttr);
+
+    // Wire live 3D globe telemetry into the bottom StatusBar
     this._globe.onHover = (coords) => {
-      if (!coords) {
-        this._coords.textContent = '';
-        return;
+      if (!coords || this.mode !== '3d') return;
+      document.dispatchEvent(new CustomEvent(EVENTS.GLOBE_HOVER, {
+        detail: {
+          lat: coords.lat,
+          lng: coords.lng,
+          zoom: this._lastCameraZoom
+        }
+      }));
+    };
+    this._globe.onCameraChanged = (camView) => {
+      if (!camView || this.mode !== '3d') return;
+      if (Number.isFinite(camView.zoom)) {
+        this._lastCameraZoom = camView.zoom;
       }
-      const ns = coords.lat >= 0 ? 'N' : 'S';
-      const ew = coords.lng >= 0 ? 'E' : 'W';
-      this._coords.textContent = `${Math.abs(coords.lat).toFixed(2)}\u00b0${ns}, ${Math.abs(coords.lng).toFixed(2)}\u00b0${ew}`;
+      document.dispatchEvent(new CustomEvent(EVENTS.GLOBE_HOVER, {
+        detail: {
+          lat: camView.lat,
+          lng: camView.lng,
+          zoom: camView.zoom,
+          isCenter: true
+        }
+      }));
     };
     this._globe.onSpinPaused = () => this._syncSpinLabel();
+  }
+
+  /**
+   * Show or hide the Globe & Data Provenance popover cleanly.
+   * @param {boolean} open
+   */
+  setInfoOpen(open) {
+    const isOpen = !!open;
+    this._infoPopover.hidden = !isOpen;
+    this._infoBtn.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
+    this._infoBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    this._microAttr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  }
+
+  _divider() {
+    const div = document.createElement('span');
+    div.className = 'globe-chrome-divider';
+    div.setAttribute('role', 'separator');
+    div.setAttribute('aria-hidden', 'true');
+    return div;
+  }
+
+  _iconButton({ id, label, srText, tooltip, icon, onClick }) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'globe-chrome-btn';
+    if (id) btn.id = id;
+    btn.setAttribute('aria-label', label);
+    if (tooltip) btn.setAttribute('data-tooltip', tooltip);
+    btn.appendChild(createMonolineIcon(icon, 18));
+    const sr = document.createElement('span');
+    sr.className = 'sr-only';
+    sr.textContent = srText;
+    btn.appendChild(sr);
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      onClick();
+    });
+    return btn;
   }
 
   _syncLightingModeUi() {
@@ -212,9 +488,7 @@ export class ViewModeToggle {
     const viewLon = this._globe.ready
       ? (this._globe.getCameraView()?.lng ?? (this.jmars.getViewState()?.lng ?? 0))
       : (this.jmars.getViewState()?.lng ?? 0);
-    const activeDate = this._followLiveClock && this._lightingMode === 'ephemeris'
-      ? this._ephemerisDate
-      : this._ephemerisDate;
+    const activeDate = this._ephemerisDate;
 
     const state = this._globe.setLighting({
       enabled,
@@ -239,25 +513,16 @@ export class ViewModeToggle {
     this._renderProvenance();
   }
 
-  _button(label, text, onClick) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'globe-chrome-btn';
-    btn.textContent = text;
-    btn.setAttribute('aria-label', label);
-    btn.title = label;
-    btn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      onClick();
-    });
-    return btn;
-  }
-
   _syncSpinLabel() {
     const spinning = !!this._globe.autoSpin;
-    this._spinBtn.textContent = spinning ? 'Pause' : 'Spin';
+    const oldSvg = this._spinBtn.querySelector('svg');
+    const nextSvg = createMonolineIcon(spinning ? ICONS.pause : ICONS.spin, 18);
+    if (oldSvg) this._spinBtn.replaceChild(nextSvg, oldSvg);
+    const sr = this._spinBtn.querySelector('.sr-only');
+    if (sr) sr.textContent = spinning ? 'Pause' : 'Spin';
     this._spinBtn.setAttribute('aria-pressed', spinning ? 'true' : 'false');
     this._spinBtn.setAttribute('aria-label', spinning ? 'Pause globe spin' : 'Spin the globe');
+    this._spinBtn.setAttribute('data-tooltip', spinning ? 'Pause spin' : 'Spin globe');
   }
 
   _bind() {
@@ -265,6 +530,18 @@ export class ViewModeToggle {
     const btn3d = this.toggleEl.querySelector('#view-mode-3d');
     btn2d.addEventListener('click', () => this.setMode('2d'));
     btn3d.addEventListener('click', () => this.setMode('3d'));
+
+    // Dismiss info popover on Escape or when clicking directly on the Cesium canvas
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.mode === '3d' && !this._infoPopover.hidden) {
+        const cmdModal = document.getElementById('quick-command-backdrop');
+        if (cmdModal && !cmdModal.hidden) return;
+        this.setInfoOpen(false);
+      }
+    });
+    this.cesiumEl.addEventListener('pointerdown', () => {
+      if (!this._infoPopover.hidden) this.setInfoOpen(false);
+    });
 
     this.jmars.map.on('moveend', () => {
       if (this.mode !== '3d' || this._ignoreMapMove || !this._globe.ready) return;
@@ -345,6 +622,7 @@ export class ViewModeToggle {
       ? this._globe.getCameraView({ viewportHeightPx: this._viewportHeight() })
       : null;
     this.mode = '2d';
+    this.setInfoOpen(false);
     this._globe.setAutoSpin(false);
     this._syncSpinLabel();
     this._globe.destroyViewer();
@@ -367,6 +645,7 @@ export class ViewModeToggle {
 
   _mount(Cesium) {
     const view = this.jmars.getViewState() || { lat: 0, lng: 0, zoom: 2 };
+    this._lastCameraZoom = Number.isFinite(view.zoom) ? view.zoom : 2;
     this._imagery = this._currentImagery();
     this._globe.mount(Cesium, {
       body: this.jmars.currentBody,
@@ -427,6 +706,13 @@ export class ViewModeToggle {
       this._imagery,
       this._globe.lightingState
     );
+    if (this._microAttrText) {
+      this._microAttrText.textContent = formatGlobeCompactSummary(
+        this.jmars.currentBody,
+        this._imagery,
+        this._globe.lightingState
+      );
+    }
   }
 
   resetView() {

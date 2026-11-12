@@ -1,0 +1,1347 @@
+/* ==========================================================================
+   Mission JSMARS: Space Data Analysts — Flight Operations & Telemetry Design System
+   Precision Dark-Titanium Avionics UI (Zero Emoji / Zero Arcade Gradients)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Space+Grotesk:wght@600;700&display=swap');
+
+:root {
+  --sc-panel-width: 384px;
+  --sc-bg-recessed: #05080f;
+  --sc-bg-deep: #080c14;
+  --sc-bg-panel: rgba(9, 13, 22, 0.98);
+  --sc-bg-card: #0e1421;
+  --sc-bg-card-hover: #131b2c;
+  --sc-bg-elevated: #0b101b;
+  --sc-border-subtle: #161f30;
+  --sc-border: #1e293b;
+  --sc-border-strong: #2d3d56;
+  --sc-border-active: rgba(56, 189, 248, 0.48);
+  --sc-cyan: #38bdf8;
+  --sc-cyan-dim: rgba(56, 189, 248, 0.12);
+  --sc-action: #0369a1;
+  --sc-action-hover: #0284c7;
+  --sc-emerald: #10b981;
+  --sc-emerald-bright: #34d399;
+  --sc-amber: #f59e0b;
+  --sc-rose: #f43f5e;
+  --sc-text: #f1f5f9;
+  --sc-muted: #cbd5e1;
+  --sc-subtle: #64748b;
+  --sc-subtle-light: #94a3b8;
+  --sc-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sc-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --sc-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --sc-shadow: 0 20px 48px rgba(0, 0, 0, 0.78);
+}
+
+/* ── Wide-Screen Map Co-Docking (Never covers map controls) ────────────── */
+@media (min-width: 901px) {
+  body.sc-panel-open #map,
+  body.sc-panel-open #globe-view,
+  body.sc-panel-open #status-bar {
+    width: calc(100% - var(--sc-panel-width)) !important;
+  }
+}
+
+.sc-side-panel,
+.sc-side-panel *,
+.sc-modal,
+.sc-modal * {
+  box-sizing: border-box;
+}
+
+.sc-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ── Docked Right-Hand Flight Operations Panel ─────────────────────────── */
+.sc-side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--sc-panel-width);
+  max-width: 100vw;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  background: var(--sc-bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid var(--sc-border);
+  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.65);
+  font-family: var(--sc-sans);
+  color: var(--sc-text);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sc-side-panel.is-collapsed {
+  transform: translateX(100%);
+}
+
+/* Left-Edge Collapse / Expand Tab */
+.sc-edge-toggle {
+  position: fixed;
+  top: 50%;
+  right: var(--sc-panel-width);
+  transform: translateY(-50%);
+  z-index: 1205;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 6px;
+  border-radius: 5px 0 0 5px;
+  border: 1px solid var(--sc-border-strong);
+  border-right: none;
+  background: #0b101b;
+  color: var(--sc-subtle-light);
+  font-family: var(--sc-mono);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  box-shadow: -4px 2px 14px rgba(0, 0, 0, 0.55);
+  transition: right 0.22s cubic-bezier(0.16, 1, 0.3, 1), background 0.14s ease, color 0.14s ease;
+}
+
+.sc-edge-toggle:hover {
+  background: #141e30;
+  color: var(--sc-text);
+  border-color: var(--sc-cyan);
+}
+
+.sc-edge-toggle.is-collapsed {
+  right: 0;
+  padding: 10px 11px;
+  background: #0d1524;
+  border-color: var(--sc-border-active);
+  color: var(--sc-text);
+}
+
+/* ── Console Header ────────────────────────────────────────────────────── */
+.sc-panel-header {
+  padding: 11px 13px 10px;
+  background: #080c14;
+  border-bottom: 1px solid var(--sc-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sc-header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sc-brand-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sc-status-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sc-emerald);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+  flex-shrink: 0;
+}
+
+.sc-brand-kicker {
+  font-family: var(--sc-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sc-subtle-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.sc-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--sc-border);
+  background: #0e1421;
+  color: var(--sc-muted);
+  font-family: var(--sc-sans);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.sc-mini-btn:hover {
+  border-color: var(--sc-border-strong);
+  background: #162033;
+  color: #fff;
+}
+
+.sc-lang-toggle {
+  display: inline-flex;
+  height: 24px;
+  padding: 2px;
+  border-radius: 4px;
+  background: var(--sc-bg-recessed);
+  border: 1px solid var(--sc-border);
+}
+
+.sc-lang-opt {
+  padding: 0 6px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--sc-subtle);
+  font-family: var(--sc-mono);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sc-lang-opt:hover {
+  color: var(--sc-muted);
+}
+
+.sc-lang-opt.is-active {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.sc-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-main-title {
+  margin: 0;
+  font-family: var(--sc-display);
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.22;
+  color: #f8fafc;
+}
+
+.sc-main-subtitle {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--sc-subtle-light);
+}
+
+/* ── 3-Cell Machined Flight Telemetry Readout Strip ────────────────────── */
+.sc-player-strip {
+  display: grid;
+  grid-template-columns: 1.35fr 1.05fr 0.75fr;
+  background: var(--sc-bg-recessed);
+  border: 1px solid var(--sc-border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.sc-telem-cell {
+  padding: 5px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sc-telem-cell + .sc-telem-cell {
+  border-left: 1px solid var(--sc-border-subtle);
+}
+
+.sc-telem-lbl {
+  font-family: var(--sc-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sc-subtle);
+}
+
+.sc-callsign-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-family: var(--sc-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--sc-text);
+  min-width: 0;
+}
+
+.sc-callsign-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-unassigned-label {
+  font-family: var(--sc-mono);
+  font-size: 11px;
+  color: var(--sc-subtle-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sc-switch-user-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sc-subtle-light);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.sc-switch-user-btn:hover {
+  background: #162033;
+  border-color: var(--sc-border-strong);
+  color: #fff;
+}
+
+.sc-score-pill {
+  font-family: var(--sc-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--sc-emerald-bright);
+  white-space: nowrap;
+}
+
+.sc-rank-pill {
+  font-family: var(--sc-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--sc-cyan);
+  white-space: nowrap;
+}
+
+/* ── Unified Segmented Console Mode Bar ────────────────────────────────── */
+.sc-mode-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.1fr;
+  gap: 3px;
+  padding: 3px;
+  background: var(--sc-bg-recessed);
+  border: 1px solid var(--sc-border);
+  border-radius: 5px;
+}
+
+.sc-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 7px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sc-subtle-light);
+  font-family: var(--sc-sans);
+  font-size: 11.2px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.sc-mode-btn:hover {
+  color: var(--sc-text);
+  background: rgba(30, 41, 59, 0.45);
+}
+
+.sc-mode-btn.is-active {
+  background: #162033;
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.sc-mode-btn.is-active .sc-icon {
+  color: var(--sc-cyan);
+}
+
+.sc-mode-btn.is-leaderboard {
+  border-left: 1px solid var(--sc-border-subtle);
+  border-radius: 0 3px 3px 0;
+  color: #e2e8f0;
+}
+
+.sc-mode-btn.is-leaderboard .sc-icon {
+  color: var(--sc-amber);
+}
+
+.sc-mode-btn.is-leaderboard:hover {
+  background: #162033;
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fff;
+}
+
+/* ── Non-Blocking Operator Registration Strip ──────────────────────────── */
+.sc-inline-join {
+  margin: 8px 12px 0;
+  padding: 9px 10px;
+  border-radius: 5px;
+  background: #0c1322;
+  border: 1px solid var(--sc-border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sc-inline-join-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--sc-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sc-cyan);
+}
+
+/* ── 5-Trail Telemetry Matrix ──────────────────────────────────────────── */
+.sc-round-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 7px 12px;
+  background: #070a12;
+  border-bottom: 1px solid var(--sc-border);
+  flex-shrink: 0;
+}
+
+.sc-round-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--sc-border-subtle);
+  background: #0c121e;
+  color: var(--sc-subtle-light);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.sc-round-tab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: transparent;
+}
+
+.sc-round-tab:hover {
+  background: #121a2b;
+  border-color: var(--sc-border-strong);
+  color: var(--sc-text);
+}
+
+.sc-round-tab.is-active {
+  background: #131d31;
+  border-color: rgba(56, 189, 248, 0.42);
+  color: #f8fafc;
+}
+
+.sc-round-tab.is-active::before {
+  background: var(--sc-cyan);
+}
+
+.sc-round-tab.is-complete::before {
+  background: var(--sc-emerald);
+}
+
+.sc-round-tab.is-locked {
+  opacity: 0.58;
+  background: #080c14;
+}
+
+.sc-round-tab-num {
+  font-family: var(--sc-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.sc-round-tab-pts {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--sc-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--sc-subtle-light);
+  margin-top: 1px;
+}
+
+.sc-round-tab.is-active .sc-round-tab-pts {
+  color: var(--sc-cyan);
+}
+
+.sc-round-tab.is-complete .sc-round-tab-pts {
+  color: var(--sc-emerald-bright);
+}
+
+.sc-round-tab.is-locked .sc-round-tab-pts {
+  color: var(--sc-subtle);
+}
+
+/* ── Scrollable Console Workspace ──────────────────────────────────────── */
+.sc-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.sc-drawer-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sc-drawer-body::-webkit-scrollbar-track {
+  background: #070a12;
+}
+
+.sc-drawer-body::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+
+.sc-round-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--sc-border-subtle);
+}
+
+.sc-kicker {
+  font-family: var(--sc-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sc-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.sc-round-title {
+  margin: 0;
+  font-family: var(--sc-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: #f8fafc;
+}
+
+.sc-round-summary {
+  margin: 0;
+  font-size: 11.8px;
+  line-height: 1.48;
+  color: var(--sc-muted);
+}
+
+/* ── Collapsible Instrument & GIS Spec Accordion ───────────────────────── */
+.sc-spec-panel {
+  border-radius: 5px;
+  background: var(--sc-bg-recessed);
+  border: 1px solid var(--sc-border);
+  overflow: hidden;
+}
+
+.sc-spec-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--sc-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--sc-muted);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sc-spec-summary::-webkit-details-marker {
+  display: none;
+}
+
+.sc-spec-summary:hover {
+  background: #0c121f;
+  color: #fff;
+}
+
+.sc-spec-summary-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-spec-summary-left .sc-icon {
+  color: var(--sc-cyan);
+}
+
+.sc-spec-chevron {
+  transition: transform 0.15s ease;
+  color: var(--sc-subtle-light);
+}
+
+.sc-spec-panel[open] .sc-spec-chevron {
+  transform: rotate(90deg);
+}
+
+.sc-spec-body {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--sc-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11.4px;
+  line-height: 1.45;
+  color: var(--sc-muted);
+}
+
+.sc-spec-skill-line {
+  font-family: var(--sc-mono);
+  font-size: 10.2px;
+  color: #bae6fd;
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: rgba(56, 189, 248, 0.07);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+}
+
+/* ── Architectural Task Modules (.sc-step-card) ────────────────────────── */
+.sc-step-card {
+  position: relative;
+  padding: 10px 11px;
+  border-radius: 6px;
+  background: var(--sc-bg-card);
+  border: 1px solid var(--sc-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sc-step-card.is-solved {
+  border-color: rgba(16, 185, 129, 0.36);
+  border-left: 2px solid var(--sc-emerald);
+}
+
+.sc-step-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.sc-step-title {
+  font-family: var(--sc-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.sc-badge-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.32);
+  color: var(--sc-emerald-bright);
+  font-family: var(--sc-mono);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sc-step-text {
+  margin: 0;
+  font-size: 11.6px;
+  line-height: 1.45;
+  color: var(--sc-muted);
+}
+
+/* ── Machined Avionics Controls & Buttons ──────────────────────────────── */
+.sc-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--sc-border-strong);
+  background: #131c2e;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: var(--sc-text);
+  font-family: var(--sc-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.sc-btn:hover:not(:disabled) {
+  border-color: #475569;
+  background: #1b2740;
+  color: #fff;
+}
+
+.sc-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.sc-btn-primary {
+  background: var(--sc-action);
+  border-color: rgba(56, 189, 248, 0.55);
+  color: #fff;
+}
+
+.sc-btn-primary:hover:not(:disabled) {
+  background: var(--sc-action-hover);
+  border-color: var(--sc-cyan);
+}
+
+.sc-btn-emerald {
+  background: #0c4a6e;
+  border-color: rgba(56, 189, 248, 0.52);
+  color: #f0f9ff;
+}
+
+.sc-btn-emerald:hover:not(:disabled) {
+  background: var(--sc-action-hover);
+  border-color: var(--sc-cyan);
+  color: #fff;
+}
+
+.sc-btn-amber {
+  background: #1e293b;
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #fef3c7;
+}
+
+.sc-btn-amber:hover:not(:disabled) {
+  background: #27354d;
+  border-color: var(--sc-amber);
+  color: #fff;
+}
+
+/* ── Land Cover Classification Matrix ──────────────────────────────────── */
+.sc-class-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.sc-class-chip {
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--sc-border);
+  background: var(--sc-bg-recessed);
+  color: var(--sc-muted);
+  font-family: var(--sc-sans);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.sc-class-chip:hover:not(:disabled) {
+  border-color: var(--sc-cyan);
+  background: #111c30;
+  color: #fff;
+}
+
+.sc-class-chip.is-correct {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: var(--sc-emerald);
+  color: #ecfdf5;
+}
+
+.sc-class-chip.is-wrong {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: var(--sc-rose);
+  color: #ffe4e6;
+}
+
+.sc-feedback {
+  padding: 7px 9px;
+  border-radius: 4px;
+  font-size: 11.3px;
+  line-height: 1.44;
+  background: var(--sc-bg-recessed);
+  border: 1px solid var(--sc-border);
+  color: var(--sc-muted);
+}
+
+.sc-feedback.is-good {
+  border-color: rgba(16, 185, 129, 0.38);
+  border-left: 2px solid var(--sc-emerald);
+  color: #e2e8f0;
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.sc-feedback.is-warn {
+  border-color: rgba(245, 158, 11, 0.38);
+  border-left: 2px solid var(--sc-amber);
+  color: #f1f5f9;
+  background: rgba(245, 158, 11, 0.06);
+}
+
+/* ── Tool Checklist (Round 3) ──────────────────────────────────────────── */
+.sc-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sc-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--sc-bg-recessed);
+  border: 1px solid var(--sc-border-subtle);
+  font-size: 11.2px;
+  line-height: 1.38;
+  color: var(--sc-muted);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.sc-check-item:hover {
+  border-color: var(--sc-border-strong);
+  color: var(--sc-text);
+}
+
+.sc-check-item input {
+  margin-top: 2px;
+  accent-color: var(--sc-cyan);
+}
+
+/* ── Telemetry Engineering Bars (Round 4) ──────────────────────────────── */
+.sc-meter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sc-meter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sc-meter-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.8px;
+  color: var(--sc-muted);
+}
+
+.sc-meter-label strong {
+  font-family: var(--sc-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--sc-text);
+}
+
+.sc-meter-track {
+  height: 5px;
+  border-radius: 2px;
+  background: var(--sc-bg-recessed);
+  overflow: hidden;
+  border: 1px solid var(--sc-border-subtle);
+}
+
+.sc-meter-fill {
+  height: 100%;
+  background: var(--sc-cyan);
+  border-radius: 1px;
+  transition: width 0.22s ease;
+}
+
+/* ── Precision Optical Instrument Reticle (Mounted inside #map) ────────── */
+.sc-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 108px;
+  height: 108px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 650;
+  display: none;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85));
+}
+
+.sc-reticle.is-visible {
+  display: block;
+}
+
+/* ── AI CapCom Flight Console ──────────────────────────────────────────── */
+.sc-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 290px;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+
+.sc-chat-msg {
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-size: 11.8px;
+  line-height: 1.48;
+}
+
+.sc-chat-msg.is-user {
+  align-self: flex-end;
+  background: #132238;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #f0f9ff;
+  max-width: 88%;
+}
+
+.sc-chat-msg.is-ai {
+  align-self: stretch;
+  background: var(--sc-bg-card);
+  border: 1px solid var(--sc-border);
+  color: var(--sc-text);
+}
+
+.sc-provenance-pill {
+  display: inline-block;
+  font-family: var(--sc-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-bottom: 5px;
+}
+
+.sc-provenance-pill.is-gemini {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+}
+
+.sc-provenance-pill.is-telemetry {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid var(--sc-border-strong);
+  color: var(--sc-muted);
+}
+
+/* ── Dismissible Modals (Slides & Live Standings) ──────────────────────── */
+.sc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(3, 6, 14, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.sc-modal-backdrop[hidden] {
+  display: none !important;
+}
+
+.sc-modal {
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--sc-bg-elevated);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.85);
+  padding: 20px 22px;
+  font-family: var(--sc-sans);
+  color: var(--sc-text);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sc-modal.is-wide {
+  max-width: 960px;
+}
+
+.sc-modal-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--sc-border);
+  padding-bottom: 12px;
+}
+
+.sc-card-hero {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.sc-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+  object-fit: cover;
+  object-position: 50% 15%;
+  border: 1px solid var(--sc-border-strong);
+  flex-shrink: 0;
+}
+
+.sc-highlights {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.4px;
+  color: #e2e8f0;
+}
+
+.sc-slide-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--sc-border-subtle);
+}
+
+.sc-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.sc-dot {
+  width: 22px;
+  height: 4px;
+  border-radius: 2px;
+  border: none;
+  background: #1e293b;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.sc-dot.is-active {
+  background: var(--sc-cyan);
+}
+
+.sc-handle-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sc-handle-input {
+  flex: 1;
+  min-width: 150px;
+  padding: 6px 9px;
+  border-radius: 4px;
+  border: 1px solid var(--sc-border);
+  background: var(--sc-bg-recessed);
+  color: #fff;
+  font-family: var(--sc-mono);
+  font-size: 12px;
+}
+
+.sc-handle-input:focus {
+  outline: none;
+  border-color: var(--sc-cyan);
+}
+
+.sc-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.sc-suggestion-chip {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.1);
+  color: #e0f2fe;
+  font-family: var(--sc-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sc-suggestion-chip:hover {
+  background: rgba(56, 189, 248, 0.24);
+}
+
+/* ── Live Leaderboard & Winner's Circle Podium (Avionics Data Table) ───── */
+.sc-podium-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.sc-podium-card {
+  position: relative;
+  padding: 16px 14px;
+  border-radius: 6px;
+  background: var(--sc-bg-card);
+  border: 1px solid var(--sc-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.sc-podium-card.rank-1 {
+  border-top: 2px solid #eab308;
+  background: linear-gradient(180deg, rgba(234, 179, 8, 0.06) 0%, #0e1421 48%);
+}
+
+.sc-podium-card.rank-2 {
+  border-top: 2px solid #94a3b8;
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.06) 0%, #0e1421 48%);
+}
+
+.sc-podium-card.rank-3 {
+  border-top: 2px solid #d97706;
+  background: linear-gradient(180deg, rgba(217, 119, 6, 0.06) 0%, #0e1421 48%);
+}
+
+.sc-lb-table-head {
+  display: grid;
+  grid-template-columns: 46px minmax(120px, 1.2fr) 82px minmax(180px, 2fr) 92px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  font-family: var(--sc-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sc-subtle);
+}
+
+.sc-lb-row {
+  display: grid;
+  grid-template-columns: 46px minmax(120px, 1.2fr) 82px minmax(180px, 2fr) 92px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 5px;
+  background: var(--sc-bg-card);
+  border: 1px solid var(--sc-border-subtle);
+  font-size: 12.5px;
+}
+
+.sc-lb-row.is-self {
+  border-color: rgba(56, 189, 248, 0.48);
+  background: #111c30;
+}
+
+.sc-round-bars {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.sc-rbar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-rbar-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--sc-bg-recessed);
+  overflow: hidden;
+}
+
+.sc-rbar-fill {
+  height: 100%;
+  background: var(--sc-cyan);
+  border-radius: 1px;
+}
+
+.sc-rbar-lbl {
+  font-size: 9px;
+  color: var(--sc-subtle-light);
+  text-align: center;
+  font-family: var(--sc-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Telemetry Status Toast ────────────────────────────────────────────── */
+.sc-toast {
+  position: fixed;
+  bottom: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6500;
+  padding: 8px 16px;
+  border-radius: 5px;
+  background: #0b111e;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  border-left: 3px solid var(--sc-emerald);
+  color: #f1f5f9;
+  font-family: var(--sc-mono);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--sc-shadow);
+  pointer-events: none;
+}
+
+/* ── Embedded Lunar Site Planner Space Camp Scorer Box ─────────────────── */
+.sc-lsp-scorer {
+  padding: 11px 12px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: #0b111d;
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  color: #f8fafc;
+  font-family: var(--sc-sans);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Reduced Motion Support ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .sc-side-panel,
+  .sc-edge-toggle,
+  .sc-btn,
+  .sc-mode-btn,
+  .sc-meter-fill {
+    transition: none !important;
+  }
+}
+
+/* ── Responsive Mobile / Tablet Bottom Sheet ───────────────────────────── */
+@media (max-width: 900px) {
+  .sc-side-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 30px;
+    width: 100%;
+    height: 55dvh;
+    border-left: none;
+    border-top: 1px solid var(--sc-border-strong);
+    border-radius: 10px 10px 0 0;
+  }
+
+  .sc-side-panel.is-collapsed {
+    transform: translateY(calc(100% + 34px));
+  }
+
+  .sc-edge-toggle {
+    top: auto;
+    bottom: calc(55dvh + 30px);
+    right: 12px;
+    transform: none;
+    border-radius: 5px 5px 0 0;
+    border-right: 1px solid var(--sc-border-strong);
+    border-bottom: none;
+    padding: 6px 12px;
+  }
+
+  .sc-edge-toggle.is-collapsed {
+    bottom: 36px;
+    right: 12px;
+    border-radius: 5px;
+    border: 1px solid var(--sc-border-active);
+  }
+
+  .sc-podium-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sc-lb-table-head {
+    display: none;
+  }
+
+  .sc-lb-row {
+    grid-template-columns: 38px 1fr 78px;
+  }
+
+  .sc-lb-row .sc-round-bars,
+  .sc-lb-row .sc-body-tag {
+    display: none;
+  }
+}

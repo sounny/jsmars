@@ -10,7 +10,7 @@ import { renderGrey, renderSlopeClasses, renderFraction, renderPSR, renderScalar
 import { attachTools } from './PlannerTools.js';
 import { EVENTS } from '../../constants.js';
 
-const BASE = './assets/lunar-south-pole/';
+const BASE = new URL('../../../assets/lunar-south-pole/', import.meta.url).href;
 export const toLL = (x, y) => L.latLng(y / 1000, x / 1000);
 export const fromLL = (ll) => ({ x: ll.lng * 1000, y: ll.lat * 1000 });
 
@@ -316,12 +316,24 @@ export class LunarSitePlanner {
       const c = Math.floor((x - grid.x0) / grid.res), r = Math.floor((grid.y0 - y) / grid.res);
       if (c >= 0 && r >= 0 && c < grid.width && r < grid.height) psrDist = dist[r * grid.width + c] * grid.res;
     }
+    let regSlopeDeg = NaN;
+    if (g.regElev) {
+      const d = g.regElev.res;
+      const zW = g.regElev.sample(x - d, y), zE = g.regElev.sample(x + d, y);
+      const zS = g.regElev.sample(x, y - d), zN = g.regElev.sample(x, y + d);
+      if ([zW, zE, zS, zN].every(Number.isFinite)) {
+        const dzdx = (zE - zW) / (2 * d);
+        const dzdy = (zN - zS) / (2 * d);
+        regSlopeDeg = (Math.atan(Math.hypot(dzdx, dzdy)) * 180) / Math.PI;
+      }
+    }
     const ll = xyToLatLon(x, y);
     return {
       ...ll, x, y,
       elev: this.elevAt(x, y),
       slopeMax: g.slopeMax ? g.slopeMax.sample(x, y) : NaN,
       slopeMean: g.slopeMean ? g.slopeMean.sample(x, y) : NaN,
+      regSlopeDeg,
       sun: pick(g.sun, g.regSun), earth: pick(g.earth, g.regEarth), psr: pick(g.psr, g.regPsr), psrDist
     };
   }
@@ -352,6 +364,13 @@ export class LunarSitePlanner {
     if (this.inspectMarker) this.plan.removeLayer(this.inspectMarker);
     this.inspectMarker = L.circleMarker(toLL(p.x, p.y), { radius: 5, color: '#fff', weight: 2, fillOpacity: 0 }).addTo(this.plan);
     this.readout.closest('details').open = true;
+    document.dispatchEvent(new CustomEvent('jmars:lunar-site-inspected', {
+      detail: {
+        ...v,
+        siteId: this.site?.id || 'regional',
+        siteName: this.site?.name || 'South Pole Overview (85°S–90°S)'
+      }
+    }));
     return v;
   }
 }

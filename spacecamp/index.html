@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="../jsmars_logo.svg">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mission JSMARS">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+  <title>Mission JSMARS: Space Data Analysts | Planetary GIS Workshop</title>
+  <meta name="description" content="Mission JSMARS: Space Data Analysts (Atelier numérique de planification de missions et d'analyse en télédétection) — Interactive 5-round Earth Observation, Mars Rover Traverse, Lunar South Pole Artemis Siting & Ocean World GIS game powered by JSMARS.">
+  <meta name="author" content="Dr. M. Anwar Sounny-Slitine">
+  <link rel="canonical" href="https://jsmars.sounny.com/spacecamp/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jsmars.sounny.com/spacecamp/">
+  <meta property="og:title" content="Mission JSMARS: Space Data Analysts">
+  <meta property="og:description" content="Atelier numérique de planification de missions et d'analyse en télédétection — 5 progressive planetary GIS rounds with live leaderboard.">
+  <meta property="og:image" content="https://jsmars.sounny.com/og-image.png">
+
+  <link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="../vendor/leaflet-draw/leaflet.draw.css">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="../src/features/lunar-site/lunar-site.css">
+  <link rel="stylesheet" href="../src/features/spacecamp/spacecamp.css">
+  <script defer src="../vendor/leaflet/leaflet.js"></script>
+  <script defer src="../vendor/leaflet-draw/leaflet.draw.js"></script>
+</head>
+
+<body class="sc-panel-open">
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <div id="map-top-hud" class="map-top-hud">
+    <div id="view-mode-toggle" class="view-mode-toggle" role="group" aria-label="Map view mode">
+      <button type="button" id="view-mode-2d" class="view-mode-btn is-active" aria-pressed="true">2D</button>
+      <button type="button" id="view-mode-3d" class="view-mode-btn" aria-pressed="false">3D</button>
+    </div>
+    <button type="button" id="quick-cmd-trigger" class="quick-cmd-trigger" aria-label="Open quick command and search palette (Ctrl+K)" title="Search landmarks, coordinates, bookmarks &amp; tools (Ctrl+K)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <span class="quick-cmd-trigger-label">Search / Cmd</span>
+      <kbd class="quick-cmd-trigger-kbd">Ctrl+K</kbd>
+    </button>
+  </div>
+  <p id="globe-load-error" class="globe-load-error" hidden></p>
+  <div id="globe-view" class="globe-view" hidden>
+    <div id="cesium-container" class="cesium-container"></div>
+  </div>
+
+  <!-- Status Bar -->
+  <div id="status-bar"></div>
+
+  <!-- PWA Update Notification Toast -->
+  <div id="pwa-update-toast" role="status" aria-live="polite">
+    <span>✨ New JSMARS version available!</span>
+    <button class="pwa-reload-btn">Reload to update</button>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div id="loading-indicator">Loading...</div>
+
+  <button id="sidebar-toggle" title="Collapse Sidebar" aria-label="Toggle sidebar" aria-expanded="true">&times;</button>
+  <div id="controls">
+    <!-- Branding -->
+    <div style="padding: 15px; text-align: center; border-bottom: 1px solid #444; flex-shrink: 0;">
+      <img src="../jsmars_logo.svg" alt="JSMARS Logo" style="height: 40px;" />
+      <div id="body-selector-container" style="margin-top: 10px;"></div>
+
+      <!-- PWA Install Banner -->
+      <div id="pwa-install-banner">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>🚀</span>
+          <span><strong>Install App</strong></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="pwa-install-btn" id="pwa-install-action-btn">Install</button>
+          <button class="pwa-dismiss-btn" id="pwa-install-dismiss-btn" title="Dismiss">&times;</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 8px; display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <a href="../index.html" target="_blank" style="color: #94a3b8; text-decoration: none; font-size: 11.5px; font-weight: 500;" title="Main Scientific JSMARS">Main GIS</a>
+        <a href="../about.html" target="_blank" style="color: #94a3b8; text-decoration: none; font-size: 11.5px; font-weight: 500;">About</a>
+        <a href="../docs/index.html" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 11.5px; font-weight: 600;">Docs</a>
+        <a href="../services.html" target="_blank" style="color: #cbd5e1; text-decoration: none; font-size: 11.5px; font-weight: 500;" title="Institutional Services, Lab Support &amp; Training">Services</a>
+      </div>
+    </div>
+
+    <!-- Layer Manager -->
+    <div class="accordion-section">
+      <div class="accordion-header">Layer Manager</div>
+      <div class="accordion-content">
+        <div id="layer-list">
+          <div style="text-align: center; color: #aaa; padding: 20px;">Loading layers...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session -->
+    <div class="accordion-section">
+      <div class="accordion-header">Session</div>
+      <div class="accordion-content" style="padding: 10px; flex-direction: column; gap: 5px;">
+        <button id="session-save-btn" class="tool-btn">Save Session</button>
+        <div style="display: flex; gap: 5px;">
+          <input type="file" id="session-load-input" accept=".json" style="display: none;" />
+          <button id="session-load-btn" class="tool-btn" style="flex: 1;">Load Session</button>
+        </div>
+        <button id="share-link-btn" class="tool-btn" style="background: #1d4ed8; color: #fff; font-weight: 500; margin-top: 4px;">🔗 Copy Share Link</button>
+        <div id="share-toast" role="status" aria-live="polite" style="display: none; font-size: 11px; color: #4ade80; text-align: center; margin-top: 2px;">Link copied to clipboard!</div>
+      </div>
+    </div>
+
+    <!-- Map Options -->
+    <div class="accordion-section">
+      <div class="accordion-header">Map Options</div>
+      <div class="accordion-content">
+        <div class="map-options-container">
+          <div id="search-bar-container"></div>
+          <div id="projection-panel-container" data-requires-2d="projection"></div>
+          <div id="bookmarks-tool-container"></div>
+          <div id="fixed-overlays" data-requires-2d="overlays"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools -->
+    <div class="accordion-section">
+      <div class="accordion-header">Tools</div>
+      <div class="accordion-content">
+        <div id="tools-list">
+          <p id="view-3d-tool-note" class="view-3d-tool-note" hidden>
+            3D mode shows the imagery globe. Drawing, measuring, crater counting, profiles, stamps, shapes, hillshade, contours, and other map tools are available in 2D. KRC and MCD still run from typed values; picking a point on the map is a 2D action.
+          </p>
+
+          <!-- CATEGORY 1: MEASURE & INSPECT -->
+          <div class="tool-category-header">
+            <span>📐 Measure &amp; Inspect</span>
+          </div>
+
+          <div class="layer-section" data-requires-2d="investigate">
+            <div class="layer-section-header"
+              data-tool-info="Click the map to query active WMS layers and see returned feature info at that location.">
+              <span class="layer-title">Investigate</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <button id="investigate-tool-btn" class="tool-btn">Investigate Point</button>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="measurement">
+            <div class="layer-section-header"
+              data-tool-info="Measure geodesic distances, forward azimuth bearings, polygon areas, and perimeters across planetary bodies; review or export GeoJSON/CSV.">
+              <span class="layer-title">Measurement</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button id="measure-dist-btn" class="tool-btn" style="flex: 1;">Distance</button>
+                <button id="measure-area-btn" class="tool-btn" style="flex: 1;">Area</button>
+              </div>
+              <div id="measure-table-container" class="crater-table-container" style="margin-bottom: 10px;"></div>
+              <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                <button id="measure-export-json-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export GeoJSON</button>
+                <button id="measure-export-csv-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export CSV</button>
+              </div>
+              <button id="measure-clear-btn" class="tool-btn" style="background: #442222;">Clear Measurements</button>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="profiles">
+            <div class="layer-section-header"
+              data-tool-info="Build radial or linear elevation profiles from the selected height source, then view or export the charted values.">
+              <span class="layer-title">Profiles</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <label for="enhanced-profile-source"
+                style="font-size: 12px; color: #ccc; display: block; margin-bottom: 6px;">Linear Profile Source</label>
+              <select id="enhanced-profile-source" class="tool-select" style="width: 100%; margin-bottom: 8px;">
+                <option value="mola_dem">MOLA DEM (USGS 128ppd)</option>
+              </select>
+              <button id="enhanced-profile-btn" class="tool-btn">Linear Profile</button>
+              <button id="enhanced-profile-export-btn" class="tool-btn">Export CSV</button>
+
+              <div style="margin: 12px 0; border-top: 1px solid #333;"></div>
+
+              <label for="profile-source-select"
+                style="font-size: 12px; color: #ccc; display: block; margin-bottom: 6px;">Radial Elevation Source</label>
+              <select id="profile-source-select" class="tool-select" style="width: 100%; margin-bottom: 8px;">
+                <option value="mola_dem">MOLA DEM (USGS 128ppd)</option>
+              </select>
+              <button id="profile-tool-btn" class="tool-btn">Radial Profile</button>
+              <div id="profile-chart-container" style="margin-bottom: 12px;"></div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="sampling">
+            <div class="layer-section-header"
+              data-tool-info="Collect point or area samples, pull feature info from visible WMS layers, and review or export the results.">
+              <span class="layer-title">Sampling</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button id="sampling-point-btn" class="tool-btn" style="flex: 1;">Sample Point</button>
+                <button id="sampling-area-btn" class="tool-btn" style="flex: 1;">Sample Area</button>
+              </div>
+              <div id="sample-table-container"></div>
+              <div style="display: flex; gap: 5px; margin-top: 10px;">
+                <button id="sample-export-btn" class="tool-btn" style="flex: 1; font-size: 11px;">Export CSV</button>
+                <button id="sample-clear-btn" class="tool-btn"
+                  style="flex: 1; font-size: 11px; background: #442222;">Clear Samples</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="graticule">
+            <div class="layer-section-header"
+              data-tool-info="Overlay planetary latitude/longitude graticule lines with adaptive spacing and coordinate labels.">
+              <span class="layer-title">Lat/Lon Grid</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="grid-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- CATEGORY 2: GEOLOGY & CARTOGRAPHY -->
+          <div class="tool-category-header">
+            <span>🌋 Cartography &amp; Geology</span>
+          </div>
+
+          <div class="layer-section" data-requires-2d="crater-counting">
+            <div class="layer-section-header"
+              data-tool-info="Draw craters by sizing the preview circle and clicking to log locations and diameters.">
+              <span class="layer-title">Crater Counting</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <button id="crater-tool-btn" class="tool-btn">Start Crater Counting</button>
+              <div id="crater-table-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="nomenclature">
+            <div class="layer-section-header"
+              data-tool-info="Show named planetary surface features with quick filters for crater, mons, valles, and planitia labels.">
+              <span class="layer-title">Nomenclature</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="nomenclature-tool-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="contours">
+            <div class="layer-section-header"
+              data-tool-info="Generate elevation contour lines from MOLA DEM data.">
+              <span class="layer-title">Contour Lines</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="contour-panel-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="hillshade">
+            <div class="layer-section-header"
+              data-tool-info="Generate real-time hillshade relief shading from MOLA DEM with configurable light direction.">
+              <span class="layer-title">Hillshade</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="hillshade-panel-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="geotiff">
+            <div class="layer-section-header"
+              data-tool-info="Load a local GeoTIFF file as a map layer (processed entirely in your browser).">
+              <span class="layer-title">Custom GeoTIFF</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none; padding:10px;">
+              <div style="font-size:12px; color:#aaa; margin-bottom:8px">
+                Select a local GeoTIFF file to display it on the map.
+              </div>
+              <input type="file" id="custom-geotiff-input" accept=".tif,.tiff" style="display:none" aria-label="Choose GeoTIFF file">
+              <button id="custom-geotiff-btn" class="tool-btn">Choose File</button>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="shapes">
+            <div class="layer-section-header"
+              data-tool-info="Draw, edit, buffer, and style vector shapes with geologic fill patterns. Import/export GeoJSON, WKT, Shapefile (.shp/.shx/.dbf), CSV, or KML.">
+              <span class="layer-title">Shapes</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="padding:10px">
+                <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px">
+                  <button id="shape-draw-marker" class="crater-action-btn" style="background:#333; flex:1" title="Point">&#128205; Point</button>
+                  <button id="shape-draw-polyline" class="crater-action-btn" style="background:#333; flex:1" title="Line">&#128207; Line</button>
+                  <button id="shape-draw-polygon" class="crater-action-btn" style="background:#333; flex:1" title="Polygon">&#11039; Poly</button>
+                </div>
+                <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px">
+                  <button id="shape-draw-circle" class="crater-action-btn" style="background:#333; flex:1" title="Circle">&#9711; Circle</button>
+                  <button id="shape-draw-rectangle" class="crater-action-btn" style="background:#333; flex:1" title="Rectangle">&#9634; Rect</button>
+                  <button id="shape-edit-btn" class="crater-action-btn" style="background:#333; flex:1" title="Edit shapes">&#9998; Edit</button>
+                </div>
+                <div style="display:flex; gap:4px; margin-bottom:8px">
+                  <button id="shape-import-btn" class="tool-btn" style="flex:1; font-size:11px">Import File</button>
+                  <select id="shape-export-format" class="stamp-select" style="flex:0.75" aria-label="Shape export format">
+                    <option value="geojson">GeoJSON</option>
+                    <option value="wkt">WKT (.wkt)</option>
+                    <option value="shp">Shapefile (.shp)</option>
+                    <option value="csv">CSV</option>
+                    <option value="kml">KML</option>
+                  </select>
+                  <button id="shape-export-btn" class="tool-btn" style="flex:0.55; font-size:11px">Export</button>
+                </div>
+                <div id="shape-table-container"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CATEGORY 3: PLANETARY DATA & ORBITAL LAYERS -->
+          <div class="tool-category-header">
+            <span>🛰️ Planetary Data &amp; Orbital Layers</span>
+          </div>
+
+          <div class="layer-section" data-requires-2d="landing-sites">
+            <div class="layer-section-header"
+              data-tool-info="Toggle display of spacecraft landing sites on the current planetary body.">
+              <span class="layer-title">Landing Sites</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="padding:10px">
+                <button id="landing-sites-btn" class="tool-btn">Show Landing Sites</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="stamps">
+            <div class="layer-section-header"
+              data-tool-info="Search for instrument footprints (THEMIS, CTX, HiRISE, MOC, CRISM) in the current map view using the USGS ODE REST API.">
+              <span class="layer-title">Stamp (Footprints)</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="stamp-panel-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="ground-tracks">
+            <div class="layer-section-header"
+              data-tool-info="Visualize spacecraft orbit ground tracks. Approximate paths using Keplerian orbital elements.">
+              <span class="layer-title">Ground Tracks</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="groundtrack-panel-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Compute Hohmann transfer orbits, C3 launch energy, TMI/MOI Delta-V budgets, and Earth-Mars launch windows.">
+              <span class="layer-title">Interplanetary Trajectory</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="trajectory-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- CATEGORY 4: PHYSICAL MODELS & SIMULATIONS -->
+          <div class="tool-category-header">
+            <span>🔬 Physical Models &amp; Simulations [Modeled]</span>
+          </div>
+
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Run a client-side KRC 1D thermal simulation (not TES/THEMIS measured temperatures).">
+              <span class="layer-title">KRC Thermal Model</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="krc-panel-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Atmospheric profiler: 1D analytical model or live LMD MCD v6.1 GCM, with labeled offline fallback.">
+              <span class="layer-title">MCD Atmospheric Profiler</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="mcd-panel-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Physically-based synthetic radargrams with illustrative presets — not observed SHARAD/MARSIS/REASON returns.">
+              <span class="layer-title">Subsurface Radar Sounder</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="radar-panel-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="band-math">
+            <div class="layer-section-header"
+              data-tool-info="Educational mineral-index overlay using CRISM-style formulas. Not real per-pixel CRISM/THEMIS cubes.">
+              <span class="layer-title">Mineral Index Visualizer</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="bandmath-panel-container"></div>
+            </div>
+          </div>
+
+          <!-- CATEGORY 5: MISSION PLANNING & 3D -->
+          <div class="tool-category-header">
+            <span>🚀 Mission Planning &amp; 3D Visualization</span>
+          </div>
+
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Plan lunar south pole base sites with LOLA terrain, slope, illumination, Earth visibility and PSR data; import DXF/SVG site plans; export OBJ/GeoTIFF/DXF.">
+              <span class="layer-title">Lunar Base Site Planner</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div id="lunar-site-panel-container"></div>
+            </div>
+          </div>
+
+          <div class="layer-section">
+            <div class="layer-section-header"
+              data-tool-info="Adjust Martian season (Solar Longitude Ls), Sol dates, orbital parameters, and local mean/true solar time.">
+              <span class="layer-title">Mars Solar Time &amp; Ephemeris</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none; padding: 8px;">
+              <div id="time-slider-container" style="text-align: left;"></div>
+            </div>
+          </div>
+
+          <div class="layer-section" data-requires-2d="export">
+            <div class="layer-section-header"
+              data-tool-info="Export the current map view as PNG, JPEG, publication cartographic print, or georeferenced world file.">
+              <span class="layer-title">Export Map</span>
+              <span class="icon">+</span>
+            </div>
+            <div class="layer-section-content" style="display:none;">
+              <div style="padding:10px; display:flex; flex-direction:column; gap:5px">
+                <input type="text" id="export-title-input" placeholder="Map Title (e.g. Mars Exploration Map)" style="padding:4px; font-size:11px; background:#222; color:#fff; border:1px solid #444; border-radius:3px; margin-bottom:2px;">
+                <button id="export-pub-btn" class="tool-btn" style="background:#0284c7;">🗺️ Cartographic Print (2x)</button>
+                <button id="export-png-btn" class="tool-btn">Export PNG</button>
+                <button id="export-jpeg-btn" class="tool-btn">Export JPEG</button>
+                <button id="export-world-btn" class="tool-btn" style="font-size:11px">Export World File (.pgw)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initJSMARSApp } from '../src/app-init.js';
+    import { SpaceCampOverlay } from '../src/features/spacecamp/SpaceCampOverlay.js';
+
+    const bootstrap = () => {
+      const app = initJSMARSApp({ suppressWelcomeModal: true });
+      const spaceCamp = new SpaceCampOverlay(app);
+      spaceCamp.init();
+      window.spaceCamp = spaceCamp;
+    };
+
+    if (window.L) {
+      bootstrap();
+    } else {
+      window.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+    }
+  </script>
+</body>
+
+</html>

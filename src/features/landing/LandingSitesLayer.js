@@ -24,7 +24,7 @@ export class LandingSitesLayer {
    */
   async _loadData() {
     try {
-      const response = await fetch('./src/data/landing-sites.json');
+      const response = await fetch(new URL('../../data/landing-sites.json', import.meta.url));
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       this.sites = await response.json();
       if (this.isActive) this._render();
@@ -42,6 +42,7 @@ export class LandingSitesLayer {
     this.currentBody = (jmarsState.get('body') || this.currentBody || 'mars').toLowerCase();
     this.markerGroup.addTo(this.map);
     this._render();
+    document.dispatchEvent(new CustomEvent(EVENTS.LANDING_SITES_TOGGLED, { detail: { active: true, body: this.currentBody } }));
   }
 
   /**
@@ -51,6 +52,7 @@ export class LandingSitesLayer {
     if (!this.isActive) return;
     this.isActive = false;
     this.map.removeLayer(this.markerGroup);
+    document.dispatchEvent(new CustomEvent(EVENTS.LANDING_SITES_TOGGLED, { detail: { active: false, body: this.currentBody } }));
   }
 
   /**

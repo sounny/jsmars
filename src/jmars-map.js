@@ -157,8 +157,9 @@ export class JMARSMap {
   getViewState() {
     if (!this.map) return null;
     const center = this.map.getCenter();
+    const clampedLat = Math.max(-90, Math.min(90, Number(center.lat) || 0));
     return {
-      lat: center.lat,
+      lat: clampedLat,
       lng: center.lng,
       zoom: this.map.getZoom()
     };

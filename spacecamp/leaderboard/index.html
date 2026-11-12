@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="../../jsmars_logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b1120">
+  <title>Live Leaderboard &amp; Winner's Circle | Mission JSMARS: Space Data Analysts</title>
+  <meta name="description" content="Real-time Firebase leaderboard and Winner's Circle podium for Mission JSMARS: Space Data Analysts (Atelier numérique de planification de missions et d'analyse en télédétection).">
+  <link rel="stylesheet" href="../../src/features/spacecamp/spacecamp.css">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: #070a12;
+      color: #f1f5f9;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    #leaderboard-root {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 24px 28px 48px;
+    }
+    .sc-proj-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 1024px) {
+      .sc-proj-grid {
+        grid-template-columns: 1fr;
+      }
+      #leaderboard-root {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="leaderboard-root"></main>
+  <script type="module">
+    import { SpaceCampLeaderboardPage } from '../../src/features/spacecamp/SpaceCampLeaderboardPage.js';
+    const page = new SpaceCampLeaderboardPage(document.getElementById('leaderboard-root'));
+    page.init();
+    window.spaceCampLeaderboard = page;
+  </script>
+</body>
+
+</html>

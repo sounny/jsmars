@@ -182,6 +182,17 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [x] **MarsTime Subsolar Longitude Fix (`MarsTime.js`, `TimeSlider.js`)**: Corrected `MarsTime.computeState().subSolarLon` per Allison & McEwen (2000) Eq. (20) & (24) (`180 - mtc * 15 - eotDeg`) and emitted `MarsTime.lsToDate()` from `TimeSlider.setLs()`.
 - [x] **26-World JMARS Solar System Catalog (`jmars-config.js`, `geo.js`, `globeViewModel.js`, `BodySelector.js`, `URLStateEngine.js`)**: Added 22 verified spacecraft-mapped worlds across 7 `<optgroup>` planetary systems (Mercury, Venus, Phobos, Deimos, Ceres, Vesta, Jupiter, Io, Ganymede, Callisto, Saturn, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe, Triton, Pluto, Charon), IAU IAU oblate spheroid 3D ellipsoids, small-body camera zoom scaling, 56 new IAU landmarks, and Venera/Vega/Huygens landing sites.
 
+## Phase 13: Mission JSMARS: Space Data Analysts (`/spacecamp/` & Live Firebase Leaderboard) (Completed, 2026-11-12)
+- [x] **Isolated Subroute Architecture (`src/app-init.js`, `spacecamp/index.html`, `spacecamp/leaderboard/index.html`)**: Extracted shared `initJSMARSApp()` bootstrap so `/` remains untouched for planetary scientists while `/spacecamp/` delivers a docked 384 px wide-screen Mission Control side panel with strict English default and instant `EN | FR` switch (*Atelier numérique de planification de missions et d'analyse en télédétection*).
+- [x] **5 Progressive Scientific Rounds (`SpaceCampEngine.js`, `spacecamp-missions.json` — 600 Max Points)**:
+  - [x] Round 1 (`60 pts`): Moroccan Earth Observation land-cover classification on 10 m ESA Copernicus Sentinel-2 WMS (`earth_s2_cloudless`) + geodesic Measurement.
+  - [x] Round 2 (`90 pts`): Mars MOLA laser altimetry target scanning (Olympus Mons & Valles Marineris with `SearchBar` spoiler filtering) + topographic profiling.
+  - [x] Round 3 (`120 pts`): Jezero Crater to Nili Highlands Mars rover payload & multi-waypoint traverse planner scored against live USGS 128 ppd MOLA DEM slopes.
+  - [x] Round 4 (`150 pts`): Artemis Lunar South Pole landing site evaluation integrated with `LunarSitePlanner` over real NASA LRO LOLA slope, solar, Earth comms, and PSR water-ice rasters.
+  - [x] Round 5 (`180 pts`): Auto-unlocking Europa Conamara Chaos finale (`8.85°N, 86.15°E`) with 9 m/px Galileo SSI mosaic activation and vector/3D cartography.
+- [x] **Tamper-Protected Live Firebase Scoreboard & AI CapCom (`database.rules.json`, `SpaceCampFirebase.js`, `SpaceCampCopilot.js`, `SpaceCampLeaderboardPage.js`)**: Unreadable per-player write secrets, case-insensitive unique callsigns with collision-free suggestions, in-app `🏆 Leaderboard` modal + standalone 1080p/4K Winner's Circle Podium dashboard, and telemetry-grounded `AI CapCom` with optional `gemini-3.8-flash` Interactions API integration.
+- [x] **Unobstructed 3D Globe Right-Rail HUD & Geodesy Clamping (`ViewModeToggle.js`, `globeViewModel.js`, `CesiumGlobe.js`, `StatusBar.js`, `PlanetaryScaleBar.js`, `style.css`)**: Replaced the center-blocking 3D control rectangle with a right-edge monoline SVG icon rail (and mobile pill dock), contextual Terminator/Provenance popovers, live `jmars:globe-hover` status-bar telemetry, Cesium credit alignment, and `[-90°, +90°]` EPSG:4326 latitude clamping (`1,235` passing unit tests).
+
 ## Documentation & Process
 - [x] **Documentation Portal**: Live web portal in `docs/index.html`.
 - [x] **Release Notes**: Maintained in `docs/release-notes.md`.

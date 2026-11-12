@@ -34,8 +34,11 @@ import {
     describeImageryLayer,
     describeActiveImagery,
     formatGlobeProvenance,
+    formatGlobeCompactSummary,
     isCesiumCdnUrl
 } from '../src/features/globe/globeViewModel.js';
+import { ViewModeToggle } from '../src/features/globe/ViewModeToggle.js';
+import { StatusBar } from '../src/ui/StatusBar.js';
 import {
     HELIOCENTRIC_ORBITS,
     IAU_ROTATION_MODELS,
@@ -83,6 +86,28 @@ import { GEOLOGIC_PATTERNS, applyGeologicPatternToLayer } from '../src/features/
 import { MeasurementTable } from '../src/features/measure/MeasurementTable.js';
 import { QuickActions } from '../src/ui/QuickActions.js';
 import { Sidebar } from '../src/ui/Sidebar.js';
+import {
+    validateHandle,
+    sanitizeHandleBase,
+    generateHandleSuggestions,
+    getCookie,
+    ensurePlayerIdentity,
+    resetPlayerIdentity,
+    COOKIE_KEYS
+} from '../src/features/spacecamp/SpaceCampCookies.js';
+import {
+    computeCompassBearing,
+    verifyScanTarget,
+    scoreRoverTools,
+    interpolateWaypoints,
+    scoreMarsRoverTraverse,
+    scoreLunarLandingSite,
+    SpaceCampEngine
+} from '../src/features/spacecamp/SpaceCampEngine.js';
+import {
+    extractInteractionOutputText,
+    SpaceCampCopilot
+} from '../src/features/spacecamp/SpaceCampCopilot.js';
 
 const expect = chai.expect;
 
@@ -18483,6 +18508,349 @@ describe('Regression & Robustness Hardening: Geodesy, Bodies, State & Events', (
         expect(EVENTS.COPY_SHARE_LINK).to.equal('jmars:copy-share-link');
         expect(EVENTS.PROFILE_HOVER).to.equal('jmars:profile-hover');
         expect(EVENTS.LUNAR_SITE_CHANGED).to.equal('jmars:lunar-site-changed');
+        expect(EVENTS.GLOBE_HOVER).to.equal('jmars:globe-hover');
+    });
+
+    it('PlanetaryScaleBar and StatusBar clamp out-of-range EPSG:4326 latitudes (>90°) and sync 3D globe telemetry', () => {
+        // Regression for Lat: 110.3906° shrinking Mars Zoom-0 scale bar to 10 km
+        const mpp110 = PlanetaryScaleBar.getMetersPerPixel(110.3906, 0, 'mars');
+        const mpp899 = PlanetaryScaleBar.getMetersPerPixel(89.9, 0, 'mars');
+        expect(mpp110).to.equal(mpp899);
+        expect(mpp110).to.be.greaterThan(140);
+
+        const mapHost = document.createElement('div');
+        mapHost.style.cssText = 'width:320px;height:200px;position:absolute;left:-9999px;';
+        const sbHost = document.createElement('div');
+        sbHost.id = 'test-status-bar-3d';
+        document.body.appendChild(mapHost);
+        document.body.appendChild(sbHost);
+
+        const lmap = L.map(mapHost, { renderer: L.svg(), center: [0, 0], zoom: 2 });
+        const sb = new StatusBar(lmap, 'test-status-bar-3d');
+
+        sb.updateCoords({ lat: 110.3906, lng: -128.3203 });
+        expect(sb.latValEl.textContent).to.equal('90.0000°');
+
+        document.dispatchEvent(new CustomEvent(EVENTS.VIEW_MODE_CHANGED, { detail: { mode: '3d' } }));
+        document.dispatchEvent(new CustomEvent(EVENTS.GLOBE_HOVER, {
+            detail: { lat: -14.58, lng: 175.47, zoom: 5 }
+        }));
+        expect(sb.latValEl.textContent).to.include('-14.58');
+        expect(sb.zoomEl.textContent).to.equal('Zoom: 5');
+
+        document.dispatchEvent(new CustomEvent(EVENTS.VIEW_MODE_CHANGED, { detail: { mode: '2d' } }));
+        expect(sb.zoomEl.textContent).to.equal('Zoom: 2');
+
+        lmap.remove();
+        mapHost.remove();
+        sbHost.remove();
+    });
+
+    it('ViewModeToggle builds unobstructed right-rail icon chrome, compact summary pill, and on-demand info popover', () => {
+        expect(formatGlobeCompactSummary('mars', [{ attribution: 'USGS Astrogeology' }])).to.equal(
+            'USGS Astrogeology · Smooth Ellipsoid (No DEM) · CesiumJS'
+        );
+        expect(formatGlobeCompactSummary('mars', [
+            { attribution: 'USGS Astrogeology' },
+            { attribution: 'OpenPlanetary' }
+        ], { enabled: true, mode: 'ephemeris' })).to.equal(
+            'USGS Astrogeology +1 · Smooth Ellipsoid (No DEM) · Terminator [Ephemeris] · CesiumJS'
+        );
+
+        const mapHost = document.createElement('div');
+        mapHost.style.cssText = 'width:400px;height:300px;position:absolute;left:-9999px;';
+        document.body.appendChild(mapHost);
+        const lmap = L.map(mapHost, { renderer: L.svg(), center: [0, 0], zoom: 2 });
+
+        const toggleEl = document.createElement('div');
+        const b2 = document.createElement('button');
+        b2.id = 'view-mode-2d';
+        const b3 = document.createElement('button');
+        b3.id = 'view-mode-3d';
+        toggleEl.appendChild(b2);
+        toggleEl.appendChild(b3);
+
+        const globeEl = document.createElement('div');
+        const cesiumEl = document.createElement('div');
+        const noteEl = document.createElement('p');
+        globeEl.appendChild(cesiumEl);
+        document.body.appendChild(toggleEl);
+        document.body.appendChild(globeEl);
+
+        const vmt = new ViewModeToggle({
+            jmars: {
+                map: lmap,
+                currentBody: 'mars',
+                availableLayers: [],
+                getViewState: () => ({ lat: 0, lng: 0, zoom: 2 }),
+                applyViewState: () => {}
+            },
+            toggleEl,
+            globeEl,
+            cesiumEl,
+            noteEl
+        });
+
+        const btns = globeEl.querySelectorAll('button.globe-chrome-btn');
+        expect(btns.length).to.equal(7);
+        btns.forEach((btn) => {
+            expect(btn.querySelector('svg')).to.exist;
+            expect(btn.querySelector('.sr-only')).to.exist;
+        });
+
+        const infoPopover = globeEl.querySelector('#globe-info-popover');
+        const solarPanel = globeEl.querySelector('#globe-solar-panel');
+        const infoBtn = globeEl.querySelector('#globe-info-btn');
+        const microAttr = globeEl.querySelector('#globe-micro-attribution');
+        expect(infoPopover.hidden).to.be.true;
+        expect(solarPanel.hidden).to.be.true;
+
+        infoBtn.click();
+        expect(infoPopover.hidden).to.be.false;
+        expect(infoBtn.getAttribute('aria-expanded')).to.equal('true');
+
+        microAttr.click();
+        expect(infoPopover.hidden).to.be.true;
+        expect(vmt).to.exist;
+
+        lmap.remove();
+        mapHost.remove();
+        toggleEl.remove();
+        globeEl.remove();
+    });
+});
+
+describe('Mission JSMARS: Space Data Analysts (Space Camp Engine, Cookies & Copilot)', () => {
+    let realDeck = null;
+
+    before(async () => {
+        const resp = await fetch('../src/data/spacecamp-missions.json');
+        expect(resp.ok).to.be.true;
+        realDeck = await resp.json();
+    });
+
+    after(() => {
+        resetPlayerIdentity('en');
+    });
+
+    it('validates callsign handles strictly and blocks XSS or invalid lengths', () => {
+        expect(validateHandle('AtlasRover').valid).to.be.true;
+        expect(validateHandle('AtlasRover').handleKey).to.equal('atlasrover');
+        expect(validateHandle('Toubkal_EO-26').valid).to.be.true;
+        expect(validateHandle('ab').valid).to.be.false;
+        expect(validateHandle('a'.repeat(21)).valid).to.be.false;
+        expect(validateHandle('has space').valid).to.be.false;
+        expect(validateHandle('<img src=x onerror=1>').valid).to.be.false;
+        expect(validateHandle('<script>alert(1)</script>').valid).to.be.false;
+    });
+
+    it('generates collision-free gamer handle suggestions when a handle is taken', () => {
+        const taken = new Set(['atlas', 'atlas_mro', 'atlas_eo']);
+        const suggestions = generateHandleSuggestions('Atlas', taken, 3);
+        expect(suggestions).to.have.lengthOf(3);
+        for (const sug of suggestions) {
+            expect(validateHandle(sug).valid).to.be.true;
+            expect(taken.has(sug.toLowerCase())).to.be.false;
+        }
+        expect(sanitizeHandleBase('<bad!>')).to.equal('bad');
+        expect(getCookie(COOKIE_KEYS.LANG, 'foo=1; jsmars_sc_lang=fr; bar=2')).to.equal('fr');
+    });
+
+    it('strictly defaults player language to English and resets shared-PC identity cleanly', () => {
+        const fresh = resetPlayerIdentity();
+        expect(fresh.lang).to.equal('en');
+        expect(fresh.handle).to.equal('');
+        expect(fresh.playerId).to.match(/^sc_[a-f0-9]{20}$/);
+        expect(fresh.secret.length).to.be.at.least(32);
+
+        const ensured = ensurePlayerIdentity();
+        expect(ensured.lang).to.equal('en');
+        expect(ensured.playerId).to.equal(fresh.playerId);
+    });
+
+    it('verifies planetary scan targets across 0..360E and +-180E longitudes and rejects wrong bodies', () => {
+        const r2 = realDeck.rounds.find(r => r.roundNumber === 2);
+        const olympus = r2.targets.find(t => t.id === 'r2_olympus');
+        const r5 = realDeck.rounds.find(r => r.roundNumber === 5);
+
+        // Wrong body rejected
+        const wrongBody = verifyScanTarget(olympus, 'earth', 18.65, -133.8, 0);
+        expect(wrongBody.matched).to.be.false;
+        expect(wrongBody.wrongBody).to.be.true;
+        expect(wrongBody.requiredBody).to.equal('mars');
+
+        // Match using -133.8W AND 226.2E
+        const hit180 = verifyScanTarget(olympus, 'mars', 18.65, -133.8, 0);
+        expect(hit180.matched).to.be.true;
+        expect(hit180.pointsAwarded).to.equal(30);
+
+        const hit360WithHint = verifyScanTarget(olympus, 'mars', 18.65, 226.2, 1);
+        expect(hit360WithHint.matched).to.be.true;
+        expect(hit360WithHint.pointsAwarded).to.equal(26);
+
+        // Off-target compass bearing check
+        const miss = verifyScanTarget(olympus, 'mars', 0.0, -133.8, 0);
+        expect(miss.matched).to.be.false;
+        expect(miss.compass).to.equal('N');
+        expect(computeCompassBearing(0, 0, 0, 10).compass).to.equal('E');
+
+        // Europa Conamara Chaos at real 8.85N, 86.15E
+        const conamaraHit = verifyScanTarget(r5.target, 'europa', 8.85, 86.15, 0);
+        expect(conamaraHit.matched).to.be.true;
+        expect(conamaraHit.pointsAwarded).to.equal(70);
+    });
+
+    it('scores Mars rover tool selection and MOLA DEM traverse slope safety accurately', () => {
+        const r3 = realDeck.rounds.find(r => r.roundNumber === 3);
+        const bestTools = scoreRoverTools(['mola_profile', 'themis_landing', 'measure_craters'], r3.toolChoices);
+        expect(bestTools.points).to.equal(30);
+
+        const penalizedTools = scoreRoverTools(['mola_profile', 'lunar_psr', 'blind_drive'], r3.toolChoices);
+        expect(penalizedTools.points).to.equal(0);
+
+        // Low-slope Neretva Vallis channel traverse reaching Nili goal
+        const gentleWaypoints = [
+            { lat: 18.38, lon: 77.58 },
+            { lat: 18.52, lon: 77.33 },
+            { lat: 18.72, lon: 76.95 }
+        ];
+        const sampledGentle = interpolateWaypoints(gentleWaypoints, 32);
+        expect(sampledGentle).to.have.lengthOf(32);
+        const gentleElevs = sampledGentle.map((_, idx) => -2550 + idx * 20);
+        const gentleScore = scoreMarsRoverTraverse(sampledGentle, gentleElevs, r3.start, r3.goal);
+        expect(gentleScore.reachedGoal).to.be.true;
+        expect(gentleScore.maxSlopeDeg).to.be.lessThan(3.0);
+        expect(gentleScore.totalPoints).to.equal(75);
+
+        // Steep cliff wall (> 20 deg slope) penalized heavily compared to gentle channel
+        const cliffElevs = sampledGentle.map((_, idx) => (idx < 15 ? -2550 : -2550 + (idx - 14) * 650));
+        const cliffScore = scoreMarsRoverTraverse(sampledGentle, cliffElevs, r3.start, r3.goal);
+        expect(cliffScore.maxSlopeDeg).to.be.greaterThan(18.0);
+        expect(cliffScore.slopePoints).to.be.lessThan(gentleScore.slopePoints);
+        expect(cliffScore.totalPoints).to.be.lessThan(gentleScore.totalPoints);
+    });
+
+    it('scores Artemis Lunar South Pole landing sites using slope, solar, Earth comms, and PSR proximity', () => {
+        const primeRidge = scoreLunarLandingSite({
+            lat: -89.54,
+            lon: 202.0,
+            slopeMean: 3.2,
+            sun: 0.84,
+            earth: 0.58,
+            psr: 0,
+            psrDist: 650
+        });
+        expect(primeRidge.inPsr).to.be.false;
+        expect(primeRidge.totalPoints).to.equal(150);
+
+        const insidePsrShadow = scoreLunarLandingSite({
+            lat: -89.9,
+            lon: 0.0,
+            slopeMean: 4.0,
+            sun: 0.0,
+            earth: 0.45,
+            psr: 1,
+            psrDist: 0
+        });
+        expect(insidePsrShadow.inPsr).to.be.true;
+        expect(insidePsrShadow.sunPoints).to.equal(0);
+        expect(insidePsrShadow.totalPoints).to.be.lessThan(90);
+    });
+
+    it('enforces 600-point 5-round progression, best-score retention, and Round 5 auto-unlock', () => {
+        const engine = new SpaceCampEngine(realDeck, { startedAt: Date.now() });
+        expect(realDeck.maxScore).to.equal(600);
+        expect(realDeck.ui.en.title).to.equal('Mission JSMARS: Space Data Analysts');
+        expect(realDeck.ui.fr.subtitle).to.equal("Atelier numérique de planification de missions et d'analyse en télédétection");
+        expect(engine.isRound5Unlocked()).to.be.false;
+
+        // Round 1: 1st-try (12 pts), 2nd-try (8 pts), 3rd-try (5 pts), plus measurement (+12 pts)
+        expect(engine.submitLandCoverGuess('eo_site_atlas_cedar', 'forest').pointsAwarded).to.equal(12);
+        expect(engine.submitLandCoverGuess('eo_site_benguerir_urban', 'desert').correct).to.be.false;
+        expect(engine.submitLandCoverGuess('eo_site_benguerir_urban', 'urban').pointsAwarded).to.equal(8);
+        expect(engine.submitLandCoverGuess('eo_site_doukkala_ag', 'urban').correct).to.be.false;
+        expect(engine.submitLandCoverGuess('eo_site_doukkala_ag', 'forest').correct).to.be.false;
+        expect(engine.submitLandCoverGuess('eo_site_doukkala_ag', 'cropland').pointsAwarded).to.equal(5);
+        expect(engine.awardRound1Measure()).to.equal(12);
+        expect(engine.getRoundScores().r1).to.equal(37);
+
+        // Round 2: Olympus scan (30 pts) + MOLA profile (30 pts) = 60 pts
+        expect(engine.scanRound2Target('r2_olympus', 'mars', 18.65, -133.8).pointsAwarded).to.equal(30);
+        expect(engine.awardRound2Profile()).to.equal(30);
+        expect(engine.isRound5Unlocked()).to.be.false; // Only 2 rounds scored so far
+
+        // Round 4: Score >130 pts -> Round 5 auto-unlocks on 3rd scored round!
+        const r4First = engine.evaluateRound4LunarSite({
+            slopeMean: 4.5, sun: 0.80, earth: 0.55, psr: 0, psrDist: 3200
+        }, 'Connecting ridge');
+        expect(r4First.bestPoints).to.be.greaterThan(130);
+        expect(engine.isRound5Unlocked()).to.be.true;
+
+        // Lower subsequent lunar site click never reduces personal best
+        const r4Worse = engine.evaluateRound4LunarSite({
+            slopeMean: 22.0, sun: 0.1, earth: 0.1, psr: 1, psrDist: 0
+        }, 'Shadow crater');
+        expect(r4Worse.deltaPoints).to.equal(0);
+        expect(r4Worse.bestPoints).to.equal(r4First.bestPoints);
+
+        // Time-based 15-minute auto-unlock (aligned with 5 × 5 min trails budget) works independently
+        expect(realDeck.rounds.every((r) => r.targetMinutes === 5)).to.be.true;
+        const earlyEngine = new SpaceCampEngine(realDeck, { startedAt: Date.now() - 10 * 60 * 1000 });
+        expect(earlyEngine.isRound5Unlocked()).to.be.false;
+        const timedEngine = new SpaceCampEngine(realDeck, { startedAt: Date.now() - 16 * 60 * 1000 });
+        expect(timedEngine.isRound5Unlocked()).to.be.true;
+    });
+
+    it('parses Gemini /v1beta/interactions steps and builds non-spoiler telemetry CapCom replies', () => {
+        const mockInteraction = {
+            id: 'inter_123',
+            steps: [
+                { type: 'thought', content: [{ type: 'text', text: 'internal reasoning' }] },
+                { type: 'model_output', content: [{ type: 'text', text: 'Inspect the 10 m canopy texture in the Middle Atlas.' }] }
+            ]
+        };
+        expect(extractInteractionOutputText(mockInteraction)).to.equal('Inspect the 10 m canopy texture in the Middle Atlas.');
+
+        const copilot = new SpaceCampCopilot();
+        copilot.setApiKey('', false);
+        const enReply = copilot.buildLocalTelemetryReply(
+            { body: 'earth', lat: 33.425, lon: -5.155, roundNumber: 1, activeLayers: ['earth_s2_cloudless'] },
+            'help',
+            'en'
+        );
+        expect(enReply).to.include('Sentinel-2');
+        const frReply = copilot.buildLocalTelemetryReply(
+            { body: 'earth', lat: 33.425, lon: -5.155, roundNumber: 1, activeLayers: ['earth_s2_cloudless'] },
+            'aide',
+            'fr'
+        );
+        expect(frReply).to.include('Sentinel-2');
+    });
+
+    it('SearchBar.setSpoilerFilter hides unfound scan targets while preserving normal search when unset', () => {
+        const container = document.createElement('div');
+        container.id = 'test-sc-search-container';
+        document.body.appendChild(container);
+        try {
+            const sb = new SearchBar({ getZoom: () => 4, setView: () => {} }, 'test-sc-search-container');
+            sb.landmarks = [
+                { name: 'Olympus Mons', lat: 18.65, lon: 226.2, body: 'mars' },
+                { name: 'Jezero Crater', lat: 18.38, lon: 77.58, body: 'mars' },
+                { name: 'Conamara Chaos', lat: 8.85, lon: 86.15, body: 'europa' }
+            ];
+            expect(sb.getSearchableLandmarks()).to.have.lengthOf(3);
+
+            const hidden = new Set(['olympus mons', 'conamara chaos']);
+            sb.setSpoilerFilter((lm) => !hidden.has(lm.name.toLowerCase()));
+            const filtered = sb.getSearchableLandmarks();
+            expect(filtered).to.have.lengthOf(1);
+            expect(filtered[0].name).to.equal('Jezero Crater');
+
+            sb.setSpoilerFilter(null);
+            expect(sb.getSearchableLandmarks()).to.have.lengthOf(3);
+        } finally {
+            container.remove();
+        }
     });
 });
 

@@ -1,6 +1,6 @@
 /**
  * JSMARS - Service Worker (Application Shell & Offline Cache)
- * Version: jsmars-shell-v1.7.1
+ * Version: jsmars-shell-v1.8.4
  * 
  * Rules:
  * 1. Cache-first strategy for versioned owned local application shell assets.
@@ -12,7 +12,7 @@
  * 7. User-prompted update flow via SKIP_WAITING to avoid interrupting active workflows.
  */
 
-const CACHE_NAME = 'jsmars-shell-v1.7.1';
+const CACHE_NAME = 'jsmars-shell-v1.8.4';
 
 const PRECACHE_ASSETS = [
   './',
@@ -29,6 +29,7 @@ const PRECACHE_ASSETS = [
   './manifest.webmanifest',
   './og-image.png',
   './services.html',
+  './src/app-init.js',
   './src/constants.js',
   './src/core/EventBus.js',
   './src/core/PluginRegistry.js',
@@ -210,9 +211,9 @@ self.addEventListener('fetch', (event) => {
     // Navigation requests (HTML documents with or without query strings)
     if (request.mode === 'navigate' || request.destination === 'document') {
       const pathname = url.pathname;
-      const isRoot = pathname === '/' || pathname.endsWith('/index.html') || pathname.endsWith('index.html');
-      const isAbout = pathname.endsWith('/about.html') || pathname.endsWith('about.html');
-      const isServices = pathname.endsWith('/services.html') || pathname.endsWith('services.html');
+      const isRoot = pathname === '/' || pathname === '/index.html';
+      const isAbout = pathname === '/about.html';
+      const isServices = pathname === '/services.html';
 
       let targetShell = null;
       if (isRoot) targetShell = './index.html';
@@ -311,6 +312,16 @@ self.addEventListener('fetch', (event) => {
 
   // Remote Cloud-Optimized GeoTIFF range reads (e.g. USGS LOLA 5 m COG): bypass entirely.
   if (/\.tiff?$/i.test(url.pathname)) {
+    return;
+  }
+
+  // Live Firebase Realtime Database, Firebase SDK, and Gemini API: never cache or intercept.
+  if (
+    url.hostname.includes('firebaseio.com') ||
+    url.hostname.includes('firebasedatabase.app') ||
+    url.hostname.includes('googleapis.com') ||
+    (url.hostname.includes('gstatic.com') && url.pathname.includes('/firebasejs/'))
+  ) {
     return;
   }
 

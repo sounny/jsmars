@@ -39,7 +39,7 @@ export const JMARS_CONFIG = {
     mars_basemap: 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-1/all/{z}/{x}/{y}.png',
     mercury_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mercury/mercury_simp_cyl.map',
     venus_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/venus/venus_simp_cyl.map',
-    earth_wms: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+    earth_wms: 'https://tiles.maps.eox.at/wms',
     moon_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/earth/moon_simp_cyl.map',
     mars_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
     phobos_wms: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/phobos_simp_cyl.map',
@@ -184,27 +184,55 @@ export const JMARS_CONFIG = {
       defaultLayer: 'earth_blue_marble',
       layers: [
         {
-          id: 'earth_blue_marble',
-          name: 'Blue Marble',
+          id: 'earth_s2_cloudless',
+          name: 'Sentinel-2 Cloudless Global 10m (ESA Copernicus / EOX)',
           type: 'wms',
-          url: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+          url: 'https://tiles.maps.eox.at/wms',
           options: {
-            layers: 'BlueMarble_NextGeneration',
+            layers: 's2cloudless-2020',
             format: 'image/jpeg',
-            transparent: true,
-            attribution: 'NASA GIBS'
+            transparent: false,
+            maxZoom: 14,
+            attribution: 'Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2020)'
+          }
+        },
+        {
+          id: 'earth_blue_marble',
+          name: 'Blue Marble Next Generation (NASA / EOX WMS)',
+          type: 'wms',
+          url: 'https://tiles.maps.eox.at/wms',
+          options: {
+            layers: 'bluemarble',
+            format: 'image/jpeg',
+            transparent: false,
+            maxZoom: 13,
+            attribution: 'Blue Marble © NASA Earth Observatory; hosted by EOX IT Services GmbH'
           }
         },
         {
           id: 'earth_bluemarble_shaded_relief',
-          name: 'Blue Marble Shaded Relief',
+          name: 'Global Terrain & Shaded Relief (EOX / Copernicus)',
           type: 'wms',
-          url: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+          url: 'https://tiles.maps.eox.at/wms',
           options: {
-            layers: 'BlueMarble_ShadedRelief',
+            layers: 'terrain',
             format: 'image/jpeg',
-            transparent: true,
-            attribution: 'NASA GIBS'
+            transparent: false,
+            maxZoom: 13,
+            attribution: 'Terrain © EOX IT Services GmbH (Copernicus DEM / SRTM)'
+          }
+        },
+        {
+          id: 'earth_black_marble',
+          name: 'Black Marble Nighttime Lights (NASA / EOX WMS)',
+          type: 'wms',
+          url: 'https://tiles.maps.eox.at/wms',
+          options: {
+            layers: 'blackmarble',
+            format: 'image/jpeg',
+            transparent: false,
+            maxZoom: 13,
+            attribution: 'Black Marble © NASA Earth Observatory; hosted by EOX IT Services GmbH'
           }
         }
       ]

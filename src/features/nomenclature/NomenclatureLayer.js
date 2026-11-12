@@ -66,7 +66,7 @@ export class NomenclatureLayer {
    */
   async load() {
     try {
-      const response = await fetch('./src/data/landmarks.json');
+      const response = await fetch(new URL('../../data/landmarks.json', import.meta.url));
       if (!response.ok) {
         throw new Error(`Failed to fetch landmarks: ${response.statusText}`);
       }

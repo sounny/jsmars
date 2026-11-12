@@ -1,0 +1,43 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "spacecamp": {
+      "secrets": {
+        "$playerId": {
+          ".read": false,
+          ".write": "!data.exists() && newData.isString() && newData.val().length >= 32 && newData.val().length <= 128"
+        }
+      },
+      "proofs": {
+        "$playerId": {
+          ".read": false,
+          ".write": "newData.hasChildren(['secret', 'nonce']) && newData.child('secret').isString() && newData.child('nonce').isNumber() && (!data.exists() || newData.child('nonce').val() > data.child('nonce').val()) && (newData.child('secret').val() === root.child('spacecamp/secrets').child($playerId).val() || (!root.child('spacecamp/secrets').child($playerId).exists() && newData.child('secret').val() === newData.parent().parent().child('secrets').child($playerId).val()))"
+        }
+      },
+      "handles": {
+        ".read": true,
+        "$handleKey": {
+          ".write": "newData.exists() && (!data.exists() || data.child('playerId').val() === newData.child('playerId').val()) && newData.child('playerId').isString() && newData.child('nonce').isNumber() && (!data.exists() || newData.child('nonce').val() > data.child('nonce').val()) && newData.parent().parent().child('proofs').child(newData.child('playerId').val()).child('nonce').val() === newData.child('nonce').val() && newData.parent().parent().child('proofs').child(newData.child('playerId').val()).child('secret').val() === (root.child('spacecamp/secrets').child(newData.child('playerId').val()).exists() ? root.child('spacecamp/secrets').child(newData.child('playerId').val()).val() : newData.parent().parent().child('secrets').child(newData.child('playerId').val()).val())",
+          ".validate": "newData.hasChildren(['playerId', 'handle', 'createdAt', 'nonce']) && newData.child('handle').isString() && newData.child('handle').val().length >= 3 && newData.child('handle').val().length <= 20 && newData.child('handle').val().matches(/^[A-Za-z0-9_-]+$/) && $handleKey.matches(/^[a-z0-9_-]{3,20}$/) && $handleKey === newData.child('handle').val().toLowerCase() && newData.child('createdAt').isNumber()"
+        }
+      },
+      "leaderboard": {
+        ".read": true,
+        ".indexOn": ["score", "updatedAt"],
+        "$playerId": {
+          ".write": "newData.exists() && newData.child('nonce').isNumber() && (!data.exists() || newData.child('nonce').val() > data.child('nonce').val()) && newData.parent().parent().child('proofs').child($playerId).child('nonce').val() === newData.child('nonce').val() && newData.parent().parent().child('proofs').child($playerId).child('secret').val() === (root.child('spacecamp/secrets').child($playerId).exists() ? root.child('spacecamp/secrets').child($playerId).val() : newData.parent().parent().child('secrets').child($playerId).val())",
+          ".validate": "newData.hasChildren(['handle', 'handleKey', 'score', 'currentRound', 'completedRounds', 'completedCount', 'currentBody', 'updatedAt', 'nonce']) && newData.child('handle').isString() && newData.child('handle').val().length >= 3 && newData.child('handle').val().length <= 20 && newData.child('handleKey').val() === newData.child('handle').val().toLowerCase() && (root.child('spacecamp/handles').child(newData.child('handleKey').val()).child('playerId').val() === $playerId || newData.parent().parent().child('handles').child(newData.child('handleKey').val()).child('playerId').val() === $playerId) && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 600 && newData.child('currentRound').isNumber() && newData.child('currentRound').val() >= 1 && newData.child('currentRound').val() <= 5 && newData.child('completedRounds').isNumber() && newData.child('completedRounds').val() >= 0 && newData.child('completedRounds').val() <= 5 && newData.child('completedCount').isNumber() && newData.child('completedCount').val() >= 0 && newData.child('completedCount').val() <= 20 && newData.child('currentBody').isString() && newData.child('currentBody').val().length <= 24"
+        }
+      },
+      "feed": {
+        ".read": true,
+        ".indexOn": ["ts"],
+        "$eventId": {
+          ".write": "!data.exists() && newData.exists() && newData.child('playerId').isString() && newData.child('nonce').isNumber() && newData.parent().parent().child('proofs').child(newData.child('playerId').val()).child('nonce').val() === newData.child('nonce').val() && newData.parent().parent().child('proofs').child(newData.child('playerId').val()).child('secret').val() === (root.child('spacecamp/secrets').child(newData.child('playerId').val()).exists() ? root.child('spacecamp/secrets').child(newData.child('playerId').val()).val() : newData.parent().parent().child('secrets').child(newData.child('playerId').val()).val())",
+          ".validate": "newData.hasChildren(['playerId', 'handle', 'kind', 'roundNum', 'points', 'ts', 'nonce']) && newData.child('handle').isString() && newData.child('handle').val().length <= 20 && newData.child('roundNum').isNumber() && newData.child('roundNum').val() >= 1 && newData.child('roundNum').val() <= 5 && newData.child('points').isNumber() && newData.child('points').val() >= 0 && newData.child('points').val() <= 180 && newData.child('ts').isNumber()"
+        }
+      }
+    }
+  }
+}

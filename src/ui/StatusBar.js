@@ -42,6 +42,12 @@ export class StatusBar {
     /** @type {string} Current planetary body key */
     this.currentBody = (jmarsState.get('body') || 'mars').toLowerCase();
 
+    /** @type {boolean} Whether the 3D globe is currently active */
+    this.is3D = false;
+
+    /** @type {{lat:number, lng:number, zoom?:number}|null} Last 3D telemetry point */
+    this._last3DState = null;
+
     /** @type {boolean} Tracks pending rAF frame for mousemove throttling */
     this._pendingFrame = false;
 
@@ -114,12 +120,16 @@ export class StatusBar {
   /**
    * Draw the status-bar scale for the active body, using the same radius
    * as the on-map planetary scale.
+   * @param {number} [explicitLat]
+   * @param {number} [explicitZoom]
    */
-  updateScale() {
+  updateScale(explicitLat, explicitZoom) {
     if (!this.map || !this.scaleBarEl || !this.scaleLabelEl) return;
     const body = (this.currentBody || 'mars').toLowerCase();
     const maxWidth = 160;
-    const metersPerPx = PlanetaryScaleBar.getMetersPerPixel(this.map.getCenter().lat, this.map.getZoom(), body);
+    const lat = Number.isFinite(explicitLat) ? explicitLat : this.map.getCenter().lat;
+    const zoom = Number.isFinite(explicitZoom) ? explicitZoom : this.map.getZoom();
+    const metersPerPx = PlanetaryScaleBar.getMetersPerPixel(lat, zoom, body);
     if (!Number.isFinite(metersPerPx) || metersPerPx <= 0) return;
     const friendly = PlanetaryScaleBar.getFriendlyDistance(metersPerPx * maxWidth);
     const pixelWidth = Math.max(Math.round(friendly.meters / metersPerPx), 20);
@@ -135,7 +145,7 @@ export class StatusBar {
   bindEvents() {
     // Throttle mousemove with requestAnimationFrame
     this.map.on('mousemove', (e) => {
-      if (this._pendingFrame) return;
+      if (this.is3D || this._pendingFrame) return;
       this._pendingFrame = true;
       requestAnimationFrame(() => {
         this.updateCoords(e.latlng);
@@ -145,13 +155,19 @@ export class StatusBar {
 
     this.map.on('move', () => {
       // If mouse is not moving, show center coordinates
-      if (!this._pendingFrame) {
+      if (!this.is3D && !this._pendingFrame) {
         this.updateCoords(this.map.getCenter(), true);
       }
     });
 
-    this.map.on('zoomend', () => { this.updateZoom(); this.updateScale(); });
-    this.map.on('moveend', () => this.updateScale());
+    this.map.on('zoomend', () => {
+      if (this.is3D) return;
+      this.updateZoom();
+      this.updateScale();
+    });
+    this.map.on('moveend', () => {
+      if (!this.is3D) this.updateScale();
+    });
 
     // Click on status coordinates to copy
     this.coordsEl.addEventListener('click', () => {
@@ -175,14 +191,19 @@ export class StatusBar {
         detail: fmt
       }));
 
-      this.updateCoords(this.map.getCenter());
+      this.updateCoords(this.is3D && this._last3DState ? this._last3DState : this.map.getCenter());
     });
 
     // Listen for body changes
     document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
       this.currentBody = (e?.detail?.body || 'mars').toLowerCase();
-      this.updateCoords(this.map.getCenter());
-      this.updateScale();
+      if (this.is3D && this._last3DState) {
+        this.updateCoords(this._last3DState);
+        this.updateScale(this._last3DState.lat, this._last3DState.zoom);
+      } else {
+        this.updateCoords(this.map.getCenter());
+        this.updateScale();
+      }
     });
 
     // Listen for coordinate format changes from ProjectionManager
@@ -192,21 +213,47 @@ export class StatusBar {
         if (found !== -1) {
           this.formatIndex = found;
           this.formatBtn.textContent = this.formats[found].label;
-          this.updateCoords(this.map.getCenter());
+          this.updateCoords(this.is3D && this._last3DState ? this._last3DState : this.map.getCenter());
         }
+      }
+    });
+
+    // Sync with 2D | 3D globe mode and live 3D globe cursor/camera telemetry
+    document.addEventListener(EVENTS.VIEW_MODE_CHANGED, (e) => {
+      this.is3D = e?.detail?.mode === '3d';
+      if (!this.is3D) {
+        this._last3DState = null;
+        this.update();
+      }
+    });
+
+    document.addEventListener(EVENTS.GLOBE_HOVER, (e) => {
+      const detail = e?.detail;
+      if (!detail || !Number.isFinite(detail.lat) || !Number.isFinite(detail.lng)) return;
+      this._last3DState = detail;
+      this.updateCoords({ lat: detail.lat, lng: detail.lng });
+      if (Number.isFinite(detail.zoom)) {
+        this.updateZoom(detail.zoom);
+        this.updateScale(detail.lat, detail.zoom);
       }
     });
   }
 
   /**
    * Update the coordinate display for the given latlng.
-   * @param {L.LatLng} latlng - Position
+   * Clamps latitude to [-90, 90] so EPSG:4326 overscroll never displays >90°.
+   * @param {{lat:number, lng:number}} latlng - Position
    * @param {boolean} [isCenter=false] - Whether this is the map center
    */
   updateCoords(latlng, isCenter = false) {
     if (!latlng) return;
+    const rawLat = Number(latlng.lat);
+    const rawLng = Number(latlng.lng);
+    if (!Number.isFinite(rawLat) || !Number.isFinite(rawLng)) return;
+    const clampedLat = Math.max(-90, Math.min(90, rawLat));
+
     const fmt = this.formats[this.formatIndex];
-    const formatted = formatLatLon(latlng.lat, latlng.lng, {
+    const formatted = formatLatLon(clampedLat, rawLng, {
       ...fmt,
       body: this.currentBody
     });
@@ -226,7 +273,7 @@ export class StatusBar {
       clearTimeout(this._elevTimer);
       this._elevTimer = setTimeout(() => {
         if (this.currentBody !== 'mars') return;
-        molaDem.getElevation(latlng.lat, latlng.lng).then(elev => {
+        molaDem.getElevation(clampedLat, rawLng).then(elev => {
           if (this.currentBody !== 'mars') return;
           if (Number.isFinite(elev)) {
             const elevStr = `${Math.round(elev)} m (${(elev / 1000).toFixed(2)} km)`;
@@ -244,9 +291,11 @@ export class StatusBar {
 
   /**
    * Update the zoom level display.
+   * @param {number} [explicitZoom]
    */
-  updateZoom() {
-    this.zoomEl.textContent = `Zoom: ${this.map.getZoom()}`;
+  updateZoom(explicitZoom) {
+    const z = Number.isFinite(explicitZoom) ? Math.round(explicitZoom) : this.map.getZoom();
+    this.zoomEl.textContent = `Zoom: ${z}`;
   }
 
   /**

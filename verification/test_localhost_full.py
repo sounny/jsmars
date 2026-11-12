@@ -164,8 +164,8 @@ def run_tests():
                 page.wait_for_timeout(500)
         lsp_header.first.click()
 
-        # 4. 2D | 3D Cesium Globe Toggle & Provenance
-        print("\nStep 4: Testing 2D | 3D Cesium Globe Toggle...")
+        # 4. 2D | 3D Cesium Globe Toggle & Unobstructed Right-Rail Chrome
+        print("\nStep 4: Testing 2D | 3D Cesium Globe Toggle & Unobstructed Right-Rail Chrome...")
         toggle_3d = page.locator("#view-mode-3d")
         toggle_2d = page.locator("#view-mode-2d")
         if toggle_3d.count() == 0 or not toggle_3d.is_visible():
@@ -174,9 +174,33 @@ def run_tests():
         page.wait_for_selector("#cesium-container .cesium-viewer", timeout=15000)
         page.wait_for_timeout(4500)
 
+        # Verify #globe-chrome is a compact right-edge vertical rail and does NOT block the planet
+        vp = page.viewport_size
+        chrome_box = page.locator("#globe-chrome").bounding_box()
+        hud_box_3d = page.locator("#map-top-hud").bounding_box()
+        assert chrome_box is not None, "#globe-chrome must be visible in 3D mode"
+        assert chrome_box["width"] <= 68, f"Expected compact right-edge rail width <= 68px, got {chrome_box}"
+        assert chrome_box["x"] >= vp["width"] - 86, f"Expected #globe-chrome docked at right edge, got {chrome_box} on {vp}"
+        assert not boxes_overlap(chrome_box, hud_box_3d), f"#globe-chrome overlaps #map-top-hud: {chrome_box} vs {hud_box_3d}"
+        assert page.locator("#globe-info-popover").is_hidden(), "Provenance popover must start hidden so planet is unobstructed"
+        assert page.locator("#globe-solar-panel").is_hidden(), "Solar terminator panel must start hidden until enabled"
+
+        micro_txt = page.locator("#globe-micro-attribution").inner_text()
+        assert "Smooth Ellipsoid (No DEM)" in micro_txt, f"Expected 'Smooth Ellipsoid (No DEM)' in corner pill, got: {micro_txt}"
+
         snap4 = os.path.join(SCREENSHOT_DIR, "04_3d_globe_provenance.png")
         page.screenshot(path=snap4)
         print(f"Captured: {snap4}")
+
+        # Verify on-demand ⓘ Globe Info popover opens & dismisses cleanly on Escape
+        page.click("#globe-info-btn")
+        page.wait_for_timeout(200)
+        assert page.locator("#globe-info-popover").is_visible(), "#globe-info-popover must open when #globe-info-btn is clicked"
+        mars_prov_init = page.locator(".globe-provenance").inner_text()
+        assert "Elevation terrain is not loaded" in mars_prov_init, f"Missing terrain disclaimer: {mars_prov_init}"
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(200)
+        assert page.locator("#globe-info-popover").is_hidden(), "#globe-info-popover must close on Escape"
 
         toggle_2d.click()
         page.wait_for_timeout(600)
@@ -324,8 +348,18 @@ def run_tests():
 
         solar_panel = page.locator(".globe-solar-panel")
         assert solar_panel.is_visible(), "Expected .globe-solar-panel to be visible when Terminator is enabled"
+        solar_box = solar_panel.bounding_box()
+        assert solar_box["x"] >= page.viewport_size["width"] - 420, (
+            f"Expected .globe-solar-panel anchored in upper-right off planet center, got: {solar_box}"
+        )
         ephem_readout = page.locator(".globe-solar-readout").inner_text()
+        micro_ephem = page.locator("#globe-micro-attribution").inner_text()
+        assert "Terminator [Ephemeris]" in micro_ephem, f"Expected Terminator [Ephemeris] in micro attribution, got: {micro_ephem}"
+
+        page.click("#globe-info-btn")
+        page.wait_for_timeout(150)
         prov_readout = page.locator(".globe-provenance").inner_text()
+        page.click("#globe-info-btn")
         print(f"3D Ephemeris Readout: {ephem_readout}")
         assert ephem_readout.startswith("[Ephemeris]") and "IAU WGCCRE" in ephem_readout, f"Unexpected ephemeris readout: {ephem_readout}"
         assert "Terminator shades day/night on the smooth ellipsoid only" in prov_readout, f"Missing smooth-ellipsoid disclaimer: {prov_readout}"
@@ -341,6 +375,7 @@ def run_tests():
         model_readout = page.locator(".globe-solar-readout").inner_text()
         assert model_readout.startswith("[Model]"), f"Expected [Model] readout in local hour mode, got: {model_readout}"
         assert page.locator(".globe-hour").is_visible(), "Expected local solar hour slider to be visible in [Model] mode"
+        assert "Terminator [Model]" in page.locator("#globe-micro-attribution").inner_text()
 
         # Switch back to Live UTC Ephemeris and test Titan + oblate Phobos in 3D (verifying surface tiles > 0!)
         page.locator("button.globe-solar-mode-btn", has_text="Live UTC Ephemeris").click()
@@ -361,20 +396,27 @@ def run_tests():
             timeout=15000
         )
         page.wait_for_timeout(3500)
+        page.click("#globe-info-btn")
+        page.wait_for_timeout(150)
         phobos_prov = page.locator(".globe-provenance").inner_text()
+        page.click("#globe-info-btn")
         assert "Phobos oblate spheroid" in phobos_prov, f"Expected Phobos oblate spheroid provenance, got: {phobos_prov}"
         snap14 = os.path.join(SCREENSHOT_DIR, "14_phobos_3d_triaxial.png")
         page.screenshot(path=snap14)
         print(f"Captured: {snap14}")
 
-        # Return to 2D Mars before narrow viewport check
+        # Verify narrow desktop/tablet (800x600) 3D rail + HUD non-overlap before returning to 2D
+        page.set_viewport_size({"width": 800, "height": 600})
+        page.wait_for_timeout(350)
+        hud_800_3d = page.locator("#map-top-hud").bounding_box()
+        rail_800_3d = page.locator("#globe-chrome").bounding_box()
+        assert not boxes_overlap(hud_800_3d, rail_800_3d), f"800x600 #map-top-hud overlaps #globe-chrome: {hud_800_3d} vs {rail_800_3d}"
+
+        # Return to 2D Mars for 800x600 2D HUD check
         page.click("#view-mode-2d")
         page.select_option("#body-selector-container select.body-selector-dropdown", "mars")
         page.wait_for_timeout(800)
 
-        # Also verify narrow desktop/tablet (800x600) HUD non-overlap
-        page.set_viewport_size({"width": 800, "height": 600})
-        page.wait_for_timeout(300)
         hud_800 = page.locator("#map-top-hud").bounding_box()
         ctrl_800 = page.locator("#controls").bounding_box()
         toggle_800 = page.locator("#sidebar-toggle").bounding_box()
@@ -432,8 +474,11 @@ def run_tests():
 
         m_status_3d = mpage.locator("#status-bar").bounding_box()
         m_hud_3d = mpage.locator("#map-top-hud").bounding_box()
+        m_chrome_3d = mpage.locator("#globe-chrome").bounding_box()
         assert not boxes_overlap(m_hud_3d, m_status_3d), f"Mobile 3D #map-top-hud overlaps #status-bar: {m_hud_3d} vs {m_status_3d}"
-        print(f"Mobile Europa 3D verified: status_bar={m_status_3d}, map_top_hud={m_hud_3d}")
+        assert m_chrome_3d is not None and m_chrome_3d["height"] <= 62, f"Expected slim single-row mobile 3D dock <= 62px, got {m_chrome_3d}"
+        assert m_chrome_3d["y"] >= 660, f"Expected mobile 3D dock tucked below planet disk (y >= 660), got {m_chrome_3d}"
+        print(f"Mobile Europa 3D verified: status_bar={m_status_3d}, map_top_hud={m_hud_3d}, globe_chrome={m_chrome_3d}")
 
         snap9 = os.path.join(SCREENSHOT_DIR, "09_mobile_europa_3d_hud.png")
         mpage.screenshot(path=snap9)
