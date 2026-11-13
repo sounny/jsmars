@@ -1,6 +1,6 @@
 /**
  * JSMARS - Service Worker (Application Shell & Offline Cache)
- * Version: jsmars-shell-v1.8.4
+ * Version: jsmars-shell-v1.8.6
  * 
  * Rules:
  * 1. Cache-first strategy for versioned owned local application shell assets.
@@ -12,7 +12,7 @@
  * 7. User-prompted update flow via SKIP_WAITING to avoid interrupting active workflows.
  */
 
-const CACHE_NAME = 'jsmars-shell-v1.8.4';
+const CACHE_NAME = 'jsmars-shell-v1.8.6';
 
 const PRECACHE_ASSETS = [
   './',
@@ -137,6 +137,7 @@ const PRECACHE_ASSETS = [
   './src/util/URLStateEngine.js',
   './src/util/body.js',
   './src/util/geo.js',
+  './src/util/leaflet-draw-patch.js',
   './src/util/mola-dem.js',
   './src/util/solarEphemeris.js',
   './src/util/sounny-forms.js',
@@ -178,7 +179,7 @@ self.addEventListener('install', (event) => {
           })
         )
       );
-    })
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -274,6 +275,25 @@ self.addEventListener('fetch', (event) => {
       return;
     }
 
+    // Space Camp workshop modules, mission deck, and assets: Network-First with offline cache fallback
+    // so live classroom updates take effect immediately on reload.
+    if (
+      url.pathname.startsWith('/src/features/spacecamp/') ||
+      url.pathname === '/src/data/spacecamp-missions.json' ||
+      url.pathname.startsWith('/assets/spacecamp/')
+    ) {
+      event.respondWith(
+        fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return networkResponse;
+        }).catch(() => caches.match(request, { ignoreSearch: true }))
+      );
+      return;
+    }
+
     // Static assets (CSS, JS, SVG, JSON, icons) - Cache First with ignoreSearch
     event.respondWith(
       caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
@@ -352,10 +372,17 @@ self.addEventListener('fetch', (event) => {
   // Strategy C: WMS tiles, planetary APIs, ODE search - Network-First (Never precache blindly)
   event.respondWith(
     fetch(request).catch(() => {
-      // If offline, return cached tile or transparent pixel fallback
+      // If offline or request aborted during fast camera panning, return cached tile or transparent pixel fallback
       return caches.match(request).then((cached) => {
         if (cached) return cached;
-        if (request.destination === 'image' || request.headers.get('accept')?.includes('image')) {
+        const isTileOrImage =
+          request.destination === 'image' ||
+          request.headers.get('accept')?.includes('image') ||
+          /service=WMS/i.test(url.search) ||
+          /request=GetMap/i.test(url.search) ||
+          /\.(png|jpe?g|webp|gif)$/i.test(url.pathname) ||
+          /\/tiles\//i.test(url.pathname);
+        if (isTileOrImage) {
           return new Response(TRANSPARENT_PIXEL, {
             status: 200,
             statusText: 'Offline Transparent Tile',

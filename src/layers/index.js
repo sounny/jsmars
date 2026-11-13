@@ -49,7 +49,16 @@ export const layers = [
  */
 export function createLeafletLayer(layerConfig) {
   if (layerConfig.type === 'wms') {
-    return L.tileLayer.wms(layerConfig.url, layerConfig.options);
+    const opts = { ...(layerConfig.options || {}) };
+    if (
+      typeof layerConfig.url === 'string' &&
+      layerConfig.url.includes('tiles.maps.eox.at/wms') &&
+      typeof opts.layers === 'string' &&
+      /_3857$/i.test(opts.layers)
+    ) {
+      opts.layers = opts.layers.replace(/_3857$/i, '');
+    }
+    return L.tileLayer.wms(layerConfig.url, opts);
   } else if (layerConfig.type === 'xyz') {
     return L.tileLayer(layerConfig.url, layerConfig.options);
   }

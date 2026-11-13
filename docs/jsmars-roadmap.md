@@ -207,3 +207,8 @@ This plan outlines how to grow the JSMARS project into a richer browser-based cl
 - [ ] Longest continuous darkness (needs PGDA product on request)
 - [ ] Boulder density (needs NAC-derived boulder maps)
 - [ ] First-party proxy for PGDA COGs so more sites can stream instead of being bundled
+
+## Post-Workshop To-Do: SpaceCamp Firebase & GCP Hardening (`tickets/2026-11-13_post-workshop-firebase-hardening.md`)
+- [ ] Restrict `sounny-com` Browser API key HTTP referrers (`jsmars.sounny.com/*`, `jsmars-sounny.web.app/*`, `sounny-com.firebaseapp.com/*`, `localhost`) and lock allowed GCP API scopes
+- [ ] Verify `sounny-com` Spark vs. Blaze billing alert (`$5` cap alert if Blaze)
+- [ ] Optional: Add Firebase App Check (reCAPTCHA v3) to `SpaceCampFirebase.js` + RTDB enforcement to block scripted `curl` score/handle spam

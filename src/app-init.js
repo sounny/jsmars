@@ -64,6 +64,7 @@ import { TrajectoryPanel } from './features/orbit/TrajectoryPanel.js';
 import { PWAManager } from './pwa/PWAManager.js';
 import { MobileSheet } from './ui/MobileSheet.js';
 import { InteractionLogger } from './util/InteractionLogger.js';
+import { applyLeafletDrawPatch } from './util/leaflet-draw-patch.js';
 
 /**
  * Bootstraps the complete JSMARS application in the current document.
@@ -72,6 +73,7 @@ import { InteractionLogger } from './util/InteractionLogger.js';
  * @returns {object} Initialized JSMARS map, UI, and tool handles
  */
 export function initJSMARSApp(options = {}) {
+  applyLeafletDrawPatch();
   InteractionLogger.init();
 
   // Initialize Map
@@ -80,7 +82,9 @@ export function initJSMARSApp(options = {}) {
   window.jmars = jmars;
 
   // Initialize PWA Manager (Service Worker, install prompts, offline status)
-  const pwaManager = new PWAManager();
+  const pwaManager = new PWAManager({
+    suppressInstallPrompt: Boolean(options.suppressWelcomeModal)
+  });
   pwaManager.init();
   window.pwaManager = pwaManager;
 
@@ -183,12 +187,14 @@ export function initJSMARSApp(options = {}) {
     const headers = document.querySelectorAll('#tools-list .layer-section-header');
     headers.forEach((h) => {
       const t = h.querySelector('.layer-title')?.textContent?.trim() || '';
+      const content = h.nextElementSibling;
       if (t === title) {
-        const content = h.nextElementSibling;
         if (content && content.style.display === 'none') {
           h.click();
         }
         h.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else if (content && content.style.display !== 'none') {
+        h.click();
       }
     });
   };

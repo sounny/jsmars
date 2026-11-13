@@ -84,24 +84,51 @@
       "id": "speaker",
       "step": "01 / 05",
       "avatar": "assets/spacecamp/anwar-avatar.jpg",
+      "coCreators": [
+        {
+          "name": "Dr. Moulay Anwar Sounny-Slitine",
+          "avatar": "assets/spacecamp/anwar-avatar.jpg",
+          "avatarPosition": "60% 18%",
+          "en": {
+            "role": "Co-Creator of JSMARS · ISU & Texas State University",
+            "bio": "Assistant Professor of Earth Observation, GNSS, and GeoAI at the International Space University (ISU), Chair of the Space Applications Department (SSP), and ISU Head of Delegation to UN COPUOS. Serves on the Geography faculty at Texas State University and as a Research Fellow at UT Austin (Ph.D. & M.A. in Geography and the Environment, B.S. in Civil Engineering, B.A. in Geography), following faculty appointments at UW-Madison and the University of Florida."
+          },
+          "fr": {
+            "role": "Co-créateur de JSMARS · ISU & Texas State University",
+            "bio": "Professeur assistant en observation de la Terre, GNSS et GeoAI à l'International Space University (ISU), directeur du département Space Applications (SSP) et chef de délégation de l'ISU auprès de l'ONU COPUOS. Enseignant au département de géographie de Texas State University et Research Fellow à UT Austin (Ph.D. et M.A. en géographie et environnement, B.S. en génie civil, B.A. en géographie), après avoir enseigné à UW-Madison et à l'Université de Floride."
+          }
+        },
+        {
+          "name": "Sara Bensalem",
+          "avatar": "assets/spacecamp/sara-avatar.jpg",
+          "avatarPosition": "50% 42%",
+          "monogram": "SB",
+          "en": {
+            "role": "Co-Creator of JSMARS · Spatial Architecture & Design Systems",
+            "bio": "Co-creator of JSMARS, Interior Architect, and Spatial Researcher. Leads the spatial design language, visual systems architecture, and precision cartographic interface engineering across JSMARS and Mission Control."
+          },
+          "fr": {
+            "role": "Co-créatrice de JSMARS · Architecture Spatiale & Systèmes Visuels",
+            "bio": "Co-créatrice de JSMARS, architecte d'intérieur et chercheuse en analyse spatiale. Dirige l'architecture visuelle, les systèmes de design et l'ergonomie cartographique de précision de JSMARS et du centre de contrôle."
+          }
+        }
+      ],
       "en": {
-        "kicker": "INSTRUCTOR & MISSION BRIEFING",
-        "title": "Dr. Moulay Anwar Sounny-Slitine",
-        "body": "Dr. Moulay Anwar Sounny-Slitine is Assistant Professor of Earth Observation, GNSS, and GeoAI at the International Space University (ISU), where he chairs the Space Applications Department for the Space Studies Program and serves as ISU's Head of Delegation to UN COPUOS. He also serves on the Geography faculty at Texas State University and is a Research Fellow at The University of Texas at Austin, where he earned his Ph.D. and M.A. in Geography and the Environment, B.S. in Civil Engineering, and B.A. in Geography. Previously on the faculty at the University of Wisconsin-Madison and the University of Florida, he created JSMARS to put open planetary GIS and satellite analysis directly in the browser.",
+        "kicker": "JSMARS CO-CREATORS & MISSION BRIEFING",
+        "title": "Dr. Moulay Anwar Sounny-Slitine & Sara Bensalem",
+        "body": "JSMARS is an open-source planetary and Earth Observation WebGIS inspired by ASU JMARS, built so students and researchers can analyze real spacecraft datasets directly in the browser with zero installation.",
         "highlights": [
-          "Creator of JSMARS, an open-source planetary and Earth Observation WebGIS inspired by ASU JMARS",
-          "Focuses on applied spatial data science, GeoAI, Earth Observation, and hands-on technical curricula",
-          "1-Hour Schedule: 5 min Intro · 5 × 5 min Trails (25m) · 5 min Winner's Circle (+25m Buffer)"
+          "Live multi-body cartography across Earth, Mars, the Moon, and Europa",
+          "1-Hour Schedule: 5 min Briefing · 5 × 5 min Trails (25m) · 5 min Winner's Circle (+25m Buffer)"
         ]
       },
       "fr": {
-        "kicker": "INTERVENANT & BRIEFING DE MISSION",
-        "title": "Dr. Moulay Anwar Sounny-Slitine",
-        "body": "Dr. Moulay Anwar Sounny-Slitine est professeur assistant en observation de la Terre, GNSS et GeoAI à l'International Space University (ISU), où il dirige le département Space Applications du Space Studies Program et représente l'ISU auprès du comité COPUOS des Nations Unies. Il est également enseignant au département de géographie de Texas State University et chercheur associé (Research Fellow) à l'Université du Texas à Austin, où il a obtenu son doctorat (Ph.D.) et son master (M.A.) en géographie et environnement, son B.S. en génie civil et son B.A. en géographie. Après avoir enseigné à l'Université du Wisconsin-Madison et à l'Université de Floride, il a créé JSMARS pour rendre l'analyse spatiale et planétaire accessible directement dans le navigateur.",
+        "kicker": "CO-CRÉATEURS DE JSMARS & BRIEFING DE MISSION",
+        "title": "Dr. Moulay Anwar Sounny-Slitine & Sara Bensalem",
+        "body": "JSMARS est une plateforme WebGIS open-source d'observation de la Terre et d'exploration planétaire inspirée de JMARS (ASU), conçue pour analyser de vraies données spatiales directement dans le navigateur sans installation.",
         "highlights": [
-          "Créateur de JSMARS, SIG planétaire et d'observation de la Terre open-source inspiré de JMARS (ASU)",
-          "Travaux centrés sur la science des données spatiales appliquée, la GeoAI et l'observation de la Terre",
-          "Format 1 heure : 5 min Intro · 5 × 5 min Parcours (25m) · 5 min Podium (+25m Marge)"
+          "Cartographie multi-astres en direct : Terre, Mars, Lune et Europe",
+          "Format 1 heure : 5 min Briefing · 5 × 5 min Parcours (25m) · 5 min Podium (+25m Marge)"
         ]
       },
       "action": {
@@ -116,6 +143,11 @@
     {
       "id": "gis_eo",
       "step": "02 / 05",
+      "image": "assets/spacecamp/noor-ouarzazate.jpg",
+      "imageCaption": {
+        "en": "Noor III Ouarzazate Concentrated Solar Power (CSP) Tower & Heliostat Array, Morocco",
+        "fr": "Tour solaire à concentration Noor III Ouarzazate et champ d'héliostats, Maroc"
+      },
       "en": {
         "kicker": "WHAT IS GIS & EARTH OBSERVATION?",
         "title": "Reading Earth's Surface from Orbit",
@@ -237,7 +269,7 @@
         "summary": "Inspect 4 real satellite targets across Morocco on 10 m ESA Copernicus Sentinel-2 imagery. Classify each land cover from its color, texture, and geometry (up to 48 pts), then measure one site using JSMARS Measurement (+12 pts)!",
         "sensorTitle": "ESA Copernicus Sentinel-2 MSI (10 m Optical)",
         "sensorBody": "Remote sensing analysts interpret Tone (spectral color), Texture (smooth sand vs rough canopy), Pattern (geometric farm fields vs natural valleys), and Context to map land cover across Earth.",
-        "measurePrompt": "Tool Step (+12 pts): Open Tools → Measurement → Distance (or Area) and measure any Moroccan feature on Earth!"
+        "measurePrompt": "Tool Step (+12 pts): Launch Measure Area (Polygon) or Measure Distance (Line) below, click corners on any Moroccan feature, and click the first or last point to finish."
       },
       "fr": {
         "shortTitle": "Terre OT",
@@ -246,7 +278,7 @@
         "summary": "Inspectez 4 sites satellitaires réels au Maroc sur l'imagerie ESA Sentinel-2 à 10 m. Classifiez l'occupation du sol grâce à la couleur, la texture et la géométrie (jusqu'à 48 pts), puis mesurez un site avec l'outil Measurement (+12 pts) !",
         "sensorTitle": "ESA Copernicus Sentinel-2 MSI (Optique 10 m)",
         "sensorBody": "En télédétection, l'analyste observe la teinte spectrale, la texture (canopée rugueuse vs sable lisse) et la géométrie (trames urbaines ou parcelles irriguées) pour cartographier la Terre.",
-        "measurePrompt": "Étape Outil (+12 pts) : Ouvrez Tools → Measurement → Distance (ou Area) et mesurez une structure au Maroc sur la carte !"
+        "measurePrompt": "Étape Outil (+12 pts) : Lancez Mesurer une Surface (Polygone) ou Distance (Ligne) ci-dessous, tracez sur un site au Maroc et cliquez sur le premier ou dernier point pour terminer."
       },
       "landCoverClasses": [
         { "id": "forest", "en": "Forest / Woodland", "fr": "Forêt Dense" },
@@ -403,11 +435,11 @@
         "toolLaunch": "profile-linear",
         "en": {
           "title": "Tool Step 2C: Slice a MOLA Laser Elevation Profile (+30 pts)",
-          "prompt": "Open Tools → Profiles → Linear Profile (click at least 2 points across Olympus Mons or Valles Marineris, then double-click to finish) to plot real MOLA elevation!"
+          "prompt": "Click 'Open JSMARS Tool' below (or Tools -> Profiles -> Linear Profile), click 2 or more points across Olympus Mons or Valles Marineris, and click the last point (or double-click) to finish and plot real MOLA elevation!"
         },
         "fr": {
           "title": "Étape Outil 2C : Tracer un Profil Laser MOLA (+30 pts)",
-          "prompt": "Ouvrez Tools → Profiles → Linear Profile (cliquez sur 2 points à travers Olympus Mons ou Valles Marineris puis double-cliquez) pour tracer le profil d'altitude !"
+          "prompt": "Cliquez sur « Ouvrir l'Outil JSMARS » ci-dessous (ou Tools -> Profiles -> Linear Profile), placez au moins 2 points à travers Olympus Mons ou Valles Marineris, puis cliquez sur le dernier point (ou double-cliquez) pour tracer le profil laser MOLA !"
         }
       }
     },

@@ -122,7 +122,7 @@ export class SpaceCampCopilot {
       : 'Respond strictly in clear, energetic, grounded English suitable for 16-18 year old Space Camp analysts.';
 
     const lines = [
-      'You are CAPCOM, the Space Data Flight Director inside "Mission JSMARS: Space Data Analysts" (created by Dr. Moulay Anwar Sounny-Slitine).',
+      'You are CAPCOM, the Space Data Flight Director inside "Mission JSMARS: Space Data Analysts" (co-created by Dr. Moulay Anwar Sounny-Slitine and Sara Bensalem).',
       languageDirective,
       'Keep replies concise (3 to 5 short sentences max, under 110 words). Use concrete remote-sensing and planetary GIS reasoning, never vague fluff, and never use em dashes.',
       'CRITICAL GAME INTEGRITY RULE: In Round 1 (Earth Observation land-cover classification), give Socratic spectral/texture clues (canopy reflectance, rectilinear street grids, geometric farm pivots, sand-dune slipfaces) WITHOUT naming the exact multiple-choice answer label directly.',
@@ -160,36 +160,77 @@ export class SpaceCampCopilot {
     const lonStr = `${Math.abs(Number(ctx.lon || 0)).toFixed(2)}°${Number(ctx.lon || 0) >= 0 ? 'E' : 'W'}`;
     const rNum = Number(ctx.roundNumber) || 1;
     const layers = (ctx.activeLayers && ctx.activeLayers.length) ? ctx.activeLayers.join(', ') : 'basemap';
+    const q = String(promptText || '').toLowerCase();
 
-    if (rNum === 3 && ctx.roverSummary) {
-      const r = ctx.roverSummary;
-      if (lang === 'fr') {
-        return `Télémétrie Rover MOLA (${r.distanceKm} km, pente max ${r.maxSlopeDeg}°, dénivelé +${r.totalClimbM} m) : ${
-          r.maxSlopeDeg <= 5.5
-            ? 'excellent tracé à faible pente dans le chenal ! Vérifiez que le dernier point arrive bien dans le rayon cible de Nili.'
-            : 'attention, votre itinéraire franchit un escarpement raide (> 6°). Contournez le rempart ouest par le chenal de Neretva Vallis pour gagner plus de points de sécurité.'
-        }`;
+    const isCritiqueIntent = /(critique|évalue|evaluer|rover|traverse|jezero|artemis|lola|lunar|lune|site|improve|score higher|améliorer)/i.test(q);
+    const isEuropaQuestion = /(ice|raft|broken|rotat|puzzle|chaos|conamara|europa|europe|ocean|océan|galileo|tidal|glace|iceberg|fractur)/i.test(q);
+    const isMarsQuestion = /(olympus|volcan|valles|marineris|canyon|tharsis|mola|laser|plate|tectonic)/i.test(q);
+    const isMoonQuestion = /(psr|shadow|permanently|water|shackleton|malapert|gerlache|tilt|ombre|polaire|eau)/i.test(q);
+    const isClueIntent = /(clue|indice|physics|physique|sentinel|spectral|chlorophyll|noor|morocco|maroc)/i.test(q);
+
+    // 1. Cross-round Engineering Critique (works from any active round tab)
+    if (isCritiqueIntent) {
+      const parts = [];
+      if (ctx.roverSummary && (rNum === 3 || !ctx.lunarSummary || /rover|jezero|mola|traverse/i.test(q))) {
+        const r = ctx.roverSummary;
+        parts.push(lang === 'fr'
+          ? `Télémétrie Rover MOLA (${r.distanceKm} km, pente max ${r.maxSlopeDeg}°, dénivelé +${r.totalClimbM} m, ${r.totalPoints}/75 pts) : ${
+              r.maxSlopeDeg <= 5.5
+                ? 'excellent tracé à faible pente dans le chenal ! Vérifiez que le dernier point arrive bien dans la zone cible de Nili.'
+                : 'votre itinéraire franchit un escarpement raide (> 6°). Contournez le rempart ouest par le chenal de Neretva Vallis (~18.52°N, 77.33°E) pour réduire la pente.'
+            }`
+          : `MOLA Rover Telemetry (${r.distanceKm} km, max slope ${r.maxSlopeDeg}°, +${r.totalClimbM} m climb, ${r.totalPoints}/75 pts): ${
+              r.maxSlopeDeg <= 5.5
+                ? 'clean low-angle traverse through the valley channel! Make sure your final waypoint lands inside the Nili target zone.'
+                : 'your rover crosses a steep scarp (> 6°). Route through the Neretva Vallis outflow channel (~18.52°N, 77.33°E) to lower max slope and gain safety points.'
+            }`
+        );
       }
-      return `MOLA Rover Telemetry (${r.distanceKm} km, max slope ${r.maxSlopeDeg}°, +${r.totalClimbM} m climb): ${
-        r.maxSlopeDeg <= 5.5
-          ? 'clean low-angle traverse through the valley channel! Make sure your final waypoint lands inside the Nili target zone.'
-          : 'your rover hits a steep scarp (> 6°). Try routing north into the Neretva Vallis outflow channel to lower max slope and boost your engineering score.'
-      }`;
+      if (ctx.lunarSummary && (rNum === 4 || !ctx.roverSummary || /artemis|lola|lunar|lune|site|psr/i.test(q))) {
+        const l = ctx.lunarSummary;
+        parts.push(lang === 'fr'
+          ? `Analyse LOLA Pôle Sud (${l.totalPoints}/150 pts, pente ${l.effectiveSlopeDeg}°) : ${l.adviceFr}`
+          : `LOLA South Pole Readout (${l.totalPoints}/150 pts, slope ${l.effectiveSlopeDeg}°): ${l.adviceEn}`
+        );
+      }
+      if (parts.length > 0) {
+        return parts.join(' ');
+      }
+      return lang === 'fr'
+        ? `Aucune télémétrie d'ingénierie encore enregistrée pour l'instant : tracez et évaluez un itinéraire de rover dans la Manche 3 (Jezero) ou cliquez sur une crête lunaire LOLA dans la Manche 4 (Artemis).`
+        : `No engineering traverse or landing site scored yet! Draw and score a Mars rover path in Round 3 (Jezero) or click a polar ridge inside Round 4's Lunar Base Site Planner to get live engineering feedback.`;
     }
 
-    if (rNum === 4 && ctx.lunarSummary) {
-      const l = ctx.lunarSummary;
+    // 2. Europa / Conamara Chaos / Ice Rafts
+    if (isEuropaQuestion) {
       if (lang === 'fr') {
-        return `Analyse LOLA Pôle Sud (${l.totalPoints}/150 pts, pente ${l.effectiveSlopeDeg}°) : ${l.adviceFr}`;
+        return `À Conamara Chaos (${latStr}, ${lonStr} sur ${body.toUpperCase()}), le réchauffement par effet de marée de Jupiter alimente un océan d'eau salée liquide (~2x nos océans, prouvé par le magnétomètre de Galileo) sous la banquise. Des panaches chauds ont partiellement fondu la croûte de glace par-dessous : des blocs kilométriques se sont brisés, ont dérivé et pivoté dans une matrice fluide avant de regeler sur place !`;
       }
-      return `LOLA South Pole Readout (${l.totalPoints}/150 pts, slope ${l.effectiveSlopeDeg}°): ${l.adviceEn}`;
+      return `At Conamara Chaos (${latStr}, ${lonStr} on ${body.toUpperCase()}), Jupiter's gravitational flexing drives tidal heating in a global subsurface saltwater ocean (~2x Earth's oceans, proved by Galileo's magnetometer). Warm upwelling plumes partially melted the ice shell from below, breaking kilometer-sized crust plates loose so they drifted and rotated like puzzle pieces before refreezing in a slushy matrix!`;
     }
 
-    if (rNum === 1) {
+    // 3. Mars Volcanism / Tectonic Rift / MOLA
+    if (isMarsQuestion) {
       if (lang === 'fr') {
-        return `Vue actuelle sur ${body.toUpperCase()} (${latStr}, ${lonStr} · couches : ${layers}). Observez la texture Sentinel-2 à 10 m : une canopée sombre irrégulière suit le relief montagneux, le bâti forme une trame routière grise/blanche, les cultures irriguées découpent des parcelles géométriques et le désert montre des crêtes dunaires ocre. Utilisez aussi Mesure (Distance/Surface) pour +12 pts !`;
+        return `Contrairement à la Terre, Mars ne possède pas de tectonique des plaques active : la croûte reste fixe au-dessus d'un point chaud, accumulant Olympus Mons jusqu'à +21,9 km d'altitude, tandis que le soulèvement de Tharsis a fissuré Valles Marineris sur 4 000 km (-7 km). L'altimètre MOLA mesure ce relief au mètre près en chronométrant le retour d'impulsions laser infrarouges à 1064 nm.`;
       }
-      return `Current ${body.toUpperCase()} lock (${latStr}, ${lonStr} · layers: ${layers}). Inspect the 10 m Sentinel-2 texture closely: mountain canopy looks dark green and irregular, cities show bright street grids, irrigated farms form crisp geometric plots, and sand seas show ochre dune ridges. Don't forget Tools -> Measurement for +12 bonus pts!`;
+      return `Because Mars lacks active Earth-style plate tectonics, crust sat stationary over a mantle hotspot, stacking lava flows to build Olympus Mons to +21.9 km while Tharsis uplift tore Valles Marineris 4,000 km long and 7 km deep. MGS MOLA measured that 29 km relief span to ~1 m precision by timing 1064 nm infrared laser pulses from orbit.`;
+    }
+
+    // 4. Lunar South Pole / PSR Cold Traps
+    if (isMoonQuestion) {
+      if (lang === 'fr') {
+        return `Avec seulement 1,54° d'inclinaison axiale, le Soleil rase l'horizon au Pôle Sud lunaire : les crêtes élevées (Shackleton Rim, Connecting Ridge) reçoivent un ensoleillement quasi continu et une vue directe sur la Terre, tandis que le fond des cratères voisins reste en Ombre Permanente (PSR, < 110 K), piégeant de la glace d'eau accessible aux rovers.`;
+      }
+      return `Because the Moon tilts only 1.54° on its axis, sunlight grazes the South Pole nearly horizontally: high crater rims (Shackleton Rim, Connecting Ridge) stay bathed in sunlight with Earth radio line-of-sight, while adjacent crater floors remain in Permanent Shadow (PSRs below 110 K) that cold-trap water ice within 0.2 to 2.5 km of rover landing zones.`;
+    }
+
+    // 5. Round-specific telemetry & Sensor Clues (without spoiling Round 1)
+    if (rNum === 1 || isClueIntent && body === 'earth') {
+      if (lang === 'fr') {
+        return `Vue actuelle sur ${body.toUpperCase()} (${latStr}, ${lonStr} · couches : ${layers}). Observez la texture Sentinel-2 à 10 m : une canopée sombre irrégulière absorbe le rouge sur le relief montagneux, le bâti forme une trame routière claire, les cultures irriguées découpent des parcelles géométriques et les dunes montrent des crêtes ocre riches en oxydes de fer. Utilisez aussi Measurement pour +12 pts !`;
+      }
+      return `Current ${body.toUpperCase()} lock (${latStr}, ${lonStr} · layers: ${layers}). Inspect the 10 m Sentinel-2 texture closely: healthy mountain canopy absorbs visible red light and looks dark green and rough, urban centers show bright rectilinear street grids, irrigated farms form crisp rectangular plots, and sand seas show ochre dune ridges. Don't forget Measurement for +12 bonus pts!`;
     }
 
     if (rNum === 2) {
@@ -197,6 +238,20 @@ export class SpaceCampCopilot {
         return `Capteur centré à (${latStr}, ${lonStr}) sur ${body.toUpperCase()} (${layers}). Activez « MOLA Colorized Elevation » dans Layer Manager : les édifices volcaniques géants ressortent en rouge/blanc (+21 km) à l'ouest de Tharsis, tandis que le grand rift tectonique s'ouvre en bleu/violet (-7 km) à l'est. Tracez ensuite un profil dans Tools -> Profiles !`;
       }
       return `Scanner at (${latStr}, ${lonStr}) on ${body.toUpperCase()} (${layers}). Turn on 'MOLA Colorized Elevation' in Layer Manager: giant shield volcanoes glow white/red (+21 km) in western Tharsis, while Mars's deepest tectonic rift canyon drops into blue/purple (-7 km) further east. Then slice a cross-section in Tools -> Profiles!`;
+    }
+
+    if (rNum === 3) {
+      if (lang === 'fr') {
+        return `Secteur Jezero à (${latStr}, ${lonStr}) sur ${body.toUpperCase()} (${layers}). Pour limiter les pentes rover (< 5°), suivez l'ancien chenal fluvial de Neretva Vallis qui entaille le rempart ouest (~18.52°N, 77.33°E) avant de rejoindre le plateau de Nili, puis cliquez sur « Évaluer l'Itinéraire ».`;
+      }
+      return `Jezero sector at (${latStr}, ${lonStr}) on ${body.toUpperCase()} (${layers}). To keep rover slopes safe (< 5°), route west into the ancient Neretva Vallis river channel (~18.52°N, 77.33°E) where water breached the crater rim before climbing to Nili Highlands, then click Score Rover Plan!`;
+    }
+
+    if (rNum === 4) {
+      if (lang === 'fr') {
+        return `Secteur lunaire à (${latStr}, ${lonStr}) (${layers}). Lancez le Lunar Base Site Planner pour interroger les rasters NASA LOLA : visez une crête plate (Pente <= 5°), très ensoleillée (>= 75 %), visible depuis la Terre (>= 50 %) et proche (0,2 à 2,5 km) d'un piège à glace PSR sans atterrir dans l'ombre.`;
+      }
+      return `Lunar view at (${latStr}, ${lonStr}) (${layers}). Launch the Lunar Base Site Planner to sample live NASA LOLA grids: aim for a flat ridge (Slope <= 5°), high solar power (>= 75%), direct Earth comms (>= 50%), and rover access (0.2 to 2.5 km) to a PSR ice trap without landing inside the shadow.`;
     }
 
     if (lang === 'fr') {

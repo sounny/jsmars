@@ -118,11 +118,37 @@ def run_spacecamp_suite():
             panel_box = page.locator("#sc-side-panel").bounding_box()
             map_box = page.locator("#map").bounding_box()
             zoom_box = page.locator(".leaflet-control-zoom").bounding_box()
-            assert panel_box is not None and map_box is not None
+            hud_box = page.locator(".map-top-hud").bounding_box()
+            edge_box = page.locator("#sc-edge-toggle-btn").bounding_box()
+            top_right_controls = page.locator(".leaflet-top.leaflet-right .leaflet-control")
+            assert panel_box is not None and map_box is not None and hud_box is not None and edge_box is not None
             assert abs(panel_box["width"] - 384) <= 2, f"Expected 384px side panel, got {panel_box}"
             assert abs(map_box["width"] - 1216) <= 2, f"Expected 1216px co-docked #map on 1600px screen, got {map_box}"
             assert not boxes_overlap(map_box, panel_box), f"#map overlaps #sc-side-panel: {map_box} vs {panel_box}"
             assert not boxes_overlap(zoom_box, panel_box), f"Zoom control overlaps #sc-side-panel: {zoom_box} vs {panel_box}"
+            assert not boxes_overlap(hud_box, zoom_box), f"Top HUD overlaps zoom control at 1600px: {hud_box} vs {zoom_box}"
+            for ci in range(top_right_controls.count()):
+                cbox = top_right_controls.nth(ci).bounding_box()
+                if cbox:
+                    assert not boxes_overlap(edge_box, cbox), f"Edge toggle overlaps right toolbar #{ci} at 1600px: {edge_box} vs {cbox}"
+
+            # Also verify zero HUD / toolbar / edge-toggle overlap at medium 1024x768 viewport
+            page.set_viewport_size({"width": 1024, "height": 768})
+            page.wait_for_timeout(350)
+            hud_1024 = page.locator(".map-top-hud").bounding_box()
+            zoom_1024 = page.locator(".leaflet-control-zoom").bounding_box()
+            sb_toggle_1024 = page.locator("#sidebar-toggle").bounding_box()
+            edge_1024 = page.locator("#sc-edge-toggle-btn").bounding_box()
+            assert not boxes_overlap(hud_1024, zoom_1024), f"Top HUD overlaps zoom at 1024x768: {hud_1024} vs {zoom_1024}"
+            if sb_toggle_1024:
+                assert not boxes_overlap(hud_1024, sb_toggle_1024), f"Top HUD overlaps sidebar toggle at 1024x768: {hud_1024} vs {sb_toggle_1024}"
+            for ci in range(top_right_controls.count()):
+                cbox = top_right_controls.nth(ci).bounding_box()
+                if cbox:
+                    assert not boxes_overlap(edge_1024, cbox), f"Edge toggle overlaps right toolbar #{ci} at 1024x768: {edge_1024} vs {cbox}"
+            page.screenshot(path=os.path.join(SCREENSHOT_DIR, "sc_medium_hud_clearance.png"))
+            page.set_viewport_size({"width": 1600, "height": 900})
+            page.wait_for_timeout(350)
 
             # Test collapsible edge tab
             page.click("#sc-edge-toggle-btn")
@@ -133,9 +159,9 @@ def run_spacecamp_suite():
             page.wait_for_timeout(400)
 
             # =========================================================================
-            # 3. French (FR) Language Switch & Official Programme Title
+            # 3. French (FR) Language Switch, Briefing Co-Creators, Slide 2 Image & Zero Callsign on Slides
             # =========================================================================
-            print("\n[3/8] Testing EN | FR language switch & French subtitle...")
+            print("\n[3/8] Testing EN | FR language switch, Slide 1 Co-Creators, Slide 2 Noor image & clean slides...")
             page.click("#sc-lang-fr-btn")
             page.wait_for_timeout(250)
             fr_title = page.locator(".sc-main-title").inner_text().strip()
@@ -144,15 +170,33 @@ def run_spacecamp_suite():
             assert fr_sub == "Atelier numérique de planification de missions et d'analyse en télédétection", f"Unexpected FR subtitle: {fr_sub}"
             assert "Classement" in page.locator("#sc-open-leaderboard-btn").inner_text()
 
-            # Test Briefing Slides modal in FR then switch back to EN
+            page.click("#sc-lang-en-btn")
+            page.wait_for_timeout(200)
+
+            # Open Briefing Slides modal (before claiming callsign!) and verify:
+            # 1) Zero callsign claim form on slides
+            # 2) Both Dr. Moulay Anwar Sounny-Slitine & Sara Bensalem on Slide 1
+            # 3) Noor Ouarzazate image loaded on Slide 2
             page.click("#sc-open-briefing-btn")
             page.wait_for_timeout(250)
             assert page.locator(".sc-modal-backdrop").evaluate("el => !el.hidden") is True
-            assert "Dr. Moulay Anwar Sounny-Slitine" in page.locator(".sc-modal").inner_text()
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(200)
+            modal_text_s1 = page.locator(".sc-modal").inner_text()
+            assert "Dr. Moulay Anwar Sounny-Slitine" in modal_text_s1
+            assert "Sara Bensalem" in modal_text_s1
+            assert "Assistant Professor of Practice" not in modal_text_s1
+            assert page.locator(".sc-modal #sc-modal-join-card").count() == 0, "Slides modal must NOT show Claim Callsign card!"
+            assert "Callsign" not in modal_text_s1 and "REGISTER OPERATOR CALLSIGN" not in modal_text_s1
+            page.screenshot(path=os.path.join(SCREENSHOT_DIR, "sc_slide1_cocreators.png"))
 
-            page.click("#sc-lang-en-btn")
+            # Navigate to Slide 2 and verify Noor Ouarzazate image renders
+            page.locator(".sc-slide-nav .sc-btn").last.click()
+            page.wait_for_timeout(300)
+            slide2_img_ok = page.locator(".sc-modal img.sc-slide-image").evaluate("img => img.complete && img.naturalWidth > 200")
+            assert slide2_img_ok is True, "Slide 2 Noor Ouarzazate image failed to load!"
+            assert page.locator(".sc-modal #sc-modal-join-card").count() == 0
+            page.screenshot(path=os.path.join(SCREENSHOT_DIR, "sc_slide2_noor.png"))
+
+            page.keyboard.press("Escape")
             page.wait_for_timeout(200)
 
             # =========================================================================
@@ -214,17 +258,18 @@ def run_spacecamp_suite():
                 r1_cards.nth(idx).locator(".sc-class-chip", has_text=label).click()
                 page.wait_for_timeout(150)
 
-            # Trigger real MeasureTool array payload on Earth
-            page.evaluate(
-                """() => {
-                    document.dispatchEvent(new CustomEvent('jmars:measurements-updated', {
-                        detail: [{ id: 'm1', type: 'Line', value: 4200, vertices: 2 }]
-                    }));
-                }"""
-            )
-            page.wait_for_timeout(300)
+            # Launch REAL Measure Area (Polygon) tool from Round 1 card and close polygon by clicking LAST point!
+            r1_cards.nth(4).locator("button", has_text="Measure Area (Polygon)").click()
+            page.wait_for_timeout(400)
+            poly_pts = [(520, 340), (660, 340), (660, 470), (520, 470)]
+            for px, py in poly_pts:
+                page.mouse.click(px, py)
+                page.wait_for_timeout(120)
+            # Click the LAST point (520, 470) to finish polygon!
+            page.mouse.click(520, 470)
+            page.wait_for_timeout(400)
             assert "60 / 600 PTS" in page.locator(".sc-score-pill").inner_text(), (
-                f"Expected 60 pts after Round 1, got {page.locator('.sc-score-pill').inner_text()}"
+                f"Expected 60 pts after Round 1 polygon last-point click, got {page.locator('.sc-score-pill').inner_text()}"
             )
             page.screenshot(path=os.path.join(SCREENSHOT_DIR, "sc_01_round1_earth_eo.png"))
             print("Round 1 verified: 60/60 pts!")

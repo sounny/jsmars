@@ -1,6 +1,7 @@
 import { EVENTS } from '../../constants.js';
 import { jmarsState } from '../../jmars-state.js';
 import { haversineDistance, sphericalPolygonArea, azimuth, computePolygonPerimeter, BODIES, getPlanetaryRadius } from '../../util/geo.js';
+import { applyLeafletDrawPatch } from '../../util/leaflet-draw-patch.js';
 
 /**
  * @module MeasureTool
@@ -72,6 +73,7 @@ export class MeasureTool {
      * @param {'distance'|'area'} mode - Measurement mode.
      */
     activate(mode) {
+        applyLeafletDrawPatch();
         if (this.isDrawing && this.activeMode === mode) {
             return; // Already active
         }

@@ -77,6 +77,13 @@ export class JMARSWMS {
       return [];
     }
 
+    const WEB_MERCATOR_ONLY_CRS = new Set([
+      'EPSG:3857',
+      'EPSG:900913',
+      'EPSG:102100',
+      'EPSG:102113'
+    ]);
+
     const allLayers = Array.from(xmlDoc.getElementsByTagName('Layer'));
     const validLayers = [];
 
@@ -96,6 +103,30 @@ export class JMARSWMS {
         if (nodeName === 'Abstract') abstract = child.textContent;
       }
 
+      // Collect supported CRS/SRS codes from this Layer and any ancestor Layer nodes
+      const crsCodes = new Set();
+      let cur = node;
+      while (cur && cur.nodeName && cur.nodeName.split(':').pop() === 'Layer') {
+        for (let j = 0; j < cur.children.length; j++) {
+          const cNode = cur.children[j];
+          const cTag = cNode.nodeName.split(':').pop();
+          if (cTag === 'CRS' || cTag === 'SRS') {
+            const val = (cNode.textContent || '').trim().toUpperCase();
+            if (val) crsCodes.add(val);
+          }
+        }
+        cur = cur.parentElement;
+      }
+
+      // JSMARS's 2D map operates in L.CRS.EPSG4326 (equirectangular lon/lat).
+      // Exclude Web-Mercator-only layers (e.g. EOX `*_3857` variants) that return HTTP 400
+      // when queried with SRS/CRS=EPSG:4326.
+      const isWebMercatorOnly =
+        crsCodes.size > 0 && Array.from(crsCodes).every(code => WEB_MERCATOR_ONLY_CRS.has(code));
+      if (isWebMercatorOnly) {
+        return;
+      }
+
       // Only include layers that have both a Name (renderable) and Title (display label).
       // WMS defaults queryable to 0 when the attribute is absent, including the
       // root container layer that MapServer names but will not identify.
@@ -104,7 +135,7 @@ export class JMARSWMS {
           name,
           title,
           abstract,
-          crs: 'EPSG:4326', // Simplified; could be parsed from <CRS> elements
+          crs: 'EPSG:4326',
           queryable: node.getAttribute('queryable') === '1'
         });
       }

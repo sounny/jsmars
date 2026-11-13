@@ -94,6 +94,54 @@ export const JMARS_CONFIG = {
             transparent: true,
             attribution: 'USGS Astrogeology'
           }
+        },
+        {
+          id: 'mars_mola_color',
+          name: 'MOLA Colorized Elevation (USGS WMS)',
+          type: 'wms',
+          url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
+          options: {
+            layers: 'MOLA_color',
+            format: 'image/png',
+            transparent: true,
+            attribution: 'USGS Astrogeology / NASA / MGS MOLA'
+          }
+        },
+        {
+          id: 'mars_mola_themis_blend',
+          name: 'MOLA Topography + THEMIS IR Day 100m Blend (USGS WMS)',
+          type: 'wms',
+          url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
+          options: {
+            layers: 'MOLA_THEMIS_blend',
+            format: 'image/png',
+            transparent: true,
+            attribution: 'USGS Astrogeology / NASA / MGS MOLA / ASU THEMIS'
+          }
+        },
+        {
+          id: 'mars_themis_day',
+          name: 'THEMIS IR Day 100m Global Mosaic (USGS WMS)',
+          type: 'wms',
+          url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
+          options: {
+            layers: 'THEMIS',
+            format: 'image/png',
+            transparent: true,
+            attribution: 'USGS Astrogeology / NASA / ASU THEMIS'
+          }
+        },
+        {
+          id: 'mars_mola_bw',
+          name: 'MOLA Shaded Relief Grayscale (USGS WMS)',
+          type: 'wms',
+          url: 'https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map',
+          options: {
+            layers: 'MOLA_bw',
+            format: 'image/png',
+            transparent: true,
+            attribution: 'USGS Astrogeology / NASA / MGS MOLA'
+          }
         }
       ]
     },
@@ -582,6 +630,7 @@ export const JMARS_CONFIG = {
           url: 'https://trek.nasa.gov/tiles/Europa/EQ/12ESCHAOS_01_GalileoSSI_Equi/1.0.0//default/default028mm/{z}/{y}/{x}.png',
           options: {
             attribution: 'NASA / JPL / Galileo SSI / Europa Trek',
+            bounds: [[8.5275194, 85.3908213], [9.1403801, 86.8861354]],
             maxZoom: 9,
             tms: false
           }
@@ -593,6 +642,8 @@ export const JMARS_CONFIG = {
           url: 'https://trek.nasa.gov/tiles/Europa/EQ/GLL_SSI_Mosaic_55mpp_Pwyll/1.0.0//default/default028mm/{z}/{y}/{x}.png',
           options: {
             attribution: 'NASA / JPL / Galileo SSI / Europa Trek',
+            bounds: [[-26.6550161, 88.2737896], [-25.8209369, 89.1951066]],
+            maxNativeZoom: 8,
             maxZoom: 9,
             tms: false
           }
@@ -604,6 +655,8 @@ export const JMARS_CONFIG = {
           url: 'https://trek.nasa.gov/tiles/Europa/EQ/GLL_SSI_Mosaic_35mpp_Tyre/1.0.0//default/default028mm/{z}/{y}/{x}.png',
           options: {
             attribution: 'NASA / JPL / Galileo SSI / Europa Trek',
+            bounds: [[30.4578062, -143.6375341], [31.4904215, -140.5765186]],
+            maxNativeZoom: 9,
             maxZoom: 9,
             tms: false
           }
@@ -1171,6 +1224,7 @@ export const JMARS_CONFIG = {
         url: 'https://trek.nasa.gov/tiles/Europa/EQ/12ESCHAOS_01_GalileoSSI_Equi/1.0.0//default/default028mm/{z}/{y}/{x}.png',
         options: {
           attribution: 'NASA / JPL / Galileo SSI / Europa Trek',
+          bounds: [[8.5275194, 85.3908213], [9.1403801, 86.8861354]],
           maxZoom: 9
         },
         thumbnail: THUMB_1PX
@@ -1183,6 +1237,8 @@ export const JMARS_CONFIG = {
         url: 'https://trek.nasa.gov/tiles/Europa/EQ/GLL_SSI_Mosaic_55mpp_Pwyll/1.0.0//default/default028mm/{z}/{y}/{x}.png',
         options: {
           attribution: 'NASA / JPL / Galileo SSI / Europa Trek',
+          bounds: [[-26.6550161, 88.2737896], [-25.8209369, 89.1951066]],
+          maxNativeZoom: 8,
           maxZoom: 9
         },
         thumbnail: THUMB_1PX
@@ -1195,6 +1251,8 @@ export const JMARS_CONFIG = {
         url: 'https://trek.nasa.gov/tiles/Europa/EQ/GLL_SSI_Mosaic_35mpp_Tyre/1.0.0//default/default028mm/{z}/{y}/{x}.png',
         options: {
           attribution: 'NASA / JPL / Galileo SSI / Europa Trek',
+          bounds: [[30.4578062, -143.6375341], [31.4904215, -140.5765186]],
+          maxNativeZoom: 9,
           maxZoom: 9
         },
         thumbnail: THUMB_1PX

@@ -1,5 +1,6 @@
 import { jmarsState } from '../src/jmars-state.js';
 import { JMARSWMS } from '../src/jmars-wms.js';
+import { createLeafletLayer } from '../src/layers/index.js';
 import { EVENTS } from '../src/constants.js';
 import { MarsTime } from '../src/features/slider/MarsTime.js';
 import { KRCEngine } from '../src/features/krc/KRCEngine.js';
@@ -18851,6 +18852,103 @@ describe('Mission JSMARS: Space Data Analysts (Space Camp Engine, Cookies & Copi
         } finally {
             container.remove();
         }
+    });
+
+    it('filters Web-Mercator-only (_3857) WMS layers and heals EOX _3857 layer configs to prevent HTTP 400 errors', () => {
+        const sampleXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <WMS_Capabilities version="1.3.0">
+          <Capability>
+            <Layer>
+              <Title>EOX::Maps</Title>
+              <CRS></CRS>
+              <Layer queryable="0">
+                <Name>s2cloudless-2024_3857</Name>
+                <Title>Sentinel-2 cloudless 2024 - 3857</Title>
+                <CRS>EPSG:900913</CRS>
+                <CRS>EPSG:3857</CRS>
+              </Layer>
+              <Layer queryable="0">
+                <Name>s2cloudless-2024</Name>
+                <Title>Sentinel-2 cloudless 2024 - 4326</Title>
+                <CRS>EPSG:4326</CRS>
+              </Layer>
+              <Layer queryable="1">
+                <Name>MDIM21</Name>
+                <Title>Mars Viking MDIM 2.1</Title>
+              </Layer>
+            </Layer>
+          </Capability>
+        </WMS_Capabilities>`;
+
+        const parsed = JMARSWMS.parseCapabilities(sampleXml);
+        const names = parsed.map((l) => l.name);
+        expect(names).to.include('s2cloudless-2024');
+        expect(names).to.include('MDIM21');
+        expect(names).to.not.include('s2cloudless-2024_3857');
+
+        const healedLayer = createLeafletLayer({
+            id: 's2cloudless-2024_3857',
+            type: 'wms',
+            url: 'https://tiles.maps.eox.at/wms',
+            options: { layers: 's2cloudless-2024_3857', format: 'image/png', transparent: true }
+        });
+        expect(healedLayer.wmsParams.layers).to.equal('s2cloudless-2024');
+    });
+
+    it('validates Space Camp Briefing Slide 1 co-creators (Dr. Sounny & Sara Bensalem) and Slide 2 Noor image', async () => {
+        const res = await fetch('../src/data/spacecamp-missions.json');
+        expect(res.status).to.equal(200);
+        const deck = await res.json();
+        const slide1 = deck.introCards[0];
+        const slide2 = deck.introCards[1];
+
+        expect(slide1.en.title).to.include('Dr. Moulay Anwar Sounny-Slitine');
+        expect(slide1.en.title).to.include('Sara Bensalem');
+        expect(slide1.coCreators).to.be.an('array').with.lengthOf(2);
+        const anwarBio = slide1.coCreators[0].en.bio;
+        expect(anwarBio).to.include('International Space University');
+        expect(anwarBio).to.include('Geography faculty at Texas State University');
+        expect(anwarBio).to.not.include('Assistant Professor of Practice');
+        expect(slide1.coCreators[1].name).to.equal('Sara Bensalem');
+        expect(slide1.coCreators[1].avatar).to.equal('assets/spacecamp/sara-avatar.jpg');
+
+        const saraPhotoRes = await fetch('../assets/spacecamp/sara-avatar.jpg');
+        expect(saraPhotoRes.status).to.equal(200);
+
+        expect(slide2.image).to.equal('assets/spacecamp/noor-ouarzazate.jpg');
+    });
+
+    it('registers Mars MOLA & THEMIS WMS layers and supports question-aware SpaceCampCopilot replies', () => {
+        const marsLayerIds = JMARS_CONFIG.bodies.mars.layers.map((l) => l.id);
+        expect(marsLayerIds).to.include('mars_mola_color');
+        expect(marsLayerIds).to.include('mars_mola_themis_blend');
+        expect(marsLayerIds).to.include('mars_themis_day');
+
+        const copilot = new SpaceCampCopilot();
+        copilot.setApiKey('', false);
+
+        const europaReply = copilot.buildLocalTelemetryReply(
+            { body: 'europa', lat: 8.85, lon: 86.15, roundNumber: 5, activeLayers: ['europa_conamara_chaos'] },
+            'Why do the ice blocks at Conamara Chaos look broken and rotated like puzzle pieces?',
+            'en'
+        );
+        expect(europaReply).to.include('tidal heating');
+        expect(europaReply).to.include('Conamara Chaos');
+
+        const crossRoundCritique = copilot.buildLocalTelemetryReply(
+            {
+                body: 'europa',
+                lat: 8.85,
+                lon: 86.15,
+                roundNumber: 5,
+                roverSummary: { distanceKm: 39.2, maxSlopeDeg: 4.1, totalClimbM: 320, totalPoints: 72 },
+                lunarSummary: { totalPoints: 145, effectiveSlopeDeg: 2.8, adviceEn: 'Prime Artemis ridge site.', adviceFr: 'Excellent site Artemis.' }
+            },
+            'Critique my rover route and lunar site',
+            'en'
+        );
+        expect(crossRoundCritique).to.include('39.2 km');
+        expect(crossRoundCritique).to.include('145/150 pts');
     });
 });
 

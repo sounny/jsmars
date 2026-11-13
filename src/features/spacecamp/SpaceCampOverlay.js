@@ -210,8 +210,7 @@ export class SpaceCampOverlay {
         ...layers,
         { id: 'earth_s2_cloudless', opacity: 1.0, visible: true }
       ];
-      jmarsState.set('activeLayers', next);
-      document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_CHANGED, { detail: { layers: next } }));
+      jmarsState.setActiveLayers(next);
     }
   }
 
@@ -433,18 +432,20 @@ export class SpaceCampOverlay {
   closeModal() {
     this.activeModal = null;
     this.modalBackdrop.hidden = true;
-    this.modalEl.classList.remove('is-wide');
+    this.modalEl.classList.remove('is-wide', 'is-briefing');
   }
 
   openBriefingModal() {
     this.activeModal = 'briefing';
     this.modalEl.classList.remove('is-wide');
+    this.modalEl.classList.add('is-briefing');
     this.modalBackdrop.hidden = false;
     this._renderBriefingModalContent();
   }
 
   openLeaderboardModal() {
     this.activeModal = 'leaderboard';
+    this.modalEl.classList.remove('is-briefing');
     this.modalEl.classList.add('is-wide');
     this.modalBackdrop.hidden = false;
     this._renderLeaderboardModalContent();
@@ -583,14 +584,21 @@ export class SpaceCampOverlay {
     const cards = this.deck.introCards || [];
     const card = cards[this.slideIndex] || cards[0];
     const copy = card[this.lang] || card.en;
-    const avatarUrl = card.avatar
+    const hasCoCreators = Array.isArray(card.coCreators) && card.coCreators.length > 0;
+    const avatarUrl = (!hasCoCreators && card.avatar)
       ? new URL(`../../../${card.avatar}`, import.meta.url).href
       : null;
+    const slideImageUrl = card.image
+      ? new URL(`../../../${card.image}`, import.meta.url).href
+      : null;
+    const slideImageCaption = card.imageCaption
+      ? (card.imageCaption[this.lang] || card.imageCaption.en || '')
+      : '';
 
     const topRow = h('div', { class: 'sc-modal-top' },
       h('div', {},
         h('div', { class: 'sc-kicker', text: this.t('eventBadge') }),
-        h('div', { style: 'font-family: Space Grotesk, sans-serif; font-size: 18px; font-weight: 700; margin-top: 2px;', text: 'Mission JSMARS: Space Data Analysts' }),
+        h('div', { style: 'font-family: var(--sc-display); font-size: 18px; font-weight: 700; margin-top: 2px;', text: 'Mission JSMARS: Space Data Analysts' }),
         h('div', { style: 'font-size: 12px; color: #94a3b8; margin-top: 1px;', text: "Atelier numérique de planification de missions et d'analyse en télédétection" })
       ),
       h('div', { class: 'sc-btn-row' },
@@ -603,19 +611,61 @@ export class SpaceCampOverlay {
         h('button', {
           type: 'button',
           class: 'sc-btn',
-          text: '✕',
           'aria-label': 'Close slides',
           onclick: () => this.closeModal()
-        })
+        }, scIcon('close', 13))
       )
     );
 
+    const coCreatorNodes = hasCoCreators
+      ? h('div', { class: 'sc-cocreators-grid' },
+          ...card.coCreators.map((person) => {
+            const pCopy = person[this.lang] || person.en || {};
+            const pAvatar = person.avatar
+              ? new URL(`../../../${person.avatar}`, import.meta.url).href
+              : null;
+            return h('div', { class: 'sc-cocreator-card' },
+              h('div', { class: 'sc-cocreator-head' },
+                pAvatar
+                  ? h('img', {
+                      class: 'sc-avatar sc-avatar-sm',
+                      src: pAvatar,
+                      alt: person.name,
+                      style: person.avatarPosition ? `object-position: ${person.avatarPosition};` : undefined
+                    })
+                  : h('div', { class: 'sc-monogram-badge', 'aria-hidden': 'true', text: person.monogram || 'JB' }),
+                h('div', { class: 'sc-cocreator-meta' },
+                  h('div', { class: 'sc-cocreator-name', text: person.name }),
+                  h('div', { class: 'sc-cocreator-role', text: pCopy.role || '' })
+                )
+              ),
+              h('p', { class: 'sc-cocreator-bio', text: pCopy.bio || '' })
+            );
+          })
+        )
+      : null;
+
+    const slideFigure = slideImageUrl
+      ? h('figure', { class: 'sc-slide-figure' },
+          h('img', {
+            class: 'sc-slide-image',
+            src: slideImageUrl,
+            alt: slideImageCaption || copy.title
+          }),
+          slideImageCaption
+            ? h('figcaption', { class: 'sc-slide-caption', text: slideImageCaption })
+            : null
+        )
+      : null;
+
     const hero = h('div', { class: 'sc-card-hero' },
       avatarUrl ? h('img', { class: 'sc-avatar', src: avatarUrl, alt: copy.title }) : null,
-      h('div', { style: 'flex:1;' },
+      h('div', { style: 'flex:1; min-width:0;' },
         h('div', { class: 'sc-kicker', text: `${card.step} · ${copy.kicker}` }),
-        h('h2', { style: 'margin: 4px 0 8px; font-family: Space Grotesk, sans-serif; font-size: 19px;', text: copy.title }),
-        h('p', { style: 'margin: 0; font-size: 13.2px; line-height: 1.55; color: #cbd5e1;', text: copy.body }),
+        h('h2', { style: 'margin: 4px 0 8px; font-family: var(--sc-display); font-size: 19px;', text: copy.title }),
+        coCreatorNodes,
+        slideFigure,
+        h('p', { style: 'margin: 0; font-size: 13px; line-height: 1.55; color: #cbd5e1;', text: copy.body }),
         h('ul', { class: 'sc-highlights' },
           ...(copy.highlights || []).map((item) => h('li', { text: item }))
         ),
@@ -623,12 +673,11 @@ export class SpaceCampOverlay {
           h('button', {
             type: 'button',
             class: 'sc-btn sc-btn-primary',
-            text: card.action[this.lang] || card.action.en,
             onclick: async () => {
               await this._flyTo(card.action.body, card.action.lat, card.action.lon, card.action.zoom || 10);
               this.closeModal();
             }
-          })
+          }, scIcon('locate', 12), card.action[this.lang] || card.action.en)
         ) : null
       )
     );
@@ -638,12 +687,11 @@ export class SpaceCampOverlay {
         type: 'button',
         class: 'sc-btn',
         disabled: this.slideIndex === 0,
-        text: this.lang === 'fr' ? '← Précédent' : '← Previous',
         onclick: () => {
           this.slideIndex = Math.max(0, this.slideIndex - 1);
           this._renderBriefingModalContent();
         }
-      }),
+      }, scIcon('chevronLeft', 12), this.lang === 'fr' ? 'Précédent' : 'Previous'),
       h('div', { class: 'sc-dots' },
         ...cards.map((_, idx) => h('button', {
           type: 'button',
@@ -659,20 +707,14 @@ export class SpaceCampOverlay {
         type: 'button',
         class: 'sc-btn',
         disabled: this.slideIndex >= cards.length - 1,
-        text: this.lang === 'fr' ? 'Suivant →' : 'Next →',
         onclick: () => {
           this.slideIndex = Math.min(cards.length - 1, this.slideIndex + 1);
           this._renderBriefingModalContent();
         }
-      })
+      }, this.lang === 'fr' ? 'Suivant' : 'Next', scIcon('chevronRight', 12))
     );
 
-    this.modalEl.replaceChildren(
-      topRow,
-      hero,
-      navRow,
-      !this.identity.handle ? this._buildCallsignClaimUI(false) : null
-    );
+    this.modalEl.replaceChildren(topRow, hero, navRow);
   }
 
   // ── In-App Live Leaderboard & Winner's Circle Modal View ─────────────────
@@ -713,10 +755,10 @@ export class SpaceCampOverlay {
       h('div', {},
         h('div', { class: 'sc-kicker', text: 'LIVE FIREBASE TELEMETRY · REAL-TIME SCOREBOARD' }),
         h('div', {
-          style: 'font-family: Space Grotesk, sans-serif; font-size: 19px; font-weight: 700; margin-top: 2px;',
+          style: 'font-family: var(--sc-display); font-size: 19px; font-weight: 700; margin-top: 2px;',
           text: this.lang === 'fr'
-            ? 'Classement en Direct & Podium — Mission JSMARS'
-            : 'Live Leaderboard & Winner’s Circle — Mission JSMARS'
+            ? 'Classement en Direct & Podium · Mission JSMARS'
+            : 'Live Leaderboard & Winner’s Circle · Mission JSMARS'
         })
       ),
       h('div', { class: 'sc-btn-row' },
@@ -747,10 +789,9 @@ export class SpaceCampOverlay {
         h('button', {
           type: 'button',
           class: 'sc-btn',
-          text: '✕',
           'aria-label': 'Close leaderboard',
           onclick: () => this.closeModal()
-        })
+        }, scIcon('close', 13))
       )
     );
 
@@ -821,7 +862,7 @@ export class SpaceCampOverlay {
         )
       : null;
 
-    this.modalEl.replaceChildren(topRow, podiumNodes, listNodes, feedSection);
+    this.modalEl.replaceChildren(...[topRow, podiumNodes, listNodes, feedSection].filter(Boolean));
   }
 
   // ── JSMARS Scientific Event Listeners ────────────────────────────────────
@@ -830,6 +871,8 @@ export class SpaceCampOverlay {
       const body = (e?.detail?.body || this.jmars.currentBody || '').toLowerCase();
       if (body === 'earth') {
         this._ensureSentinel2Layer();
+      } else if (body === 'mars') {
+        molaDem.ensureLoaded().catch(() => {});
       }
       this._syncMapOverlays();
       this._syncToFirebase(null);
@@ -848,7 +891,9 @@ export class SpaceCampOverlay {
       }
     });
 
-    document.addEventListener(EVENTS.PROFILE_GENERATED, () => {
+    document.addEventListener(EVENTS.PROFILE_GENERATED, (e) => {
+      const profiles = e?.detail?.profiles;
+      if (Array.isArray(profiles) && profiles.length === 0) return;
       const body = (this.jmars.currentBody || '').toLowerCase();
       if (body === 'mars') {
         const pts = this.engine.awardRound2Profile();
@@ -1059,6 +1104,25 @@ export class SpaceCampOverlay {
     this.reticleEl.classList.toggle('is-visible', show);
   }
 
+  _switchToRound(nextRound) {
+    const targetRound = Number(nextRound) || 1;
+    if (targetRound !== 3 && this.roverDrawing) {
+      this._stopRoverDrawing();
+    }
+    this.app.deactivateAllTools?.();
+    this.app.shapeLayer?.stopDrawing?.();
+    if (targetRound === 2 || targetRound === 3) {
+      molaDem.ensureLoaded().catch(() => {});
+    }
+    this.engine.state.activeRound = targetRound;
+    this.engine.save(this.identity);
+    this._syncToFirebase(null);
+    this._refreshAll();
+    if (this.drawerBodyEl) {
+      this.drawerBodyEl.scrollTop = 0;
+    }
+  }
+
   _renderRoundTabs() {
     this.roundTabsEl.hidden = this.drawerMode !== 'missions';
     if (this.drawerMode !== 'missions') return;
@@ -1082,13 +1146,7 @@ export class SpaceCampOverlay {
         role: 'tab',
         'aria-selected': isActive ? 'true' : 'false',
         class: `sc-round-tab ${isActive ? 'is-active' : ''} ${isComplete ? 'is-complete' : ''} ${locked ? 'is-locked' : ''}`,
-        onclick: () => {
-          this.engine.state.activeRound = n;
-          if (n !== 3 && this.roverDrawing) this._stopRoverDrawing();
-          this.engine.save(this.identity);
-          this._syncToFirebase(null);
-          this._refreshAll();
-        }
+        onclick: () => this._switchToRound(n)
       },
         h('span', { class: 'sc-round-tab-num', text: `R${n}` }),
         ptsNode
@@ -1161,13 +1219,7 @@ export class SpaceCampOverlay {
           class: 'sc-btn sc-btn-primary',
           style: 'width: 100%; margin-top: 4px;',
           text: this.t('nextRoundBtn'),
-          onclick: () => {
-            if (this.roverDrawing) this._stopRoverDrawing();
-            this.engine.state.activeRound = roundNum + 1;
-            this.engine.save(this.identity);
-            this._syncToFirebase(null);
-            this._refreshAll();
-          }
+          onclick: () => this._switchToRound(roundNum + 1)
         })
       : h('button', {
           type: 'button',
@@ -1300,9 +1352,17 @@ export class SpaceCampOverlay {
           class: 'sc-btn sc-btn-emerald',
           onclick: async () => {
             await this._flyTo('earth', this.map.getCenter().lat, this.map.getCenter().lng, Math.max(8, this.map.getZoom()));
+            this.app.quickActions?.options?.onRunTool?.('measure-area');
+          }
+        }, scIcon('tool', 12), this.lang === 'fr' ? 'Mesurer Surface (Polygone)' : 'Measure Area (Polygon)'),
+        h('button', {
+          type: 'button',
+          class: 'sc-btn sc-btn-primary',
+          onclick: async () => {
+            await this._flyTo('earth', this.map.getCenter().lat, this.map.getCenter().lng, Math.max(8, this.map.getZoom()));
             this.app.quickActions?.options?.onRunTool?.('measure-distance');
           }
-        }, scIcon('tool', 12), this.t('launchToolBtn'))
+        }, scIcon('tool', 12), this.lang === 'fr' ? 'Mesurer Distance (Ligne)' : 'Measure Distance (Line)')
       )
     );
 
@@ -1318,11 +1378,11 @@ export class SpaceCampOverlay {
         style: 'width: 100%;',
         onclick: async () => {
           await switchActiveBody(this.jmars, 'mars');
+          molaDem.ensureLoaded().catch(() => {});
           const layers = jmarsState.get('activeLayers') || [];
           if (!layers.some((l) => l.id === 'mars_mola_color')) {
-            const next = [...layers, { id: 'mars_mola_color', opacity: 0.72, visible: true }];
-            jmarsState.set('activeLayers', next);
-            document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_CHANGED, { detail: { layers: next } }));
+            const next = [...layers, { id: 'mars_mola_color', opacity: 0.78, visible: true }];
+            jmarsState.setActiveLayers(next);
           }
         }
       }, scIcon('globe', 12), this.lang === 'fr' ? 'Activer Mars + Relief MOLA Colorisé' : 'Switch to Mars + Enable MOLA Elevation')
@@ -1577,7 +1637,7 @@ export class SpaceCampOverlay {
           try {
             elevations = await Promise.race([
               molaDem.sampleElevations(sampled.map((p) => ({ lat: p.lat, lng: p.lon }))),
-              new Promise((resolve) => setTimeout(() => resolve([]), 6000))
+              new Promise((resolve) => setTimeout(() => resolve([]), 9000))
             ]);
           } catch {
             elevations = [];
@@ -1630,11 +1690,13 @@ export class SpaceCampOverlay {
           text: copy.flyJezeroBtn,
           onclick: async () => {
             await this._flyTo('mars', 18.56, 77.26, 8);
-            const layers = jmarsState.get('activeLayers') || [];
-            if (!layers.some((l) => l.id === 'mars_mola_color')) {
-              const next = [...layers, { id: 'mars_mola_color', opacity: 0.55, visible: true }];
-              jmarsState.set('activeLayers', next);
-              document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_CHANGED, { detail: { layers: next } }));
+            molaDem.ensureLoaded().catch(() => {});
+            const layers = (jmarsState.get('activeLayers') || []).filter((l) => l.id !== 'mars_mola_color');
+            if (!layers.some((l) => l.id === 'mars_mola_themis_blend')) {
+              const next = [...layers, { id: 'mars_mola_themis_blend', opacity: 0.90, visible: true }];
+              jmarsState.setActiveLayers(next);
+            } else {
+              jmarsState.setActiveLayers(layers);
             }
             this._syncMapOverlays();
           }
@@ -1648,6 +1710,7 @@ export class SpaceCampOverlay {
             if ((this.jmars.currentBody || '').toLowerCase() !== 'mars') {
               await this._flyTo('mars', 18.56, 77.26, 8);
             }
+            molaDem.ensureLoaded().catch(() => {});
             if (this.roverDrawing) {
               this._stopRoverDrawing();
               this._renderDrawerBody();
@@ -1935,8 +1998,7 @@ export class SpaceCampOverlay {
             const layers = jmarsState.get('activeLayers') || [];
             if (!layers.some((l) => l.id === 'europa_conamara_chaos')) {
               const next = [...layers, { id: 'europa_conamara_chaos', opacity: 1.0, visible: true }];
-              jmarsState.set('activeLayers', next);
-              document.dispatchEvent(new CustomEvent(EVENTS.LAYERS_CHANGED, { detail: { layers: next } }));
+              jmarsState.setActiveLayers(next);
             } else {
               const pts = this.engine.awardRound5Mosaic();
               if (pts > 0) this._onPointsEarned(5, pts, 'Galileo 9m/px Mosaic', 'Mosaïque Galileo 9m/px');
@@ -2174,6 +2236,6 @@ export class SpaceCampOverlay {
 
     const inputRow = h('div', { class: 'sc-handle-row', style: 'margin-top:auto;' }, chatInput, sendBtn);
 
-    this.drawerBodyEl.replaceChildren(header, keyConfigCard, quickRow, chatLog, inputRow);
+    this.drawerBodyEl.replaceChildren(...[header, keyConfigCard, quickRow, chatLog, inputRow].filter(Boolean));
   }
 }

@@ -4,7 +4,8 @@
  * service worker registration, and network connectivity state management.
  */
 export class PWAManager {
-  constructor() {
+  constructor(options = {}) {
+    this.options = options;
     /** @type {Event|null} Captured beforeinstallprompt event */
     this.deferredPrompt = null;
     /** @type {ServiceWorkerRegistration|null} */
@@ -24,7 +25,9 @@ export class PWAManager {
    */
   async init() {
     this._bindNetworkEvents();
-    this._bindInstallPrompt();
+    if (!this.options?.suppressInstallPrompt) {
+      this._bindInstallPrompt();
+    }
     this._initUIElements();
 
     if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -168,6 +171,17 @@ export class PWAManager {
   }
 
   _showUpdatePrompt(waitingWorker) {
+    if (this.options?.suppressInstallPrompt && waitingWorker) {
+      if (!sessionStorage.getItem('jsmars_sc_sw_activated')) {
+        sessionStorage.setItem('jsmars_sc_sw_activated', '1');
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        }, { once: true });
+      }
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+      return;
+    }
+
     if (!this.updateToast) return;
 
     this.updateToast.classList.add('visible');

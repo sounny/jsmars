@@ -380,6 +380,10 @@ export class JMARSMap {
         // Skip duplicates (hardcoded layers may already exist)
         if (this.availableLayers.find(existing => existing.id === l.name || (existing.url === wmsUrl && existing.options?.layers === l.name))) return;
 
+        const defaultAttribution = wmsUrl.includes('eox.at')
+          ? 'EOX IT Services GmbH (Contains modified Copernicus Sentinel data)'
+          : 'USGS Astrogeology';
+
         this.availableLayers.push({
           id: l.name,
           name: l.title,
@@ -391,7 +395,7 @@ export class JMARSMap {
             layers: l.name,
             format: 'image/png',
             transparent: true,
-            attribution: 'USGS Astrogeology'
+            attribution: defaultAttribution
           }
         });
       });

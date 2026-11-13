@@ -42,6 +42,65 @@
   body.sc-panel-open #status-bar {
     width: calc(100% - var(--sc-panel-width)) !important;
   }
+
+  /* Keep top HUD centered within the active map corridor (between left sidebar and right panel) */
+  body.sc-panel-open .map-top-hud,
+  body.sc-panel-open .globe-load-error {
+    left: calc(50% - (var(--sc-panel-width) / 2) + 150px);
+  }
+
+  body.sc-panel-open.sidebar-collapsed .map-top-hud,
+  body.sc-panel-open.sidebar-collapsed .globe-load-error {
+    left: calc(50% - (var(--sc-panel-width) / 2));
+  }
+
+  /* Reserve 30px right gutter on map controls so the 24px edge-toggle tab never overlaps toolbars */
+  body.sc-panel-open .leaflet-right .leaflet-control {
+    margin-right: 30px !important;
+  }
+}
+
+/* Compact top HUD on medium desktop widths when both left sidebar (300px) and right panel (384px) are open */
+@media (min-width: 901px) and (max-width: 1360px) {
+  body.sc-panel-open:not(.sidebar-collapsed) .map-top-hud {
+    left: calc(50% - 45px);
+    gap: 6px;
+  }
+
+  body.sc-panel-open:not(.sidebar-collapsed) .map-top-hud .view-mode-btn {
+    min-width: 44px;
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 12.5px;
+  }
+
+  body.sc-panel-open:not(.sidebar-collapsed) .map-top-hud .quick-cmd-trigger {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 11.5px;
+  }
+
+  body.sc-panel-open:not(.sidebar-collapsed) .map-top-hud .quick-cmd-trigger-kbd {
+    display: none;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1120px) {
+  body.sc-panel-open:not(.sidebar-collapsed) .map-top-hud .quick-cmd-trigger {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  body.sc-panel-open:not(.sidebar-collapsed) .map-top-hud .quick-cmd-trigger-label {
+    display: none;
+  }
+}
+
+/* Suppress generic PWA install banner inside Space Camp classroom mode */
+body.sc-panel-open #pwa-install-banner {
+  display: none !important;
 }
 
 .sc-side-panel,
@@ -85,15 +144,17 @@
 /* Left-Edge Collapse / Expand Tab */
 .sc-edge-toggle {
   position: fixed;
-  top: 50%;
+  top: auto;
+  bottom: 205px;
   right: var(--sc-panel-width);
-  transform: translateY(-50%);
+  transform: none;
+  width: 24px;
   z-index: 1205;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 12px 6px;
+  padding: 12px 4px;
   border-radius: 5px 0 0 5px;
   border: 1px solid var(--sc-border-strong);
   border-right: none;
@@ -116,6 +177,7 @@
 
 .sc-edge-toggle.is-collapsed {
   right: 0;
+  width: auto;
   padding: 10px 11px;
   background: #0d1524;
   border-color: var(--sc-border-active);
@@ -1035,8 +1097,119 @@
   gap: 14px;
 }
 
+.sc-modal.is-briefing {
+  max-width: 780px;
+}
+
 .sc-modal.is-wide {
   max-width: 960px;
+}
+
+.sc-cocreators-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 11px;
+}
+
+.sc-cocreator-card {
+  background: var(--sc-bg-card);
+  border: 1px solid var(--sc-border);
+  border-radius: 6px;
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sc-cocreator-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sc-avatar-sm {
+  width: 50px;
+  height: 50px;
+  border-radius: 6px;
+}
+
+.sc-monogram-badge {
+  width: 50px;
+  height: 50px;
+  border-radius: 6px;
+  border: 1px solid var(--sc-border-active);
+  background: linear-gradient(180deg, #101b2d 0%, #09101d 100%);
+  color: var(--sc-cyan);
+  font-family: var(--sc-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sc-cocreator-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-cocreator-name {
+  font-family: var(--sc-display);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+
+.sc-cocreator-role {
+  font-family: var(--sc-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--sc-cyan);
+  line-height: 1.3;
+}
+
+.sc-cocreator-bio {
+  margin: 0;
+  font-size: 11.6px;
+  line-height: 1.48;
+  color: var(--sc-muted);
+}
+
+.sc-slide-figure {
+  margin: 6px 0 11px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--sc-border-strong);
+  background: var(--sc-bg-recessed);
+}
+
+.sc-slide-image {
+  display: block;
+  width: 100%;
+  max-height: 250px;
+  object-fit: cover;
+  object-position: center 14%;
+}
+
+.sc-slide-caption {
+  padding: 6px 10px;
+  font-family: var(--sc-mono);
+  font-size: 10px;
+  color: var(--sc-subtle-light);
+  border-top: 1px solid var(--sc-border-subtle);
+  background: #080c14;
+}
+
+@media (max-width: 680px) {
+  .sc-cocreators-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .sc-modal-top {
@@ -1062,6 +1235,13 @@
   object-position: 50% 15%;
   border: 1px solid var(--sc-border-strong);
   flex-shrink: 0;
+}
+
+.sc-avatar.sc-avatar-sm,
+.sc-monogram-badge {
+  width: 68px;
+  height: 68px;
+  border-radius: 8px;
 }
 
 .sc-highlights {

@@ -79,7 +79,7 @@ async function getMolaContext() {
     const noDataRaw = image.getGDALNoData();
     const noData = noDataRaw !== null && noDataRaw !== undefined ? Number(noDataRaw) : null;
 
-    return { image, bbox, width, height, resX, resY, noData, origin };
+    return { tiff, image, bbox, width, height, resX, resY, noData, origin };
   })();
 
   // Reset on rejection so the next call can retry
@@ -101,7 +101,7 @@ async function getMolaContext() {
  */
 async function sampleElevations(points) {
   const ctx = await getMolaContext();
-  const { image, bbox, width, height, resX, resY, noData, origin } = ctx;
+  const { tiff, image, bbox, width, height, resX, resY, noData, origin } = ctx;
   const [minX, minY, maxX, maxY] = bbox;
   const originX = origin?.[0] ?? minX;
   const originY = origin?.[1] ?? maxY;
@@ -144,24 +144,102 @@ async function sampleElevations(points) {
   const winWidth = xMax - xMin + 1;
   const winHeight = yMax - yMin + 1;
 
-  const raster = await image.readRasters({
-    window: [xMin, yMin, xMax + 1, yMax + 1],
-    width: winWidth,
-    height: winHeight,
-    interleave: true,
-    samples: [0]
-  });
-
-  const data = Array.isArray(raster) ? raster[0] : raster;
-
-  return coords.map((c) => {
-    if (!(c.x >= 0 && c.y >= 0 && c.x < width && c.y < height)) return null;
-    const idx = (c.y - yMin) * winWidth + (c.x - xMin);
-    const raw = data[idx];
+  const normalizeValue = (raw) => {
     if (raw === undefined || Number.isNaN(raw)) return null;
     if (noData !== null && raw === noData) return null;
     return raw;
-  });
+  };
+
+  // Fast Path 1: Local/regional windows (<= 512x512 px) read exact native 128 ppd resolution
+  if (winWidth <= 512 && winHeight <= 512) {
+    const raster = await image.readRasters({
+      window: [xMin, yMin, xMax + 1, yMax + 1],
+      width: winWidth,
+      height: winHeight,
+      interleave: true,
+      samples: [0]
+    });
+
+    const data = Array.isArray(raster) ? raster[0] : raster;
+
+    return coords.map((c) => {
+      if (!(c.x >= 0 && c.y >= 0 && c.x < width && c.y < height)) return null;
+      const idx = (c.y - yMin) * winWidth + (c.x - xMin);
+      return normalizeValue(data[idx]);
+    });
+  }
+
+  // Fast Path 2: Wide regional/planetary profiles use COG overview pyramid (<= 512x512)
+  if (winWidth <= Math.floor(width * 0.65) && typeof tiff?.readRasters === 'function') {
+    const outW = Math.max(1, Math.min(winWidth, 512));
+    const outH = Math.max(1, Math.min(winHeight, 512));
+    const raster = await tiff.readRasters({
+      window: [xMin, yMin, xMax + 1, yMax + 1],
+      width: outW,
+      height: outH,
+      interleave: true,
+      samples: [0]
+    });
+
+    const data = Array.isArray(raster) ? raster[0] : raster;
+
+    return coords.map((c) => {
+      if (!(c.x >= 0 && c.y >= 0 && c.x < width && c.y < height)) return null;
+      const ox = winWidth <= 1 ? 0 : Math.min(outW - 1, Math.max(0, Math.floor(((c.x - xMin) / winWidth) * outW)));
+      const oy = winHeight <= 1 ? 0 : Math.min(outH - 1, Math.max(0, Math.floor(((c.y - yMin) / winHeight) * outH)));
+      return normalizeValue(data[oy * outW + ox]);
+    });
+  }
+
+  // Fast Path 3: Antimeridian-crossing lines or unit-test mock fallback via 128x128 spatial buckets
+  const BUCKET_SIZE = 128;
+  const buckets = new Map();
+  for (const item of valid) {
+    const key = `${Math.floor(item.x / BUCKET_SIZE)}:${Math.floor(item.y / BUCKET_SIZE)}`;
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = [];
+      buckets.set(key, bucket);
+    }
+    bucket.push(item);
+  }
+
+  const results = points.map(() => null);
+  const bucketEntries = Array.from(buckets.values());
+  const CONCURRENCY = 6;
+  let nextIdx = 0;
+
+  const worker = async () => {
+    while (nextIdx < bucketEntries.length) {
+      const batch = bucketEntries[nextIdx++];
+      const bxMin = Math.min(...batch.map((b) => b.x));
+      const bxMax = Math.max(...batch.map((b) => b.x));
+      const byMin = Math.min(...batch.map((b) => b.y));
+      const byMax = Math.max(...batch.map((b) => b.y));
+      const bw = bxMax - bxMin + 1;
+      const bh = byMax - byMin + 1;
+
+      const raster = await image.readRasters({
+        window: [bxMin, byMin, bxMax + 1, byMax + 1],
+        width: bw,
+        height: bh,
+        interleave: true,
+        samples: [0]
+      });
+      const data = Array.isArray(raster) ? raster[0] : raster;
+
+      for (const item of batch) {
+        const raw = data[(item.y - byMin) * bw + (item.x - bxMin)];
+        results[item.idx] = normalizeValue(raw);
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, bucketEntries.length) }, () => worker())
+  );
+
+  return results;
 }
 
 /**
