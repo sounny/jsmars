@@ -1179,9 +1179,8 @@ export class SpaceCampOverlay {
       return;
     }
 
-    const targetMins = round.targetMinutes || 5;
     const header = h('div', { class: 'sc-round-header' },
-      h('div', { class: 'sc-kicker', text: `${this.t('roundLabel')} 0${roundNum} / 05 · ~${targetMins} MIN · ${curRoundPts} / ${round.maxPoints} ${this.t('scoreLabel')}` }),
+      h('div', { class: 'sc-kicker', text: `${this.t('roundLabel')} 0${roundNum} / 05 · ${curRoundPts} / ${round.maxPoints} ${this.t('scoreLabel')}` }),
       h('h3', { class: 'sc-round-title', text: copy.title }),
       h('p', { class: 'sc-round-summary', text: copy.summary })
     );

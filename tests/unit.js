@@ -18907,8 +18907,14 @@ describe('Mission JSMARS: Space Data Analysts (Space Camp Engine, Cookies & Copi
         expect(slide1.coCreators).to.be.an('array').with.lengthOf(2);
         const anwarBio = slide1.coCreators[0].en.bio;
         expect(anwarBio).to.include('International Space University');
-        expect(anwarBio).to.include('Geography faculty at Texas State University');
+        expect(anwarBio).to.include('The University of Texas at Austin');
+        expect(anwarBio).to.include('Texas Southern University');
+        expect(anwarBio).to.not.include('Texas State');
         expect(anwarBio).to.not.include('Assistant Professor of Practice');
+        const rawDeckJson = JSON.stringify(deck);
+        expect(rawDeckJson).to.not.include('Texas State');
+        expect(rawDeckJson).to.not.include('Anyone Can Come Back');
+        expect(rawDeckJson).to.not.include('Buffer');
         expect(slide1.coCreators[1].name).to.equal('Sara Bensalem');
         expect(slide1.coCreators[1].avatar).to.equal('assets/spacecamp/sara-avatar.jpg');
 

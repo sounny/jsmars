@@ -212,9 +212,9 @@ export class SpaceCampCopilot {
     // 3. Mars Volcanism / Tectonic Rift / MOLA
     if (isMarsQuestion) {
       if (lang === 'fr') {
-        return `Contrairement à la Terre, Mars ne possède pas de tectonique des plaques active : la croûte reste fixe au-dessus d'un point chaud, accumulant Olympus Mons jusqu'à +21,9 km d'altitude, tandis que le soulèvement de Tharsis a fissuré Valles Marineris sur 4 000 km (-7 km). L'altimètre MOLA mesure ce relief au mètre près en chronométrant le retour d'impulsions laser infrarouges à 1064 nm.`;
+        return `Contrairement à la Terre, Mars ne possède pas de tectonique des plaques active : la croûte reste fixe au-dessus d'un point chaud, accumulant Olympus Mons jusqu'à +21,2 km au-dessus du niveau de référence (~22 km de relief), tandis que le soulèvement de Tharsis a fissuré Valles Marineris sur 4 000 km (-7 km). L'altimètre MOLA mesure ce relief au mètre près en chronométrant le retour d'impulsions laser infrarouges à 1064 nm.`;
       }
-      return `Because Mars lacks active Earth-style plate tectonics, crust sat stationary over a mantle hotspot, stacking lava flows to build Olympus Mons to +21.9 km while Tharsis uplift tore Valles Marineris 4,000 km long and 7 km deep. MGS MOLA measured that 29 km relief span to ~1 m precision by timing 1064 nm infrared laser pulses from orbit.`;
+      return `Because Mars lacks active Earth-style plate tectonics, crust sat stationary over a mantle hotspot, stacking lava flows to build Olympus Mons to +21.2 km above Mars datum (~22 km relief) while Tharsis uplift tore Valles Marineris 4,000 km long and 7 km deep. MGS MOLA measured that relief to ~1 m precision by timing 1064 nm infrared laser pulses from orbit.`;
     }
 
     // 4. Lunar South Pole / PSR Cold Traps
