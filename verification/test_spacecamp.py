@@ -188,7 +188,7 @@ def run_spacecamp_suite():
             assert "Callsign" not in modal_text_s1 and "REGISTER OPERATOR CALLSIGN" not in modal_text_s1
             page.screenshot(path=os.path.join(SCREENSHOT_DIR, "sc_slide1_cocreators.png"))
 
-            # Navigate to Slide 2 and verify Noor Ouarzazate image renders
+            # Navigate all 5 slides (checking EN + FR) and finish with Slide 5 Start Mission button
             page.locator(".sc-slide-nav .sc-btn").last.click()
             page.wait_for_timeout(300)
             slide2_img_ok = page.locator(".sc-modal img.sc-slide-image").evaluate("img => img.complete && img.naturalWidth > 200")
@@ -196,8 +196,20 @@ def run_spacecamp_suite():
             assert page.locator(".sc-modal #sc-modal-join-card").count() == 0
             page.screenshot(path=os.path.join(SCREENSHOT_DIR, "sc_slide2_noor.png"))
 
-            page.keyboard.press("Escape")
+            for _ in range(3):
+                page.locator(".sc-slide-nav .sc-btn").last.click()
+                page.wait_for_timeout(200)
+            assert page.locator("#sc-start-mission-btn").is_visible(), "Slide 5 must offer active Start Mission button!"
+
+            # Toggle Briefing Slide 5 to FR and verify French subtitle + French CTA
+            page.locator(".sc-modal .sc-btn", has_text="FRANÇAIS").click()
             page.wait_for_timeout(200)
+            assert "Commencer la Mission" in page.locator("#sc-start-mission-btn").inner_text()
+            page.locator(".sc-modal .sc-btn", has_text="ENGLISH").click()
+            page.wait_for_timeout(200)
+            page.click("#sc-start-mission-btn")
+            page.wait_for_timeout(200)
+            assert page.locator(".sc-modal-backdrop").evaluate("el => el.hidden") is True, "Start Mission button must close briefing modal!"
 
             # =========================================================================
             # 4. Live Firebase Callsign Claim, XSS Block, Collision Suggestions & Reload
@@ -309,13 +321,48 @@ def run_spacecamp_suite():
             page.locator("#sc-side-panel .sc-drawer-body .sc-step-card").nth(1).locator("button", has_text="Scan Reticle Target").click()
             page.wait_for_timeout(250)
 
-            # Trigger MOLA Elevation Profile completion on Mars (+30 pts)
-            page.evaluate("document.dispatchEvent(new CustomEvent('jmars:profile-generated', { detail: { points: 32 } }))")
+            # Use solved "Center on Target" on Olympus Mons, launch REAL Linear Profile, click map + Finish coach pill!
+            page.set_viewport_size({"width": 1366, "height": 768})
+            page.wait_for_timeout(250)
+            page.locator("#sc-side-panel .sc-drawer-body .sc-step-card").nth(0).locator("button", has_text="Center on Target").click()
+            page.wait_for_timeout(450)
+            page.locator("#sc-side-panel .sc-drawer-body button", has_text="Open JSMARS Tool").click()
+            page.wait_for_timeout(450)
+
+            # Verify #profile-chart-container sits cleanly inside visible #controls viewport on 1366x768 laptop
+            chart_visible = page.evaluate(
+                """() => {
+                    const ctrl = document.getElementById('controls');
+                    const chart = document.getElementById('profile-chart-container');
+                    if (!ctrl || !chart) return false;
+                    const cr = ctrl.getBoundingClientRect();
+                    const ch = chart.getBoundingClientRect();
+                    return ch.width > 100 && ch.height > 100 && ch.top >= cr.top - 5 && ch.bottom <= cr.bottom + 5;
+                }"""
+            )
+            assert chart_visible is True, "#profile-chart-container must scroll cleanly into view on 1366x768 laptop!"
+
+            # Click two points across Olympus Mons (basal scarp -> summit inside visible map corridor x=300..982) & complete via Coach Finish button
+            map_box_1366 = page.locator("#map").bounding_box()
+            assert page.locator("#sc-tool-coach").is_visible(), "Active-Tool Coach bar must guide student during Linear Profile!"
+            page.mouse.click(map_box_1366["x"] + map_box_1366["width"] * 0.36, map_box_1366["y"] + map_box_1366["height"] * 0.50)
+            page.wait_for_timeout(200)
+            page.mouse.click(map_box_1366["x"] + map_box_1366["width"] * 0.66, map_box_1366["y"] + map_box_1366["height"] * 0.50)
+            page.wait_for_timeout(250)
+            assert page.locator("#sc-coach-finish-btn").is_enabled(), "Coach Finish button must enable after 2 clicked vertices!"
+            page.click("#sc-coach-finish-btn")
+            page.wait_for_function(
+                "Boolean(window.spaceCamp.lastMarsProfileSummary && window.spaceCamp.lastMarsProfileSummary.reliefM > 5000)",
+                timeout=20000,
+            )
             page.wait_for_timeout(300)
             assert "150 / 600 PTS" in page.locator(".sc-score-pill").inner_text(), (
-                f"Expected 150 pts after Round 2, got {page.locator('.sc-score-pill').inner_text()}"
+                f"Expected 150 pts after Round 2 real MOLA profile, got {page.locator('.sc-score-pill').inner_text()}"
             )
-            print("Round 2 verified: 90/90 pts (Cumulative 150/600)!")
+            page.screenshot(path=os.path.join(SCREENSHOT_DIR, "sc_01b_round2_mola_profile.png"))
+            page.set_viewport_size({"width": 1600, "height": 900})
+            page.wait_for_timeout(250)
+            print("Round 2 verified: real mouse-drawn MOLA profile (>10 km Olympus Mons relief), 90/90 pts (Cumulative 150/600)!")
 
             # --- ROUND 3: Mars Rover Path & Payload Planning at Jezero (120 pts) ---
             page.locator(".sc-round-tab").nth(2).click()
@@ -394,13 +441,50 @@ def run_spacecamp_suite():
             page.wait_for_timeout(1200)
             page.locator("#sc-side-panel button", has_text="Scan Reticle Target").click()
             page.wait_for_timeout(300)
-            page.evaluate("document.dispatchEvent(new CustomEvent('jmars:shape-created', { detail: { type: 'Polygon' } }))")
+
+            # Real student click flow for Europa Cartography: click "Open Shapes Tool", draw polygon on #map, click Finish!
+            page.locator("#sc-side-panel button", has_text="Open Shapes Tool").click()
+            page.wait_for_timeout(450)
+            ebox = page.locator("#map").bounding_box()
+            assert page.locator("#sc-tool-coach").is_visible(), "Coach bar must guide student during Shapes polygon drawing!"
+            for fx, fy in [(0.45, 0.44), (0.55, 0.44), (0.50, 0.56)]:
+                page.mouse.click(ebox["x"] + ebox["width"] * fx, ebox["y"] + ebox["height"] * fy)
+                page.wait_for_timeout(160)
+            page.click("#sc-coach-finish-btn")
             page.wait_for_timeout(500)
+
+            # Verify Switch to 3D Globe button and clean return to 2D
+            page.locator("#sc-side-panel button", has_text="Switch to 3D Globe").click()
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.spaceCamp.app.viewModeToggle.mode") == "3d"
+            page.locator("#view-mode-2d").click()
+            page.wait_for_timeout(400)
 
             scores_final = page.evaluate("window.spaceCamp.engine.getRoundScores()")
             assert scores_final["r5"] == 180, f"Expected 180/180 in Round 5, got {scores_final}"
             assert scores_final["total"] >= 450, f"Expected >= 450/600 total points, got {scores_final}"
             print(f"Round 5 verified: 180/180 pts! Final 5-Round Player Score = {scores_final['total']}/600 pts.")
+
+            # Verify French (FR) localization parity across all 5 rounds + AI CapCom (zero leaked English section labels)
+            page.click("#sc-lang-fr-btn")
+            page.wait_for_timeout(200)
+            for idx, forbidden in [
+                (0, "JSMARS Measurement Lab"),
+                (1, "Open JSMARS Tool"),
+                (2, "Step 3A"),
+                (3, "Best Artemis Site"),
+                (4, "Open Shapes Tool"),
+            ]:
+                page.locator(".sc-round-tab").nth(idx).click()
+                page.wait_for_timeout(150)
+                txt = page.locator("#sc-side-panel").inner_text()
+                assert forbidden not in txt, f"Untranslated EN string '{forbidden}' leaked in FR Round {idx + 1}!"
+            page.click("#sc-mode-ai-btn")
+            page.wait_for_timeout(150)
+            assert "CAPCOM TÉLÉMÉTRIE" in page.locator("#sc-side-panel").inner_text()
+            page.click("#sc-lang-en-btn")
+            page.click("#sc-mode-missions-btn")
+            page.wait_for_timeout(200)
 
             # =========================================================================
             # 6. AI CapCom Mode & #gemini_key URL Hash Scrubbing

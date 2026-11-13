@@ -133,7 +133,7 @@ export function applyLeafletDrawPatch(LRef = globalThis.L) {
     this._mouseDownOrigin = null;
   };
 
-  // Also guard Polyline._updateFinishHandler so clicking marker[0] on a 3+ vertex line closes loop cleanly
+  // Guard Polyline._updateFinishHandler so clicking OR double-clicking marker[-1], or clicking marker[0] on 3+ vertex lines, finishes cleanly
   LRef.Draw.Polyline.prototype._closeLoopAndFinish = function closeLoopAndFinish() {
     if (!this._enabled || !this._markers || this._markers.length < 3) return;
     const firstLatLng = this._markers[0].getLatLng();
@@ -148,9 +148,11 @@ export function applyLeafletDrawPatch(LRef = globalThis.L) {
     const markerCount = this._markers.length;
     if (markerCount > 1) {
       this._markers[markerCount - 1].on('click', this._finishShape, this);
+      this._markers[markerCount - 1].on('dblclick', this._finishShape, this);
     }
     if (markerCount > 2) {
       this._markers[markerCount - 2].off('click', this._finishShape, this);
+      this._markers[markerCount - 2].off('dblclick', this._finishShape, this);
       if (markerCount === 3) {
         this._markers[0].on('click', this._closeLoopAndFinish, this);
       }
@@ -161,9 +163,97 @@ export function applyLeafletDrawPatch(LRef = globalThis.L) {
   LRef.Draw.Polyline.prototype._cleanUpShape = function cleanUpPolylinePatched() {
     if (this._markers && this._markers.length > 0) {
       this._markers[0].off('click', this._closeLoopAndFinish, this);
+      const last = this._markers[this._markers.length - 1];
+      if (last) {
+        last.off('click', this._finishShape, this);
+        last.off('dblclick', this._finishShape, this);
+      }
     }
     return origPolylineCleanUp.call(this);
   };
+
+  // Prevent map doubleClickZoom bounce when finishing a polyline or polygon by double-clicking
+  if (typeof LRef.Draw.Polyline.prototype._finishShape === 'function') {
+    const origPolylineFinish = LRef.Draw.Polyline.prototype._finishShape;
+    LRef.Draw.Polyline.prototype._finishShape = function finishShapePatched(...args) {
+      const mapRef = this._map;
+      const hadDblClickZoom = Boolean(mapRef?.doubleClickZoom?.enabled?.());
+      if (hadDblClickZoom) {
+        mapRef.doubleClickZoom.disable();
+        setTimeout(() => {
+          if (mapRef && mapRef._loaded && mapRef.doubleClickZoom && !mapRef.doubleClickZoom.enabled()) {
+            mapRef.doubleClickZoom.enable();
+          }
+        }, 280);
+      }
+      return origPolylineFinish.apply(this, args);
+    };
+  }
+
+  // Enable Enter key to finish Polyline (>=2 pts) / Polygon (>=3 pts) & emit live vertex events
+  const origPolylineEnable = LRef.Draw.Polyline.prototype.enable;
+  const origPolylineDisable = LRef.Draw.Polyline.prototype.disable;
+  const origPolylineAddVertex = LRef.Draw.Polyline.prototype.addVertex;
+  const origPolylineDeleteLast = LRef.Draw.Polyline.prototype.deleteLastVertex;
+
+  LRef.Draw.Polyline.prototype.enable = function enablePolylinePatched(...args) {
+    const res = origPolylineEnable.apply(this, args);
+    if (this._map) {
+      this._map._activeJsmarsDrawer = this;
+    }
+    if (!this._jsmarsEnterHandler && typeof document !== 'undefined') {
+      this._jsmarsEnterHandler = (e) => {
+        if (e.key !== 'Enter') return;
+        const tag = e.target?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        const minPts = this.type === LRef.Draw.Polygon.TYPE ? 3 : 2;
+        if (this._enabled && (this._markers?.length || 0) >= minPts) {
+          e.preventDefault();
+          this._finishShape();
+        }
+      };
+      document.addEventListener('keydown', this._jsmarsEnterHandler);
+    }
+    if (typeof document !== 'undefined') {
+      document.dispatchEvent(new CustomEvent('jmars:draw-vertex-changed'));
+    }
+    return res;
+  };
+
+  LRef.Draw.Polyline.prototype.disable = function disablePolylinePatched(...args) {
+    if (this._jsmarsEnterHandler && typeof document !== 'undefined') {
+      document.removeEventListener('keydown', this._jsmarsEnterHandler);
+      this._jsmarsEnterHandler = null;
+    }
+    if (this._map && this._map._activeJsmarsDrawer === this) {
+      this._map._activeJsmarsDrawer = null;
+    }
+    const res = origPolylineDisable.apply(this, args);
+    if (typeof document !== 'undefined') {
+      document.dispatchEvent(new CustomEvent('jmars:draw-vertex-changed'));
+    }
+    return res;
+  };
+
+  if (typeof origPolylineAddVertex === 'function') {
+    LRef.Draw.Polyline.prototype.addVertex = function addVertexPatched(...args) {
+      const res = origPolylineAddVertex.apply(this, args);
+      if (typeof document !== 'undefined') {
+        document.dispatchEvent(new CustomEvent('jmars:draw-vertex-changed'));
+      }
+      return res;
+    };
+  }
+
+  if (typeof origPolylineDeleteLast === 'function') {
+    LRef.Draw.Polyline.prototype.deleteLastVertex = function deleteLastPatched(...args) {
+      const res = origPolylineDeleteLast.apply(this, args);
+      if (typeof document !== 'undefined') {
+        document.dispatchEvent(new CustomEvent('jmars:draw-vertex-changed'));
+      }
+      return res;
+    };
+  }
 
   // 3. Patch L.Draw.Polygon._updateFinishHandler & _cleanUpShape so clicking EITHER
   //    the first vertex OR the last vertex (when >= 3 points) finishes the polygon!
@@ -193,9 +283,12 @@ export function applyLeafletDrawPatch(LRef = globalThis.L) {
     }
   };
 
-  // Update tooltip copy so users know either first or last point closes a polygon
+  // Update tooltip copy so users know first/last point, double-click, or Enter closes/finishes
+  if (LRef.drawLocal?.draw?.handlers?.polyline?.tooltip) {
+    LRef.drawLocal.draw.handlers.polyline.tooltip.end = 'Click last point, double-click, or press Enter to finish.';
+  }
   if (LRef.drawLocal?.draw?.handlers?.polygon?.tooltip) {
-    LRef.drawLocal.draw.handlers.polygon.tooltip.end = 'Click first or last point to close shape.';
+    LRef.drawLocal.draw.handlers.polygon.tooltip.end = 'Click first/last point, double-click, or press Enter to close.';
   }
 
   LRef.Draw.__jsmarsPatched = true;

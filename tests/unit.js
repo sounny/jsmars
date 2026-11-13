@@ -57,6 +57,7 @@ import { CustomMapManager } from '../src/features/custom-map/CustomMapManager.js
 import { LandingSitesLayer } from '../src/features/landing/LandingSitesLayer.js';
 import { RadialProfileTool } from '../src/features/profile/RadialProfileTool.js';
 import { EnhancedProfileTool } from '../src/features/profile/EnhancedProfileTool.js';
+import { ProfileChart } from '../src/features/profile/ProfileChart.js';
 import { MeasureTool } from '../src/features/measure/MeasureTool.js';
 import { GroundTrackLayer } from '../src/features/groundtrack/GroundTrackLayer.js';
 import { HillshadeLayer } from '../src/features/hillshade/HillshadeLayer.js';
@@ -18955,6 +18956,65 @@ describe('Mission JSMARS: Space Data Analysts (Space Camp Engine, Cookies & Copi
         );
         expect(crossRoundCritique).to.include('39.2 km');
         expect(crossRoundCritique).to.include('145/150 pts');
+    });
+
+    it('uses Mars planetary radius for EnhancedProfileTool, guards XML WMS errors, and computes un-inflated ProfileChart relief', async function() {
+        this.timeout(15000);
+        expect(EnhancedProfileTool.parseWmsElevationText('<?xml version="1.0"?><ServiceExceptionReport><ServiceException>Invalid</ServiceException></ServiceExceptionReport>')).to.equal(null);
+        expect(EnhancedProfileTool.parseWmsElevationText('value_0 = 1452.5')).to.equal(1452.5);
+        expect(EnhancedProfileTool.parseWmsElevationText('-32768')).to.equal(null);
+
+        const prevBody = jmarsState.get('body');
+        jmarsState.set('body', 'mars');
+        try {
+            const mockMap = {
+                on: () => {},
+                off: () => {},
+                getContainer: () => ({ style: {} }),
+                addLayer: () => {},
+                removeLayer: () => {}
+            };
+            const prof = new EnhancedProfileTool(mockMap);
+            let captured = null;
+            const onProf = (e) => { captured = e.detail; };
+            document.addEventListener(EVENTS.PROFILE_GENERATED, onProf);
+            try {
+                // 1 degree along Mars equator is ~59.16 km (NOT Earth's 111.3 km)
+                await prof.calculateProfile({
+                    getLatLngs: () => [{ lat: 0, lng: 0 }, { lat: 0, lng: 1 }]
+                });
+                const pts = prof.profileData;
+                expect(pts.length).to.be.greaterThan(10);
+                const endDistKm = pts[pts.length - 1].dist / 1000;
+                expect(endDistKm).to.be.closeTo(59.16, 0.8);
+                expect(captured).to.exist;
+            } finally {
+                document.removeEventListener(EVENTS.PROFILE_GENERATED, onProf);
+            }
+        } finally {
+            jmarsState.set('body', prevBody || 'mars');
+        }
+
+        const chartHost = document.createElement('div');
+        chartHost.id = 'test-profile-chart-host';
+        document.body.appendChild(chartHost);
+        try {
+            const chart = new ProfileChart('test-profile-chart-host');
+            chart.draw([{
+                color: '#4ade80',
+                data: [
+                    { dist: 0, elev: -1000, lat: 18, lng: -135 },
+                    { dist: 100000, elev: 21200, lat: 18.65, lng: -133.8 }
+                ]
+            }]);
+            expect(chart.lastMetrics).to.exist;
+            expect(chart.lastMetrics.reliefM).to.equal(22200);
+            expect(chart.lastMetrics.minElevM).to.equal(-1000);
+            expect(chart.lastMetrics.maxElevM).to.equal(21200);
+            expect(chart.lastMetrics.lengthKm).to.be.closeTo(100, 0.1);
+        } finally {
+            chartHost.remove();
+        }
     });
 });
 

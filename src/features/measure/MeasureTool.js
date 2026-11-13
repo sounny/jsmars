@@ -115,6 +115,9 @@ export class MeasureTool {
         if (this.drawControl) {
             this.drawControl.enable();
         }
+        document.dispatchEvent(new CustomEvent(EVENTS.TOOL_ACTIVATED, {
+            detail: { tool: mode === 'area' ? 'measure-area' : 'measure-distance' }
+        }));
     }
 
     /**

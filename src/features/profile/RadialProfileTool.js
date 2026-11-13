@@ -2,7 +2,8 @@ import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
 import { molaDem } from '../../util/mola-dem.js';
 import { EVENTS } from '../../constants.js';
-import { getPlanetaryRadius } from '../../util/geo.js';
+import { getPlanetaryRadius, haversineDistance } from '../../util/geo.js';
+import { EnhancedProfileTool } from './EnhancedProfileTool.js';
 
 /**
  * @module RadialProfileTool
@@ -79,6 +80,7 @@ export class RadialProfileTool {
         this.map.on('click', this.onClick);
         this.map.on('mousemove', this.onMouseMove);
         this.map.getContainer().style.cursor = 'crosshair';
+        document.dispatchEvent(new CustomEvent(EVENTS.TOOL_ACTIVATED, { detail: { tool: 'profile-radial' } }));
     }
 
     /**
@@ -140,30 +142,24 @@ export class RadialProfileTool {
 
             // Draw Center marker
             L.circleMarker(this.center, { radius: 5, color: '#0ff' }).addTo(this.layerGroup);
+            document.dispatchEvent(new CustomEvent('jmars:draw-vertex-changed'));
         } else {
             // Set Radius and Finish
             const endPoint = e.latlng;
-            const radius = this.map.distance(this.center, endPoint);
+            const body = (jmarsState.get('body') || 'mars').toLowerCase();
+            const radius = haversineDistance(this.center.lat, this.center.lng, endPoint.lat, endPoint.lng, body) * 1000;
             this.generateProfile(this.center, radius);
             if (this.previewLine) {
                 this.previewLine.remove();
                 this.previewLine = null;
             }
 
-            // Reset state to allow new profile? Or keep it?
-            // Let's keep it until user clicks "Stop" or "Clear"
-            // Actually, usually you want to do one profile then stop.
-            // But we can just let them click again to restart?
-            // For now, let's just finish the interaction part.
-            this.center = null; // Reset for next one?
-            // No, let's leave the lines on screen.
+            this.center = null;
             this.map.off('click', this.onClick);
             this.map.off('mousemove', this.onMouseMove);
             this.map.getContainer().style.cursor = '';
             this.isActive = false;
             document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'profile' } }));
-
-            // Notify UI we are done (optional)
         }
     }
 
@@ -191,22 +187,21 @@ export class RadialProfileTool {
         this.layerGroup.clearLayers();
         L.circleMarker(center, { radius: 5, color: '#0ff' }).addTo(this.layerGroup);
 
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        const sources = this.elevationSources[body] || [];
+        const hasSource = Boolean(sources.find(s => s.id === this.currentSourceId));
+        const bodyLabel = body.charAt(0).toUpperCase() + body.slice(1);
+        const emptyMessage = !hasSource ? `No elevation DEM available for ${bodyLabel}` : null;
+
+        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_LOADING, { detail: { body } }));
+        document.getElementById('profile-chart-container')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
         const profiles = [];
 
         for (let i = 0; i < this.numLines; i++) {
             const angleDeg = (360 / this.numLines) * i;
             const angleRad = (angleDeg * Math.PI) / 180;
-            const body = (jmarsState.get('body') || 'mars').toLowerCase();
             const R = getPlanetaryRadius(body, 'meters');
-
-            // Calculate end point using simple approximation or proper geodesy
-            // Leaflet has tools, but we can just use geometry for short distances or find a point.
-            // L.GeometryUtil (plugin) or just simulate.
-            // Given we are on a sphere...
-            // Simple way: Project to pixels, move, unproject?
-            // Better: use Destination point formula.
-            // lat2 = asin(sin(lat1)*cos(d/R) + cos(lat1)*sin(d/R)*cos(brng))
-            // lon2 = lon1 + atan2(sin(brng)*sin(d/R)*cos(lat1), cos(d/R)-sin(lat1)*sin(lat2))
 
             const d = radius;
             const lat1 = center.lat * Math.PI / 180;
@@ -232,12 +227,11 @@ export class RadialProfileTool {
             this.sampleElevations(linePoints).then((dataPoints) => {
                 const target = profiles.find(p => p.angle === angleDeg);
                 if (target) target.data = dataPoints;
-                document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles } }));
+                document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, {
+                    detail: { profiles, body, emptyMessage }
+                }));
             });
         }
-
-        // Initial dispatch to clear chart
-        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles } }));
     }
 
     /**
@@ -247,9 +241,10 @@ export class RadialProfileTool {
      */
     sampleElevations(linePoints) {
         const [start, end] = linePoints;
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
         const samples = [];
         const steps = 50;
-        const totalDist = this.map.distance(start, end);
+        const totalDist = haversineDistance(start.lat, start.lng, end.lat, end.lng, body) * 1000;
         for (let s = 0; s <= steps; s++) {
             const ratio = s / steps;
             const lat = start.lat + (end.lat - start.lat) * ratio;
@@ -278,12 +273,15 @@ export class RadialProfileTool {
             return samples.map(s => ({ dist: s.dist, elev: null }));
         }
 
+        const maxSamples = 20;
+        const step = Math.max(1, Math.floor(samples.length / maxSamples));
+        const reduced = samples.filter((_, idx) => idx % step === 0);
+
         const mapSize = this.map.getSize();
         const bounds = this.map.getBounds();
         const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-        const dataPoints = [];
 
-        for (const s of samples) {
+        const dataPoints = await Promise.all(reduced.map(async (s) => {
             const pt = this.map.latLngToContainerPoint([s.lat, s.lng]);
             const url = JMARSWMS.getFeatureInfoUrl(source.url, {
                 layers: source.layer,
@@ -298,14 +296,16 @@ export class RadialProfileTool {
             });
 
             try {
-                const resp = await fetch(url);
+                const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+                    ? AbortSignal.timeout(6000)
+                    : undefined;
+                const resp = await fetch(url, signal ? { signal } : undefined);
                 const text = await resp.text();
-                const match = text.match(/-?\d+\.?\d*/);
-                dataPoints.push({ dist: s.dist, elev: match ? parseFloat(match[0]) : null });
+                return { dist: s.dist, elev: EnhancedProfileTool.parseWmsElevationText(text) };
             } catch {
-                dataPoints.push({ dist: s.dist, elev: null });
+                return { dist: s.dist, elev: null };
             }
-        }
+        }));
 
         return dataPoints;
     }

@@ -2,6 +2,7 @@ import { EVENTS } from '../../constants.js';
 import { jmarsState } from '../../jmars-state.js';
 import { normalizeBodyKey } from '../../util/body.js';
 import { computeBufferPolygon, computeEllipsePolygon, getPlanetaryRadius } from '../../util/geo.js';
+import { applyLeafletDrawPatch } from '../../util/leaflet-draw-patch.js';
 import { applyGeologicPatternToLayer } from './StyleEditor.js';
 import { ShapeIO } from './ShapeIO.js';
 
@@ -32,9 +33,11 @@ export class ShapeLayer {
     this.selectedId = null;
     this.nextId = 1;
     this.drawHandler = null;
+    this.activeDrawType = null;
     this._onCreated = this._onCreated.bind(this);
     this._onEdited = this._onEdited.bind(this);
     this._onDeleted = this._onDeleted.bind(this);
+    this._onDrawStop = this._onDrawStop.bind(this);
   }
 
   /**
@@ -49,6 +52,7 @@ export class ShapeLayer {
     this.map.on('draw:created', this._onCreated);
     this.map.on('draw:edited', this._onEdited);
     this.map.on('draw:deleted', this._onDeleted);
+    this.map.on('draw:drawstop', this._onDrawStop);
   }
 
   /**
@@ -61,6 +65,18 @@ export class ShapeLayer {
     this.map.off('draw:created', this._onCreated);
     this.map.off('draw:edited', this._onEdited);
     this.map.off('draw:deleted', this._onDeleted);
+    this.map.off('draw:drawstop', this._onDrawStop);
+  }
+
+  /**
+   * Clear active draw handler state when Leaflet.Draw completes or stops.
+   * @private
+   */
+  _onDrawStop() {
+    if (!this.drawHandler && !this.activeDrawType) return;
+    this.drawHandler = null;
+    this.activeDrawType = null;
+    document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'shapes' } }));
   }
 
   /**
@@ -69,6 +85,7 @@ export class ShapeLayer {
    * @param {object} [options] - Leaflet draw shape options
    */
   startDrawing(type, options = {}) {
+    applyLeafletDrawPatch();
     this.stopDrawing();
 
     const defaultStyle = {
@@ -95,19 +112,31 @@ export class ShapeLayer {
       return;
     }
 
+    this.activeDrawType = type;
     this.drawHandler = new Handler(this.map, {
       shapeOptions: drawOptions
     });
     this.drawHandler.enable();
+    document.dispatchEvent(new CustomEvent(EVENTS.TOOL_ACTIVATED, {
+      detail: { tool: 'shapes', shapeType: type }
+    }));
   }
 
   /**
    * Stop any active drawing.
    */
   stopDrawing() {
+    const hadHandler = Boolean(this.drawHandler || this.activeDrawType);
     if (this.drawHandler) {
-      this.drawHandler.disable();
+      const hdl = this.drawHandler;
       this.drawHandler = null;
+      this.activeDrawType = null;
+      hdl.disable();
+    } else {
+      this.activeDrawType = null;
+    }
+    if (hadHandler) {
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'shapes' } }));
     }
   }
 

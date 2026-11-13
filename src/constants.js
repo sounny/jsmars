@@ -57,6 +57,8 @@ export const EVENTS = Object.freeze({
   SAMPLE_CLEAR_REQUEST: 'jmars:sample-clear-request',
 
   // ── Profiles ────────────────────────────────────────────────
+  /** Fired when elevation profile sampling begins. */
+  PROFILE_LOADING: 'jmars:profile-loading',
   /** Fired when a new elevation profile is generated (radial or linear). */
   PROFILE_GENERATED: 'jmars:profile-generated',
   /** Fired when hovering over an elevation profile chart to highlight track point. */

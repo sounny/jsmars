@@ -228,11 +228,17 @@ export class SpaceCampLeaderboardPage {
   }
 
   _renderPodiumView(rows) {
-    const medals = [
-      { idx: 0, badge: '01 // 1ST PLACE · GOLD COMMANDER', cls: 'rank-1' },
-      { idx: 1, badge: '02 // 2ND PLACE · SILVER NAVIGATOR', cls: 'rank-2' },
-      { idx: 2, badge: '03 // 3RD PLACE · BRONZE ANALYST', cls: 'rank-3' }
-    ];
+    const medals = this.lang === 'fr'
+      ? [
+          { idx: 0, badge: '01 // 1RE PLACE · COMMANDANT OR', cls: 'rank-1' },
+          { idx: 1, badge: '02 // 2E PLACE · NAVIGATEUR ARGENT', cls: 'rank-2' },
+          { idx: 2, badge: '03 // 3E PLACE · ANALYSTE BRONZE', cls: 'rank-3' }
+        ]
+      : [
+          { idx: 0, badge: '01 // 1ST PLACE · GOLD COMMANDER', cls: 'rank-1' },
+          { idx: 1, badge: '02 // 2ND PLACE · SILVER NAVIGATOR', cls: 'rank-2' },
+          { idx: 2, badge: '03 // 3RD PLACE · BRONZE ANALYST', cls: 'rank-3' }
+        ];
 
     const podiumGrid = h('div', { class: 'sc-podium-grid', style: 'margin-top: 8px;' },
       ...medals.map((m) => {
@@ -240,14 +246,14 @@ export class SpaceCampLeaderboardPage {
         if (!p) {
           return h('div', { class: `sc-podium-card ${m.cls}`, style: 'padding: 22px 18px; gap: 10px; min-height: 180px; justify-content:flex-start;' },
             h('div', { class: 'sc-kicker', style: 'font-size:11px;', text: m.badge }),
-            h('div', { style: 'color:var(--sc-subtle); font-family:var(--sc-mono); font-size:13px; margin-top:6px;', text: 'AWAITING TELEMETRY' })
+            h('div', { style: 'color:var(--sc-subtle); font-family:var(--sc-mono); font-size:13px; margin-top:6px;', text: this.lang === 'fr' ? 'EN ATTENTE DE TÉLÉMÉTRIE' : 'AWAITING TELEMETRY' })
           );
         }
         return h('div', { class: `sc-podium-card ${m.cls}`, style: 'padding: 22px 18px; gap: 10px;' },
           h('div', { class: 'sc-kicker', style: 'font-size:11px;', text: m.badge }),
           h('div', { style: 'font-family: var(--sc-mono); font-size: 24px; font-weight: 700; color: #f8fafc;', text: `@${p.handle}` }),
           h('div', { style: 'font-family: var(--sc-mono); font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 700; color: var(--sc-emerald-bright);', text: `${p.score} / 600 PTS` }),
-          h('div', { style: 'font-family: var(--sc-mono); font-size: 11.5px; color: var(--sc-subtle-light);', text: `${p.completedRounds || 0} / 5 Trails Verified` }),
+          h('div', { style: 'font-family: var(--sc-mono); font-size: 11.5px; color: var(--sc-subtle-light);', text: this.lang === 'fr' ? `${p.completedRounds || 0} / 5 Parcours Validés` : `${p.completedRounds || 0} / 5 Trails Verified` }),
           this._renderRoundBars(p.roundScores || {})
         );
       })
@@ -268,7 +274,7 @@ export class SpaceCampLeaderboardPage {
           h('div', { class: 'sc-kicker', text: a.label }),
           a.winner
             ? h('div', { style: 'font-family: var(--sc-mono); font-variant-numeric: tabular-nums; font-size: 17px; font-weight:700; color:#f8fafc; margin-top:4px;', text: `@${a.winner.handle} · ${a.winner.pts}/${a.max} PTS` })
-            : h('div', { style: 'font-family: var(--sc-mono); font-size: 12px; color:var(--sc-subtle); margin-top:4px;', text: 'PENDING' })
+            : h('div', { style: 'font-family: var(--sc-mono); font-size: 12px; color:var(--sc-subtle); margin-top:4px;', text: this.lang === 'fr' ? 'EN ATTENTE' : 'PENDING' })
         )
       )
     );
@@ -284,7 +290,7 @@ export class SpaceCampLeaderboardPage {
   _renderRaceView(rows) {
     const tableHead = rows.length > 0
       ? h('div', { class: 'sc-lb-table-head', style: 'padding: 4px 14px;' },
-          h('span', { text: 'RANK' }),
+          h('span', { text: this.lang === 'fr' ? 'RANG' : 'RANK' }),
           h('span', { text: this.lang === 'fr' ? 'OPÉRATEUR' : 'OPERATOR' }),
           h('span', { text: this.lang === 'fr' ? 'SECTEUR' : 'SECTOR' }),
           h('span', { text: this.lang === 'fr' ? 'TÉLÉMÉTRIE PARCOURS (R1–R5)' : 'TRAIL TELEMETRY (R1–R5)' }),
@@ -300,7 +306,7 @@ export class SpaceCampLeaderboardPage {
               h('strong', { style: 'font-family: var(--sc-mono); font-variant-numeric: tabular-nums; color:var(--sc-subtle-light); font-size:15px;', text: `#${String(idx + 1).padStart(2, '0')}` }),
               h('div', {},
                 h('div', { style: 'font-weight:700; color:#f8fafc; font-family: var(--sc-mono); font-size:15px;', text: `@${r.handle}` }),
-                h('div', { style: 'font-family: var(--sc-mono); font-size:10.5px; color:var(--sc-subtle);', text: `T${r.currentRound || 1}/5 · ${r.completedRounds || 0} verified` })
+                h('div', { style: 'font-family: var(--sc-mono); font-size:10.5px; color:var(--sc-subtle);', text: this.lang === 'fr' ? `M${r.currentRound || 1}/5 · ${r.completedRounds || 0} validés` : `T${r.currentRound || 1}/5 · ${r.completedRounds || 0} verified` })
               ),
               h('span', { class: 'sc-body-tag', style: 'font-family: var(--sc-mono); font-size:11px; font-weight:700; color:var(--sc-cyan); text-transform:uppercase;', text: r.currentBody || 'earth' }),
               this._renderRoundBars(r.roundScores || {}),

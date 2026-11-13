@@ -185,6 +185,7 @@ export function initJSMARSApp(options = {}) {
     }
     openAccordionSection('Tools');
     const headers = document.querySelectorAll('#tools-list .layer-section-header');
+    let matchedSection = null;
     headers.forEach((h) => {
       const t = h.querySelector('.layer-title')?.textContent?.trim() || '';
       const content = h.nextElementSibling;
@@ -192,11 +193,16 @@ export function initJSMARSApp(options = {}) {
         if (content && content.style.display === 'none') {
           h.click();
         }
-        h.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        matchedSection = h.closest('.layer-section') || h;
       } else if (content && content.style.display !== 'none') {
         h.click();
       }
     });
+    if (matchedSection) {
+      requestAnimationFrame(() => {
+        matchedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   };
 
   // Initialize Tools
@@ -432,15 +438,32 @@ export function initJSMARSApp(options = {}) {
   };
 
   const deactivateAllTools = () => {
+    const hadCrater = craterLayer.isActive;
     craterLayer.deactivate();
+    if (hadCrater) {
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'crater' } }));
+    }
     craterBtn.textContent = 'Start Crater Counting';
     craterBtn.classList.remove('active');
+    const hadProfile = profileTool.isActive || enhancedProfileTool.isActive;
     deactivateProfiles();
+    if (hadProfile) {
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'profile' } }));
+    }
+    const hadMeasure = measureTool.isDrawing;
     measureTool.deactivate();
+    if (hadMeasure) {
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'measure' } }));
+    }
     measureDistBtn.classList.remove('active');
     measureAreaBtn.classList.remove('active');
+    const hadInvestigate = investigateTool.isActive;
     deactivateInvestigate();
+    if (hadInvestigate) {
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'investigate' } }));
+    }
     deactivateSampling();
+    shapeLayer.stopDrawing();
   };
 
   // Shape draw buttons
@@ -539,11 +562,13 @@ export function initJSMARSApp(options = {}) {
       craterLayer.deactivate();
       craterBtn.textContent = 'Start Crater Counting';
       craterBtn.classList.remove('active');
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'crater' } }));
     } else {
       deactivateAllTools();
       craterLayer.activate();
       craterBtn.textContent = 'Stop Crater Counting';
       craterBtn.classList.add('active');
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_ACTIVATED, { detail: { tool: 'crater' } }));
     }
   });
 
@@ -566,6 +591,7 @@ export function initJSMARSApp(options = {}) {
     if (enhancedProfileTool.isActive) {
       enhancedProfileTool.deactivate();
       enhancedProfileBtn.classList.remove('active');
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'profile' } }));
     } else {
       deactivateAllTools();
       profileTool.deactivate();
@@ -580,6 +606,7 @@ export function initJSMARSApp(options = {}) {
     if (measureTool.activeMode === 'distance') {
       measureTool.deactivate();
       measureDistBtn.classList.remove('active');
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'measure' } }));
     } else {
       deactivateAllTools();
       measureTool.activate('distance');
@@ -592,6 +619,7 @@ export function initJSMARSApp(options = {}) {
     if (measureTool.activeMode === 'area') {
       measureTool.deactivate();
       measureAreaBtn.classList.remove('active');
+      document.dispatchEvent(new CustomEvent(EVENTS.TOOL_DEACTIVATED, { detail: { tool: 'measure' } }));
     } else {
       deactivateAllTools();
       measureTool.activate('area');

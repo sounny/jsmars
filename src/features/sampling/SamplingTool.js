@@ -2,6 +2,7 @@ import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
 import { EVENTS } from '../../constants.js';
 import { getPlanetaryRadius, sphericalPolygonArea } from '../../util/geo.js';
+import { applyLeafletDrawPatch } from '../../util/leaflet-draw-patch.js';
 
 /**
  * @module SamplingTool
@@ -40,6 +41,7 @@ export class SamplingTool {
      * @param {'point'|'area'} [mode='point'] - Sampling mode.
      */
     activate(mode = 'point') {
+        applyLeafletDrawPatch();
         if (this.isActive && this.activeMode === mode) return;
         this.deactivate();
         this.isActive = true;

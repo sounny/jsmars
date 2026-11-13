@@ -85,6 +85,10 @@ export class SpaceCampOverlay {
     // Round 1 Earth Observation orbital pins
     this.eoGroup = L.layerGroup();
 
+    // Round 2 Mars profile summary
+    this.lastMarsProfileSummary = null;
+    this.coachEl = null;
+
     // Round 3 Mars Rover map layer & drawing state
     this.roverGroup = L.layerGroup();
     this.roverDrawing = false;
@@ -175,6 +179,7 @@ export class SpaceCampOverlay {
       this._renderLeaderboardModalContent();
     }
     this._renderLunarPlannerScorer();
+    this._refreshToolCoach();
   }
 
   _applyPanelLayout() {
@@ -290,6 +295,14 @@ export class SpaceCampOverlay {
     // Mount inside #map so 50%/50% always matches map.getCenter() regardless of side panel width!
     const mapContainer = this.map?.getContainer?.() || document.getElementById('map') || document.body;
     mapContainer.appendChild(this.reticleEl);
+
+    // Floating active-tool coach pill inside #map (helps students complete Draw/Measure/Profile/Shapes smoothly)
+    this.coachEl = h('div', { id: 'sc-tool-coach', class: 'sc-tool-coach', hidden: true });
+    mapContainer.appendChild(this.coachEl);
+    if (L?.DomEvent) {
+      L.DomEvent.disableClickPropagation(this.coachEl);
+      L.DomEvent.disableScrollPropagation(this.coachEl);
+    }
   }
 
   _buildSidePanel() {
@@ -599,7 +612,7 @@ export class SpaceCampOverlay {
       h('div', {},
         h('div', { class: 'sc-kicker', text: this.t('eventBadge') }),
         h('div', { style: 'font-family: var(--sc-display); font-size: 18px; font-weight: 700; margin-top: 2px;', text: 'Mission JSMARS: Space Data Analysts' }),
-        h('div', { style: 'font-size: 12px; color: #94a3b8; margin-top: 1px;', text: "Atelier numérique de planification de missions et d'analyse en télédétection" })
+        h('div', { style: 'font-size: 12px; color: #94a3b8; margin-top: 1px;', text: this.t('subtitle') })
       ),
       h('div', { class: 'sc-btn-row' },
         h('button', {
@@ -703,15 +716,21 @@ export class SpaceCampOverlay {
           }
         }))
       ),
-      h('button', {
-        type: 'button',
-        class: 'sc-btn',
-        disabled: this.slideIndex >= cards.length - 1,
-        onclick: () => {
-          this.slideIndex = Math.min(cards.length - 1, this.slideIndex + 1);
-          this._renderBriefingModalContent();
-        }
-      }, this.lang === 'fr' ? 'Suivant' : 'Next', scIcon('chevronRight', 12))
+      this.slideIndex >= cards.length - 1
+        ? h('button', {
+            type: 'button',
+            id: 'sc-start-mission-btn',
+            class: 'sc-btn sc-btn-emerald',
+            onclick: () => this.closeModal()
+          }, scIcon('check', 12), this.lang === 'fr' ? 'Commencer la Mission' : 'Start Mission')
+        : h('button', {
+            type: 'button',
+            class: 'sc-btn',
+            onclick: () => {
+              this.slideIndex = Math.min(cards.length - 1, this.slideIndex + 1);
+              this._renderBriefingModalContent();
+            }
+          }, this.lang === 'fr' ? 'Suivant' : 'Next', scIcon('chevronRight', 12))
     );
 
     this.modalEl.replaceChildren(topRow, hero, navRow);
@@ -753,7 +772,10 @@ export class SpaceCampOverlay {
 
     const topRow = h('div', { class: 'sc-modal-top' },
       h('div', {},
-        h('div', { class: 'sc-kicker', text: 'LIVE FIREBASE TELEMETRY · REAL-TIME SCOREBOARD' }),
+        h('div', {
+          class: 'sc-kicker',
+          text: this.lang === 'fr' ? 'TÉLÉMÉTRIE FIREBASE EN DIRECT · TABLEAU DES SCORES' : 'LIVE FIREBASE TELEMETRY · REAL-TIME SCOREBOARD'
+        }),
         h('div', {
           style: 'font-family: var(--sc-display); font-size: 19px; font-weight: 700; margin-top: 2px;',
           text: this.lang === 'fr'
@@ -795,7 +817,9 @@ export class SpaceCampOverlay {
       )
     );
 
-    const medals = ['01 // 1ST PLACE', '02 // 2ND PLACE', '03 // 3RD PLACE'];
+    const medals = this.lang === 'fr'
+      ? ['01 // 1RE PLACE', '02 // 2E PLACE', '03 // 3E PLACE']
+      : ['01 // 1ST PLACE', '02 // 2ND PLACE', '03 // 3RD PLACE'];
     const podiumNodes = rows.length > 0
       ? h('div', { class: 'sc-podium-grid' },
           ...[0, 1, 2].map((idx) => {
@@ -893,14 +917,65 @@ export class SpaceCampOverlay {
 
     document.addEventListener(EVENTS.PROFILE_GENERATED, (e) => {
       const profiles = e?.detail?.profiles;
-      if (Array.isArray(profiles) && profiles.length === 0) return;
+      if (Array.isArray(profiles)) {
+        const valid = profiles.find((p) => Array.isArray(p?.data) && p.data.some((d) => Number.isFinite(d.elev)));
+        if (!valid) {
+          this._refreshToolCoach();
+          return;
+        }
+        const pts = valid.data.filter((d) => Number.isFinite(d.elev));
+        if (pts.length >= 2) {
+          let minElev = Infinity;
+          let maxElev = -Infinity;
+          let maxSlopeDeg = 0;
+          pts.forEach((d) => {
+            if (d.elev < minElev) minElev = d.elev;
+            if (d.elev > maxElev) maxElev = d.elev;
+          });
+          for (let i = 1; i < pts.length; i++) {
+            const dx = pts[i].dist - pts[i - 1].dist;
+            const dz = pts[i].elev - pts[i - 1].elev;
+            if (dx > 0) {
+              const deg = Math.atan(Math.abs(dz / dx)) * (180 / Math.PI);
+              if (deg > maxSlopeDeg) maxSlopeDeg = deg;
+            }
+          }
+          const maxDistM = pts[pts.length - 1].dist || 0;
+          if ((this.jmars.currentBody || '').toLowerCase() === 'mars') {
+            this.lastMarsProfileSummary = {
+              minElev: Math.round(minElev),
+              maxElev: Math.round(maxElev),
+              reliefM: Math.round(maxElev - minElev),
+              lengthKm: maxDistM / 1000,
+              maxSlopeDeg,
+              elevations: pts.map((p) => p.elev)
+            };
+          }
+        }
+      }
       const body = (this.jmars.currentBody || '').toLowerCase();
       if (body === 'mars') {
         const pts = this.engine.awardRound2Profile();
         if (pts > 0) {
           this._onPointsEarned(2, pts, 'MOLA Laser Elevation Profile', 'Profil Topographique Laser MOLA');
+        } else if (this.drawerMode === 'missions' && this.engine.state.activeRound === 2) {
+          this._renderDrawerBody();
         }
       }
+      this._refreshToolCoach();
+    });
+
+    const coachRefreshEvents = [
+      EVENTS.TOOL_ACTIVATED,
+      EVENTS.TOOL_DEACTIVATED,
+      EVENTS.BODY_CHANGED,
+      EVENTS.VIEW_MODE_CHANGED,
+      EVENTS.SHAPE_CREATED,
+      EVENTS.MEASURE_UPDATED,
+      'jmars:draw-vertex-changed'
+    ];
+    coachRefreshEvents.forEach((evt) => {
+      document.addEventListener(evt, () => this._refreshToolCoach());
     });
 
     document.addEventListener(EVENTS.LANDING_SITES_TOGGLED, (e) => {
@@ -1062,7 +1137,7 @@ export class SpaceCampOverlay {
         callsignNode
       ),
       h('div', { class: 'sc-telem-cell' },
-        h('span', { class: 'sc-telem-lbl', text: 'TELEMETRY' }),
+        h('span', { class: 'sc-telem-lbl', text: this.lang === 'fr' ? 'TÉLÉMÉTRIE' : 'TELEMETRY' }),
         h('span', { class: 'sc-score-pill', text: `${scores.total} / ${this.deck.maxScore} ${this.t('scoreLabel')}` })
       ),
       h('div', { class: 'sc-telem-cell' },
@@ -1104,6 +1179,173 @@ export class SpaceCampOverlay {
     this.reticleEl.classList.toggle('is-visible', show);
   }
 
+  _refreshToolCoach() {
+    if (!this.coachEl) return;
+    if (this.app.viewModeToggle?.mode === '3d') {
+      this.coachEl.hidden = true;
+      return;
+    }
+
+    const fr = this.lang === 'fr';
+    const eProf = this.app.enhancedProfileTool;
+    const rProf = this.app.profileTool;
+    const meas = this.app.measureTool;
+    const shp = this.app.shapeLayer;
+    const crater = this.app.craterLayer;
+
+    let msg = '';
+    let finishBtn = null;
+    let cancelAction = null;
+    let cancelLabel = fr ? 'Annuler' : 'Cancel';
+
+    if (eProf?.isActive) {
+      const pts = eProf.drawControl?._markers?.length || 0;
+      msg = pts < 2
+        ? (fr
+            ? `PROFIL LINÉAIRE · Cliquez 2+ points sur le relief (${pts}/2)`
+            : `LINEAR PROFILE · Click 2+ points across a landform (${pts}/2)`)
+        : (fr
+            ? `PROFIL LINÉAIRE · ${pts} pts prêts — cliquez Terminer ou Entrée`
+            : `LINEAR PROFILE · ${pts} pts ready — click Finish or press Enter`);
+      finishBtn = {
+        label: fr ? 'Terminer' : 'Finish',
+        disabled: pts < 2,
+        onClick: () => eProf.drawControl?._finishShape?.()
+      };
+      cancelAction = () => {
+        this.app.deactivateAllTools?.();
+        this._refreshToolCoach();
+      };
+    } else if (rProf?.isActive) {
+      const hasCenter = Boolean(rProf.center);
+      msg = hasCenter
+        ? (fr
+            ? 'PROFIL RADIAL · Centre fixé — cliquez sur le bord extérieur'
+            : 'RADIAL PROFILE · Center set — click outer rim to sample 8 spokes')
+        : (fr
+            ? 'PROFIL RADIAL · Clic 1 : centre · Clic 2 : bord extérieur'
+            : 'RADIAL PROFILE · Click 1: center · Click 2: outer rim');
+      cancelAction = () => {
+        this.app.deactivateAllTools?.();
+        this._refreshToolCoach();
+      };
+    } else if (meas?.isDrawing) {
+      const isArea = meas.activeMode === 'area';
+      const minPts = isArea ? 3 : 2;
+      const pts = meas.drawControl?._markers?.length || 0;
+      if (isArea) {
+        msg = pts < minPts
+          ? (fr
+              ? `MESURE SURFACE · Cliquez 3+ sommets (${pts}/3)`
+              : `MEASURE AREA · Click 3+ corners on map (${pts}/3)`)
+          : (fr
+              ? `MESURE SURFACE · ${pts} sommets — cliquez Terminer ou Entrée`
+              : `MEASURE AREA · ${pts} corners — click Finish or press Enter`);
+      } else {
+        msg = pts < minPts
+          ? (fr
+              ? `MESURE DISTANCE · Cliquez 2+ points (${pts}/2)`
+              : `MEASURE DISTANCE · Click 2+ points (${pts}/2)`)
+          : (fr
+              ? `MESURE DISTANCE · ${pts} pts — cliquez Terminer ou Entrée`
+              : `MEASURE DISTANCE · ${pts} pts — click Finish or press Enter`);
+      }
+      finishBtn = {
+        label: fr ? 'Terminer' : 'Finish',
+        disabled: pts < minPts,
+        onClick: () => meas.drawControl?._finishShape?.()
+      };
+      cancelAction = () => {
+        this.app.deactivateAllTools?.();
+        this._refreshToolCoach();
+      };
+    } else if (shp?.drawHandler?._enabled) {
+      const handler = shp.drawHandler;
+      const dType = shp.activeDrawType || handler.type;
+      const pts = handler._markers?.length || 0;
+      if (dType === 'polygon' || dType === 'polyline') {
+        const minPts = dType === 'polygon' ? 3 : 2;
+        msg = pts < minPts
+          ? (fr
+              ? `TRACÉ CARTOGRAPHIQUE · Cliquez ${minPts}+ sommets (${pts}/${minPts})`
+              : `SHAPES DRAW · Click ${minPts}+ corners (${pts}/${minPts})`)
+          : (fr
+              ? `TRACÉ CARTOGRAPHIQUE · ${pts} sommets — cliquez Terminer ou Entrée`
+              : `SHAPES DRAW · ${pts} corners — click Finish or press Enter`);
+        finishBtn = {
+          label: fr ? 'Terminer' : 'Finish',
+          disabled: pts < minPts,
+          onClick: () => handler._finishShape?.()
+        };
+      } else {
+        msg = fr
+          ? 'TRACÉ CARTOGRAPHIQUE · Cliquez-glissez sur la carte pour tracer'
+          : 'SHAPES DRAW · Click or drag on the map to place feature';
+      }
+      cancelAction = () => {
+        shp.stopDrawing();
+        this._refreshToolCoach();
+      };
+    } else if (crater?.isActive) {
+      msg = fr
+        ? 'COMPTEUR CRATÈRES · Molette = rayon · Clic = enregistrer'
+        : 'CRATER COUNTER · Scroll wheel = size · Click map to log crater';
+      cancelLabel = fr ? 'Terminer' : 'Done';
+      cancelAction = () => {
+        this.app.deactivateAllTools?.();
+        this._refreshToolCoach();
+      };
+    } else if (this.roverDrawing) {
+      const pts = this.roverWaypoints.length;
+      msg = fr
+        ? `TRACÉ ROVER · ${pts} points — cliquez la carte jusqu’au cercle doré Nili`
+        : `ROVER ROUTE · ${pts} waypoints — click map toward Gold Nili Circle`;
+      finishBtn = {
+        label: fr ? 'Évaluer' : 'Score Route',
+        disabled: pts < 2,
+        onClick: () => document.getElementById('sc-score-rover-btn')?.click()
+      };
+      cancelLabel = fr ? 'Arrêter' : 'Done';
+      cancelAction = () => {
+        this._stopRoverDrawing();
+        this._renderDrawerBody();
+        this._refreshToolCoach();
+      };
+    }
+
+    if (!msg) {
+      this.coachEl.hidden = true;
+      return;
+    }
+
+    const actions = [];
+    if (finishBtn) {
+      actions.push(h('button', {
+        type: 'button',
+        id: 'sc-coach-finish-btn',
+        class: 'sc-btn sc-btn-emerald',
+        disabled: finishBtn.disabled,
+        text: finishBtn.label,
+        onclick: finishBtn.onClick
+      }));
+    }
+    if (cancelAction) {
+      actions.push(h('button', {
+        type: 'button',
+        id: 'sc-coach-cancel-btn',
+        class: 'sc-btn',
+        text: cancelLabel,
+        onclick: cancelAction
+      }));
+    }
+
+    this.coachEl.replaceChildren(
+      h('span', { class: 'sc-tool-coach-msg' }, scIcon('tool', 12), h('span', { text: msg })),
+      h('span', { class: 'sc-tool-coach-actions' }, ...actions)
+    );
+    this.coachEl.hidden = false;
+  }
+
   _switchToRound(nextRound) {
     const targetRound = Number(nextRound) || 1;
     if (targetRound !== 3 && this.roverDrawing) {
@@ -1118,6 +1360,7 @@ export class SpaceCampOverlay {
     this.engine.save(this.identity);
     this._syncToFirebase(null);
     this._refreshAll();
+    this._refreshToolCoach();
     if (this.drawerBodyEl) {
       this.drawerBodyEl.scrollTop = 0;
     }
@@ -1171,7 +1414,7 @@ export class SpaceCampOverlay {
     if (roundNum === 5 && !this.engine.isRound5Unlocked()) {
       this.drawerBodyEl.replaceChildren(
         h('div', { class: 'sc-step-card' },
-          h('div', { class: 'sc-kicker', text: 'OUTER SOLAR SYSTEM · ENCRYPTED' }),
+          h('div', { class: 'sc-kicker', text: this.lang === 'fr' ? 'SYSTÈME SOLAIRE EXTERNE · CHIFFRÉ' : 'OUTER SOLAR SYSTEM · ENCRYPTED' }),
           h('h3', { class: 'sc-round-title', text: this.t('mysteryLockedTitle') }),
           h('p', { class: 'sc-round-summary', text: this.t('mysteryLockedDesc') })
         )
@@ -1341,7 +1584,7 @@ export class SpaceCampOverlay {
     const measDone = this.engine.state.r1MeasurePts > 0;
     const measureCard = h('div', { class: `sc-step-card ${measDone ? 'is-solved' : ''}` },
       h('div', { class: 'sc-step-top' },
-        h('span', { class: 'sc-step-title', text: 'JSMARS Measurement Lab (+12 pts)' }),
+        h('span', { class: 'sc-step-title', text: this.lang === 'fr' ? 'Atelier de Mesure JSMARS (+12 pts)' : 'JSMARS Measurement Lab (+12 pts)' }),
         measDone ? h('span', { class: 'sc-badge-done', text: '+12 PTS' }) : null
       ),
       h('p', { class: 'sc-step-text', text: copy.measurePrompt }),
@@ -1391,6 +1634,7 @@ export class SpaceCampOverlay {
       const tState = this.engine.state.r2Targets[target.id] || { hintsUsed: 0, solved: false, points: 0 };
       const tCopy = target[this.lang] || target.en;
       const fb = this.scanFeedback[target.id];
+      const normLon = target.lon > 180 ? target.lon - 360 : target.lon;
 
       return h('div', { class: `sc-step-card ${tState.solved ? 'is-solved' : ''}` },
         h('div', { class: 'sc-step-top' },
@@ -1398,54 +1642,80 @@ export class SpaceCampOverlay {
           tState.solved ? h('span', { class: 'sc-badge-done', text: `+${tState.points} PTS` }) : null
         ),
         h('p', { class: 'sc-step-text', text: tCopy.clue }),
-        tState.hintsUsed >= 1 ? h('div', { class: 'sc-feedback', text: `HINT 01 // ${tCopy.hint1}` }) : null,
-        tState.hintsUsed >= 2 ? h('div', { class: 'sc-feedback', text: `HINT 02 // ${tCopy.hint2}` }) : null,
-        !tState.solved ? h('div', { class: 'sc-btn-row' },
-          h('button', {
-            type: 'button',
-            class: 'sc-btn sc-btn-emerald',
-            onclick: () => {
-              const center = this.map.getCenter();
-              const res = this.engine.scanRound2Target(target.id, this.jmars.currentBody, center.lat, center.lng);
-              if (res.matched) {
-                this.scanFeedback[target.id] = null;
-                this._onPointsEarned(2, res.pointsAwarded, tCopy.title, tCopy.title);
-              } else if (res.wrongBody) {
-                this.scanFeedback[target.id] = `${this.t('wrongBodyPrefix')} ${res.requiredBody.toUpperCase()}!`;
-                this._renderDrawerBody();
-              } else {
-                this.scanFeedback[target.id] = `${this.t('offTargetPrefix')} ${res.distanceKm} km (${res.compass}) ${this.t('offTargetSuffix')}`;
-                this._renderDrawerBody();
-              }
-            }
-          }, scIcon('crosshair', 12), this.t('scanBtn')),
-          tState.hintsUsed < 1 ? h('button', {
-            type: 'button',
-            class: 'sc-btn',
-            text: `${this.t('hint1Btn')} (-${target.hintCost}p)`,
-            onclick: () => {
-              this.engine.unlockRound2Hint(target.id, 1);
-              this.engine.save(this.identity);
-              this._renderDrawerBody();
-            }
-          }) : null,
-          tState.hintsUsed < 2 ? h('button', {
-            type: 'button',
-            class: 'sc-btn',
-            text: `${this.t('hint2Btn')} (-${target.hintCost * 2}p)`,
-            onclick: () => {
-              this.engine.unlockRound2Hint(target.id, 2);
-              this.engine.save(this.identity);
-              this._renderDrawerBody();
-            }
-          }) : null
-        ) : null,
+        tState.hintsUsed >= 1 ? h('div', { class: 'sc-feedback', text: `${this.lang === 'fr' ? 'INDICE 01' : 'HINT 01'} // ${tCopy.hint1}` }) : null,
+        tState.hintsUsed >= 2 ? h('div', { class: 'sc-feedback', text: `${this.lang === 'fr' ? 'INDICE 02' : 'HINT 02'} // ${tCopy.hint2}` }) : null,
+        tState.solved
+          ? h('div', { class: 'sc-btn-row' },
+              h('button', {
+                type: 'button',
+                class: 'sc-btn',
+                onclick: () => this._flyTo('mars', target.lat, normLon, 5)
+              }, scIcon('locate', 12), this.lang === 'fr' ? 'Centrer sur la Cible' : 'Center on Target')
+            )
+          : h('div', { class: 'sc-btn-row' },
+              h('button', {
+                type: 'button',
+                class: 'sc-btn sc-btn-emerald',
+                onclick: () => {
+                  const center = this.map.getCenter();
+                  const res = this.engine.scanRound2Target(target.id, this.jmars.currentBody, center.lat, center.lng);
+                  if (res.matched) {
+                    this.scanFeedback[target.id] = null;
+                    this._onPointsEarned(2, res.pointsAwarded, tCopy.title, tCopy.title);
+                  } else if (res.wrongBody) {
+                    this.scanFeedback[target.id] = `${this.t('wrongBodyPrefix')} ${res.requiredBody.toUpperCase()}!`;
+                    this._renderDrawerBody();
+                  } else {
+                    this.scanFeedback[target.id] = `${this.t('offTargetPrefix')} ${res.distanceKm} km (${res.compass}) ${this.t('offTargetSuffix')}`;
+                    this._renderDrawerBody();
+                  }
+                }
+              }, scIcon('crosshair', 12), this.t('scanBtn')),
+              tState.hintsUsed < 1 ? h('button', {
+                type: 'button',
+                class: 'sc-btn',
+                text: `${this.t('hint1Btn')} (-${target.hintCost}p)`,
+                onclick: () => {
+                  this.engine.unlockRound2Hint(target.id, 1);
+                  this.engine.save(this.identity);
+                  this._renderDrawerBody();
+                }
+              }) : null,
+              tState.hintsUsed < 2 ? h('button', {
+                type: 'button',
+                class: 'sc-btn',
+                text: `${this.t('hint2Btn')} (-${target.hintCost * 2}p)`,
+                onclick: () => {
+                  this.engine.unlockRound2Hint(target.id, 2);
+                  this.engine.save(this.identity);
+                  this._renderDrawerBody();
+                }
+              }) : null
+            ),
         fb ? h('div', { class: 'sc-feedback is-warn', text: fb }) : null
       );
     });
 
     const labCopy = round.lab[this.lang] || round.lab.en;
     const profDone = this.engine.state.r2ProfilePts > 0;
+    const profSum = this.lastMarsProfileSummary;
+    let scaleNote = '';
+    if (profSum) {
+      if (profSum.reliefM >= 10000) {
+        scaleNote = this.lang === 'fr'
+          ? `Échelle terrestre : ${(profSum.reliefM / 8849).toFixed(1)}x le Mont Everest (8 849 m)`
+          : `Earth scale: ${(profSum.reliefM / 8849).toFixed(1)}x Mount Everest (8,849 m)`;
+      } else if (profSum.reliefM >= 2500) {
+        scaleNote = this.lang === 'fr'
+          ? `Échelle terrestre : ${(profSum.reliefM / 1857).toFixed(1)}x la profondeur du Grand Canyon (1 857 m)`
+          : `Earth scale: ${(profSum.reliefM / 1857).toFixed(1)}x Grand Canyon depth (1,857 m)`;
+      } else {
+        scaleNote = this.lang === 'fr'
+          ? `Échelle terrestre : ${(profSum.reliefM / 828).toFixed(1)}x la Burj Khalifa (828 m)`
+          : `Earth scale: ${(profSum.reliefM / 828).toFixed(1)}x Burj Khalifa (828 m)`;
+      }
+    }
+
     const labCard = h('div', { class: `sc-step-card ${profDone ? 'is-solved' : ''}` },
       h('div', { class: 'sc-step-top' },
         h('span', { class: 'sc-step-title', text: labCopy.title }),
@@ -1456,10 +1726,36 @@ export class SpaceCampOverlay {
         h('button', {
           type: 'button',
           class: 'sc-btn sc-btn-primary',
-          text: this.t('launchToolBtn'),
-          onclick: () => this.app.quickActions?.options?.onRunTool?.('profile-linear')
-        })
-      )
+          onclick: async () => {
+            if ((this.jmars.currentBody || '').toLowerCase() !== 'mars') {
+              await switchActiveBody(this.jmars, 'mars');
+            }
+            this.app.quickActions?.options?.onRunTool?.('profile-linear');
+            this._refreshToolCoach();
+          }
+        }, scIcon('tool', 12), this.t('launchToolBtn')),
+        h('button', {
+          type: 'button',
+          class: 'sc-btn',
+          onclick: async () => {
+            if ((this.jmars.currentBody || '').toLowerCase() !== 'mars') {
+              await switchActiveBody(this.jmars, 'mars');
+            }
+            this.app.quickActions?.options?.onRunTool?.('profile-radial');
+            this._refreshToolCoach();
+          }
+        }, scIcon('crosshair', 12), this.lang === 'fr' ? 'Profil Radial' : 'Radial Profile')
+      ),
+      profSum ? h('div', { class: 'sc-feedback is-good' },
+        h('div', {
+          style: 'font-weight:700; margin-bottom:2px;',
+          text: this.lang === 'fr'
+            ? `Dénivelé : ${profSum.reliefM.toLocaleString('fr-FR')} m (${(profSum.reliefM / 1000).toFixed(1)} km) · Longueur : ${profSum.lengthKm.toFixed(1)} km · Pente max : ${profSum.maxSlopeDeg.toFixed(1)}°`
+            : `Relief: ${profSum.reliefM.toLocaleString('en-US')} m (${(profSum.reliefM / 1000).toFixed(1)} km) · Length: ${profSum.lengthKm.toFixed(1)} km · Max Slope: ${profSum.maxSlopeDeg.toFixed(1)}°`
+        }),
+        h('div', { style: 'font-size:11px; color:#cbd5e1;', text: scaleNote }),
+        this._renderRoverSparkline(profSum.elevations)
+      ) : null
     );
 
     return [switchMarsCard, ...targetCards, labCard];
@@ -1477,12 +1773,14 @@ export class SpaceCampOverlay {
     this.map.on('click', this._onMapClickRover);
     this._redrawRoverLayer();
     this._renderDrawerBody();
+    this._refreshToolCoach();
   }
 
   _stopRoverDrawing() {
     this.roverDrawing = false;
     this.map.getContainer().style.cursor = '';
     this.map.off('click', this._onMapClickRover);
+    this._refreshToolCoach();
   }
 
   _onMapClickRover(e) {
@@ -1491,6 +1789,7 @@ export class SpaceCampOverlay {
     this.roverWaypoints.push({ lat: e.latlng.lat, lon: e.latlng.lng });
     this._redrawRoverLayer();
     this._renderDrawerBody();
+    this._refreshToolCoach();
   }
 
   _redrawRoverLayer() {
@@ -1504,7 +1803,7 @@ export class SpaceCampOverlay {
       weight: 2,
       fillColor: '#10b981',
       fillOpacity: 0.95
-    }).bindTooltip('START: Jezero Landing Zone').addTo(this.roverGroup);
+    }).bindTooltip(this.lang === 'fr' ? 'DÉPART : Zone d’Atterrissage Jezero' : 'START: Jezero Landing Zone').addTo(this.roverGroup);
 
     const degRadius = (round3.goal.captureRadiusKm || 22) / 59.27;
     L.circle([round3.goal.lat, round3.goal.lon], {
@@ -1522,7 +1821,7 @@ export class SpaceCampOverlay {
       weight: 2,
       fillColor: '#f59e0b',
       fillOpacity: 0.95
-    }).bindTooltip('GOAL: Nili Carbonate Highlands').addTo(this.roverGroup);
+    }).bindTooltip(this.lang === 'fr' ? 'OBJECTIF : Plateau Carbonaté de Nili' : 'GOAL: Nili Carbonate Highlands').addTo(this.roverGroup);
 
     if (this.roverWaypoints.length >= 2) {
       L.polyline(
@@ -1603,7 +1902,10 @@ export class SpaceCampOverlay {
 
     const toolsCard = h('div', { class: `sc-step-card ${this.engine.state.r3BestToolsPts >= 25 ? 'is-solved' : ''}` },
       h('div', { class: 'sc-step-top' },
-        h('span', { class: 'sc-step-title', text: 'Step 3A · Mission Tool Selection (30 pts)' }),
+        h('span', {
+          class: 'sc-step-title',
+          text: this.lang === 'fr' ? 'Étape 3A · Choix des Outils de Mission (30 pts)' : 'Step 3A · Mission Tool Selection (30 pts)'
+        }),
         this.engine.state.r3BestToolsPts > 0
           ? h('span', { class: 'sc-badge-done', text: `${this.engine.state.r3BestToolsPts}/30 PTS` })
           : null
@@ -1664,11 +1966,20 @@ export class SpaceCampOverlay {
     const summary = this.engine.state.r3LastRouteSummary;
     const summaryNode = summary
       ? h('div', { class: `sc-feedback ${summary.reachedGoal ? 'is-good' : 'is-warn'}` },
-          h('div', { style: 'font-weight:700; margin-bottom:3px;', text: `Tools: ${summary.toolScore}/30 pts · Route: ${summary.totalPoints}/75 pts` }),
+          h('div', {
+            style: 'font-weight:700; margin-bottom:3px;',
+            text: this.lang === 'fr'
+              ? `Outils : ${summary.toolScore}/30 pts · Tracé : ${summary.totalPoints}/75 pts`
+              : `Tools: ${summary.toolScore}/30 pts · Route: ${summary.totalPoints}/75 pts`
+          }),
           h('div', {
             text: summary.reachedGoal
-              ? `Goal Reached! Length: ${summary.distanceKm} km · Max MOLA Slope: ${summary.maxSlopeDeg}° · Climb: +${summary.totalClimbM} m`
-              : `Goal is still ${summary.goalDistKm} km away! Extend your rover waypoints into the Gold Nili Highlands circle and re-score.`
+              ? (this.lang === 'fr'
+                  ? `Objectif atteint ! Longueur : ${summary.distanceKm} km · Pente MOLA max : ${summary.maxSlopeDeg}° · Dénivelé : +${summary.totalClimbM} m`
+                  : `Goal Reached! Length: ${summary.distanceKm} km · Max MOLA Slope: ${summary.maxSlopeDeg}° · Climb: +${summary.totalClimbM} m`)
+              : (this.lang === 'fr'
+                  ? `L’objectif est encore à ${summary.goalDistKm} km ! Prolongez vos waypoints dans le cercle doré de Nili et réévaluez.`
+                  : `Goal is still ${summary.goalDistKm} km away! Extend your rover waypoints into the Gold Nili Highlands circle and re-score.`)
           }),
           this._renderRoverSparkline(this.lastSampledElevations)
         )
@@ -1676,7 +1987,12 @@ export class SpaceCampOverlay {
 
     const routeCard = h('div', { class: `sc-step-card ${this.engine.state.r3BestRoutePts >= 50 ? 'is-solved' : ''}` },
       h('div', { class: 'sc-step-top' },
-        h('span', { class: 'sc-step-title', text: `Step 3B · Rover Route (${this.roverWaypoints.length} pts)` }),
+        h('span', {
+          class: 'sc-step-title',
+          text: this.lang === 'fr'
+            ? `Étape 3B · Tracé du Rover (${this.roverWaypoints.length} pts)`
+            : `Step 3B · Rover Route (${this.roverWaypoints.length} pts)`
+        }),
         this.engine.state.r3BestRoutePts > 0
           ? h('span', { class: 'sc-badge-done', text: `${this.engine.state.r3BestRoutePts}/75 PTS` })
           : null
@@ -1738,7 +2054,10 @@ export class SpaceCampOverlay {
     const labDone = this.engine.state.r3LabPts > 0;
     const labCard = h('div', { class: `sc-step-card ${labDone ? 'is-solved' : ''}` },
       h('div', { class: 'sc-step-top' },
-        h('span', { class: 'sc-step-title', text: 'Step 3C · Landing Sites / Craters (+15 pts)' }),
+        h('span', {
+          class: 'sc-step-title',
+          text: this.lang === 'fr' ? 'Étape 3C · Sites d’Atterrissage / Cratères (+15 pts)' : 'Step 3C · Landing Sites / Craters (+15 pts)'
+        }),
         labDone ? h('span', { class: 'sc-badge-done', text: '+15 PTS' }) : null
       ),
       h('p', { class: 'sc-step-text', text: copy.labPrompt }),
@@ -1746,8 +2065,20 @@ export class SpaceCampOverlay {
         h('button', {
           type: 'button',
           class: 'sc-btn',
-          text: 'Toggle Landing Sites',
+          text: this.lang === 'fr' ? 'Sites d’Atterrissage' : 'Toggle Landing Sites',
           onclick: () => document.getElementById('landing-sites-btn')?.click()
+        }),
+        h('button', {
+          type: 'button',
+          class: 'sc-btn',
+          text: this.lang === 'fr' ? 'Compter les Cratères' : 'Count Craters',
+          onclick: async () => {
+            if ((this.jmars.currentBody || '').toLowerCase() !== 'mars') {
+              await switchActiveBody(this.jmars, 'mars');
+            }
+            this.app.quickActions?.options?.onRunTool?.('crater');
+            this._refreshToolCoach();
+          }
         })
       )
     );
@@ -1799,7 +2130,12 @@ export class SpaceCampOverlay {
 
     const launchCard = h('div', { class: `sc-step-card ${this.engine.state.r4BestSitePts >= 110 ? 'is-solved' : ''}` },
       h('div', { class: 'sc-step-top' },
-        h('span', { class: 'sc-step-title', text: `Best Artemis Site: ${this.engine.state.r4BestSitePts} / 150 PTS` }),
+        h('span', {
+          class: 'sc-step-title',
+          text: this.lang === 'fr'
+            ? `Meilleur Site Artemis : ${this.engine.state.r4BestSitePts} / 150 PTS`
+            : `Best Artemis Site: ${this.engine.state.r4BestSitePts} / 150 PTS`
+        }),
         this.engine.state.r4BestSitePts > 0
           ? h('span', { class: 'sc-badge-done', text: `${this.engine.state.r4BestSitePts} PTS` })
           : null
@@ -1863,7 +2199,7 @@ export class SpaceCampOverlay {
 
     if (!this.lastInspectedLunar) {
       box.replaceChildren(
-        h('div', { class: 'sc-kicker', text: 'SPACE CAMP ROUND 4 · 150 MAX PTS' }),
+        h('div', { class: 'sc-kicker', text: this.lang === 'fr' ? 'MANCHE 4 ARTEMIS · 150 PTS MAX' : 'SPACE CAMP ROUND 4 · 150 MAX PTS' }),
         h('div', { style: 'font-size: 12px; line-height:1.45;', text: this.lang === 'fr'
           ? '1. Choisissez un site Artemis ci-dessus (ex. Connecting ridge ou Shackleton rim). 2. Cliquez sur la carte polaire pour évaluer et noter votre site d’alunissage !'
           : '1. Select an Artemis candidate site in the top bar (e.g. Connecting ridge or Shackleton rim). 2. Click any ridge on the polar map to evaluate and score your landing pin!'
@@ -1899,7 +2235,12 @@ export class SpaceCampOverlay {
     });
 
     box.replaceChildren(
-      h('div', { class: 'sc-kicker', text: `ROUND 4 LIVE LOLA SCORE · BEST: ${this.engine.state.r4BestSitePts}/150` }),
+      h('div', {
+        class: 'sc-kicker',
+        text: this.lang === 'fr'
+          ? `SCORE LOLA EN DIRECT · RECORD : ${this.engine.state.r4BestSitePts}/150`
+          : `ROUND 4 LIVE LOLA SCORE · BEST: ${this.engine.state.r4BestSitePts}/150`
+      }),
       h('div', { style: 'font-family: Space Grotesk, sans-serif; font-size: 14.5px; font-weight:700; color:#34d399;', text: `${live.totalPoints} / 150 PTS · ${this.lang === 'fr' ? live.ratingFr : live.ratingEn}` }),
       this._renderMeter(labels.slope, live.slopePoints, 45),
       this._renderMeter(labels.sun, live.sunPoints, 45),
@@ -1934,8 +2275,8 @@ export class SpaceCampOverlay {
         scanState.solved ? h('span', { class: 'sc-badge-done', text: `+${scanState.points} PTS` }) : null
       ),
       h('p', { class: 'sc-step-text', text: tCopy.clue }),
-      scanState.hintsUsed >= 1 ? h('div', { class: 'sc-feedback', text: `HINT 01 // ${tCopy.hint1}` }) : null,
-      scanState.hintsUsed >= 2 ? h('div', { class: 'sc-feedback', text: `HINT 02 // ${tCopy.hint2}` }) : null,
+      scanState.hintsUsed >= 1 ? h('div', { class: 'sc-feedback', text: `${this.lang === 'fr' ? 'INDICE 01' : 'HINT 01'} // ${tCopy.hint1}` }) : null,
+      scanState.hintsUsed >= 2 ? h('div', { class: 'sc-feedback', text: `${this.lang === 'fr' ? 'INDICE 02' : 'HINT 02'} // ${tCopy.hint2}` }) : null,
       !scanState.solved ? h('div', { class: 'sc-btn-row' },
         h('button', {
           type: 'button',
@@ -2019,13 +2360,22 @@ export class SpaceCampOverlay {
         h('button', {
           type: 'button',
           class: 'sc-btn',
-          text: 'Open Shapes Tool',
-          onclick: () => this.app.openToolByTitle?.('Shapes')
+          text: this.lang === 'fr' ? 'Tracer avec Shapes' : 'Open Shapes Tool',
+          onclick: async () => {
+            if (this.app.viewModeToggle?.mode === '3d') {
+              await this.app.viewModeToggle.setMode('2d');
+            }
+            this.app.openToolByTitle?.('Shapes');
+            if (!this.app.shapeLayer?.drawHandler?._enabled) {
+              document.getElementById('shape-draw-polygon')?.click();
+            }
+            this._refreshToolCoach();
+          }
         }),
         h('button', {
           type: 'button',
           class: 'sc-btn sc-btn-primary',
-          text: 'Switch to 3D Globe',
+          text: this.lang === 'fr' ? 'Passer en Globe 3D' : 'Switch to 3D Globe',
           onclick: () => this.app.viewModeToggle?.setMode?.('3d')
         })
       )
@@ -2086,7 +2436,12 @@ export class SpaceCampOverlay {
     const hasKey = this.copilot.hasApiKey();
     const header = h('div', { class: 'sc-round-header' },
       h('div', { style: 'display:flex; justify-content:space-between; align-items:center;' },
-        h('span', { class: 'sc-kicker', text: hasKey ? 'GEMINI 3.8 FLASH · LIVE CAPCOM' : 'TELEMETRY CAPCOM · READY' }),
+        h('span', {
+          class: 'sc-kicker',
+          text: hasKey
+            ? (this.lang === 'fr' ? 'GEMINI 3.8 FLASH · CAPCOM ACTIF' : 'GEMINI 3.8 FLASH · LIVE CAPCOM')
+            : (this.lang === 'fr' ? 'CAPCOM TÉLÉMÉTRIE · PRÊT' : 'TELEMETRY CAPCOM · READY')
+        }),
         h('button', {
           type: 'button',
           class: 'sc-mini-btn',
@@ -2094,7 +2449,7 @@ export class SpaceCampOverlay {
             this.aiKeyPanelOpen = !this.aiKeyPanelOpen;
             this._renderDrawerBody();
           }
-        }, scIcon('key', 11), hasKey ? 'Gemini Active' : 'Set Gemini Key')
+        }, scIcon('key', 11), hasKey ? (this.lang === 'fr' ? 'Gemini Actif' : 'Gemini Active') : (this.lang === 'fr' ? 'Clé Gemini' : 'Set Gemini Key'))
       ),
       h('h3', {
         class: 'sc-round-title',
@@ -2196,7 +2551,7 @@ export class SpaceCampOverlay {
               : h('div', { class: 'sc-chat-msg is-ai' },
                   h('span', {
                     class: `sc-provenance-pill ${m.source === 'gemini' ? 'is-gemini' : 'is-telemetry'}`,
-                    text: m.source === 'gemini' ? 'Gemini 3.8 Flash' : 'Live JSMARS Telemetry'
+                    text: m.source === 'gemini' ? 'Gemini 3.8 Flash' : (this.lang === 'fr' ? 'Télémétrie JSMARS en Direct' : 'Live JSMARS Telemetry')
                   }),
                   h('div', { text: m.text })
                 )

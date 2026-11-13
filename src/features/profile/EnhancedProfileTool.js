@@ -1,6 +1,8 @@
 import { JMARSWMS } from '../../jmars-wms.js';
 import { jmarsState } from '../../jmars-state.js';
 import { molaDem } from '../../util/mola-dem.js';
+import { haversineDistance } from '../../util/geo.js';
+import { applyLeafletDrawPatch } from '../../util/leaflet-draw-patch.js';
 import { EVENTS } from '../../constants.js';
 
 /**
@@ -84,6 +86,7 @@ export class EnhancedProfileTool {
      * Activate the profile tool and begin polyline drawing.
      */
     activate() {
+        applyLeafletDrawPatch();
         if (this.isActive) return;
         this.isActive = true;
         if (this.map) {
@@ -112,6 +115,7 @@ export class EnhancedProfileTool {
         this.map.on(drawCreatedEvt, this.onDrawCreated);
         this.map.on(drawStopEvt, this.onDrawStop);
         this.map.getContainer().style.cursor = 'crosshair';
+        document.dispatchEvent(new CustomEvent(EVENTS.TOOL_ACTIVATED, { detail: { tool: 'profile-linear' } }));
     }
 
     /**
@@ -170,21 +174,49 @@ export class EnhancedProfileTool {
     }
 
     /**
+     * Parse elevation text returned from a WMS GetFeatureInfo endpoint safely.
+     * Rejects XML/HTML error pages and sentinel nodata values.
+     * @param {string} text
+     * @returns {number|null}
+     */
+    static parseWmsElevationText(text) {
+        if (!text || typeof text !== 'string') return null;
+        if (/ServiceException|<\?xml|<html|<!DOCTYPE|ExceptionReport/i.test(text)) {
+            return null;
+        }
+        const explicit = text.match(/(?:value_0|elevation|band\s*1|gray_index|pixel)\s*[:=]\s*(-?\d+(?:\.\d+)?)/i);
+        const match = explicit || text.match(/(?:^|\s)(-?\d+(?:\.\d+)?)(?:\s|$)/);
+        if (!match) return null;
+        const val = parseFloat(match[1]);
+        if (!Number.isFinite(val) || Math.abs(val) > 1e5 || val <= -32760) {
+            return null;
+        }
+        return val;
+    }
+
+    /**
      * Calculate elevation profile along the drawn polyline.
      * @param {L.Polyline} layer - The drawn polyline layer.
      */
     async calculateProfile(layer) {
-        const latlngs = layer.getLatLngs();
-        // Flatten if nested (Leaflet 1.0+ handles multi-polylines differently sometimes)
-        // But L.Draw.Polyline usually returns simple array of LatLng objects.
-        
+        const rawLatLngs = layer.getLatLngs();
+        const latlngs = Array.isArray(rawLatLngs[0]) ? rawLatLngs[0] : rawLatLngs;
+        if (!latlngs || latlngs.length < 2) {
+            this.profileData = [];
+            document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles: [] } }));
+            return;
+        }
+
+        const body = (jmarsState.get('body') || 'mars').toLowerCase();
+        const segMeters = (a, b) => haversineDistance(a.lat, a.lng, b.lat, b.lng, body) * 1000;
+
         const samples = [];
         // Aim for a smooth curve without too many fetches.
         const targetSamples = 150;
-        
+
         let totalDist = 0;
         for (let i = 0; i < latlngs.length - 1; i++) {
-            totalDist += latlngs[i].distanceTo(latlngs[i+1]);
+            totalDist += segMeters(latlngs[i], latlngs[i + 1]);
         }
 
         // Guard: avoid division by zero on zero-length lines
@@ -194,36 +226,42 @@ export class EnhancedProfileTool {
             return;
         }
 
-        const stepSize = totalDist / targetSamples; 
-        
+        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_LOADING, { detail: { body } }));
+        document.getElementById('profile-chart-container')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        const stepSize = totalDist / targetSamples;
+
         let currentDist = 0;
         // Generate points
         for (let i = 0; i < latlngs.length - 1; i++) {
             const start = latlngs[i];
-            const end = latlngs[i+1];
-            const segmentDist = start.distanceTo(end);
-            
+            const end = latlngs[i + 1];
+            const segmentDist = segMeters(start, end);
+            if (segmentDist <= 0) continue;
+
             let segmentProgress = 0;
-            while(segmentProgress < segmentDist) {
+            while (segmentProgress < segmentDist) {
                 const ratio = segmentProgress / segmentDist;
                 const lat = start.lat + (end.lat - start.lat) * ratio;
                 const lng = start.lng + (end.lng - start.lng) * ratio;
-                
+
                 samples.push({
                     dist: currentDist + segmentProgress,
                     lat: lat,
                     lng: lng
                 });
-                
+
                 segmentProgress += stepSize;
             }
             currentDist += segmentDist;
         }
-        
+
         // Add last point
         const last = latlngs[latlngs.length - 1];
         samples.push({ dist: totalDist, lat: last.lat, lng: last.lng });
 
+        const sources = this.elevationSources[body] || [];
+        const hasSource = Boolean(sources.find(s => s.id === this.currentSourceId));
         const profileData = await this.populateElevations(samples);
 
         this.profileData = profileData;
@@ -235,7 +273,14 @@ export class EnhancedProfileTool {
             data: profileData
         }];
 
-        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, { detail: { profiles: chartData } }));
+        const bodyLabel = body.charAt(0).toUpperCase() + body.slice(1);
+        const emptyMessage = !hasSource
+            ? `No elevation DEM available for ${bodyLabel}`
+            : null;
+
+        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_GENERATED, {
+            detail: { profiles: chartData, body, emptyMessage }
+        }));
     }
 
     /**
@@ -333,17 +378,16 @@ export class EnhancedProfileTool {
             }));
         }
 
-        // Limit requests
-        const maxSamples = 60;
+        // Limit WMS fallback requests and fetch in parallel with timeout guard
+        const maxSamples = 24;
         const step = Math.max(1, Math.floor(samples.length / maxSamples));
         const reduced = samples.filter((_, idx) => idx % step === 0);
 
         const mapSize = this.map.getSize();
         const bounds = this.map.getBounds();
         const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-        const results = [];
 
-        for (const s of reduced) {
+        const results = await Promise.all(reduced.map(async (s) => {
             const pt = this.map.latLngToContainerPoint([s.lat, s.lng]);
             const url = JMARSWMS.getFeatureInfoUrl(source.url, {
                 layers: source.layer,
@@ -358,36 +402,35 @@ export class EnhancedProfileTool {
             });
 
             try {
-                const resp = await fetch(url);
+                const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+                    ? AbortSignal.timeout(6000)
+                    : undefined;
+                const resp = await fetch(url, signal ? { signal } : undefined);
                 const text = await resp.text();
-                const match = text.match(/-?\d+\.?\d*/);
-                const elev = match ? parseFloat(match[0]) : null;
-                results.push({
-                    dist: s.dist,
-                    elev: elev !== null ? elev : null,
-                    lat: s.lat,
-                    lng: s.lng
-                });
-            } catch (e) {
-                results.push({
-                    dist: s.dist,
-                    elev: null,
-                    lat: s.lat,
-                    lng: s.lng
-                });
+                const elev = EnhancedProfileTool.parseWmsElevationText(text);
+                return { dist: s.dist, elev, lat: s.lat, lng: s.lng };
+            } catch {
+                return { dist: s.dist, elev: null, lat: s.lat, lng: s.lng };
             }
-        }
+        }));
 
         if (results.length !== samples.length) {
             const interpolated = [];
             for (let i = 0; i < samples.length; i++) {
-                const ratio = i / (samples.length - 1);
-                const pos = ratio * (results.length - 1);
+                const ratio = samples.length > 1 ? i / (samples.length - 1) : 0;
+                const pos = ratio * Math.max(0, results.length - 1);
                 const idx = Math.floor(pos);
                 const t = pos - idx;
                 const a = results[idx];
                 const b = results[Math.min(idx + 1, results.length - 1)];
-                const elev = a.elev + (b.elev - a.elev) * t;
+                let elev = null;
+                if (Number.isFinite(a?.elev) && Number.isFinite(b?.elev)) {
+                    elev = a.elev + (b.elev - a.elev) * t;
+                } else if (Number.isFinite(a?.elev)) {
+                    elev = a.elev;
+                } else if (Number.isFinite(b?.elev)) {
+                    elev = b.elev;
+                }
                 const s = samples[i];
                 interpolated.push({
                     dist: s.dist,

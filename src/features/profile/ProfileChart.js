@@ -24,8 +24,12 @@ export class ProfileChart {
 
         this.init();
 
+        document.addEventListener(EVENTS.PROFILE_LOADING, () => {
+            this.renderStatus('Sampling elevation...');
+        });
+
         document.addEventListener(EVENTS.PROFILE_GENERATED, (e) => {
-            this.draw(e.detail.profiles);
+            this.draw(e.detail?.profiles, e.detail || {});
         });
     }
 
@@ -51,25 +55,43 @@ export class ProfileChart {
         this.container.appendChild(controls);
 
         this.canvas = document.createElement('canvas');
-        this.canvas.width = 280; // Fit in sidebar
-        this.canvas.height = 150;
+        this.canvas.width = 284; // Fit cleanly inside 300px sidebar
+        this.canvas.height = 164;
+        this.canvas.style.width = '100%';
+        this.canvas.style.display = 'block';
         this.canvas.style.background = '#222';
         this.canvas.style.border = '1px solid #444';
+        this.canvas.style.borderRadius = '4px';
         this.container.appendChild(this.canvas);
         this.ctx = this.canvas.getContext('2d');
 
         // Interaction
         this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
         this.canvas.addEventListener('mouseleave', () => {
-            this.draw(this.lastProfiles);
+            this.draw(this.lastProfiles, this.lastMeta);
             document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_HOVER, { detail: { clear: true } }));
         });
 
         // Initial text
-        this.ctx.fillStyle = '#666';
-        this.ctx.font = '12px sans-serif';
+        this.renderStatus('Draw a line on Mars to plot elevation');
+    }
+
+    /**
+     * Render a centered status string on the chart canvas.
+     * @param {string} msg
+     */
+    renderStatus(msg) {
+        if (!this.ctx || !this.canvas) return;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        this.scales = null;
+        this.ctx.clearRect(0, 0, w, h);
+        this.ctx.fillStyle = '#222';
+        this.ctx.fillRect(0, 0, w, h);
+        this.ctx.fillStyle = '#94a3b8';
+        this.ctx.font = '11px sans-serif';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('No profile data', this.canvas.width / 2, this.canvas.height / 2);
+        this.ctx.fillText(msg, w / 2, h / 2 + 4);
     }
 
     /**
@@ -90,30 +112,22 @@ export class ProfileChart {
         if (!this.lastProfiles || this.lastProfiles.length === 0) return;
 
         const rect = this.canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        
-        // Redraw base
-        this.draw(this.lastProfiles);
+        const scaleRatioX = this.canvas.width / Math.max(1, rect.width);
+        const mouseX = (e.clientX - rect.left) * scaleRatioX;
 
-        // Find nearest point across all profiles
+        // Redraw base
+        this.draw(this.lastProfiles, this.lastMeta);
+
+        if (!this.scales) return;
+
         let nearest = null;
         let minDiff = Infinity;
-
-        // We need to reverse the scaleX to find data index from pixel X
-        // scaleX = (d) => pad + (d / maxDist) * (w - 2 * pad);
-        // d = (x - pad) / (w - 2 * pad) * maxDist
-        
-        // Easier: Just iterate all points and find closest in X pixels.
-        // Since we already computed scales in draw(), we should store them or recompute.
-        // Storing in `this` is easiest.
-        
-        if (!this.scales) return;
 
         this.lastProfiles.forEach(p => {
             p.data.forEach(d => {
                 const px = this.scales.x(d.dist);
                 const diff = Math.abs(px - mouseX);
-                if (diff < minDiff && diff < 10) { // 10px threshold
+                if (diff < minDiff && diff < 12) {
                     minDiff = diff;
                     nearest = { ...d, color: p.color, px: px, py: this.scales.y(d.elev) };
                 }
@@ -121,21 +135,36 @@ export class ProfileChart {
         });
 
         if (nearest) {
+            const w = this.canvas.width;
+            const h = this.canvas.height;
             // Highlight
             this.ctx.beginPath();
             this.ctx.arc(nearest.px, nearest.py, 4, 0, 2 * Math.PI);
             this.ctx.fillStyle = '#fff';
             this.ctx.fill();
+            this.ctx.strokeStyle = '#0f172a';
+            this.ctx.lineWidth = 1.5;
             this.ctx.stroke();
 
-            // Tooltip
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-            this.ctx.fillRect(nearest.px + 10, nearest.py - 30, 120, 40);
-            this.ctx.fillStyle = '#fff';
+            // Clamp Tooltip inside canvas bounds
+            const boxW = 118;
+            const boxH = 36;
+            const boxX = nearest.px + 10 + boxW > w - 4 ? Math.max(4, nearest.px - boxW - 10) : nearest.px + 10;
+            const boxY = Math.max(4, Math.min(h - boxH - 4, nearest.py - 28));
+            const distLabel = nearest.dist >= 1000
+                ? `${(nearest.dist / 1000).toFixed(2)} km`
+                : `${Math.round(nearest.dist)} m`;
+
+            this.ctx.fillStyle = 'rgba(2, 6, 23, 0.9)';
+            this.ctx.fillRect(boxX, boxY, boxW, boxH);
+            this.ctx.strokeStyle = '#38bdf8';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(boxX, boxY, boxW, boxH);
+            this.ctx.fillStyle = '#f8fafc';
             this.ctx.textAlign = 'left';
             this.ctx.font = '10px monospace';
-            this.ctx.fillText(`Dist: ${Math.round(nearest.dist)}m`, nearest.px + 15, nearest.py - 20);
-            this.ctx.fillText(`Elev: ${Math.round(nearest.elev)}m`, nearest.px + 15, nearest.py - 8);
+            this.ctx.fillText(`Dist: ${distLabel}`, boxX + 6, boxY + 13);
+            this.ctx.fillText(`Elev: ${Math.round(nearest.elev)} m`, boxX + 6, boxY + 27);
 
             if (Number.isFinite(nearest.lat) && Number.isFinite(nearest.lng)) {
                 document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_HOVER, {
@@ -148,8 +177,9 @@ export class ProfileChart {
     /**
      * Draw all profiles onto the canvas.
      * @param {Array<object>} profiles - Array of { color, data: [{dist, elev}] }.
+     * @param {object} [meta] - Optional metadata ({ body, emptyMessage }).
      */
-    draw(profiles) {
+    draw(profiles, meta = {}) {
         const filteredProfiles = (profiles || [])
             .map(p => ({
                 ...p,
@@ -157,11 +187,16 @@ export class ProfileChart {
             }))
             .filter(p => p.data.length > 0);
 
-        this.lastProfiles = filteredProfiles; // Store for redraw
+        this.lastProfiles = filteredProfiles;
+        this.lastMeta = meta || {};
+        this.lastMetrics = null;
         const ctx = this.ctx;
         const w = this.canvas.width;
         const h = this.canvas.height;
-        const pad = 20;
+        const padL = 48;
+        const padR = 14;
+        const padT = 22;
+        const padB = 22;
 
         // Clear
         ctx.clearRect(0, 0, w, h);
@@ -169,49 +204,45 @@ export class ProfileChart {
         ctx.fillRect(0, 0, w, h);
 
         if (!filteredProfiles || filteredProfiles.length === 0) {
-            this.scales = null;
-            ctx.fillStyle = '#666';
-            ctx.font = '12px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('No profile data', w / 2, h / 2);
+            this.renderStatus(meta?.emptyMessage || 'No profile data');
             return;
         }
 
-        // Find Min/Max
-        let minElev = Infinity;
-        let maxElev = -Infinity;
+        // Find unpadded data Min/Max
+        let dataMinElev = Infinity;
+        let dataMaxElev = -Infinity;
         let maxDist = 0;
 
         filteredProfiles.forEach(p => {
             p.data.forEach(d => {
-                if (d.elev < minElev) minElev = d.elev;
-                if (d.elev > maxElev) maxElev = d.elev;
+                if (d.elev < dataMinElev) dataMinElev = d.elev;
+                if (d.elev > dataMaxElev) dataMaxElev = d.elev;
                 if (d.dist > maxDist) maxDist = d.dist;
             });
         });
 
-        // Add padding to Y; enforce minimum range to avoid divide-by-zero on flat terrain
-        const range = Math.max(maxElev - minElev, 1);
-        minElev -= range * 0.1;
-        maxElev += range * 0.1;
+        // Padded Y-axis bounds (keep relief computed from unpadded dataMinElev/dataMaxElev)
+        const range = Math.max(dataMaxElev - dataMinElev, 1);
+        const axisMinElev = dataMinElev - range * 0.1;
+        const axisMaxElev = dataMaxElev + range * 0.1;
 
         if (maxDist === 0) {
             maxDist = 1;
         }
 
         // Scaling functions
-        const scaleX = (d) => pad + (d / maxDist) * (w - 2 * pad);
-        const scaleY = (e) => h - pad - ((e - minElev) / (maxElev - minElev)) * (h - 2 * pad);
-        
-        this.scales = { x: scaleX, y: scaleY }; // Store for interaction
+        const scaleX = (d) => padL + (d / maxDist) * (w - padL - padR);
+        const scaleY = (e) => h - padB - ((e - axisMinElev) / (axisMaxElev - axisMinElev)) * (h - padT - padB);
+
+        this.scales = { x: scaleX, y: scaleY };
 
         // Draw Axes
-        ctx.strokeStyle = '#666';
+        ctx.strokeStyle = '#64748b';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(pad, pad);
-        ctx.lineTo(pad, h - pad); // Y axis
-        ctx.lineTo(w - pad, h - pad); // X axis
+        ctx.moveTo(padL, padT);
+        ctx.lineTo(padL, h - padB); // Y axis
+        ctx.lineTo(w - padR, h - padB); // X axis
         ctx.stroke();
 
         // Draw Profiles with terrain fill
@@ -219,17 +250,17 @@ export class ProfileChart {
             if (p.data.length < 2) return;
 
             // Gradient terrain fill
-            const grad = ctx.createLinearGradient(0, pad, 0, h - pad);
+            const grad = ctx.createLinearGradient(0, padT, 0, h - padB);
             grad.addColorStop(0, 'rgba(74, 222, 128, 0.35)');
             grad.addColorStop(1, 'rgba(74, 222, 128, 0.02)');
 
             ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.moveTo(scaleX(p.data[0].dist), h - pad);
+            ctx.moveTo(scaleX(p.data[0].dist), h - padB);
             p.data.forEach((d) => {
                 ctx.lineTo(scaleX(d.dist), scaleY(d.elev));
             });
-            ctx.lineTo(scaleX(p.data[p.data.length - 1].dist), h - pad);
+            ctx.lineTo(scaleX(p.data[p.data.length - 1].dist), h - padB);
             ctx.closePath();
             ctx.fill();
 
@@ -246,14 +277,16 @@ export class ProfileChart {
             ctx.stroke();
         });
 
-        // Compute slope metrics on first profile
+        // Compute slope metrics from unpadded elevation extrema
+        const relief = Math.round(dataMaxElev - dataMinElev);
+        let rmsSlopeDeg = 0;
+        let maxSlopeDeg = 0;
         if (filteredProfiles[0]?.data?.length > 1) {
             const data = filteredProfiles[0].data;
             let sumSqSlope = 0;
-            let maxSlopeDeg = 0;
             for (let i = 1; i < data.length; i++) {
-                const dx = data[i].dist - data[i-1].dist;
-                const dz = data[i].elev - data[i-1].elev;
+                const dx = data[i].dist - data[i - 1].dist;
+                const dz = data[i].elev - data[i - 1].elev;
                 if (dx > 0) {
                     const slope = Math.abs(dz / dx);
                     const slopeDeg = Math.atan(slope) * (180 / Math.PI);
@@ -261,23 +294,36 @@ export class ProfileChart {
                     sumSqSlope += slope * slope;
                 }
             }
-            const rmsSlopeDeg = Math.atan(Math.sqrt(sumSqSlope / (data.length - 1))) * (180 / Math.PI);
-            const relief = Math.round(maxElev - minElev);
+            rmsSlopeDeg = Math.atan(Math.sqrt(sumSqSlope / (data.length - 1))) * (180 / Math.PI);
 
-            ctx.fillStyle = '#aaa';
-            ctx.font = '9px monospace';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '10px monospace';
             ctx.textAlign = 'left';
-            ctx.fillText(`Relief: ${relief}m | RMS Slope: ${rmsSlopeDeg.toFixed(1)}°`, pad + 5, pad + 12);
+            ctx.fillText(`Relief: ${relief}m | RMS: ${rmsSlopeDeg.toFixed(1)}°`, padL, 14);
         }
 
-        // Labels
-        ctx.fillStyle = '#fff';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText(`${Math.round(maxElev)}m`, pad - 2, pad + 10);
-        ctx.fillText(`${Math.round(minElev)}m`, pad - 2, h - pad);
+        this.lastMetrics = {
+            reliefM: relief,
+            minElevM: Math.round(dataMinElev),
+            maxElevM: Math.round(dataMaxElev),
+            lengthKm: maxDist / 1000,
+            rmsSlopeDeg,
+            maxSlopeDeg
+        };
 
-        ctx.textAlign = 'center';
-        ctx.fillText(`${(maxDist/1000).toFixed(1)} km`, w - pad, h - 5);
+        // Unclipped Y-axis extrema & X-axis distance labels
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '9.5px monospace';
+        ctx.textAlign = 'right';
+        const maxYPos = Math.max(padT + 8, Math.min(h - padB - 12, scaleY(dataMaxElev) + 3));
+        const minYPos = Math.max(maxYPos + 12, Math.min(h - padB, scaleY(dataMinElev) + 3));
+        ctx.fillText(`${Math.round(dataMaxElev)}m`, padL - 5, maxYPos);
+        ctx.fillText(`${Math.round(dataMinElev)}m`, padL - 5, minYPos);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'left';
+        ctx.fillText('0.0 km', padL, h - 6);
+        ctx.textAlign = 'right';
+        ctx.fillText(`${(maxDist / 1000).toFixed(1)} km`, w - padR, h - 6);
     }
 }
