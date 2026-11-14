@@ -64,11 +64,73 @@ export function setCookie(name, value, maxAgeSec = COOKIE_MAX_AGE) {
  * @param {string} raw
  * @returns {{ valid: boolean, handle: string, handleKey: string }}
  */
+const BLOCKED_HANDLE_SUBSTRINGS = [
+  'nigg',
+  'nigers',
+  'faggot',
+  'chink',
+  'wetback',
+  'kike',
+  'tranny',
+  'retard',
+  'hitler',
+  'nazi',
+  'fuck',
+  'bitch',
+  'cunt',
+  'whore',
+  'asshole',
+  'motherfuck',
+  'shithead',
+  'bullshit',
+  'dickhead',
+  'pussy',
+  'rapist'
+];
+
+const BLOCKED_HANDLE_TOKENS = new Set([
+  'fag',
+  'kkk',
+  'shit',
+  'dick',
+  'slut',
+  'porn',
+  'rape'
+]);
+
+function normalizeHandleForModeration(handle) {
+  const lower = String(handle || '').toLowerCase();
+  const deLeet = lower
+    .replace(/0/g, 'o')
+    .replace(/[1!]/g, 'i')
+    .replace(/3/g, 'e')
+    .replace(/[4@]/g, 'a')
+    .replace(/[5$]/g, 's')
+    .replace(/7/g, 't')
+    .replace(/8/g, 'b');
+  return {
+    collapsed: deLeet.replace(/[^a-z]/g, ''),
+    tokens: deLeet.split(/[^a-z]+/).filter(Boolean)
+  };
+}
+
+export function isHandleModerated(handle) {
+  const { collapsed, tokens } = normalizeHandleForModeration(handle);
+  if (!collapsed) return false;
+  if (BLOCKED_HANDLE_SUBSTRINGS.some((term) => collapsed.includes(term))) {
+    return true;
+  }
+  return tokens.some((tok) => BLOCKED_HANDLE_TOKENS.has(tok));
+}
+
 export function validateHandle(raw) {
   const handle = String(raw || '').trim();
-  const valid = HANDLE_REGEX.test(handle);
+  const formatOk = HANDLE_REGEX.test(handle);
+  const moderated = formatOk && isHandleModerated(handle);
+  const valid = formatOk && !moderated;
   return {
     valid,
+    reason: !formatOk ? 'format' : (moderated ? 'blocked' : null),
     handle,
     handleKey: handle.toLowerCase()
   };

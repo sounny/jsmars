@@ -250,6 +250,10 @@ export class MeasureTool {
             });
 
             this.notifyUpdate();
+            const tableEl = document.getElementById('measure-table-container');
+            if (tableEl && typeof tableEl.scrollIntoView === 'function') {
+                tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
         }
 
         this.deactivate();

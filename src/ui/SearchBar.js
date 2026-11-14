@@ -350,6 +350,7 @@ export class SearchBar {
             return;
         }
 
+        this.lastQuery = query;
         const coordHit = SearchBar.parseCoordinateQuery(query);
         const ranked = SearchBar.rankLandmarks(this.getSearchableLandmarks(), query, this.currentBody);
         const matches = coordHit ? [coordHit, ...ranked] : ranked;
@@ -368,12 +369,28 @@ export class SearchBar {
         this.activeIndex = -1;
 
         if (this.currentMatches.length === 0) {
+            const hasLockedMatch = typeof this.spoilerFilter === 'function'
+                && Boolean((this.lastQuery || '').trim())
+                && !SearchBar.parseCoordinateQuery(this.lastQuery)
+                && SearchBar.rankLandmarks(this.landmarks, this.lastQuery, this.currentBody).length > 0;
+            const isFr = document.documentElement?.dataset?.scLang === 'fr'
+                || document.documentElement?.lang === 'fr';
             const noRes = document.createElement('div');
-            noRes.textContent = 'No matching landmarks';
+            noRes.className = hasLockedMatch ? 'sc-search-locked-hint' : 'sc-search-empty';
+            if (hasLockedMatch) {
+                noRes.textContent = isFr
+                    ? 'Cible masquee pendant la manche active — utilisez les coordonnees ou le viseur optique.'
+                    : 'Target hidden during active Space Camp round — use map coordinates or the scan reticle.';
+                noRes.style.color = '#fbbf24';
+                noRes.style.fontStyle = 'normal';
+                noRes.style.fontWeight = '600';
+            } else {
+                noRes.textContent = isFr ? 'Aucun site correspondant' : 'No matching landmarks';
+                noRes.style.color = '#64748b';
+                noRes.style.fontStyle = 'italic';
+            }
             noRes.style.padding = '10px';
-            noRes.style.color = '#64748b';
             noRes.style.fontSize = '11px';
-            noRes.style.fontStyle = 'italic';
             noRes.style.textAlign = 'center';
             this.resultsContainer.appendChild(noRes);
         } else {

@@ -61,6 +61,7 @@ export class RadialProfileTool {
         this.onMouseMove = this.onMouseMove.bind(this);
 
         document.addEventListener(EVENTS.BODY_CHANGED, () => {
+            document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_HOVER, { detail: { clear: true } }));
             if (this.isActive) this.deactivate();
         });
     }
@@ -100,6 +101,7 @@ export class RadialProfileTool {
     reset() {
         this.center = null;
         this.layerGroup.clearLayers();
+        document.dispatchEvent(new CustomEvent(EVENTS.PROFILE_HOVER, { detail: { clear: true } }));
         if (this.previewLine) {
             this.previewLine.remove();
             this.previewLine = null;
@@ -262,15 +264,15 @@ export class RadialProfileTool {
         if (body === 'mars' && source && source.id === molaDem.SOURCE_ID) {
             try {
                 const elevations = await molaDem.sampleElevations(samples);
-                return samples.map((s, idx) => ({ dist: s.dist, elev: elevations[idx] }));
+                return samples.map((s, idx) => ({ dist: s.dist, elev: elevations[idx], lat: s.lat, lng: s.lng }));
             } catch (err) {
                 console.error('MOLA DEM sampling failed (radial)', err);
-                return samples.map(s => ({ dist: s.dist, elev: null }));
+                return samples.map(s => ({ dist: s.dist, elev: null, lat: s.lat, lng: s.lng }));
             }
         }
 
         if (!source) {
-            return samples.map(s => ({ dist: s.dist, elev: null }));
+            return samples.map(s => ({ dist: s.dist, elev: null, lat: s.lat, lng: s.lng }));
         }
 
         const maxSamples = 20;
@@ -301,9 +303,9 @@ export class RadialProfileTool {
                     : undefined;
                 const resp = await fetch(url, signal ? { signal } : undefined);
                 const text = await resp.text();
-                return { dist: s.dist, elev: EnhancedProfileTool.parseWmsElevationText(text) };
+                return { dist: s.dist, elev: EnhancedProfileTool.parseWmsElevationText(text), lat: s.lat, lng: s.lng };
             } catch {
-                return { dist: s.dist, elev: null };
+                return { dist: s.dist, elev: null, lat: s.lat, lng: s.lng };
             }
         }));
 

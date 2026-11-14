@@ -190,9 +190,16 @@ def run_spacecamp_suite():
 
             # Navigate all 5 slides (checking EN + FR) and finish with Slide 5 Start Mission button
             page.locator(".sc-slide-nav .sc-btn").last.click()
-            page.wait_for_timeout(300)
-            slide2_img_ok = page.locator(".sc-modal img.sc-slide-image").evaluate("img => img.complete && img.naturalWidth > 200")
-            assert slide2_img_ok is True, "Slide 2 Noor Ouarzazate image failed to load!"
+            page.wait_for_function(
+                "Boolean(document.querySelector('.sc-modal img.sc-slide-image')?.complete)",
+                timeout=10000,
+            )
+            slide2_img = page.locator(".sc-modal img.sc-slide-image").evaluate(
+                "img => ({ complete: img.complete, naturalWidth: img.naturalWidth, src: img.src })"
+            )
+            assert slide2_img["complete"] and slide2_img["naturalWidth"] > 200, (
+                f"Slide 2 Noor Ouarzazate image failed to load: {slide2_img}"
+            )
             assert page.locator(".sc-modal #sc-modal-join-card").count() == 0
             page.screenshot(path=os.path.join(SCREENSHOT_DIR, "sc_slide2_noor.png"))
 
@@ -214,11 +221,18 @@ def run_spacecamp_suite():
             # =========================================================================
             # 4. Live Firebase Callsign Claim, XSS Block, Collision Suggestions & Reload
             # =========================================================================
-            print(f"\n[4/8] Testing live Firebase handle claim (@{primary_handle}), XSS block & collision suggestions...")
+            print(f"\n[4/8] Testing live Firebase handle claim (@{primary_handle}), XSS block, moderation & collision suggestions...")
             page.fill("#sc-handle-input", "<img src=x onerror=1>")
             page.click("#sc-handle-claim-btn")
             page.wait_for_timeout(200)
             assert "3-20" in page.locator("#sc-handle-status").inner_text()
+
+            page.fill("#sc-handle-input", "NIGERSCANRISE67")
+            page.click("#sc-handle-claim-btn")
+            page.wait_for_timeout(200)
+            mod_status = page.locator("#sc-handle-status").inner_text().strip()
+            assert len(mod_status) > 0 and "3-20" not in mod_status, f"Expected moderation rejection for NIGERSCANRISE67, got: {mod_status}"
+            assert page.evaluate("window.spaceCamp.engine.state.handle") in (None, ""), "Moderated handle must not be claimed"
 
             page.fill("#sc-handle-input", primary_handle)
             page.click("#sc-handle-claim-btn")
@@ -269,6 +283,13 @@ def run_spacecamp_suite():
             for idx, label in enumerate(expected_classes):
                 r1_cards.nth(idx).locator(".sc-class-chip", has_text=label).click()
                 page.wait_for_timeout(150)
+
+            assert page.locator("#sc-r1-measure-card.is-ready-highlight").is_visible(), (
+                "Round 1 measurement card must highlight once 4/4 classifications are completed!"
+            )
+            assert page.locator("#sc-r1-measure-card .sc-ready-callout").is_visible(), (
+                "Round 1 readiness callout banner must appear once 4/4 classifications are completed!"
+            )
 
             # Launch REAL Measure Area (Polygon) tool from Round 1 card and close polygon by clicking LAST point!
             r1_cards.nth(4).locator("button", has_text="Measure Area (Polygon)").click()
@@ -368,13 +389,15 @@ def run_spacecamp_suite():
             page.locator(".sc-round-tab").nth(2).click()
             page.wait_for_timeout(300)
 
-            # Check the first 3 checkboxes (the 3 real Mars rover tools)
+            # Check the first 3 checkboxes (the 3 real Mars rover tools) and verify Step 3A Check button
             checkboxes = page.locator("#sc-side-panel .sc-check-list input[type='checkbox']")
             for i in range(3):
                 if not checkboxes.nth(i).is_checked():
                     checkboxes.nth(i).check()
+            page.click("#sc-check-r3-tools-btn")
+            page.wait_for_function("window.spaceCamp.engine.state.r3BestToolsPts === 30", timeout=10000)
 
-            # Plot low-slope rover traverse through Neretva Vallis to Nili Highlands
+            # Plot low-slope rover traverse through Neretva Vallis to Nili Highlands + verify Undo Last Point
             page.locator("#sc-side-panel button", has_text="Center Map on Jezero Traverse Zone").click()
             page.wait_for_timeout(700)
             page.click("#sc-draw-rover-btn")
@@ -386,8 +409,11 @@ def run_spacecamp_suite():
                     ov._onMapClickRover({ latlng: { lat: 18.52, lng: 77.33 } });
                     ov._onMapClickRover({ latlng: { lat: 18.63, lng: 77.14 } });
                     ov._onMapClickRover({ latlng: { lat: 18.72, lng: 76.95 } });
+                    ov._onMapClickRover({ latlng: { lat: 18.00, lng: 76.00 } });
                 }"""
             )
+            page.wait_for_timeout(200)
+            page.click("#sc-undo-rover-btn")
             page.wait_for_timeout(200)
             page.click("#sc-score-rover-btn")
             page.wait_for_function(
@@ -421,6 +447,15 @@ def run_spacecamp_suite():
                 timeout=25000,
             )
             page.wait_for_timeout(600)
+
+            lsp_pills = page.locator(".sc-lsp-layer-pills .sc-lsp-pill")
+            assert lsp_pills.count() == 4, f"Expected 4 quick NASA LOLA layer pills in Round 4, got {lsp_pills.count()}"
+            lsp_pills.nth(2).click()
+            page.wait_for_timeout(300)
+            assert "is-active" in (lsp_pills.nth(2).get_attribute("class") or ""), "Clicked LOLA quick pill must become active"
+            lsp_pills.nth(0).click()
+            page.wait_for_timeout(300)
+            assert "is-active" in (lsp_pills.nth(0).get_attribute("class") or ""), "Switching back to first LOLA pill must reactivate it"
 
             lsp_map_box = page.locator(".lsp-map").bounding_box()
             assert lsp_map_box is not None

@@ -110,6 +110,8 @@ import {
     extractInteractionOutputText,
     SpaceCampCopilot
 } from '../src/features/spacecamp/SpaceCampCopilot.js';
+import { CraterLayer } from '../src/features/crater-counting/CraterLayer.js';
+import { applyLeafletDrawPatch } from '../src/util/leaflet-draw-patch.js';
 
 const expect = chai.expect;
 
@@ -19015,6 +19017,133 @@ describe('Mission JSMARS: Space Data Analysts (Space Camp Engine, Cookies & Copi
         } finally {
             chartHost.remove();
         }
+    });
+
+    it('moderates leetspeak/token callsigns while allowing safe regional names (Niger_EO, Assma, swalhi)', () => {
+        const blocked1 = validateHandle('NIGERSCANRISE67');
+        expect(blocked1.valid).to.be.false;
+        expect(blocked1.reason).to.equal('blocked');
+
+        const blocked2 = validateHandle('n1gg3r_test');
+        expect(blocked2.valid).to.be.false;
+        expect(blocked2.reason).to.equal('blocked');
+
+        const badFormat = validateHandle('ab');
+        expect(badFormat.valid).to.be.false;
+        expect(badFormat.reason).to.equal('format');
+
+        for (const allowed of ['Niger_EO', 'Nigeria_STEM', 'Assma', 'swalhi', 'houcine', 'goated']) {
+            const res = validateHandle(allowed);
+            expect(res.valid, `Expected ${allowed} to pass moderation`).to.be.true;
+            expect(res.reason).to.be.null;
+        }
+    });
+
+    it('evaluates Round 3 Step 3A tools interactively via SpaceCampEngine.evaluateRound3Tools', () => {
+        const engine = new SpaceCampEngine(realDeck, { startedAt: Date.now() });
+        const mixed = engine.evaluateRound3Tools(['mola_profile', 'lunar_psr']);
+        expect(mixed.toolRes.points).to.be.lessThan(30);
+        expect(engine.state.r3LastToolsCheck).to.equal(mixed.check);
+
+        const perfectEngine = new SpaceCampEngine(realDeck, { startedAt: Date.now() });
+        const perfect = perfectEngine.evaluateRound3Tools(['mola_profile', 'themis_landing', 'measure_craters']);
+        expect(perfect.toolRes.points).to.equal(30);
+        expect(perfect.deltaPoints).to.equal(30);
+        expect(perfect.roundTotal).to.equal(30);
+        expect(perfectEngine.state.r3LastToolsCheck).to.equal(perfect.check);
+    });
+
+    it('renders localized EN/FR non-spoiler hints in SearchBar when spoilerFilter hides a target', () => {
+        jmarsState.reset();
+        jmarsState.set('body', 'mars');
+        const host = document.createElement('div');
+        host.id = 'test-sc-search-spoiler-hint';
+        document.body.appendChild(host);
+        const prevLang = document.documentElement.dataset.scLang;
+        let sb = null;
+        try {
+            sb = new SearchBar({ getZoom: () => 4, setView: () => {} }, 'test-sc-search-spoiler-hint');
+            sb.render();
+            sb.landmarks = [
+                { name: 'Olympus Mons', lat: 18.65, lon: 226.2, body: 'mars' },
+                { name: 'Jezero Crater', lat: 18.38, lon: 77.58, body: 'mars' }
+            ];
+            sb.setSpoilerFilter((item) => !/Olympus Mons/i.test(item.name));
+
+            document.documentElement.dataset.scLang = 'en';
+            sb.handleInput('Olympus');
+            const enTxt = sb.resultsContainer.textContent || '';
+            expect(enTxt).to.not.include('Olympus Mons');
+            expect(enTxt).to.include('Target hidden during active Space Camp round');
+
+            document.documentElement.dataset.scLang = 'fr';
+            sb.handleInput('Olympus');
+            const frTxt = sb.resultsContainer.textContent || '';
+            expect(frTxt).to.not.include('Olympus Mons');
+            expect(frTxt).to.include('Cible masquee pendant la manche active');
+        } finally {
+            if (sb && sb._boundOutsideClick) {
+                document.removeEventListener('click', sb._boundOutsideClick);
+            }
+            if (prevLang === undefined) {
+                delete document.documentElement.dataset.scLang;
+            } else {
+                document.documentElement.dataset.scLang = prevLang;
+            }
+            host.remove();
+            jmarsState.reset();
+        }
+    });
+});
+
+describe('Telemetry Hardening (v1.8.9): CraterLayer Scaling & readableArea km²', () => {
+    it('scales crater radius by planetary radius, clamps [25..1000000], and keeps stamped craters across deactivate()', () => {
+        jmarsState.reset();
+        jmarsState.set('body', 'mars');
+        const mapDiv = document.createElement('div');
+        mapDiv.id = 'test-crater-layer-scale-map';
+        mapDiv.style.cssText = 'width:200px;height:200px;position:fixed;left:-9999px;';
+        document.body.appendChild(mapDiv);
+        const map = L.map(mapDiv, { renderer: L.svg(), center: [0, 0], zoom: 4 });
+        const crater = new CraterLayer(map);
+        try {
+            const expectedScale = 6371000 / (getPlanetaryRadius('mars') * 1000);
+            expect(crater.physicalToLeafletRadius(10000)).to.be.closeTo(10000 * expectedScale, 1.0);
+
+            const readRadius = () => crater.radiusMeters ?? crater.currentRadius ?? crater.radius;
+            crater.setRadius(5, { custom: true });
+            expect(readRadius()).to.equal(25);
+            crater.setRadius(5000000, { custom: true });
+            expect(readRadius()).to.equal(1000000);
+            crater.setRadius(4500, { custom: true });
+            expect(readRadius()).to.equal(4500);
+
+            crater.activate();
+            expect(map.hasLayer(crater.layerGroup)).to.be.true;
+            crater.deactivate();
+            expect(map.hasLayer(crater.layerGroup)).to.be.true;
+        } finally {
+            crater.deactivate();
+            map.remove();
+            mapDiv.remove();
+            jmarsState.reset();
+        }
+    });
+
+    it('formats areas >= 100,000 m² as km² via applyLeafletDrawPatch GeometryUtil.readableArea', () => {
+        const mockL = {
+            GeometryUtil: {
+                readableArea: (area) => `${Math.round(area)} m²`
+            },
+            Draw: {
+                Polyline: { prototype: {} },
+                Polygon: { prototype: {} }
+            }
+        };
+        applyLeafletDrawPatch(mockL);
+        expect(mockL.GeometryUtil.readableArea(2500000, true)).to.include('2.50').and.to.include('km²');
+        expect(mockL.GeometryUtil.readableArea(125000, true)).to.include('km²');
+        expect(mockL.GeometryUtil.readableArea(50000, true)).to.include('m²').and.to.not.include('km²');
     });
 });
 

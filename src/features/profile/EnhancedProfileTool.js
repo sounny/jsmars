@@ -54,12 +54,12 @@ export class EnhancedProfileTool {
         this.onDrawStop = this.onDrawStop.bind(this);
         this.hoverMarker = null;
 
-        // Synchronize chart mouse hovering with map cursor position
+        // Synchronize chart mouse hovering with map cursor position across both Profile & Radial modes
         document.addEventListener(EVENTS.PROFILE_HOVER, (e) => {
             const detail = e.detail;
             if (detail?.clear) {
                 if (this.hoverMarker) {
-                    this.featureGroup.removeLayer(this.hoverMarker);
+                    this.hoverMarker.remove();
                     this.hoverMarker = null;
                 }
             } else if (detail && Number.isFinite(detail.lat) && Number.isFinite(detail.lng)) {
@@ -69,12 +69,22 @@ export class EnhancedProfileTool {
                         color: '#ffffff',
                         weight: 2,
                         fillColor: '#38bdf8',
-                        fillOpacity: 0.9
-                    });
-                    this.featureGroup.addLayer(this.hoverMarker);
+                        fillOpacity: 0.9,
+                        interactive: false
+                    }).addTo(this.map);
                 } else {
+                    if (!this.map.hasLayer(this.hoverMarker)) {
+                        this.hoverMarker.addTo(this.map);
+                    }
                     this.hoverMarker.setLatLng([detail.lat, detail.lng]);
                 }
+            }
+        });
+
+        document.addEventListener(EVENTS.BODY_CHANGED, () => {
+            if (this.hoverMarker) {
+                this.hoverMarker.remove();
+                this.hoverMarker = null;
             }
         });
         

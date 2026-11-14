@@ -1,4 +1,8 @@
 import { EVENTS } from '../../constants.js';
+import { getPlanetaryRadius, haversineDistance } from '../../util/geo.js';
+import { jmarsState } from '../../jmars-state.js';
+
+const EARTH_RADIUS_METERS = 6371000;
 
 /**
  * @module CraterLayer
@@ -19,13 +23,27 @@ export class CraterLayer {
         this.craters = []; // Array of { id, lat, lng, diameter, layer }
         this.isActive = false;
         this.ghostCircle = null;
-        this.currentRadius = 50000; // Meters
-        this.layerGroup = L.layerGroup(); // NOT added to map yet
+        this.currentRadius = 50000; // True physical radius in meters
+        this.currentBody = (jmarsState?.get?.('body') || 'mars').toLowerCase();
+        this._hasCustomRadius = false;
+        this.layerGroup = L.layerGroup(); // Added lazily & kept visible across tool switches
 
         // Bind methods
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onWheel = this.onWheel.bind(this);
         this.onClick = this.onClick.bind(this);
+        this.onKeyDown = this.onKeyDown.bind(this);
+
+        document.addEventListener(EVENTS.BODY_CHANGED, (e) => {
+            const nextBody = (e?.detail?.body || jmarsState?.get?.('body') || 'mars').toLowerCase();
+            if (nextBody !== this.currentBody) {
+                this.currentBody = nextBody;
+                this._hasCustomRadius = false;
+                if (this.ghostCircle) {
+                    this.ghostCircle.setRadius(this.physicalToLeafletRadius(this.currentRadius));
+                }
+            }
+        });
         this.handleRemoveRequest = this.handleRemoveRequest.bind(this);
         this.handleClearRequest = this.handleClearRequest.bind(this);
 
@@ -46,20 +64,68 @@ export class CraterLayer {
      * Activate crater counting mode.
      * Adds the layer group to the map and registers interaction listeners.
      */
+    /**
+     * Convert true physical planetary radius in meters to Leaflet L.circle Earth-equivalent meters.
+     * @param {number} physicalMeters
+     * @returns {number}
+     */
+    physicalToLeafletRadius(physicalMeters) {
+        const bodyMeters = getPlanetaryRadius(this.currentBody, 'meters') || EARTH_RADIUS_METERS;
+        return physicalMeters * (EARTH_RADIUS_METERS / bodyMeters);
+    }
+
+    /**
+     * Clamp and update the active crater stamping radius in true planetary meters.
+     * @param {number} nextRadiusMeters
+     * @param {{custom?: boolean}} [options]
+     */
+    setRadius(nextRadiusMeters, { custom = true } = {}) {
+        const clamped = Math.max(25, Math.min(1000000, Number(nextRadiusMeters) || 50000));
+        this.currentRadius = clamped;
+        if (custom) {
+            this._hasCustomRadius = true;
+        }
+        if (this.ghostCircle) {
+            this.ghostCircle.setRadius(this.physicalToLeafletRadius(this.currentRadius));
+        }
+    }
+
+    /**
+     * Activate crater counting mode.
+     * Adds the crater layer group, ghost preview circle, and interaction listeners.
+     */
     activate() {
         if (this.isActive) return;
         this.isActive = true;
+        this.currentBody = (jmarsState?.get?.('body') || this.currentBody || 'mars').toLowerCase();
 
-        // Add layer group to map on activation
-        this.layerGroup.addTo(this.map);
+        // Add layer group to map on activation (stays visible after deactivation)
+        if (!this.map.hasLayer(this.layerGroup)) {
+            this.layerGroup.addTo(this.map);
+        }
 
-        // Create ghost circle
+        // Choose a viewport-appropriate default radius if user has not resized manually
+        if (!this._hasCustomRadius && this.map && typeof this.map.getBounds === 'function') {
+            try {
+                const bounds = this.map.getBounds();
+                const center = this.map.getCenter();
+                const spanKm = haversineDistance(center.lat, bounds.getWest(), center.lat, bounds.getEast(), this.currentBody);
+                if (Number.isFinite(spanKm) && spanKm > 0) {
+                    const suggested = Math.round(spanKm * 1000 * 0.05);
+                    this.currentRadius = Math.max(25, Math.min(250000, suggested));
+                }
+            } catch {
+                // Keep default radius when bounds are unavailable
+            }
+        }
+
+        // Create ghost circle scaled for active planetary radius
         this.ghostCircle = L.circle(this.map.getCenter(), {
             color: '#ffffff',
             fillColor: '#ffff00',
             weight: 2,
             fillOpacity: 0.1,
-            radius: this.currentRadius,
+            radius: this.physicalToLeafletRadius(this.currentRadius),
             interactive: false
         }).addTo(this.map);
 
@@ -67,13 +133,14 @@ export class CraterLayer {
         this.map.on('mousemove', this.onMouseMove);
         this.map.getContainer().addEventListener('wheel', this.onWheel, { passive: false });
         this.map.on('click', this.onClick);
+        document.addEventListener('keydown', this.onKeyDown);
 
         this.map.getContainer().style.cursor = 'none'; // Hide default cursor
     }
 
     /**
      * Deactivate crater counting mode.
-     * Removes interaction listeners and the layer group from the map.
+     * Removes temporary stamping listeners while keeping counted craters visible on the map.
      */
     deactivate() {
         if (!this.isActive) return;
@@ -85,13 +152,11 @@ export class CraterLayer {
             this.ghostCircle = null;
         }
 
-        // Remove listeners
+        // Remove interaction listeners
         this.map.off('mousemove', this.onMouseMove);
         this.map.getContainer().removeEventListener('wheel', this.onWheel);
         this.map.off('click', this.onClick);
-
-        // Remove layer group from map on deactivation
-        this.map.removeLayer(this.layerGroup);
+        document.removeEventListener('keydown', this.onKeyDown);
 
         this.map.getContainer().style.cursor = ''; // Restore cursor
     }
@@ -115,14 +180,23 @@ export class CraterLayer {
         e.preventDefault(); // Prevent map zoom
 
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        this.currentRadius *= delta;
+        this.setRadius(this.currentRadius * delta, { custom: true });
+    }
 
-        // Clamp radius
-        if (this.currentRadius < 1000) this.currentRadius = 1000;
-        if (this.currentRadius > 1000000) this.currentRadius = 1000000;
-
-        if (this.ghostCircle) {
-            this.ghostCircle.setRadius(this.currentRadius);
+    /**
+     * Adjust crater stamp radius via keyboard (+/- or ArrowUp/ArrowDown) for trackpad users.
+     * @param {KeyboardEvent} e
+     */
+    onKeyDown(e) {
+        if (!this.isActive) return;
+        const tag = (e.target?.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (e.key === '+' || e.key === '=' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            this.setRadius(this.currentRadius * 1.15, { custom: true });
+        } else if (e.key === '-' || e.key === '_' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            this.setRadius(this.currentRadius * 0.85, { custom: true });
         }
     }
 
@@ -148,13 +222,16 @@ export class CraterLayer {
      * @param {object} crater - Crater record with id, lat, lng, diameter.
      */
     addCrater(crater) {
-        // Draw permanent circle
+        if (this.map && !this.map.hasLayer(this.layerGroup)) {
+            this.layerGroup.addTo(this.map);
+        }
+        // Draw permanent circle scaled to active planetary body angular diameter
         const circle = L.circle([crater.lat, crater.lng], {
             color: '#ffffff',
             fillColor: '#ff0000',
             weight: 2,
             fillOpacity: 0.2,
-            radius: crater.diameter / 2
+            radius: this.physicalToLeafletRadius(crater.diameter / 2)
         }).addTo(this.layerGroup);
 
         // Store reference

@@ -123,7 +123,14 @@ export class LunarSitePlanner {
       ...[['slope', 'Slope hazard (5 m max per 20 m cell)'], ['slopeMean', 'Mean slope'], ['sun', 'Avg solar visibility'],
         ['earth', 'Avg Earth visibility'], ['psr', 'Permanently shadowed regions'], ['rough', 'Roughness proxy (DEM)'],
         ['elev', 'Elevation'], ['none', 'Hillshade only']].map(([v, t]) => el('option', { value: v, text: t })));
-    themSel.addEventListener('change', () => { this.thematic = themSel.value; this.renderThematic(); });
+    this.themSelect = themSel;
+    themSel.addEventListener('change', () => {
+      this.thematic = themSel.value;
+      this.renderThematic();
+      document.dispatchEvent(new CustomEvent('jmars:lunar-thematic-changed', {
+        detail: { layer: this.thematic }
+      }));
+    });
     const opacity = el('input', { type: 'range', min: '0', max: '100', value: '65', 'aria-label': 'Layer opacity' });
     opacity.addEventListener('input', () => this.layers.thematic?.setOpacity(opacity.value / 100));
     this.opacity = opacity;
@@ -258,6 +265,26 @@ export class LunarSitePlanner {
         this.setStatus(`Failed to load ${s.name}: ${err.message}`, true);
       }
     }
+  }
+
+  /**
+   * Programmatically set the active LOLA thematic layer and sync the select dropdown.
+   * @param {string} layerKey
+   * @returns {boolean}
+   */
+  setThematicLayer(layerKey) {
+    if (!layerKey) return false;
+    this.thematic = layerKey;
+    if (this.themSelect) {
+      this.themSelect.value = layerKey;
+    }
+    if (typeof this.renderThematic === 'function' && this.map) {
+      this.renderThematic();
+    }
+    document.dispatchEvent(new CustomEvent('jmars:lunar-thematic-changed', {
+      detail: { layer: layerKey }
+    }));
+    return true;
   }
 
   renderThematic() {

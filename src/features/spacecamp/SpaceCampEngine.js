@@ -421,6 +421,7 @@ export class SpaceCampEngine {
       r2ProfilePts: Number(restored.r2ProfilePts) || 0,
       // Round 3: Mars Rover Traverse
       r3SelectedTools: Array.isArray(restored.r3SelectedTools) ? restored.r3SelectedTools : [],
+      r3LastToolsCheck: restored.r3LastToolsCheck || null,
       r3BestToolsPts: Number(restored.r3BestToolsPts) || 0,
       r3BestRoutePts: Number(restored.r3BestRoutePts) || 0,
       r3LastRouteSummary: restored.r3LastRouteSummary || null,
@@ -585,6 +586,42 @@ export class SpaceCampEngine {
   }
 
   // ── Round 3 Actions ──────────────────────────────────────────────
+  evaluateRound3Tools(selectedToolIds) {
+    const round3 = this.deck.rounds.find((r) => r.roundNumber === 3);
+    const prevR3 = this.getRoundScores().r3;
+
+    this.state.r3SelectedTools = Array.isArray(selectedToolIds) ? selectedToolIds.slice() : [];
+    const toolRes = scoreRoverTools(this.state.r3SelectedTools, round3.toolChoices);
+    if (toolRes.points > this.state.r3BestToolsPts) {
+      this.state.r3BestToolsPts = toolRes.points;
+    }
+
+    const picked = new Set(this.state.r3SelectedTools);
+    const essentialChoices = (round3.toolChoices || []).filter((c) => c.correct);
+    const missingChoices = essentialChoices.filter((c) => !picked.has(c.id));
+    const wrongChoices = (round3.toolChoices || []).filter((c) => !c.correct && picked.has(c.id));
+
+    this.state.r3LastToolsCheck = {
+      points: toolRes.points,
+      maxPoints: 30,
+      correctCount: toolRes.correctCount,
+      wrongCount: toolRes.wrongCount,
+      essentialTotal: essentialChoices.length,
+      missingCount: missingChoices.length,
+      missingIds: missingChoices.map((c) => c.id),
+      wrongIds: wrongChoices.map((c) => c.id),
+      checkedAt: Date.now()
+    };
+
+    const nextR3 = this.getRoundScores().r3;
+    return {
+      toolRes,
+      check: this.state.r3LastToolsCheck,
+      deltaPoints: Math.max(0, nextR3 - prevR3),
+      roundTotal: nextR3
+    };
+  }
+
   evaluateRound3Plan(selectedToolIds, sampledPoints, elevationsM) {
     const round3 = this.deck.rounds.find((r) => r.roundNumber === 3);
     const prevR3 = this.getRoundScores().r3;

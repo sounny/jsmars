@@ -11,6 +11,9 @@
  * 4. Fixes `L.GeometryUtil.readableArea` undeclared `type` global assignment in strict contexts.
  */
 
+import { computePolylineLength, sphericalPolygonArea } from './geo.js';
+import { jmarsState } from '../jmars-state.js';
+
 const FINISH_SNAP_PX = 18;
 
 /**
@@ -282,6 +285,62 @@ export function applyLeafletDrawPatch(LRef = globalThis.L) {
       }
     }
   };
+
+  if (LRef.GeometryUtil && typeof LRef.GeometryUtil.readableArea === 'function') {
+    const prevReadableArea = LRef.GeometryUtil.readableArea;
+    LRef.GeometryUtil.readableArea = function jsmarsReadableArea(area, isMetric = true, precision) {
+      if (isMetric && typeof area === 'number' && Number.isFinite(area)) {
+        if (area >= 100000) {
+          const kmPrec = precision?.km ?? 2;
+          return `${(area / 1000000).toFixed(kmPrec)} km\u00b2`;
+        }
+        return `${Math.round(area)} m\u00b2`;
+      }
+      return prevReadableArea.call(this, area, isMetric, precision);
+    };
+  }
+
+  const activeBodyKey = () => (jmarsState?.get?.('body') || 'mars').toLowerCase();
+
+  if (LRef.Draw?.Polyline?.prototype && typeof LRef.Draw.Polyline.prototype._getMeasurementString === 'function') {
+    const prevPolyMeasurementString = LRef.Draw.Polyline.prototype._getMeasurementString;
+    LRef.Draw.Polyline.prototype._getMeasurementString = function jsmarsPolylineMeasurementString() {
+      const placed = (this._markers || []).map(m => m?.getLatLng?.()).filter(Boolean);
+      const pts = this._currentLatLng ? [...placed, this._currentLatLng] : placed;
+      if (pts.length >= 2) {
+        const distMeters = computePolylineLength(pts, activeBodyKey()) * 1000;
+        const isMetric = this.options?.metric !== false;
+        return LRef.GeometryUtil.readableDistance(
+          distMeters,
+          isMetric,
+          this.options?.feet,
+          this.options?.nautic,
+          this.options?.precision
+        );
+      }
+      return prevPolyMeasurementString.call(this);
+    };
+  }
+
+  if (LRef.Draw?.Polygon?.prototype && typeof LRef.Draw.Polygon.prototype._getMeasurementString === 'function') {
+    const prevPolygonMeasurementString = LRef.Draw.Polygon.prototype._getMeasurementString;
+    LRef.Draw.Polygon.prototype._getMeasurementString = function jsmarsPolygonMeasurementString() {
+      const placed = (this._markers || []).map(m => m?.getLatLng?.()).filter(Boolean);
+      const pts = this._currentLatLng ? [...placed, this._currentLatLng] : placed;
+      if (this.options?.showArea && pts.length >= 3) {
+        const areaSqM = sphericalPolygonArea(pts, activeBodyKey()) * 1000000;
+        return LRef.GeometryUtil.readableArea(
+          areaSqM,
+          this.options?.metric !== false,
+          this.options?.precision
+        );
+      }
+      if (pts.length >= 2) {
+        return LRef.Draw.Polyline.prototype._getMeasurementString.call(this);
+      }
+      return prevPolygonMeasurementString.call(this);
+    };
+  }
 
   // Update tooltip copy so users know first/last point, double-click, or Enter closes/finishes
   if (LRef.drawLocal?.draw?.handlers?.polyline?.tooltip) {
