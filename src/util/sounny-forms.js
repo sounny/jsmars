@@ -74,11 +74,6 @@
         form.appendChild(tsInput);
       }
 
-      form.addEventListener("focusin", function onFirstFocus() {
-        tsInput.value = Date.now();
-        form.removeEventListener("focusin", onFirstFocus);
-      });
-
       // 2. Intercept Submit Event
       form.addEventListener("submit", async function (e) {
         e.preventDefault();
@@ -159,6 +154,13 @@
 
           const response = await fetch(targetUrl, fetchOptions);
           const result = await response.json().catch(() => ({ success: response.ok }));
+          const resultId = result && typeof result.id === "string" ? result.id : "";
+          const notSaved = resultId.startsWith("bot_filtered") || resultId === "probe_verified" || result.probe === true;
+          if (notSaved) {
+            throw new Error(resultId.startsWith("bot_filtered")
+              ? "This submission was not saved. Please try again."
+              : (result.message || "This submission was not saved."));
+          }
 
           if (response.ok && result.success) {
             feedbackEl.style.display = "block";
@@ -167,8 +169,9 @@
             feedbackEl.style.color = "#10b981";
             feedbackEl.textContent = `✓ ${result.message || "Thank you! Your message has been received."}`;
 
+            const loadedAt = tsInput.value;
             form.reset();
-            tsInput.value = Date.now();
+            tsInput.value = loadedAt;
 
             if (submitBtn) {
               submitBtn.innerHTML = `<span>Sent ✓</span>`;
